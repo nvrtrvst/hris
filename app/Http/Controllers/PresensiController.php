@@ -1,0 +1,196 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Presensi;
+use App\Models\Jadwal;
+use App\Models\UnitSekolah;
+use App\Models\Pegawai;
+use Illuminate\Http\Request;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
+
+class PresensiController extends Controller
+{
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2) {
+        $earthRadius = 6371000; // Radius bumi dalam meter
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat/2) * sin($dLat/2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon/2) * sin($dLon/2);
+        $c = 2 * asin(sqrt($a));
+        return round($earthRadius * $c);
+    }
+
+    public function index(Request $request)
+    {
+        $user = auth()->user();
+        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $query = Presensi::with(['unitSekolah', 'pegawai', 'jadwal']);
+
+        if ($user && $user->role === 'admin_unit') {
+            $query->whereHas('pegawai', function($q) use ($user) {
+                $q->where('unit_sekolah_id', $user->unit_sekolah_id);
+            });
+        } elseif (!$isAdmin) {
+            $pegawai = Pegawai::where('user_id', auth()->id())->first();
+            if ($pegawai) {
+                $query->where('pegawai_id', $pegawai->id);
+            } else {
+                $query->where('id', -1); // Tidak ada data
+            }
+        }
+
+        if ($request->start_date) {
+            $query->where('tanggal', '>=', $request->start_date);
+        }
+        if ($request->end_date) {
+            $query->where('tanggal', '<=', $request->end_date);
+        }
+
+        $presensis = $query->orderBy('tanggal', 'desc')->paginate(10);
+        $presensis->appends($request->all());
+
+        return inertia('Presensi/Index', [
+            'presensis' => $presensis,
+            'pegawai' => $isAdmin ? null : ($pegawai ?? null),
+            'filters' => $request->only(['start_date', 'end_date'])
+        ]);
+    }
+
+    public function create()
+    {
+        $isAdmin = auth()->user() && in_array(auth()->user()->role, ['superadmin', 'admin_unit']);
+        if (!$isAdmin) abort(403, 'Akses ditolak. Presensi hanya bisa dilakukan via Mobile Portal.');
+
+        $pegawai = Pegawai::first(); // Mock user for simulation only
+        $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
+        $hariIniIndo = $hariMap[Carbon::now()->format('l')];
+
+        $jadwalHariIni = Jadwal::with('unitSekolah')
+            ->where('pegawai_id', $pegawai->id ?? 0)
+            ->where('hari', $hariIniIndo)
+            ->get();
+
+        $presensiHariIni = Presensi::where('pegawai_id', $pegawai->id ?? 0)
+            ->where('tanggal', Carbon::today())
+            ->get();
+
+        return inertia('Presensi/Create', [
+            'jadwals' => $jadwalHariIni,
+            'presensis' => $presensiHariIni,
+            'pegawai' => $pegawai
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $isAdmin = auth()->user() && in_array(auth()->user()->role, ['superadmin', 'admin_unit']);
+        if (!$isAdmin) abort(403, 'Akses ditolak. Presensi hanya bisa dilakukan via Mobile Portal.');
+
+        $request->validate([
+            'pegawai_id' => 'required|exists:pegawai,id',
+            'jadwal_id' => 'required|exists:jadwal,id',
+            'tipe' => 'required|in:masuk,keluar',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'foto' => 'required|string', // base64 image
+        ]);
+
+        $jadwal = Jadwal::with('unitSekolah')->findOrFail($request->jadwal_id);
+        $unit = $jadwal->unitSekolah;
+
+        // Validasi Geofencing
+        $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);
+        
+        if ($distance > $unit->radius_meter) {
+            return back()->withErrors(['geofence' => "Anda berada di luar jangkauan Unit Sekolah. Jarak Anda: {$distance} meter (Batas: {$unit->radius_meter}m)"]);
+        }
+
+        // Simpan Foto
+        $pegawai = Pegawai::findOrFail($request->pegawai_id);
+        $safeName = strtolower(preg_replace('/\s+/', '', $pegawai->nama_lengkap));
+        $dateStr = Carbon::now()->format('Ymd');
+        $tipeStr = $request->tipe; // 'masuk' atau 'keluar'
+
+        $image = $request->foto;
+        $image = str_replace('data:image/jpeg;base64,', '', $image);
+        $image = str_replace(' ', '+', $image);
+        $imageName = "presensi/{$safeName}_{$dateStr}_{$tipeStr}.jpg";
+        Storage::disk('public')->put($imageName, base64_decode($image));
+
+        \Illuminate\Support\Facades\DB::transaction(function() use ($request, $unit, $distance, $imageName) {
+            $presensi = Presensi::where('pegawai_id', $request->pegawai_id)
+                ->where('jadwal_id', $request->jadwal_id)
+                ->where('tanggal', Carbon::today())
+                ->lockForUpdate()
+                ->first();
+
+            if (!$presensi) {
+                $presensi = new Presensi([
+                    'pegawai_id' => $request->pegawai_id,
+                    'jadwal_id' => $request->jadwal_id,
+                    'tanggal' => Carbon::today(),
+                ]);
+            }
+
+            $presensi->unit_sekolah_id = $unit->id;
+            
+            $jadwal = Jadwal::find($request->jadwal_id);
+
+            if ($request->tipe === 'masuk') {
+                if ($presensi->jam_masuk) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen masuk untuk jadwal ini.']);
+                }
+                $presensi->jam_masuk = Carbon::now()->format('H:i:s');
+                $presensi->latitude_masuk = $request->latitude;
+                $presensi->longitude_masuk = $request->longitude;
+                $presensi->foto_masuk = '/storage/'.$imageName;
+                $presensi->jarak_masuk_meter = $distance;
+                
+                // Tentukan status telat
+                if (Carbon::now()->format('H:i:s') > $jadwal->jam_mulai) {
+                    $presensi->status = 'telat';
+                } else {
+                    $presensi->status = 'hadir';
+                }
+            } else {
+                if (!$presensi->exists || !$presensi->jam_masuk) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['conflict' => 'Anda belum absen masuk.']);
+                }
+                if ($presensi->jam_keluar) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen keluar.']);
+                }
+                $presensi->jam_keluar = Carbon::now()->format('H:i:s');
+                $presensi->latitude_keluar = $request->latitude;
+                $presensi->longitude_keluar = $request->longitude;
+                $presensi->foto_keluar = '/storage/'.$imageName;
+                $presensi->jarak_keluar_meter = $distance;
+            }
+
+            $presensi->save();
+        });
+
+        return redirect()->route('presensi.index')->with('message', 'Presensi berhasil dicatat.');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $user = auth()->user();
+        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        if (!$isAdmin) abort(403);
+
+        $presensi = Presensi::with('pegawai')->findOrFail($id);
+        
+        if ($user->role === 'admin_unit' && $presensi->pegawai->unit_sekolah_id !== $user->unit_sekolah_id) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $request->validate([
+            'status' => 'required|in:hadir,telat,alpa',
+        ]);
+
+        $presensi->update(['status' => $request->status]);
+
+        return redirect()->back()->with('message', 'Status presensi berhasil diubah menjadi ' . strtoupper($request->status));
+    }
+}
