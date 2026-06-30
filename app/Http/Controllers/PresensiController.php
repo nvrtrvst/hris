@@ -47,13 +47,26 @@ class PresensiController extends Controller
             $query->where('tanggal', '<=', $request->end_date);
         }
 
+        if ($request->unit_id && $user->role === 'superadmin') {
+            $query->whereHas('pegawai', function($q) use ($request) {
+                $q->where('unit_sekolah_id', $request->unit_id);
+            });
+        }
+
         $presensis = $query->orderBy('tanggal', 'desc')->paginate(10);
         $presensis->appends($request->all());
+
+        $units = [];
+        if ($user->role === 'superadmin') {
+            $units = UnitSekolah::all();
+        }
 
         return inertia('Presensi/Index', [
             'presensis' => $presensis,
             'pegawai' => $isAdmin ? null : ($pegawai ?? null),
-            'filters' => $request->only(['start_date', 'end_date'])
+            'filters' => $request->only(['start_date', 'end_date', 'unit_id']),
+            'units' => $units,
+            'userRole' => $user->role
         ]);
     }
 

@@ -95,6 +95,15 @@ class DashboardController extends Controller
         }
 
         // 4. Trend Kehadiran 7 Hari Terakhir
+        $hariMap = [
+            'Sunday' => 'Minggu', 
+            'Monday' => 'Senin', 
+            'Tuesday' => 'Selasa', 
+            'Wednesday' => 'Rabu', 
+            'Thursday' => 'Kamis', 
+            'Friday' => 'Jumat', 
+            'Saturday' => 'Sabtu'
+        ];
         $attendanceTrend = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today('Asia/Jakarta')->subDays($i);

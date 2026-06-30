@@ -117,6 +117,7 @@ class PegawaiController extends Controller
             'jabatan_id' => 'required|exists:jabatan,id',
             'email' => 'required|email|unique:users,email',
             'password' => 'nullable|string|min:6',
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         $user = \App\Models\User::create([
@@ -125,8 +126,13 @@ class PegawaiController extends Controller
             'password' => \Illuminate\Support\Facades\Hash::make($request->password ?: $request->nik),
         ]);
 
-        $pegawaiData = collect($validated)->except(['email', 'password'])->toArray();
+        $pegawaiData = collect($validated)->except(['email', 'password', 'foto'])->toArray();
         $pegawaiData['user_id'] = $user->id;
+
+        if ($request->hasFile('foto')) {
+            $path = $request->file('foto')->store('pegawai_fotos', 'public');
+            $pegawaiData['foto'] = '/storage/' . $path;
+        }
 
         $pegawai = \App\Models\Pegawai::create($pegawaiData);
         $pegawai->units()->attach($request->unit_sekolah_id, ['jabatan_id' => $request->jabatan_id, 'is_primary' => true]);
@@ -195,9 +201,20 @@ class PegawaiController extends Controller
             'status_aktif' => 'required|in:aktif,cuti,nonaktif,resign',
             'tanggal_mulai_kerja' => 'required|date',
             'pendidikan_terakhir' => 'required|string|max:255',
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $pegawai->update($validated);
+        $dataToUpdate = collect($validated)->except(['foto'])->toArray();
+
+        if ($request->hasFile('foto')) {
+            if ($pegawai->foto) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete(str_replace('/storage/', '', $pegawai->foto));
+            }
+            $path = $request->file('foto')->store('pegawai_fotos', 'public');
+            $dataToUpdate['foto'] = '/storage/' . $path;
+        }
+
+        $pegawai->update($dataToUpdate);
 
         return redirect()->route('pegawai.show', $pegawai->id)->with('message', 'Data Pegawai berhasil diperbarui.');
     }

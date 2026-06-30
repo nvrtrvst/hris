@@ -49,19 +49,55 @@ class MobileController extends Controller
             ->where('tanggal', Carbon::today())
             ->first();
 
-        // Get jadwal hari ini
-        $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
-        $hariIniIndo = $hariMap[Carbon::now()->format('l')];
-
-        $jadwalHariIni = Jadwal::with('unitSekolah')
+        $presensiSeminggu = Presensi::with('unitSekolah')
             ->where('pegawai_id', $pegawai->id)
-            ->where('hari', $hariIniIndo)
+            ->where('tanggal', '>=', Carbon::today()->subDays(7))
+            ->where('tanggal', '<=', Carbon::today())
+            ->orderBy('tanggal', 'desc')
             ->get();
 
         return inertia('Mobile/Dashboard', [
             'pegawai' => $pegawai,
             'presensi' => $presensiHariIni,
-            'jadwals' => $jadwalHariIni
+            'presensiSeminggu' => $presensiSeminggu
+        ]);
+    }
+
+    public function riwayat(Request $request)
+    {
+        $pegawai = $this->getPegawai();
+        
+        $bulan = $request->input('bulan', Carbon::now()->format('m'));
+        $tahun = $request->input('tahun', Carbon::now()->format('Y'));
+
+        $presensi = Presensi::with('unitSekolah')
+            ->where('pegawai_id', $pegawai->id)
+            ->whereMonth('tanggal', $bulan)
+            ->whereYear('tanggal', $tahun)
+            ->orderBy('tanggal', 'desc')
+            ->get();
+
+        return inertia('Mobile/Riwayat', [
+            'pegawai' => $pegawai,
+            'presensi' => $presensi,
+            'filters' => ['bulan' => $bulan, 'tahun' => $tahun]
+        ]);
+    }
+
+    public function jadwal()
+    {
+        $pegawai = $this->getPegawai();
+        
+        $jadwals = Jadwal::with(['unitSekolah', 'mataPelajaran', 'kelas'])
+            ->where('pegawai_id', $pegawai->id)
+            ->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu')")
+            ->orderBy('jam_mulai', 'asc')
+            ->get()
+            ->groupBy('hari');
+
+        return inertia('Mobile/Jadwal', [
+            'pegawai' => $pegawai,
+            'jadwalPerHari' => $jadwals
         ]);
     }
 

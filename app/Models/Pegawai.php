@@ -110,6 +110,11 @@ class Pegawai extends Model
         return $this->hasMany(PegawaiDokumen::class);
     }
 
+    public function pengajuanIzins()
+    {
+        return $this->hasMany(PengajuanIzin::class);
+    }
+
     public function riwayat(): HasMany
     {
         return $this->hasMany(PegawaiRiwayat::class);

@@ -28,7 +28,12 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('penggajian', [\App\Http\Controllers\PenggajianController::class, 'index'])->name('penggajian.index');
     Route::post('penggajian/generate', [\App\Http\Controllers\PenggajianController::class, 'generate'])->name('penggajian.generate');
     Route::post('penggajian/finalize-period', [\App\Http\Controllers\PenggajianController::class, 'finalizePeriod'])->name('penggajian.finalize_period');
-    Route::post('penggajian/{id}/finalize', [\App\Http\Controllers\PenggajianController::class, 'finalize'])->name('penggajian.finalize');
+    Route::post('/penggajian/{id}/finalize', [\App\Http\Controllers\PenggajianController::class, 'finalize'])->name('penggajian.finalize');
+
+    Route::resource('pengajuan-izin', \App\Http\Controllers\PengajuanIzinController::class)->only(['index']);
+    Route::post('/pengajuan-izin/{id}/approve', [\App\Http\Controllers\PengajuanIzinController::class, 'approve'])->name('pengajuan-izin.approve');
+    Route::post('/pengajuan-izin/{id}/reject', [\App\Http\Controllers\PengajuanIzinController::class, 'reject'])->name('pengajuan-izin.reject');
+
     Route::delete('penggajian/destroy-period', [\App\Http\Controllers\PenggajianController::class, 'destroyPeriod'])->name('penggajian.destroy_period');
     Route::delete('penggajian/{id}', [\App\Http\Controllers\PenggajianController::class, 'destroy'])->name('penggajian.destroy');
     Route::get('penggajian/{id}', [\App\Http\Controllers\PenggajianController::class, 'show'])->name('penggajian.show');
@@ -56,6 +61,14 @@ Route::prefix('mobile')->group(function () {
 
     Route::middleware('auth:web_mobile')->group(function () {
         Route::get('/', [\App\Http\Controllers\MobileController::class, 'dashboard'])->name('mobile.dashboard');
+        Route::get('/jadwal', [\App\Http\Controllers\MobileController::class, 'jadwal'])->name('mobile.jadwal');
+        Route::get('/riwayat', [\App\Http\Controllers\MobileController::class, 'riwayat'])->name('mobile.riwayat');
+
+        // Rute Izin Mobile
+        Route::get('/izin', [\App\Http\Controllers\MobileIzinController::class, 'index'])->name('mobile.izin.index');
+        Route::get('/izin/create', [\App\Http\Controllers\MobileIzinController::class, 'create'])->name('mobile.izin.create');
+        Route::post('/izin', [\App\Http\Controllers\MobileIzinController::class, 'store'])->name('mobile.izin.store');
+
         Route::get('/absen', [\App\Http\Controllers\MobileController::class, 'absen'])->name('mobile.absen');
         Route::post('/absen', [\App\Http\Controllers\MobileController::class, 'storeAbsen'])->name('mobile.storeAbsen');
         Route::get('/profile', [ProfileController::class, 'edit'])->name('mobile.profile.edit');

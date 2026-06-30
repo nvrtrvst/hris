@@ -3,7 +3,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
+        _method: 'put',
         nik: pegawai.nik,
         nip: pegawai.nip || '',
         nama_lengkap: pegawai.nama_lengkap,
@@ -18,11 +19,12 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
         status_aktif: pegawai.status_aktif,
         tanggal_mulai_kerja: pegawai.tanggal_mulai_kerja,
         pendidikan_terakhir: pegawai.pendidikan_terakhir,
+        foto: null,
     });
 
     const submit = (e) => {
         e.preventDefault();
-        put(route('pegawai.update', pegawai.id));
+        post(route('pegawai.update', pegawai.id));
     };
 
     return (
@@ -38,7 +40,25 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
                         <div className="p-8">
                             <form onSubmit={submit} className="space-y-6">
                                 <div>
-                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">Informasi Dasar</h3>
+                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">Foto Pegawai</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                                        {pegawai.foto && (
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-700 mb-2">Foto Saat Ini:</p>
+                                                <img src={pegawai.foto} alt="Foto Pegawai" className="w-32 h-32 object-cover rounded-md shadow-sm border" />
+                                            </div>
+                                        )}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Upload Foto Baru (Opsional)</label>
+                                            <input type="file" onChange={e => setData('foto', e.target.files[0])} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" accept="image/jpeg, image/png, image/jpg" />
+                                            <p className="text-xs text-gray-500 mt-1">Kosongkan jika tidak ingin mengubah foto.</p>
+                                            {errors.foto && <p className="mt-1 text-sm text-red-600">{errors.foto}</p>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4 mt-8">Informasi Dasar</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">NIK <span className="text-red-500">*</span></label>

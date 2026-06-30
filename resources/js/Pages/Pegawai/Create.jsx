@@ -21,6 +21,7 @@ export default function Create({ auth, unitSekolahs, jabatans }) {
         jabatan_id: '',
         email: '',
         password: '',
+        foto: null,
     });
 
     const submit = (e) => {
@@ -41,7 +42,18 @@ export default function Create({ auth, unitSekolahs, jabatans }) {
                         <div className="p-8">
                             <form onSubmit={submit} className="space-y-6">
                                 <div>
-                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">Informasi Dasar</h3>
+                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">Foto Pegawai</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Upload Foto (Opsional)</label>
+                                            <input type="file" onChange={e => setData('foto', e.target.files[0])} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" accept="image/jpeg, image/png, image/jpg" />
+                                            {errors.foto && <p className="mt-1 text-sm text-red-600">{errors.foto}</p>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4 mt-8">Informasi Dasar</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">NIK (Nomor Induk Kependudukan) <span className="text-red-500">*</span></label>

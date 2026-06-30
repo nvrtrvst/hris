@@ -129,14 +129,37 @@ class PenggajianController extends Controller
                             ->whereYear('tanggal', $year)
                             ->where('status', 'alpa')
                             ->count();
+                            
+                        $countSakit = Presensi::where('pegawai_id', $pegawai->id)
+                            ->whereMonth('tanggal', $month)
+                            ->whereYear('tanggal', $year)
+                            ->where('status', 'sakit')
+                            ->count();
+                            
+                        $countIzin = Presensi::where('pegawai_id', $pegawai->id)
+                            ->whereMonth('tanggal', $month)
+                            ->whereYear('tanggal', $year)
+                            ->where('status', 'izin')
+                            ->count();
+                            
+                        $countCuti = Presensi::where('pegawai_id', $pegawai->id)
+                            ->whereMonth('tanggal', $month)
+                            ->whereYear('tanggal', $year)
+                            ->where('status', 'cuti')
+                            ->count();
 
                         // Example logic: if nama contains 'Telat', multiply by countTelat
                         if (stripos($komponen->nama, 'telat') !== false) {
                             $nominal = ($komponen->nilai_default ?? 0) * $countTelat;
                         } elseif (stripos($komponen->nama, 'alpa') !== false) {
+                            // [ATURAN IZIN/ALPA]
+                            // Jika Izin memotong gaji seperti alpa, tambahkan $countIzin ke $countAlpa
+                            // Misal: $totalMangkir = $countAlpa + $countIzin;
+                            // Jika jatah cuti habis dan ingin memotong, bisa tambahkan logicnya di sini.
                             $nominal = ($komponen->nilai_default ?? 0) * $countAlpa;
                         } elseif (stripos($komponen->nama, 'makan') !== false || stripos($komponen->nama, 'transport') !== false) {
-                            // Tunjangan harian
+                            // [ATURAN MAKAN & TRANSPORT]
+                            // Uang Makan / Transport hanya diberikan saat benar-benar Hadir Fisik (+ Telat)
                             $nominal = ($komponen->nilai_default ?? 0) * ($countHadir + $countTelat);
                         }
                     }

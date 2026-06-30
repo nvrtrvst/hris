@@ -1,14 +1,15 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 
-export default function Index({ auth, presensis, pegawai, filters }) {
+export default function Index({ auth, presensis, pegawai, filters, units, userRole }) {
     const { url } = usePage();
     const [startDate, setStartDate] = React.useState(filters?.start_date || '');
     const [endDate, setEndDate] = React.useState(filters?.end_date || '');
+    const [unitId, setUnitId] = React.useState(filters?.unit_id || '');
 
     const applyFilter = () => {
-        router.get(route('presensi.index'), { start_date: startDate, end_date: endDate }, { preserveState: true });
+        router.get(route('presensi.index'), { start_date: startDate, end_date: endDate, unit_id: unitId }, { preserveState: true });
     };
 
     return (
@@ -29,10 +30,24 @@ export default function Index({ auth, presensis, pegawai, filters }) {
                                 </div>
                                 <div className="flex space-x-4 items-center">
                                     <div className="flex space-x-2 items-center bg-gray-50 p-2 rounded-lg border border-gray-200">
+                                        {userRole === 'superadmin' && (
+                                            <>
+                                                <select className="border-gray-300 rounded-md shadow-sm text-xs h-8 pr-8" value={unitId} onChange={e => setUnitId(e.target.value)}>
+                                                    <option value="">Semua Unit</option>
+                                                    {units?.map(u => (
+                                                        <option key={u.id} value={u.id}>{u.nama}</option>
+                                                    ))}
+                                                </select>
+                                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                                            </>
+                                        )}
                                         <input type="date" className="border-gray-300 rounded-md shadow-sm text-xs h-8" value={startDate} onChange={e => setStartDate(e.target.value)} />
                                         <span className="text-gray-500">-</span>
                                         <input type="date" className="border-gray-300 rounded-md shadow-sm text-xs h-8" value={endDate} onChange={e => setEndDate(e.target.value)} />
-                                        <button onClick={applyFilter} className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 h-8 rounded-md text-xs font-medium transition-colors shadow-sm">Filter</button>
+                                        <button onClick={applyFilter} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 h-8 rounded-md text-xs font-bold transition-colors shadow-sm flex items-center">
+                                            <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                                            Filter
+                                        </button>
                                     </div>
                                     {pegawai && (
                                         <Link

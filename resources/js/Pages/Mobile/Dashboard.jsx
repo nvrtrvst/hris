@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link } from '@inertiajs/react';
 
-export default function MobileDashboard({ auth, pegawai, presensi, jadwals }) {
+export default function MobileDashboard({ auth, pegawai, presensi, presensiSeminggu }) {
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
@@ -88,29 +88,56 @@ export default function MobileDashboard({ auth, pegawai, presensi, jadwals }) {
                     </div>
                 </div>
 
-                {/* Jadwal Hari Ini */}
+                {/* Quick Menu */}
+                {/* <div className="grid grid-cols-2 gap-4">
+                    <Link href={route('mobile.absen')} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all active:scale-95">
+                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-2">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-800">Absen</span>
+                    </Link>
+                    
+                    <Link href={route('mobile.izin.index')} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all active:scale-95">
+                        <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-2">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-800">Izin & Cuti</span>
+                    </Link>
+                </div> */}
+
+                {/* Riwayat Kehadiran (Seminggu Terakhir) */}
                 <div>
-                    <h3 className="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wider flex items-center">
-                        <svg className="w-4 h-4 mr-1.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        Jadwal Anda
-                    </h3>
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center">
+                            <svg className="w-4 h-4 mr-1.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Riwayat Kehadiran
+                        </h3>
+                        <Link href={route('mobile.riwayat')} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">
+                            Lihat Semua
+                        </Link>
+                    </div>
                     
                     <div className="space-y-3">
-                        {jadwals && jadwals.length > 0 ? (
-                            jadwals.map(jadwal => (
-                                <div key={jadwal.id} className="bg-white rounded-2xl p-4 shadow-sm border border-l-4 border-l-indigo-500 flex items-center">
+                        {presensiSeminggu && presensiSeminggu.length > 0 ? (
+                            presensiSeminggu.slice(0, 5).map(item => (
+                                <Link key={item.id} href={route('mobile.riwayat')} className="bg-white rounded-2xl p-4 shadow-sm border border-l-4 border-l-indigo-500 flex items-center hover:bg-gray-50 transition-colors">
                                     <div className="flex-1">
-                                        <p className="font-bold text-gray-900">{jadwal.unit_sekolah.nama}</p>
-                                        <p className="text-xs text-gray-500">{jadwal.keterangan || 'Tugas Reguler'}</p>
+                                        <p className="font-bold text-gray-900">{new Date(item.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                                        <div className="flex items-center text-xs text-gray-500 mt-0.5">
+                                            <span className="inline-block w-2 h-2 rounded-full mr-1.5 bg-emerald-500"></span>
+                                            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                                        </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md text-sm">{jadwal.jam_mulai.substring(0, 5)} - {jadwal.jam_selesai.substring(0, 5)}</p>
+                                        <p className="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md text-sm">
+                                            {item.jam_masuk ? item.jam_masuk.substring(0, 5) : '--:--'}
+                                        </p>
                                     </div>
-                                </div>
+                                </Link>
                             ))
                         ) : (
-                            <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100 border-dashed">
-                                <p className="text-gray-500 text-sm">Tidak ada jadwal terdaftar untuk hari ini.</p>
+                            <div className="bg-gray-50 border border-dashed border-gray-300 rounded-2xl p-6 text-center">
+                                <p className="text-gray-500 text-sm">Belum ada riwayat kehadiran dalam seminggu terakhir.</p>
                             </div>
                         )}
                     </div>

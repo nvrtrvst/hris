@@ -35,4 +35,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(UnitSekolah::class);
     }
+
+    public function pegawai()
+    {
+        return $this->hasOne(Pegawai::class);
+    }
 }
