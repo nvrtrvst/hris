@@ -22,6 +22,8 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::post('pegawai/import', [\App\Http\Controllers\PegawaiController::class, 'import'])->name('pegawai.import');
     Route::resource('pegawai', \App\Http\Controllers\PegawaiController::class);
     Route::resource('unit-sekolah', \App\Http\Controllers\UnitSekolahController::class)->only(['index', 'edit', 'update']);
+    Route::post('jadwal/generate', [\App\Http\Controllers\JadwalController::class, 'generate'])->name('jadwal.generate');
+    Route::post('jadwal/swap', [\App\Http\Controllers\JadwalController::class, 'swap'])->name('jadwal.swap');
     Route::resource('jadwal', \App\Http\Controllers\JadwalController::class);
     Route::resource('presensi', \App\Http\Controllers\PresensiController::class)->only(['index', 'create', 'store', 'update']);
     Route::resource('komponen-gaji', \App\Http\Controllers\KomponenGajiController::class);

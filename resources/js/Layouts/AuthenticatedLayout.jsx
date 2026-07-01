@@ -45,50 +45,52 @@ export default function AuthenticatedLayout({ user, header, children }) {
     const menus = role === 'superadmin' ? superadminMenus : (role === 'admin_unit' ? adminUnitMenus : staffMenus);
 
     return (
-        <div className="min-h-screen bg-surface flex flex-col md:flex-row font-sans">
+        <div className="min-h-screen bg-surface flex flex-col md:flex-row font-sans print:bg-white">
             
             {/* Sidebar Desktop */}
-            <aside className={`hidden md:flex flex-col bg-primary text-white shadow-xl fixed h-full z-30 transition-all duration-300 border-r border-secondary/20 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
-                <div className="flex items-center justify-center h-20 border-b border-secondary/30 bg-primary/95">
-                    <Link href={route('dashboard')} className={`flex items-center group ${isSidebarOpen ? 'space-x-3' : 'space-x-0'}`}>
-                        <div className="bg-white p-1.5 rounded-lg shadow-lg group-hover:scale-110 transition-transform">
-                            <ApplicationLogo className="w-8 h-8 text-primary" />
+            <aside className={`hidden md:flex flex-col bg-primary text-white shadow-2xl fixed h-full z-30 transition-all duration-300 border-r border-primary print:hidden ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
+                <div className="flex items-center justify-center h-20 border-b border-white/10 bg-primary/95 px-4">
+                    <Link href={route('dashboard')} className={`flex items-center group w-full ${isSidebarOpen ? 'space-x-3' : 'justify-center'}`}>
+                        <div className="bg-white p-1.5 rounded-lg shadow-sm group-hover:scale-105 transition-transform flex-shrink-0">
+                            <ApplicationLogo className="w-7 h-7 text-primary" />
                         </div>
-                        {isSidebarOpen && <span className="text-xl font-extrabold tracking-wider text-white">HRIS <span className="text-accent">Yayasan</span></span>}
+                        {isSidebarOpen && <span className="text-xl font-bold tracking-wide text-white truncate">HRIS <span className="text-accent">Yayasan</span></span>}
                     </Link>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
-                    {isSidebarOpen && <p className="text-xs font-bold text-accent uppercase tracking-widest mb-4 px-2">Menu Utama</p>}
+                <div className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
+                    {isSidebarOpen && <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 px-3">Menu Utama</p>}
                     {menus.map((menu, i) => {
                         const isActive = url.startsWith(new URL(menu.href).pathname);
                         return (
-                            <Link key={i} href={menu.href} title={menu.name} className={`flex items-center rounded-xl transition-all duration-200 ${isSidebarOpen ? 'px-4 py-3 space-x-3' : 'justify-center py-3'} ${isActive ? 'bg-secondary shadow-md text-white border-l-4 border-accent' : 'text-white/70 hover:bg-secondary/50 hover:text-white'}`}>
-                                <svg className={`w-5 h-5 flex-shrink-0 ${!isSidebarOpen && 'mx-auto'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={menu.icon}></path></svg>
-                                {isSidebarOpen && <span className="font-medium whitespace-nowrap">{menu.name}</span>}
+                            <Link key={i} href={menu.href} title={menu.name} className={`flex items-center rounded-lg transition-all duration-200 group ${isSidebarOpen ? 'px-3 py-2.5 space-x-3' : 'justify-center py-3'} ${isActive ? 'bg-white/10 text-accent font-semibold shadow-inner' : 'text-gray-300 hover:bg-white/5 hover:text-white'}`}>
+                                <svg className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive ? 'text-accent' : 'text-gray-400 group-hover:text-white'} ${!isSidebarOpen && 'mx-auto'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={menu.icon}></path></svg>
+                                {isSidebarOpen && <span className="whitespace-nowrap">{menu.name}</span>}
                             </Link>
                         )
                     })}
                 </div>
                 
-                <div className="p-4 border-t border-secondary/30 bg-primary/95">
+                <div className="p-4 border-t border-white/10 bg-primary/95">
                     <Dropdown>
                         <Dropdown.Trigger>
-                            <button className={`flex items-center space-x-3 p-2 rounded-xl hover:bg-secondary/50 transition-colors ${isSidebarOpen ? 'w-full text-left' : 'w-full justify-center'}`}>
-                                <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center font-bold text-primary shadow-inner flex-shrink-0">
+                            <button className={`flex items-center space-x-3 p-2 rounded-lg hover:bg-white/10 transition-colors ${isSidebarOpen ? 'w-full text-left' : 'w-full justify-center'}`}>
+                                <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center font-bold text-primary shadow-sm flex-shrink-0">
                                     {user.name.charAt(0)}
                                 </div>
                                 {isSidebarOpen && (
                                     <>
                                         <div className="text-left flex-1 overflow-hidden">
-                                            <span className="font-medium text-white">{user.name}</span>
+                                            <div className="font-semibold text-white text-sm truncate">{user.name}</div>
                                             {role === 'superadmin' ? (
-                                                <span className="text-xs text-indigo-200 bg-white/10 border border-white/20 px-2 py-0.5 rounded ml-2">Yayasan</span>
+                                                <div className="text-xs text-accent mt-0.5 truncate">Superadmin</div>
                                             ) : role === 'admin_unit' ? (
-                                                <span className="text-xs text-green-200 bg-white/10 border border-white/20 px-2 py-0.5 rounded ml-2">Admin Unit</span>
-                                            ) : null}
+                                                <div className="text-xs text-green-300 mt-0.5 truncate">Admin Unit</div>
+                                            ) : (
+                                                <div className="text-xs text-gray-400 mt-0.5 truncate">Pegawai</div>
+                                            )}
                                         </div>
-                                        <svg className="w-4 h-4 text-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                                     </>
                                 )}
                             </button>
@@ -103,12 +105,14 @@ export default function AuthenticatedLayout({ user, header, children }) {
             </aside>
 
             {/* Mobile Header & Bottom Nav (Fallback) */}
-            <div className="md:hidden bg-primary text-white flex items-center justify-between h-16 px-4 fixed top-0 w-full z-20 shadow-md">
+            <div className="md:hidden bg-primary text-white flex items-center justify-between h-16 px-4 fixed top-0 w-full z-40 shadow-md print:hidden">
                 <Link href={route('dashboard')} className="flex items-center space-x-2">
-                    <ApplicationLogo className="w-6 h-6 text-accent" />
+                    <div className="bg-white p-1 rounded">
+                        <ApplicationLogo className="w-5 h-5 text-primary" />
+                    </div>
                     <span className="text-lg font-bold">HRIS <span className="text-accent">Yayasan</span></span>
                 </Link>
-                <button onClick={() => setShowingNavigationDropdown(!showingNavigationDropdown)} className="p-2 rounded-md hover:bg-secondary focus:outline-none">
+                <button onClick={() => setShowingNavigationDropdown(!showingNavigationDropdown)} className="p-2 rounded-md hover:bg-white/10 focus:outline-none transition-colors">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {showingNavigationDropdown ? (
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -120,31 +124,31 @@ export default function AuthenticatedLayout({ user, header, children }) {
             </div>
 
             {/* Mobile Dropdown Menu */}
-            <div className={`md:hidden fixed inset-0 bg-primary z-10 pt-16 transform transition-transform duration-300 ${showingNavigationDropdown ? 'translate-x-0' : '-translate-x-full'}`}>
-                <div className="p-4 space-y-2">
+            <div className={`md:hidden fixed inset-0 bg-primary z-30 pt-16 transform transition-transform duration-300 print:hidden ${showingNavigationDropdown ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="p-4 space-y-1 h-full overflow-y-auto">
                     {menus.map((menu, i) => (
-                        <ResponsiveNavLink key={i} href={menu.href} active={url.startsWith(new URL(menu.href).pathname)} className="text-white hover:bg-secondary">
+                        <ResponsiveNavLink key={i} href={menu.href} active={url.startsWith(new URL(menu.href).pathname)} className="text-white hover:bg-white/10 rounded-lg">
                             {menu.name}
                         </ResponsiveNavLink>
                     ))}
-                    <div className="pt-4 mt-4 border-t border-secondary/50">
-                        <div className="px-4 text-white/70 text-sm mb-2">{user.name} ({user.email})</div>
-                        <ResponsiveNavLink href={route('profile.edit')} className="text-white hover:text-accent">Profile</ResponsiveNavLink>
-                        <ResponsiveNavLink method="post" href={route('logout')} as="button" className="text-white hover:text-accent">Log Out</ResponsiveNavLink>
+                    <div className="pt-4 mt-4 border-t border-white/10">
+                        <div className="px-4 text-gray-300 text-sm mb-2 font-medium">{user.name} ({user.email})</div>
+                        <ResponsiveNavLink href={route('profile.edit')} className="text-white hover:text-accent rounded-lg">Profile</ResponsiveNavLink>
+                        <ResponsiveNavLink method="post" href={route('logout')} as="button" className="text-white hover:text-accent rounded-lg">Log Out</ResponsiveNavLink>
                     </div>
                 </div>
             </div>
 
             {/* Main Content Area */}
-            <div className={`flex-1 transition-all duration-300 min-h-screen flex flex-col ${isSidebarOpen ? 'md:ml-64' : 'md:ml-20'} pt-16 md:pt-0`}>
+            <div className={`flex-1 transition-all duration-300 min-h-screen flex flex-col print:!ml-0 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-20'} pt-16 md:pt-0`}>
                 {/* Header (Top bar content area) */}
                 {header && (
-                    <header className="bg-white shadow-sm border-b border-border sticky top-0 md:top-0 z-20 flex items-center h-20">
+                    <header className="bg-white shadow-sm border-b border-border sticky top-0 z-20 flex items-center h-16 md:h-20 print:hidden">
                         <button 
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="hidden md:block ml-4 p-2 text-gray-500 hover:bg-gray-100 rounded-md focus:outline-none transition-colors"
+                            className="hidden md:flex ml-4 p-2 text-gray-500 hover:bg-gray-100 rounded-lg focus:outline-none transition-colors items-center justify-center"
                         >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
