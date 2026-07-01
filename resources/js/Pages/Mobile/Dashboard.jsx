@@ -131,13 +131,14 @@ export default function MobileDashboard({ auth, pegawai, presensi, presensiSemin
                                     <div className="text-right">
                                         <p className="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md text-sm">
                                             {item.jam_masuk ? item.jam_masuk.substring(0, 5) : '--:--'}
+                                            {item.jam_keluar ? ` - ${item.jam_keluar.substring(0, 5)}` : ''}
                                         </p>
                                     </div>
                                 </Link>
                             ))
                         ) : (
                             <div className="bg-gray-50 border border-dashed border-gray-300 rounded-2xl p-6 text-center">
-                                <p className="text-gray-500 text-sm">Belum ada riwayat kehadiran dalam seminggu terakhir.</p>
+                                <p className="text-gray-500 text-sm">Belum ada riwayat kehadiran dalam 3 hari terakhir.</p>
                             </div>
                         )}
                     </div>

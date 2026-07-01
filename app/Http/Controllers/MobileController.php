@@ -49,9 +49,9 @@ class MobileController extends Controller
             ->where('tanggal', Carbon::today())
             ->first();
 
-        $presensiSeminggu = Presensi::with('unitSekolah')
+        $presensiTerbaru = Presensi::with('unitSekolah')
             ->where('pegawai_id', $pegawai->id)
-            ->where('tanggal', '>=', Carbon::today()->subDays(7))
+            ->where('tanggal', '>=', Carbon::today()->subDays(3))
             ->where('tanggal', '<=', Carbon::today())
             ->orderBy('tanggal', 'desc')
             ->get();
@@ -59,7 +59,7 @@ class MobileController extends Controller
         return inertia('Mobile/Dashboard', [
             'pegawai' => $pegawai,
             'presensi' => $presensiHariIni,
-            'presensiSeminggu' => $presensiSeminggu
+            'presensiSeminggu' => $presensiTerbaru
         ]);
     }
 
