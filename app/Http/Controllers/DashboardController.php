@@ -94,7 +94,7 @@ class DashboardController extends Controller
             $pengeluaranGaji = $totalPegawai * $baseSalary; 
         }
 
-        // 4. Trend Kehadiran 7 Hari Terakhir
+        // 4. Trend Kehadiran 7 Hari Terakhir — [FIX] 7 query → 1 query batch
         $hariMap = [
             'Sunday' => 'Minggu', 
             'Monday' => 'Senin', 
@@ -104,19 +104,28 @@ class DashboardController extends Controller
             'Friday' => 'Jumat', 
             'Saturday' => 'Sabtu'
         ];
+
+        $startDate = Carbon::today('Asia/Jakarta')->subDays(6);
+        $endDate = Carbon::today('Asia/Jakarta');
+
+        $trendQuery = Presensi::whereBetween('tanggal', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->whereIn('status', ['hadir', 'telat'])
+            ->selectRaw('tanggal, count(*) as total')
+            ->groupBy('tanggal');
+
+        if ($user->role === 'admin_unit') {
+            $trendQuery->whereHas('pegawai', function($q) use ($user) {
+                $q->where('unit_sekolah_id', $user->unit_sekolah_id);
+            });
+        }
+
+        $trendData = $trendQuery->pluck('total', 'tanggal');
+
         $attendanceTrend = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today('Asia/Jakarta')->subDays($i);
             $dayName = $hariMap[$date->format('l')];
-            
-            $trendQuery = Presensi::where('tanggal', $date->format('Y-m-d'))
-                ->whereIn('status', ['hadir', 'telat']);
-            if ($user->role === 'admin_unit') {
-                $trendQuery->whereHas('pegawai', function($q) use ($user) {
-                    $q->where('unit_sekolah_id', $user->unit_sekolah_id);
-                });
-            }
-            $count = $trendQuery->count();
+            $count = $trendData->get($date->format('Y-m-d'), 0);
                 
             $attendanceTrend[] = [
                 'day' => $dayName,

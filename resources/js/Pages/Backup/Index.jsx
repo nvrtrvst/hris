@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 import PrimaryButton from '@/Components/PrimaryButton';
 
-export default function BackupIndex({ auth, databaseName, errors }) {
+export default function BackupIndex({ auth, errors }) {
     const { post, processing } = useForm();
 
     const handleBackup = (e) => {
@@ -30,7 +30,7 @@ export default function BackupIndex({ auth, databaseName, errors }) {
                             <div className="flex-1">
                                 <h3 className="text-2xl font-bold text-primary mb-2">Pencadangan Sistem (Database)</h3>
                                 <p className="text-text-secondary mb-6 max-w-2xl">
-                                    Fitur ini memungkinkan Anda untuk mengunduh salinan mentah (raw dump) dari database <span className="font-semibold text-primary">{databaseName}</span>. 
+                                    Fitur ini memungkinkan Anda untuk mengunduh salinan mentah (raw dump) dari database sistem HRIS. 
                                     File hasil unduhan berformat <code className="bg-gray-100 px-2 py-1 rounded text-sm text-pink-600">.sql</code> yang dapat digunakan untuk proses *restore* atau migrasi server di masa depan.
                                 </p>
 

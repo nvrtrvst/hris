@@ -8,15 +8,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use App\Traits\ResolvesPegawai;
 
 class MobileIzinController extends Controller
 {
-    private function getPegawai() {
-        $pegawai = Pegawai::where('user_id', Auth::id())->first();
-        if ($pegawai) return $pegawai;
-
-        return Pegawai::first(); // Fallback untuk admin saat simulasi
-    }
+    use ResolvesPegawai;
 
     public function index()
     {
@@ -71,7 +67,7 @@ class MobileIzinController extends Controller
             $image = str_replace('data:image/jpeg;base64,', '', $image);
             $image = str_replace('data:image/png;base64,', '', $image);
             $image = str_replace(' ', '+', $image);
-            $imageName = 'izin/'.time().'.jpg';
+            $imageName = 'izin/'.\Illuminate\Support\Str::uuid().'.jpg';
             Storage::disk('public')->put($imageName, base64_decode($image));
             $pengajuan->bukti_foto = '/storage/'.$imageName;
         }

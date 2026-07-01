@@ -60,6 +60,14 @@ class PengajuanIzinController extends Controller
 
         $pengajuan = PengajuanIzin::with('pegawai')->findOrFail($id);
 
+        // [FIX] IDOR: Pastikan admin_unit hanya bisa approve izin dari unitnya sendiri
+        if ($user->role === 'admin_unit') {
+            $pegawaiUnit = $pengajuan->pegawai->unit_sekolah_id ?? null;
+            if ($pegawaiUnit !== $user->unit_sekolah_id) {
+                abort(403, 'Akses ditolak. Anda tidak berhak menyetujui izin pegawai dari unit lain.');
+            }
+        }
+
         if ($pengajuan->status !== 'pending') {
             return back()->withErrors(['error' => 'Hanya pengajuan berstatus pending yang dapat disetujui.']);
         }
@@ -96,7 +104,15 @@ class PengajuanIzinController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $pengajuan = PengajuanIzin::findOrFail($id);
+        $pengajuan = PengajuanIzin::with('pegawai')->findOrFail($id);
+
+        // [FIX] IDOR: Pastikan admin_unit hanya bisa reject izin dari unitnya sendiri
+        if ($user->role === 'admin_unit') {
+            $pegawaiUnit = $pengajuan->pegawai->unit_sekolah_id ?? null;
+            if ($pegawaiUnit !== $user->unit_sekolah_id) {
+                abort(403, 'Akses ditolak. Anda tidak berhak menolak izin pegawai dari unit lain.');
+            }
+        }
         
         $request->validate([
             'alasan_penolakan' => 'required|string|max:255'

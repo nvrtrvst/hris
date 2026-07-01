@@ -4,6 +4,7 @@ import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
+import FlashToast from '@/Components/FlashToast';
 
 export default function AuthenticatedLayout({ user, header, children }) {
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
@@ -163,6 +164,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
                     {children}
                 </main>
             </div>
+            <FlashToast />
         </div>
     );
 }

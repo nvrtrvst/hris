@@ -9,37 +9,13 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use App\Traits\CalculatesDistance;
+use App\Traits\ResolvesPegawai;
 
 class MobileController extends Controller
 {
-    private function calculateDistance($lat1, $lon1, $lat2, $lon2) {
-        $earthRadius = 6371000;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
-        $a = sin($dLat/2) * sin($dLat/2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon/2) * sin($dLon/2);
-        $c = 2 * asin(sqrt($a));
-        return round($earthRadius * $c);
-    }
-
-    private function getPegawai() {
-        $pegawai = Pegawai::where('user_id', Auth::id())->first();
-        if ($pegawai) {
-            return $pegawai;
-        }
-
-        // Jika Admin sedang melakukan Simulasi Absen, 
-        // kita cari secara cerdas Pegawai mana saja yang *PUNYA* jadwal hari ini,
-        // agar dropdown jadwal tidak kosong saat dites.
-        $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
-        $hariIniIndo = $hariMap[Carbon::now()->format('l')];
-
-        $jadwalHariIni = Jadwal::where('hari', $hariIniIndo)->first();
-        if ($jadwalHariIni) {
-            return Pegawai::find($jadwalHariIni->pegawai_id);
-        }
-
-        return Pegawai::first();
-    }
+    use CalculatesDistance, ResolvesPegawai;
 
     public function dashboard()
     {
@@ -146,7 +122,7 @@ class MobileController extends Controller
         $image = $request->foto;
         $image = str_replace('data:image/jpeg;base64,', '', $image);
         $image = str_replace(' ', '+', $image);
-        $imageName = 'presensi/'.time().'.jpg';
+        $imageName = 'presensi/'.\Illuminate\Support\Str::uuid().'.jpg';
         Storage::disk('public')->put($imageName, base64_decode($image));
 
         \Illuminate\Support\Facades\DB::transaction(function() use ($request, $pegawai, $jadwal, $unit, $distance, $imageName) {

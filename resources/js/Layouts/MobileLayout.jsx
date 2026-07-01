@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
+import FlashToast from '@/Components/FlashToast';
 
 export default function MobileLayout({ user, header, children }) {
     const { url } = usePage();
@@ -105,6 +106,7 @@ export default function MobileLayout({ user, header, children }) {
                     padding-bottom: env(safe-area-inset-bottom);
                 }
             `}} />
+            <FlashToast />
         </div>
     );
 }

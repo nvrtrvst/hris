@@ -16,9 +16,8 @@ class BackupController extends Controller
             abort(403, 'Akses Ditolak. Hanya Super Admin yang dapat mengakses halaman ini.');
         }
 
-        return Inertia::render('Backup/Index', [
-            'databaseName' => env('DB_DATABASE', 'hris_yayasan')
-        ]);
+        // [FIX] Tidak mengirim nama database ke browser (information disclosure)
+        return Inertia::render('Backup/Index');
     }
 
     public function download(Request $request)
@@ -28,11 +27,12 @@ class BackupController extends Controller
             abort(403, 'Akses Ditolak.');
         }
 
-        $dbName = env('DB_DATABASE');
-        $dbUser = env('DB_USERNAME');
-        $dbPass = env('DB_PASSWORD');
-        $dbHost = env('DB_HOST', '127.0.0.1');
-        $dbPort = env('DB_PORT', '3306');
+        // [FIX] Gunakan config() bukan env() — env() return null setelah config:cache
+        $dbName = config('database.connections.mysql.database');
+        $dbUser = config('database.connections.mysql.username');
+        $dbPass = config('database.connections.mysql.password');
+        $dbHost = config('database.connections.mysql.host', '127.0.0.1');
+        $dbPort = config('database.connections.mysql.port', '3306');
 
         $fileName = 'backup_' . $dbName . '_' . now()->format('Y_m_d_H_i_s') . '.sql';
         $directory = storage_path('app/backups');

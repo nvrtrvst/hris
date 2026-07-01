@@ -111,42 +111,20 @@ class PenggajianController extends Controller
                         }
                         $nominal = ($komponen->nilai_default / 100) * $baseSalary;
                     } elseif ($komponen->jenis === 'dinamis_kehadiran') {
-                        // Calculate based on attendance
-                        $countHadir = Presensi::where('pegawai_id', $pegawai->id)
+                        // [FIX] Optimasi: 6 query → 1 query menggunakan groupBy
+                        $attendanceCounts = Presensi::where('pegawai_id', $pegawai->id)
                             ->whereMonth('tanggal', $month)
                             ->whereYear('tanggal', $year)
-                            ->where('status', 'hadir')
-                            ->count();
-                            
-                        $countTelat = Presensi::where('pegawai_id', $pegawai->id)
-                            ->whereMonth('tanggal', $month)
-                            ->whereYear('tanggal', $year)
-                            ->where('status', 'telat')
-                            ->count();
-                            
-                        $countAlpa = Presensi::where('pegawai_id', $pegawai->id)
-                            ->whereMonth('tanggal', $month)
-                            ->whereYear('tanggal', $year)
-                            ->where('status', 'alpa')
-                            ->count();
-                            
-                        $countSakit = Presensi::where('pegawai_id', $pegawai->id)
-                            ->whereMonth('tanggal', $month)
-                            ->whereYear('tanggal', $year)
-                            ->where('status', 'sakit')
-                            ->count();
-                            
-                        $countIzin = Presensi::where('pegawai_id', $pegawai->id)
-                            ->whereMonth('tanggal', $month)
-                            ->whereYear('tanggal', $year)
-                            ->where('status', 'izin')
-                            ->count();
-                            
-                        $countCuti = Presensi::where('pegawai_id', $pegawai->id)
-                            ->whereMonth('tanggal', $month)
-                            ->whereYear('tanggal', $year)
-                            ->where('status', 'cuti')
-                            ->count();
+                            ->selectRaw('status, count(*) as total')
+                            ->groupBy('status')
+                            ->pluck('total', 'status');
+
+                        $countHadir = $attendanceCounts->get('hadir', 0);
+                        $countTelat = $attendanceCounts->get('telat', 0);
+                        $countAlpa = $attendanceCounts->get('alpa', 0);
+                        $countSakit = $attendanceCounts->get('sakit', 0);
+                        $countIzin = $attendanceCounts->get('izin', 0);
+                        $countCuti = $attendanceCounts->get('cuti', 0);
 
                         // Example logic: if nama contains 'Telat', multiply by countTelat
                         if (stripos($komponen->nama, 'telat') !== false) {
