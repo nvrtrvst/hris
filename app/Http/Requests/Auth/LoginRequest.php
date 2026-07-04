@@ -28,7 +28,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
@@ -47,13 +47,14 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited($guard);
 
-        if (! Auth::guard($guard)->attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $login = $this->input('login');
+        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
+        if (! Auth::guard($guard)->attempt([$field => $login, 'password' => $this->input('password')], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey($guard));
 
-            // Kita juga bisa memberikan pesan custom sesuai PRD jika diperlukan
-            // Tapi untuk sekarang kita tetap lempar exception auth failed.
             throw ValidationException::withMessages([
-                'email' => 'Email atau kata sandi yang Anda masukkan tidak sesuai. Periksa kembali atau hubungi HR Pusat jika lupa kata sandi.',
+                'login' => 'Email/No Induk atau kata sandi yang Anda masukkan tidak sesuai.',
             ]);
         }
 
@@ -76,7 +77,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey($guard));
 
         throw ValidationException::withMessages([
-            'email' => "Terlalu banyak percobaan masuk. Silakan coba lagi dalam " . ceil($seconds / 60) . " menit.",
+            'login' => "Terlalu banyak percobaan masuk. Silakan coba lagi dalam " . ceil($seconds / 60) . " menit.",
         ]);
     }
 
@@ -85,6 +86,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(string $guard = 'web_admin'): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$guard.'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('login')).'|'.$guard.'|'.$this->ip());
     }
 }

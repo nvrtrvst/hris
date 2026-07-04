@@ -15,12 +15,12 @@ class LaporanController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_dashboard');
         if (!$isAdmin) {
             abort(403, 'Akses Ditolak. Anda tidak memiliki izin melihat modul laporan.');
         }
 
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $units = UnitSekolah::where('id', $user->unit_sekolah_id)->get();
         } else {
             $units = UnitSekolah::all();
@@ -34,7 +34,7 @@ class LaporanController extends Controller
     public function preview(Request $request)
     {
         $user = $request->user();
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
         }
 
@@ -74,7 +74,7 @@ class LaporanController extends Controller
     public function exportPresensi(Request $request)
     {
         $user = $request->user();
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
         }
         $request->validate([
@@ -92,7 +92,7 @@ class LaporanController extends Controller
     public function exportPenggajian(Request $request)
     {
         $user = $request->user();
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
         }
         $request->validate([
@@ -110,7 +110,7 @@ class LaporanController extends Controller
     public function exportLemburan(Request $request)
     {
         $user = $request->user();
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
         }
         $request->validate([

@@ -15,6 +15,7 @@ export default function Create({ auth, unitSekolahs, jabatans }) {
         alamat_ktp: '',
         no_hp: '',
         status_kepegawaian: 'tetap',
+        jatah_cuti_tahunan: 12,
         tanggal_mulai_kerja: '',
         pendidikan_terakhir: '',
         unit_sekolah_id: '',
@@ -69,8 +70,8 @@ export default function Create({ auth, unitSekolahs, jabatans }) {
                                             {errors.nik && <p className="mt-1 text-sm text-red-600">{errors.nik}</p>}
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">NIP (Nomor Induk Pegawai)</label>
-                                            <input type="text" value={data.nip} onChange={e => setData('nip', e.target.value)} className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${errors.nip ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'}`} placeholder="NIP Pegawai (Opsional)" />
+                                            <label className="block text-sm font-medium text-gray-700">NIP / No Induk Guru</label>
+                                            <input type="text" value={data.nip} onChange={e => setData('nip', e.target.value)} className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${errors.nip ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'}`} placeholder="NIP / No Induk (Opsional)" />
                                             {errors.nip && <p className="mt-1 text-sm text-red-600">{errors.nip}</p>}
                                         </div>
                                         <div>
@@ -165,6 +166,11 @@ export default function Create({ auth, unitSekolahs, jabatans }) {
                                             {errors.status_kepegawaian && <p className="mt-1 text-sm text-red-600">{errors.status_kepegawaian}</p>}
                                         </div>
                                         <div>
+                                            <label className="block text-sm font-medium text-gray-700">Jatah Cuti Tahunan (Hari) <span className="text-red-500">*</span></label>
+                                            <input type="number" min="0" value={data.jatah_cuti_tahunan} onChange={e => setData('jatah_cuti_tahunan', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                                            {errors.jatah_cuti_tahunan && <p className="mt-1 text-sm text-red-600">{errors.jatah_cuti_tahunan}</p>}
+                                        </div>
+                                        <div>
                                             <label className="block text-sm font-medium text-gray-700">Tanggal Mulai Kerja <span className="text-red-500">*</span></label>
                                             <input type="date" value={data.tanggal_mulai_kerja} onChange={e => setData('tanggal_mulai_kerja', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
                                             {errors.tanggal_mulai_kerja && <p className="mt-1 text-sm text-red-600">{errors.tanggal_mulai_kerja}</p>}
@@ -204,7 +210,7 @@ export default function Create({ auth, unitSekolahs, jabatans }) {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Password (Opsional)</label>
-                                            <input type="password" value={data.password} onChange={e => setData('password', e.target.value)} placeholder="Kosongkan untuk gunakan NIK" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                                            <input type="password" value={data.password} onChange={e => setData('password', e.target.value)} placeholder="Min 8 karakter, kosongkan untuk NIK" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
                                             {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
                                         </div>
                                     </div>

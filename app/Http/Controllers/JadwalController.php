@@ -13,10 +13,10 @@ class JadwalController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_jadwal');
         $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'kelas:id,nama', 'mataPelajaran:id,nama']);
 
-        if ($user && $user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $query->where('unit_sekolah_id', $user->unit_sekolah_id);
         } elseif (!$isAdmin) {
             $pegawai = \App\Models\Pegawai::where('user_id', auth()->id())->first();
@@ -37,7 +37,7 @@ class JadwalController extends Controller
             ->select(['id', 'nama_lengkap'])
             ->where('status_aktif', 'aktif');
         
-        if ($user && $user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $pegawaiQuery->whereHas('units', function($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
             });
@@ -75,10 +75,10 @@ class JadwalController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_jadwal');
         if (!$isAdmin) abort(403);
 
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
         }
 
@@ -123,7 +123,7 @@ class JadwalController extends Controller
     public function generate(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_jadwal');
         if (!$isAdmin) abort(403);
 
         $request->validate([
@@ -135,7 +135,7 @@ class JadwalController extends Controller
         ]);
 
         $unitId = $request->unit_sekolah_id;
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $unitId = $user->unit_sekolah_id;
         }
 
@@ -220,7 +220,7 @@ class JadwalController extends Controller
     public function swap(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_jadwal');
         if (!$isAdmin) abort(403);
 
         $request->validate([
@@ -234,7 +234,7 @@ class JadwalController extends Controller
             $jadwalTujuan = Jadwal::lockForUpdate()->findOrFail($request->jadwal_tujuan_id);
 
             // Security check for admin_unit
-            if ($user->role === 'admin_unit') {
+            if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
                 if ($jadwalAsal->unit_sekolah_id !== $user->unit_sekolah_id || $jadwalTujuan->unit_sekolah_id !== $user->unit_sekolah_id) {
                     abort(403, 'Akses ditolak. Tidak bisa menukar lintas unit tanpa akses Superadmin.');
                 }
@@ -278,12 +278,12 @@ class JadwalController extends Controller
     public function destroy(string $id)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_jadwal');
         if (!$isAdmin) abort(403);
 
         $jadwal = Jadwal::findOrFail($id);
         
-        if ($user->role === 'admin_unit' && $jadwal->unit_sekolah_id !== $user->unit_sekolah_id) {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && $jadwal->unit_sekolah_id !== $user->unit_sekolah_id) {
             abort(403, 'Akses ditolak.');
         }
 

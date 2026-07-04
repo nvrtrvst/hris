@@ -16,8 +16,9 @@ class DashboardController extends Controller
         $user = auth()->user();
         
         $roleType = 'Staff';
-        if ($user->role === 'superadmin') $roleType = 'Super Admin';
-        elseif ($user->role === 'admin_unit') $roleType = 'Admin Unit';
+        if ($user->can('view_dashboard')) {
+            $roleType = 'Super Admin'; // Any admin module view
+        }
 
         if ($roleType === 'Staff') {
             $pegawai = Pegawai::where('user_id', $user->id)->first();
@@ -49,7 +50,7 @@ class DashboardController extends Controller
         
         // 1. Total Pegawai Aktif
         $pegawaiQuery = Pegawai::where('status_aktif', 'aktif');
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $pegawaiQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
         }
         $totalPegawai = $pegawaiQuery->count();
@@ -59,13 +60,13 @@ class DashboardController extends Controller
         $hariIniIndo = \App\Helpers\HariHelper::hariIniIndo();
         
         $jadwalQuery = \App\Models\Jadwal::where('hari', $hariIniIndo);
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $jadwalQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
         }
         $pegawaiDijadwalkan = $jadwalQuery->distinct('pegawai_id')->count('pegawai_id');
             
         $presensiQuery = Presensi::where('tanggal', $today)->whereIn('status', ['hadir', 'telat']);
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $presensiQuery->whereHas('pegawai', function($q) use ($user) {
                 $q->where('unit_sekolah_id', $user->unit_sekolah_id);
             });
@@ -80,7 +81,7 @@ class DashboardController extends Controller
         $currentMonthStr = date('m-Y');
         
         $penggajianQuery = Penggajian::where('periode_bulan', $currentMonthStr);
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $penggajianQuery->whereHas('pegawai', function($q) use ($user) {
                 $q->where('unit_sekolah_id', $user->unit_sekolah_id);
             });
@@ -113,7 +114,7 @@ class DashboardController extends Controller
             ->selectRaw('tanggal, count(*) as total')
             ->groupBy('tanggal');
 
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $trendQuery->whereHas('pegawai', function($q) use ($user) {
                 $q->where('unit_sekolah_id', $user->unit_sekolah_id);
             });
@@ -140,7 +141,7 @@ class DashboardController extends Controller
             ->where('tanggal_akhir_kontrak', '<=', Carbon::today('Asia/Jakarta')->addDays(30))
             ->with('jabatans.unitSekolah');
             
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $kontrakQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
         }
         $kontrakBerakhir = $kontrakQuery->get();

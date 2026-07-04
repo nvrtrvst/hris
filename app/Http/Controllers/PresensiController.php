@@ -18,10 +18,10 @@ class PresensiController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_presensi');
         $query = Presensi::with(['unitSekolah', 'pegawai', 'jadwal']);
 
-        if ($user && $user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $query->whereHas('pegawai', function($q) use ($user) {
                 $q->where('unit_sekolah_id', $user->unit_sekolah_id);
             });
@@ -41,7 +41,7 @@ class PresensiController extends Controller
             $query->where('tanggal', '<=', $request->end_date);
         }
 
-        if ($request->unit_id && $user->role === 'superadmin') {
+        if ($request->unit_id && $user->can('view_all_units')) {
             $query->whereHas('pegawai', function($q) use ($request) {
                 $q->where('unit_sekolah_id', $request->unit_id);
             });
@@ -51,7 +51,7 @@ class PresensiController extends Controller
         $presensis->appends($request->all());
 
         $units = [];
-        if ($user->role === 'superadmin') {
+        if ($user->can('view_all_units')) {
             $units = UnitSekolah::all();
         }
 
@@ -66,7 +66,7 @@ class PresensiController extends Controller
 
     public function create()
     {
-        $isAdmin = auth()->user() && in_array(auth()->user()->role, ['superadmin', 'admin_unit']);
+        $isAdmin = auth()->user() && auth()->user()->can('view_presensi');
         if (!$isAdmin) abort(403, 'Akses ditolak. Presensi hanya bisa dilakukan via Mobile Portal.');
 
         $pegawai = Pegawai::first(); // Mock user for simulation only
@@ -91,7 +91,7 @@ class PresensiController extends Controller
 
     public function store(Request $request)
     {
-        $isAdmin = auth()->user() && in_array(auth()->user()->role, ['superadmin', 'admin_unit']);
+        $isAdmin = auth()->user() && auth()->user()->can('view_presensi');
         if (!$isAdmin) abort(403, 'Akses ditolak. Presensi hanya bisa dilakukan via Mobile Portal.');
 
         $request->validate([
@@ -183,12 +183,12 @@ class PresensiController extends Controller
     public function update(Request $request, $id)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_presensi');
         if (!$isAdmin) abort(403);
 
         $presensi = Presensi::with('pegawai')->findOrFail($id);
         
-        if ($user->role === 'admin_unit' && $presensi->pegawai->unit_sekolah_id !== $user->unit_sekolah_id) {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && $presensi->pegawai->unit_sekolah_id !== $user->unit_sekolah_id) {
             abort(403, 'Akses ditolak.');
         }
 

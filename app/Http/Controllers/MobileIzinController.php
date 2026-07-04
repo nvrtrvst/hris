@@ -33,7 +33,9 @@ class MobileIzinController extends Controller
         $pegawai = $this->getPegawai();
         if (!$pegawai) abort(403, 'Akses ditolak.');
 
-        return Inertia::render('Mobile/Izin/Create');
+        return Inertia::render('Mobile/Izin/Create', [
+            'pegawai' => $pegawai
+        ]);
     }
 
     public function store(Request $request)
@@ -51,6 +53,13 @@ class MobileIzinController extends Controller
 
         if ($request->jenis_izin === 'sakit' && !$request->bukti_foto) {
             return back()->withErrors(['bukti_foto' => 'Surat keterangan dokter / bukti foto wajib dilampirkan untuk pengajuan Sakit.']);
+        }
+
+        if ($request->jenis_izin === 'cuti') {
+            $requestedDays = \Carbon\Carbon::parse($request->tanggal_mulai)->diffInDays(\Carbon\Carbon::parse($request->tanggal_selesai)) + 1;
+            if ($requestedDays > $pegawai->sisa_cuti) {
+                return back()->withErrors(['alasan' => 'Sisa cuti Anda tidak mencukupi. Anda mengajukan ' . $requestedDays . ' hari, sedangkan sisa cuti: ' . $pegawai->sisa_cuti . ' hari.']);
+            }
         }
 
         $pengajuan = new PengajuanIzin([

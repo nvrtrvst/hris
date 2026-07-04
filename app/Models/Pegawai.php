@@ -49,7 +49,10 @@ class Pegawai extends Model
         'npwp',
         'no_bpjs_kesehatan',
         'no_bpjs_ketenagakerjaan',
+        'jatah_cuti_tahunan',
     ];
+
+    protected $appends = ['sisa_cuti', 'cuti_terpakai'];
 
     protected $casts = [
         'tanggal_lahir' => 'date',
@@ -118,5 +121,28 @@ class Pegawai extends Model
     public function riwayat(): HasMany
     {
         return $this->hasMany(PegawaiRiwayat::class);
+    }
+
+    public function getCutiTerpakaiAttribute()
+    {
+        return $this->pengajuanIzins()
+            ->where('jenis_izin', 'cuti')
+            ->where('status', 'disetujui')
+            ->whereYear('tanggal_mulai', date('Y'))
+            ->get()
+            ->sum(function ($izin) {
+                return \Carbon\Carbon::parse($izin->tanggal_mulai)->diffInDays(\Carbon\Carbon::parse($izin->tanggal_selesai)) + 1;
+            });
+    }
+
+    public function getSisaCutiAttribute()
+    {
+        $jatah = $this->jatah_cuti_tahunan ?? 12;
+        return max(0, $jatah - $this->cuti_terpakai);
+    }
+
+    public function jadwals(): HasMany
+    {
+        return $this->hasMany(Jadwal::class, 'pegawai_id', 'id');
     }
 }

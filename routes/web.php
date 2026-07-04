@@ -32,8 +32,7 @@ Route::middleware('auth:web_admin')->group(function () {
     // Penggajian — index/show bisa diakses staff (lihat slip gaji sendiri)
     Route::get('penggajian', [\App\Http\Controllers\PenggajianController::class, 'index'])->name('penggajian.index');
 
-    // ─── Rute KHUSUS Admin (superadmin + admin_unit) ───
-    Route::middleware('role:superadmin,admin_unit')->group(function () {
+    // ─── Rute Modul (Semua auth, perizinan diurus UI & Controller) ───
         // Pegawai Keuangan Khusus
         Route::get('pegawai/{pegawai}/keuangan', [\App\Http\Controllers\PegawaiController::class, 'keuangan'])->name('pegawai.keuangan');
         Route::post('pegawai/{pegawai}/keuangan', [\App\Http\Controllers\PegawaiController::class, 'updateKeuangan'])->name('pegawai.keuangan.update');
@@ -94,13 +93,20 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::get('laporan/presensi', [\App\Http\Controllers\LaporanController::class, 'exportPresensi'])->name('laporan.presensi');
         Route::get('laporan/penggajian', [\App\Http\Controllers\LaporanController::class, 'exportPenggajian'])->name('laporan.penggajian');
         Route::get('laporan/lemburan', [\App\Http\Controllers\LaporanController::class, 'exportLemburan'])->name('laporan.lemburan');
-    });
 
     // Rute slip gaji ditempatkan setelah rute admin agar tidak tabrakan dengan /penggajian/run
     Route::get('penggajian/{id}', [\App\Http\Controllers\PenggajianController::class, 'show'])->name('penggajian.show');
 
-    // ─── Rute KHUSUS Super Admin ───
-    Route::middleware('role:superadmin')->group(function () {
+    Route::get('/users', [App\Http\Controllers\UserManagementController::class, 'index'])->name('users.index');
+    Route::get('/users/create', [App\Http\Controllers\UserManagementController::class, 'create'])->name('users.create');
+    Route::post('/users', [App\Http\Controllers\UserManagementController::class, 'store'])->name('users.store');
+    Route::get('/users/{user}/edit', [App\Http\Controllers\UserManagementController::class, 'edit'])->name('users.edit');
+    Route::put('/users/{user}', [App\Http\Controllers\UserManagementController::class, 'update'])->name('users.update');
+
+    Route::resource('roles', \App\Http\Controllers\RoleManagementController::class)->except(['show']);
+
+    // Pengaturan Master (Superadmin)
+    Route::middleware('can:manage_master_data')->group(function () {
         Route::get('backup', [\App\Http\Controllers\BackupController::class, 'index'])->name('backup.index');
         Route::get('backup/download', [\App\Http\Controllers\BackupController::class, 'download'])->name('backup.download');
     });

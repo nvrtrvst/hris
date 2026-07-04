@@ -16,6 +16,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
         alamat_ktp: pegawai.alamat_ktp,
         no_hp: pegawai.no_hp,
         status_kepegawaian: pegawai.status_kepegawaian,
+        jatah_cuti_tahunan: pegawai.jatah_cuti_tahunan ?? 12,
         status_aktif: pegawai.status_aktif,
         tanggal_mulai_kerja: pegawai.tanggal_mulai_kerja,
         pendidikan_terakhir: pegawai.pendidikan_terakhir,
@@ -74,8 +75,8 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
                                             {errors.nik && <p className="mt-1 text-sm text-red-600">{errors.nik}</p>}
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">NIP</label>
-                                            <input type="text" value={data.nip} onChange={e => setData('nip', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="NIP (Opsional)" />
+                                            <label className="block text-sm font-medium text-gray-700">NIP / No Induk Guru</label>
+                                            <input type="text" value={data.nip} onChange={e => setData('nip', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="NIP / No Induk (Opsional)" />
                                             {errors.nip && <p className="mt-1 text-sm text-red-600">{errors.nip}</p>}
                                         </div>
                                         <div>
@@ -160,6 +161,11 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
                                                 <option value="gtt">GTT (Guru Tidak Tetap)</option>
                                             </select>
                                             {errors.status_kepegawaian && <p className="mt-1 text-sm text-red-600">{errors.status_kepegawaian}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Jatah Cuti Tahunan (Hari)</label>
+                                            <input type="number" min="0" value={data.jatah_cuti_tahunan} onChange={e => setData('jatah_cuti_tahunan', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                                            {errors.jatah_cuti_tahunan && <p className="mt-1 text-sm text-red-600">{errors.jatah_cuti_tahunan}</p>}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Status Aktif</label>

@@ -1,10 +1,10 @@
 import InputError from '@/Components/InputError';
 import TextInput from '@/Components/TextInput';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, Link } from '@inertiajs/react';
 
 export default function MobileLogin({ status }) {
     const { data, setData, post, processing, errors, reset } = useForm({
-        email: '',
+        login: '',
         password: '',
         remember: true,
     });
@@ -33,19 +33,19 @@ export default function MobileLogin({ status }) {
 
             <form onSubmit={submit} className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100">
                 <div className="mb-5">
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Email Anda</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Email / No Induk Guru (NIP)</label>
                     <TextInput
-                        id="email"
-                        type="email"
-                        name="email"
-                        value={data.email}
+                        id="login"
+                        type="text"
+                        name="login"
+                        value={data.login}
                         className="w-full bg-gray-50 border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl"
-                        placeholder="nama@yayasan.com"
+                        placeholder="nama@yayasan.com atau 1980..."
                         autoComplete="username"
                         isFocused={true}
-                        onChange={(e) => setData('email', e.target.value)}
+                        onChange={(e) => setData('login', e.target.value)}
                     />
-                    <InputError message={errors.email} className="mt-2" />
+                    <InputError message={errors.login} className="mt-2" />
                 </div>
 
                 <div className="mb-8">
@@ -61,6 +61,15 @@ export default function MobileLogin({ status }) {
                         onChange={(e) => setData('password', e.target.value)}
                     />
                     <InputError message={errors.password} className="mt-2" />
+                    
+                    <div className="flex items-center justify-end mt-3 mb-1">
+                        <Link
+                            href={route('password.request')}
+                            className="text-xs font-bold text-indigo-600 hover:text-indigo-500 transition-colors"
+                        >
+                            Lupa Kata Sandi?
+                        </Link>
+                    </div>
                 </div>
 
                 <button 

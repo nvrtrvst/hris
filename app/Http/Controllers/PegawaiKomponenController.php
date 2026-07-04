@@ -102,7 +102,7 @@ class PegawaiKomponenController extends Controller
         $user = auth()->user();
         
         $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'units']);
-        if ($user && $user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $query->whereHas('units', function($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
             });

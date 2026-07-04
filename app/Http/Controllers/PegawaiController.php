@@ -23,7 +23,7 @@ class PegawaiController extends Controller
         }
 
         $request->validate($rules);
-        $unitId = ($user && $user->role === 'admin_unit') ? $user->unit_sekolah_id : $request->unit_sekolah_id;
+        $unitId = ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) ? $user->unit_sekolah_id : $request->unit_sekolah_id;
 
         try {
             \Illuminate\Support\Facades\DB::transaction(function() use ($request, $unitId) {
@@ -46,7 +46,7 @@ class PegawaiController extends Controller
         $query = \App\Models\Pegawai::with(['units', 'jabatans', 'mapels']);
 
         $user = auth()->user();
-        if ($user && $user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $query->whereHas('units', function($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
             });
@@ -63,23 +63,31 @@ class PegawaiController extends Controller
             });
         }
 
+        if ($request->filled('mata_pelajaran_id')) {
+            $query->whereHas('mapels', function($q) use ($request) {
+                $q->where('mata_pelajaran.id', $request->mata_pelajaran_id);
+            });
+        }
+
         $pegawais = $query->paginate(10)->withQueryString();
 
         $unitSekolahs = \App\Models\UnitSekolah::all();
+        $mataPelajarans = \App\Models\MataPelajaran::all();
 
         return inertia('Pegawai/Index', [
             'pegawais' => $pegawais,
-            'filters' => $request->only(['search', 'unit_sekolah_id']),
+            'filters' => $request->only(['search', 'unit_sekolah_id', 'mata_pelajaran_id']),
             'userRole' => $user->role,
             'userUnitId' => $user->unit_sekolah_id,
-            'unitSekolahs' => $unitSekolahs
+            'unitSekolahs' => $unitSekolahs,
+            'mataPelajarans' => $mataPelajarans
         ]);
     }
 
     public function create()
     {
         $user = auth()->user();
-        if ($user && $user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $unitSekolahs = \App\Models\UnitSekolah::where('id', $user->unit_sekolah_id)->get();
         } else {
             $unitSekolahs = \App\Models\UnitSekolah::all();
@@ -95,7 +103,7 @@ class PegawaiController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
-        if ($user && $user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
         }
 
@@ -111,18 +119,20 @@ class PegawaiController extends Controller
             'alamat_ktp' => 'required|string',
             'no_hp' => 'required|string|max:20',
             'status_kepegawaian' => 'required|in:tetap,kontrak,honorer,gtt',
+            'jatah_cuti_tahunan' => 'nullable|integer|min:0',
             'tanggal_mulai_kerja' => 'required|date',
             'pendidikan_terakhir' => 'required|string|max:255',
             'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
             'jabatan_id' => 'required|exists:jabatan,id',
             'email' => 'required|email|unique:users,email',
-            'password' => 'nullable|string|min:6',
+            'password' => 'nullable|string|min:8',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         $user = \App\Models\User::create([
             'name' => $request->nama_lengkap,
             'email' => $request->email,
+            'username' => $request->nip ?: $request->nik,
             'password' => \Illuminate\Support\Facades\Hash::make($request->password ?: $request->nik),
         ]);
 
@@ -145,7 +155,7 @@ class PegawaiController extends Controller
         $pegawai = \App\Models\Pegawai::with(['units', 'jabatans', 'dokumen', 'riwayat', 'atasanLangsung'])->findOrFail($id);
         
         $user = auth()->user();
-        if ($user && $user->role === 'admin_unit' && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
         
@@ -159,11 +169,11 @@ class PegawaiController extends Controller
         $pegawai = \App\Models\Pegawai::with('units')->findOrFail($id);
         
         $user = auth()->user();
-        if ($user && $user->role === 'admin_unit' && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
 
-        if ($user && $user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $unitSekolahs = \App\Models\UnitSekolah::where('id', $user->unit_sekolah_id)->get();
         } else {
             $unitSekolahs = \App\Models\UnitSekolah::all();
@@ -182,7 +192,7 @@ class PegawaiController extends Controller
         $pegawai = \App\Models\Pegawai::findOrFail($id);
 
         $user = auth()->user();
-        if ($user && $user->role === 'admin_unit' && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -198,6 +208,7 @@ class PegawaiController extends Controller
             'alamat_ktp' => 'required|string',
             'no_hp' => 'required|string|max:20',
             'status_kepegawaian' => 'required|in:tetap,kontrak,honorer,gtt',
+            'jatah_cuti_tahunan' => 'nullable|integer|min:0',
             'status_aktif' => 'required|in:aktif,cuti,nonaktif,resign',
             'tanggal_mulai_kerja' => 'required|date',
             'pendidikan_terakhir' => 'required|string|max:255',
@@ -216,6 +227,16 @@ class PegawaiController extends Controller
 
         $pegawai->update($dataToUpdate);
 
+        if ($pegawai->user_id) {
+            $userAcc = \App\Models\User::find($pegawai->user_id);
+            if ($userAcc) {
+                $userAcc->update([
+                    'name' => $pegawai->nama_lengkap,
+                    'username' => $pegawai->nip ?: $pegawai->nik,
+                ]);
+            }
+        }
+
         return redirect()->route('pegawai.show', $pegawai->id)->with('message', 'Data Pegawai berhasil diperbarui.');
     }
 
@@ -224,7 +245,7 @@ class PegawaiController extends Controller
         $pegawai = \App\Models\Pegawai::findOrFail($id);
 
         $user = auth()->user();
-        if ($user && $user->role === 'admin_unit' && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
         
@@ -250,7 +271,7 @@ class PegawaiController extends Controller
         $pegawai = \App\Models\Pegawai::with('komponenGaji')->findOrFail($id);
         
         $user = auth()->user();
-        if ($user && $user->role === 'admin_unit' && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -270,7 +291,7 @@ class PegawaiController extends Controller
         $pegawai = \App\Models\Pegawai::findOrFail($id);
         
         $user = auth()->user();
-        if ($user && $user->role === 'admin_unit' && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
 

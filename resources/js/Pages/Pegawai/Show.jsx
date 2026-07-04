@@ -44,7 +44,7 @@ export default function Show({ auth, pegawai }) {
                                     </div>
                                     <div className="ml-6">
                                         <h3 className="text-3xl font-bold text-gray-900">{pegawai.nama_lengkap}</h3>
-                                        <p className="text-lg text-gray-500 mt-1">NIK: {pegawai.nik} {pegawai.nip && <span className="ml-2 border-l pl-2 border-gray-300">NIP: {pegawai.nip}</span>}</p>
+                                        <p className="text-lg text-gray-500 mt-1">NIK: {pegawai.nik} {pegawai.nip && <span className="ml-2 border-l pl-2 border-gray-300">No Induk (NIP): {pegawai.nip}</span>}</p>
                                         <div className="mt-2 flex space-x-2">
                                             <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 uppercase">
                                                 {pegawai.status_kepegawaian}
@@ -135,6 +135,14 @@ export default function Show({ auth, pegawai }) {
                                         <div>
                                             <p className="text-sm text-gray-500">Mulai Bekerja</p>
                                             <p className="font-medium text-gray-900">{new Date(pegawai.tanggal_mulai_kerja).toLocaleDateString('id-ID')}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-500">Jatah Cuti Tahunan</p>
+                                            <p className="font-medium text-gray-900">{pegawai.jatah_cuti_tahunan ?? 12} Hari</p>
+                                        </div>
+                                        <div className="bg-indigo-50 p-3 rounded-md border border-indigo-100">
+                                            <p className="text-sm text-indigo-700 font-medium">Sisa Cuti</p>
+                                            <p className="font-bold text-indigo-900 text-lg">{pegawai.sisa_cuti} Hari</p>
                                         </div>
                                         {pegawai.tanggal_akhir_kontrak && (
                                             <div>

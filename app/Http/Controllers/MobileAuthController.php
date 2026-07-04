@@ -28,8 +28,8 @@ class MobileAuthController extends Controller
     {
         Auth::guard('web_mobile')->logout();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        // $request->session()->invalidate();
+        // $request->session()->regenerateToken();
 
         return redirect('/mobile/login');
     }

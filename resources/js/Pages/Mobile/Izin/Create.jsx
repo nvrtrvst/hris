@@ -3,7 +3,7 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { ArrowLeft, Upload, Camera } from 'lucide-react';
 
-export default function Create() {
+export default function Create({ pegawai }) {
     const { data, setData, post, processing, errors } = useForm({
         jenis_izin: 'sakit',
         tanggal_mulai: '',
@@ -58,11 +58,23 @@ export default function Create() {
                             className="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2.5"
                         >
                             <option value="sakit">Sakit</option>
-                            <option value="izin">Izin (Keperluan Pribadi)</option>
+                            <option value="izin">Izin</option>
                             <option value="cuti">Cuti</option>
                         </select>
-                        {errors.jenis_izin && <p className="mt-1 text-xs text-red-600">{errors.jenis_izin}</p>}
+                        {errors.jenis_izin && <p className="mt-1.5 text-sm text-red-600 font-medium">{errors.jenis_izin}</p>}
                     </div>
+
+                    {data.jenis_izin === 'cuti' && (
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-start space-x-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                            <div>
+                                <p className="text-sm text-indigo-800 font-medium">Sisa Cuti Tahunan: <span className="font-bold">{pegawai.sisa_cuti} Hari</span></p>
+                                <p className="text-xs text-indigo-600 mt-0.5">Pastikan rentang hari yang diajukan tidak melebihi sisa cuti Anda.</p>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>

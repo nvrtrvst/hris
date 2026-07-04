@@ -16,10 +16,10 @@ class PenggajianController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_payroll');
         $query = Penggajian::with('pegawai');
         
-        if ($user && $user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $query->whereHas('pegawai', function($q) use ($user) {
                 $q->where('unit_sekolah_id', $user->unit_sekolah_id);
             });
@@ -50,10 +50,10 @@ class PenggajianController extends Controller
         return inertia('Payroll/Run/Index');
     }
 
-    public function createDraft(Request $request)
+        public function createDraft(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_payroll');
         if (!$isAdmin) abort(403, 'Akses ditolak.');
         
         $request->validate([
@@ -65,16 +65,30 @@ class PenggajianController extends Controller
         $month = $request->month;
         $year = $request->year;
 
-        $query = Pegawai::where('status_aktif', 'aktif')->with('komponenGaji');
+        // [FIX] N+1: Eager load komponenGaji dan jadwals.unitSekolah
+        $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'jadwals.unitSekolah']);
         
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $query->whereHas('units', function($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
             });
         }
         
         $pegawais = $query->get();
+
+        // [FIX] N+1: Fetch data referensi di luar loop
         $globalKomponens = KomponenGaji::where('is_active', true)->get();
+        $skalas = \App\Models\SkalaMasaBakti::orderBy('masa_kerja_tahun', 'desc')->get();
+        $allUnits = \App\Models\UnitSekolah::all();
+
+        // [FIX] N+1: Group Presensi untuk semua pegawai sekaligus
+        $attendanceRaw = Presensi::whereMonth('tanggal', $month)
+            ->whereYear('tanggal', $year)
+            ->selectRaw('pegawai_id, status, count(*) as total')
+            ->groupBy('pegawai_id', 'status')
+            ->get();
+        
+        $attendanceByPegawai = $attendanceRaw->groupBy('pegawai_id');
 
         DB::beginTransaction();
         try {
@@ -98,9 +112,16 @@ class PenggajianController extends Controller
                 $totalPotongan = 0;
                 $details = [];
 
-                // 1. Calculate Fixed & Percentage components from Pivot / Global
-                // To keep it simple, we assume global components apply, but if pegawais have it in pivot, use pivot nominal.
                 $pegawaiKomponens = $pegawai->komponenGaji->keyBy('id');
+
+                // Extract Pegawai Attendance once
+                $pAtt = $attendanceByPegawai->get($pegawai->id, collect());
+                $countHadir = $pAtt->where('status', 'hadir')->sum('total');
+                $countTelat = $pAtt->where('status', 'telat')->sum('total');
+                $countAlpa = $pAtt->where('status', 'alpa')->sum('total');
+                $countSakit = $pAtt->where('status', 'sakit')->sum('total');
+                $countIzin = $pAtt->where('status', 'izin')->sum('total');
+                $countCuti = $pAtt->where('status', 'cuti')->sum('total');
 
                 foreach ($globalKomponens as $komponen) {
                     $nominal = 0;
@@ -112,7 +133,6 @@ class PenggajianController extends Controller
                             $nominal = $komponen->nilai_default ?? 0;
                         }
                     } elseif ($komponen->jenis === 'persentase') {
-                        // Persentase is calculated against totalPendapatan so far (e.g. Basic Salary)
                         $gajiPokok = $globalKomponens->first(function ($k) {
                             return stripos($k->nama, 'Gaji Pokok') !== false || stripos($k->nama, 'Basic Salary') !== false;
                         });
@@ -130,28 +150,11 @@ class PenggajianController extends Controller
                             ? $pegawaiKomponens[$komponen->id]->pivot->nominal
                             : ($komponen->nilai_default ?? 0);
 
-                        // [FIX] Optimasi: 6 query → 1 query menggunakan groupBy
-                        $attendanceCounts = Presensi::where('pegawai_id', $pegawai->id)
-                            ->whereMonth('tanggal', $month)
-                            ->whereYear('tanggal', $year)
-                            ->selectRaw('status, count(*) as total')
-                            ->groupBy('status')
-                            ->pluck('total', 'status');
-
-                        $countHadir = $attendanceCounts->get('hadir', 0);
-                        $countTelat = $attendanceCounts->get('telat', 0);
-                        $countAlpa = $attendanceCounts->get('alpa', 0);
-                        $countSakit = $attendanceCounts->get('sakit', 0);
-                        $countIzin = $attendanceCounts->get('izin', 0);
-                        $countCuti = $attendanceCounts->get('cuti', 0);
-
-                        // Example logic: if nama contains 'Telat', multiply by countTelat
                         if (stripos($komponen->nama, 'telat') !== false) {
                             $nominal = $rate * $countTelat;
                         } elseif (stripos($komponen->nama, 'alpa') !== false) {
                             $nominal = $rate * $countAlpa;
                         } elseif (stripos($komponen->nama, 'makan') !== false || stripos($komponen->nama, 'transport') !== false || stripos($komponen->nama, 'hadir') !== false) {
-                            // Uang Makan / Transport / Hadir diberikan saat benar-benar Hadir Fisik (+ Telat)
                             $nominal = $rate * ($countHadir + $countTelat);
                         } else {
                             $nominal = 0;
@@ -164,11 +167,9 @@ class PenggajianController extends Controller
                                 $joinDate = \Carbon\Carbon::parse($pegawai->tanggal_mulai_kerja);
                                 $yearsOfService = $joinDate->diffInYears(\Carbon\Carbon::now());
                                 
-                                // Ambil nominal dari skala masa bakti sesuai tahun. Jika > skala maksimal, gunakan skala tertinggi.
-                                $skala = \App\Models\SkalaMasaBakti::where('masa_kerja_tahun', '<=', $yearsOfService)
-                                            ->orderBy('masa_kerja_tahun', 'desc')
-                                            ->first();
-                                
+                                $skala = $skalas->first(function($item) use ($yearsOfService) {
+                                    return $item->masa_kerja_tahun <= $yearsOfService;
+                                });
                                 $nominal = $skala ? $skala->nominal_gaji : 0;
                             } else {
                                 $nominal = 0;
@@ -179,42 +180,23 @@ class PenggajianController extends Controller
                             ? $pegawaiKomponens[$komponen->id]->pivot->nominal
                             : ($komponen->nilai_default ?? 0);
 
-                        $jadwals = \App\Models\Jadwal::where('pegawai_id', $pegawai->id)
-                            ->with('unitSekolah') // Load relasi unit sekolah
-                            ->get();
-                        
                         $totalHoursWeekly = 0;
-                        foreach ($jadwals as $jadwal) {
-                            $unit = $jadwal->unitSekolah;
-                            $matchUnit = false;
-                            
-                            // Jika komponen bernama "Honor SMK", mesin akan mengecek apakah jadwal ini milik unit SMK
-                            if ($unit) {
-                                if (stripos($komponen->nama, $unit->singkatan) !== false || stripos($komponen->nama, $unit->nama) !== false) {
-                                    $matchUnit = true;
+                        
+                        $isSpecific = $allUnits->contains(function($u) use ($komponen) {
+                            return stripos($komponen->nama, $u->singkatan) !== false || stripos($komponen->nama, $u->nama) !== false;
+                        });
+
+                        if ($isSpecific) {
+                            foreach ($pegawai->jadwals as $jadwal) {
+                                $unit = $jadwal->unitSekolah;
+                                if ($unit && (stripos($komponen->nama, $unit->singkatan) !== false || stripos($komponen->nama, $unit->nama) !== false)) {
+                                    $mulai = \Carbon\Carbon::parse($jadwal->jam_mulai);
+                                    $selesai = \Carbon\Carbon::parse($jadwal->jam_selesai);
+                                    $totalHoursWeekly += $mulai->diffInMinutes($selesai) / 60;
                                 }
                             }
-                            
-                            // Cek apakah komponen menyebut nama unit spesifik
-                            $isSpecific = \App\Models\UnitSekolah::all()->contains(function($u) use ($komponen) {
-                                return stripos($komponen->nama, $u->singkatan) !== false || stripos($komponen->nama, $u->nama) !== false;
-                            });
-
-                            if (!$isSpecific) {
-                                // Jika komponen tidak spesifik menyebutkan unit, tolak (jangan hitung) untuk menghindari double count
-                                break;
-                            }
-
-                            if (!$matchUnit) {
-                                continue; // Skip jadwal ini karena bukan untuk unit yang dimaksud komponen
-                            }
-
-                            $mulai = \Carbon\Carbon::parse($jadwal->jam_mulai);
-                            $selesai = \Carbon\Carbon::parse($jadwal->jam_selesai);
-                            $totalHoursWeekly += $mulai->diffInMinutes($selesai) / 60;
                         }
                         
-                        // Asumsi 1 bulan = 4 minggu pelajaran efektif
                         $totalHoursMonthly = $totalHoursWeekly * 4;
                         $nominal = $rate * $totalHoursMonthly;
                     }
@@ -235,7 +217,6 @@ class PenggajianController extends Controller
                     }
                 }
 
-                // Create Penggajian Record
                 $penggajian = Penggajian::create([
                     'pegawai_id' => $pegawai->id,
                     'periode_bulan' => $periode,
@@ -246,7 +227,6 @@ class PenggajianController extends Controller
                     'status' => 'draft',
                 ]);
 
-                // Create Details
                 foreach ($details as $d) {
                     $d['penggajian_id'] = $penggajian->id;
                     PenggajianDetail::create($d);
@@ -368,7 +348,7 @@ class PenggajianController extends Controller
     public function finalizePeriod(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_payroll');
         if (!$isAdmin) abort(403, 'Akses ditolak.');
         
         if ($user->role === 'superadmin') {
@@ -379,7 +359,7 @@ class PenggajianController extends Controller
         
         $query = Penggajian::where('periode_bulan', $request->periode_bulan)->where('status', 'draft');
         
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $query->whereHas('pegawai', function($q) use ($user) {
                 $q->where('unit_sekolah_id', $user->unit_sekolah_id);
             });
@@ -393,7 +373,7 @@ class PenggajianController extends Controller
     public function finalize($id)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_payroll');
         if (!$isAdmin) abort(403, 'Akses ditolak.');
         
         if ($user->role === 'superadmin') {
@@ -402,7 +382,7 @@ class PenggajianController extends Controller
 
         $penggajian = Penggajian::with('pegawai')->findOrFail($id);
         
-        if ($user->role === 'admin_unit' && $penggajian->pegawai->unit_sekolah_id !== $user->unit_sekolah_id) {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && $penggajian->pegawai->unit_sekolah_id !== $user->unit_sekolah_id) {
             abort(403, 'Akses ditolak.');
         }
         
@@ -414,7 +394,7 @@ class PenggajianController extends Controller
     public function destroyPeriod(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_payroll');
         if (!$isAdmin) abort(403, 'Akses ditolak.');
         
         if ($user->role === 'superadmin') {
@@ -425,7 +405,7 @@ class PenggajianController extends Controller
         
         $query = Penggajian::where('periode_bulan', $request->periode_bulan)->where('status', 'draft');
         
-        if ($user->role === 'admin_unit') {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
             $query->whereHas('pegawai', function($q) use ($user) {
                 $q->where('unit_sekolah_id', $user->unit_sekolah_id);
             });
@@ -439,7 +419,7 @@ class PenggajianController extends Controller
     public function destroy($id)
     {
         $user = auth()->user();
-        $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
+        $isAdmin = $user && $user->can('view_payroll');
         if (!$isAdmin) abort(403, 'Akses ditolak.');
         
         if ($user->role === 'superadmin') {
@@ -448,7 +428,7 @@ class PenggajianController extends Controller
 
         $penggajian = Penggajian::with('pegawai')->findOrFail($id);
         
-        if ($user->role === 'admin_unit' && $penggajian->pegawai->unit_sekolah_id !== $user->unit_sekolah_id) {
+        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && $penggajian->pegawai->unit_sekolah_id !== $user->unit_sekolah_id) {
             abort(403, 'Akses ditolak.');
         }
         
@@ -464,7 +444,7 @@ class PenggajianController extends Controller
     {
         $user = auth()->user();
         $isSuperadmin = $user && $user->role === 'superadmin';
-        $isAdminUnit = $user && $user->role === 'admin_unit';
+        $isAdminUnit = $user && $user->unit_sekolah_id && !$user->can('view_all_units');
         $penggajian = Penggajian::with(['pegawai.jabatans', 'pegawai.units', 'details'])->findOrFail($id);
 
         if ($isAdminUnit) {

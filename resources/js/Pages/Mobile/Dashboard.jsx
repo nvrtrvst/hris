@@ -26,8 +26,16 @@ export default function MobileDashboard({ auth, pegawai, presensi, presensiSemin
                 {/* Greeting Card */}
                 <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
                     <div className="relative z-10">
-                        <p className="text-indigo-100 text-sm mb-1">{formatDate(currentTime)}</p>
-                        <h2 className="text-2xl font-bold mb-4">Halo, {auth.user.name.split(' ')[0]}!</h2>
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <p className="text-indigo-100 text-sm mb-1">{formatDate(currentTime)}</p>
+                                <h2 className="text-2xl font-bold">Halo, {auth.user.name.split(' ')[0]}!</h2>
+                            </div>
+                            <div className="bg-white/20 backdrop-blur-md rounded-lg px-3 py-1.5 text-center border border-white/20 shadow-sm">
+                                <p className="text-[10px] text-indigo-100 uppercase tracking-wider font-semibold">Sisa Cuti</p>
+                                <p className="text-lg font-bold">{pegawai.sisa_cuti}</p>
+                            </div>
+                        </div>
                         
                         <div className="bg-white/20 backdrop-blur-md rounded-xl p-4 text-center border border-white/10">
                             <p className="text-xs text-indigo-100 mb-1 uppercase tracking-wider">Waktu Saat Ini</p>
