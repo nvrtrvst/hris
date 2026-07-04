@@ -44,40 +44,55 @@ class PenggajianController extends Controller
         ]);
     }
 
-    public function generate(Request $request)
+    public function indexRun(Request $request)
+    {
+        // Step 1: Layar Pilih Periode
+        return inertia('Payroll/Run/Index');
+    }
+
+    public function createDraft(Request $request)
     {
         $user = auth()->user();
         $isAdmin = $user && in_array($user->role, ['superadmin', 'admin_unit']);
         if (!$isAdmin) abort(403, 'Akses ditolak.');
         
-        if ($user->role === 'superadmin') {
-            abort(403, 'Hanya Admin Unit yang berhak melakukan Generate Payroll.');
-        }
-
         $request->validate([
-            'periode_bulan' => 'required|date_format:m-Y',
+            'month' => 'required|string',
+            'year' => 'required|string',
         ]);
         
-        $periode = $request->periode_bulan;
-        $month = substr($periode, 0, 2);
-        $year = substr($periode, 3, 4);
+        $periode = $request->month . '-' . $request->year;
+        $month = $request->month;
+        $year = $request->year;
 
-        $pegawais = Pegawai::where('status_aktif', 'aktif')
-            ->whereHas('units', function($q) use ($user) {
+        $query = Pegawai::where('status_aktif', 'aktif')->with('komponenGaji');
+        
+        if ($user->role === 'admin_unit') {
+            $query->whereHas('units', function($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
-            })
-            ->with('komponenGaji')->get();
+            });
+        }
+        
+        $pegawais = $query->get();
         $globalKomponens = KomponenGaji::where('is_active', true)->get();
 
         DB::beginTransaction();
         try {
             foreach ($pegawais as $pegawai) {
-                // Prevent duplicate generation
+                // Prevent duplicate generation for finalized payroll
                 $existing = Penggajian::where('pegawai_id', $pegawai->id)
                                       ->where('periode_bulan', $periode)
                                       ->lockForUpdate()
                                       ->first();
-                if ($existing) continue;
+                
+                if ($existing) {
+                    if ($existing->status === 'final') {
+                        continue;
+                    }
+                    // Jika masih draft, kita hapus yang lama agar bisa direkalkulasi (overwrite)
+                    $existing->details()->delete();
+                    $existing->delete();
+                }
 
                 $totalPendapatan = 0;
                 $totalPotongan = 0;
@@ -111,6 +126,10 @@ class PenggajianController extends Controller
                         }
                         $nominal = ($komponen->nilai_default / 100) * $baseSalary;
                     } elseif ($komponen->jenis === 'dinamis_kehadiran') {
+                        $rate = $pegawaiKomponens->has($komponen->id) && $pegawaiKomponens[$komponen->id]->pivot->nominal !== null
+                            ? $pegawaiKomponens[$komponen->id]->pivot->nominal
+                            : ($komponen->nilai_default ?? 0);
+
                         // [FIX] Optimasi: 6 query → 1 query menggunakan groupBy
                         $attendanceCounts = Presensi::where('pegawai_id', $pegawai->id)
                             ->whereMonth('tanggal', $month)
@@ -128,18 +147,76 @@ class PenggajianController extends Controller
 
                         // Example logic: if nama contains 'Telat', multiply by countTelat
                         if (stripos($komponen->nama, 'telat') !== false) {
-                            $nominal = ($komponen->nilai_default ?? 0) * $countTelat;
+                            $nominal = $rate * $countTelat;
                         } elseif (stripos($komponen->nama, 'alpa') !== false) {
-                            // [ATURAN IZIN/ALPA]
-                            // Jika Izin memotong gaji seperti alpa, tambahkan $countIzin ke $countAlpa
-                            // Misal: $totalMangkir = $countAlpa + $countIzin;
-                            // Jika jatah cuti habis dan ingin memotong, bisa tambahkan logicnya di sini.
-                            $nominal = ($komponen->nilai_default ?? 0) * $countAlpa;
-                        } elseif (stripos($komponen->nama, 'makan') !== false || stripos($komponen->nama, 'transport') !== false) {
-                            // [ATURAN MAKAN & TRANSPORT]
-                            // Uang Makan / Transport hanya diberikan saat benar-benar Hadir Fisik (+ Telat)
-                            $nominal = ($komponen->nilai_default ?? 0) * ($countHadir + $countTelat);
+                            $nominal = $rate * $countAlpa;
+                        } elseif (stripos($komponen->nama, 'makan') !== false || stripos($komponen->nama, 'transport') !== false || stripos($komponen->nama, 'hadir') !== false) {
+                            // Uang Makan / Transport / Hadir diberikan saat benar-benar Hadir Fisik (+ Telat)
+                            $nominal = $rate * ($countHadir + $countTelat);
+                        } else {
+                            $nominal = 0;
                         }
+                    } elseif ($komponen->jenis === 'dinamis_masa_bakti') {
+                        if ($pegawaiKomponens->has($komponen->id) && $pegawaiKomponens[$komponen->id]->pivot->nominal !== null) {
+                            $nominal = $pegawaiKomponens[$komponen->id]->pivot->nominal;
+                        } else {
+                            if ($pegawai->tanggal_mulai_kerja) {
+                                $joinDate = \Carbon\Carbon::parse($pegawai->tanggal_mulai_kerja);
+                                $yearsOfService = $joinDate->diffInYears(\Carbon\Carbon::now());
+                                
+                                // Ambil nominal dari skala masa bakti sesuai tahun. Jika > skala maksimal, gunakan skala tertinggi.
+                                $skala = \App\Models\SkalaMasaBakti::where('masa_kerja_tahun', '<=', $yearsOfService)
+                                            ->orderBy('masa_kerja_tahun', 'desc')
+                                            ->first();
+                                
+                                $nominal = $skala ? $skala->nominal_gaji : 0;
+                            } else {
+                                $nominal = 0;
+                            }
+                        }
+                    } elseif ($komponen->jenis === 'dinamis_jam_mengajar') {
+                        $rate = $pegawaiKomponens->has($komponen->id) && $pegawaiKomponens[$komponen->id]->pivot->nominal !== null
+                            ? $pegawaiKomponens[$komponen->id]->pivot->nominal
+                            : ($komponen->nilai_default ?? 0);
+
+                        $jadwals = \App\Models\Jadwal::where('pegawai_id', $pegawai->id)
+                            ->with('unitSekolah') // Load relasi unit sekolah
+                            ->get();
+                        
+                        $totalHoursWeekly = 0;
+                        foreach ($jadwals as $jadwal) {
+                            $unit = $jadwal->unitSekolah;
+                            $matchUnit = false;
+                            
+                            // Jika komponen bernama "Honor SMK", mesin akan mengecek apakah jadwal ini milik unit SMK
+                            if ($unit) {
+                                if (stripos($komponen->nama, $unit->singkatan) !== false || stripos($komponen->nama, $unit->nama) !== false) {
+                                    $matchUnit = true;
+                                }
+                            }
+                            
+                            // Cek apakah komponen menyebut nama unit spesifik
+                            $isSpecific = \App\Models\UnitSekolah::all()->contains(function($u) use ($komponen) {
+                                return stripos($komponen->nama, $u->singkatan) !== false || stripos($komponen->nama, $u->nama) !== false;
+                            });
+
+                            if (!$isSpecific) {
+                                // Jika komponen tidak spesifik menyebutkan unit, tolak (jangan hitung) untuk menghindari double count
+                                break;
+                            }
+
+                            if (!$matchUnit) {
+                                continue; // Skip jadwal ini karena bukan untuk unit yang dimaksud komponen
+                            }
+
+                            $mulai = \Carbon\Carbon::parse($jadwal->jam_mulai);
+                            $selesai = \Carbon\Carbon::parse($jadwal->jam_selesai);
+                            $totalHoursWeekly += $mulai->diffInMinutes($selesai) / 60;
+                        }
+                        
+                        // Asumsi 1 bulan = 4 minggu pelajaran efektif
+                        $totalHoursMonthly = $totalHoursWeekly * 4;
+                        $nominal = $rate * $totalHoursMonthly;
                     }
 
                     if ($nominal > 0) {
@@ -176,10 +253,115 @@ class PenggajianController extends Controller
                 }
             }
             DB::commit();
-            return redirect()->back()->with('message', "Penggajian periode {$periode} berhasil digenerate.");
+            return redirect()->route('penggajian.run.worksheet', ['month' => $month, 'year' => $year]);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->withErrors(['error' => 'Gagal generate: ' . $e->getMessage()]);
+        }
+    }
+
+    public function worksheet($month, $year)
+    {
+        $periode = $month . '-' . $year;
+        
+        // Cek apakah ada draft untuk periode ini
+        $drafts = Penggajian::where('periode_bulan', $periode)->where('status', 'draft')->count();
+        if ($drafts === 0) {
+            return redirect()->route('penggajian.run')->withErrors(['error' => 'Draft belum di-generate untuk periode ini.']);
+        }
+        
+        return inertia('Payroll/Run/Worksheet', [
+            'month' => $month,
+            'year' => $year,
+            'periode' => $periode
+        ]);
+    }
+    
+    public function getWorksheetData($month, $year)
+    {
+        $periode = $month . '-' . $year;
+        
+        $penggajians = Penggajian::with(['pegawai', 'details'])
+            ->where('periode_bulan', $periode)
+            ->where('status', 'draft')
+            ->get();
+            
+        return response()->json($penggajians);
+    }
+    
+    public function saveWorksheet(Request $request, $month, $year)
+    {
+        $periode = $month . '-' . $year;
+        
+        $request->validate([
+            'penggajian_id' => 'required|exists:penggajian,id',
+            'details' => 'required|array',
+        ]);
+        
+        DB::beginTransaction();
+        try {
+            $penggajian = Penggajian::findOrFail($request->penggajian_id);
+            if ($penggajian->status !== 'draft') {
+                throw new \Exception('Hanya status draft yang bisa diubah.');
+            }
+            
+            // Hapus semua detail lama
+            $penggajian->details()->delete();
+            
+            $totalPendapatan = 0;
+            $totalPotongan = 0;
+            
+            foreach ($request->details as $d) {
+                // Konversi dari data array
+                $nominal = (float) $d['nominal'];
+                if ($nominal > 0) {
+                    if ($d['tipe'] === 'pendapatan') {
+                        $totalPendapatan += $nominal;
+                    } else {
+                        $totalPotongan += $nominal;
+                    }
+                    
+                    PenggajianDetail::create([
+                        'penggajian_id' => $penggajian->id,
+                        'komponen_gaji_id' => $d['komponen_gaji_id'] ?? null,
+                        'nama_komponen' => $d['nama_komponen'],
+                        'tipe' => $d['tipe'],
+                        'nominal' => $nominal,
+                    ]);
+                }
+            }
+            
+            // Update Gaji Bersih
+            $penggajian->update([
+                'total_pendapatan' => $totalPendapatan,
+                'total_potongan' => $totalPotongan,
+                'gaji_bersih' => $totalPendapatan - $totalPotongan,
+            ]);
+            
+            DB::commit();
+            return response()->json(['message' => 'Berhasil disimpan', 'penggajian' => $penggajian->load('details')]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+    }
+    
+    public function finalizeWorksheet(Request $request, $month, $year)
+    {
+        $periode = $month . '-' . $year;
+        
+        DB::beginTransaction();
+        try {
+            Penggajian::where('periode_bulan', $periode)
+                ->where('status', 'draft')
+                ->lockForUpdate()
+                ->update(['status' => 'final']);
+                
+            DB::commit();
+            return redirect()->route('penggajian.index')->with('message', 'Payroll berhasil dikunci (Finalize).');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => 'Gagal finalize: ' . $e->getMessage()]);
         }
     }
 

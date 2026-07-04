@@ -30,6 +30,14 @@ export default function Create({ auth, pegawais, units, kelas, mapel }) {
 
             <div className="py-12 bg-gray-50 min-h-screen">
                 <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
+                    <div className="mb-4">
+                        <Link href={route('jadwal.index')} className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Kembali ke Jadwal Mingguan
+                        </Link>
+                    </div>
                     <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl border border-gray-100">
                         <div className="p-8">
                             

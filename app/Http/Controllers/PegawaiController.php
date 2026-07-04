@@ -241,4 +241,54 @@ class PegawaiController extends Controller
 
         return redirect()->route('pegawai.index')->with('message', 'Data Pegawai berhasil dinonaktifkan.');
     }
+
+    /**
+     * Menampilkan profil keuangan khusus (Tab Keuangan)
+     */
+    public function keuangan($id)
+    {
+        $pegawai = \App\Models\Pegawai::with('komponenGaji')->findOrFail($id);
+        
+        $user = auth()->user();
+        if ($user && $user->role === 'admin_unit' && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $komponens = \App\Models\KomponenGaji::where('is_active', true)->get();
+
+        return inertia('Pegawai/Keuangan', [
+            'pegawai' => $pegawai,
+            'komponens' => $komponens
+        ]);
+    }
+
+    /**
+     * Menyimpan profil keuangan khusus
+     */
+    public function updateKeuangan(Request $request, $id)
+    {
+        $pegawai = \App\Models\Pegawai::findOrFail($id);
+        
+        $user = auth()->user();
+        if ($user && $user->role === 'admin_unit' && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $request->validate([
+            'komponens' => 'nullable|array'
+        ]);
+
+        $syncData = [];
+        if ($request->has('komponens')) {
+            foreach ($request->komponens as $komponenId => $nominal) {
+                if ($nominal !== null && $nominal !== '') {
+                    $syncData[$komponenId] = ['nominal' => preg_replace('/[^0-9]/', '', $nominal)];
+                }
+            }
+        }
+
+        $pegawai->komponenGaji()->sync($syncData);
+
+        return redirect()->back()->with('message', 'Profil Keuangan Pegawai berhasil diperbarui.');
+    }
 }

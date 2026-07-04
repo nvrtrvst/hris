@@ -61,7 +61,7 @@ class JadwalController extends Controller
     {
         $pegawais = Pegawai::where('status_aktif', 'aktif')->get(['id', 'nama_lengkap']);
         $units = UnitSekolah::all(['id', 'nama', 'singkatan']);
-        $kelas = \App\Models\Kelas::all(['id', 'nama']);
+        $kelas = \App\Models\Kelas::all(['id', 'nama', 'tingkat', 'unit_sekolah_id']);
         $mapel = \App\Models\MataPelajaran::all(['id', 'nama']);
 
         return inertia('Jadwal/Create', [
@@ -129,7 +129,9 @@ class JadwalController extends Controller
         $request->validate([
             'tahun_ajaran' => 'required|string|max:10',
             'semester' => 'required|integer|in:1,2',
-            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id'
+            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'waktu_mulai' => 'nullable|date_format:H:i',
+            'waktu_selesai' => 'nullable|date_format:H:i',
         ]);
 
         $unitId = $request->unit_sekolah_id;
@@ -152,6 +154,20 @@ class JadwalController extends Controller
             ['09:30', '11:30'],
             ['13:00', '15:00'],
         ];
+
+        // Filter timeBlocks based on input
+        if ($request->waktu_mulai) {
+            $timeBlocks = array_filter($timeBlocks, fn($b) => $b[0] >= $request->waktu_mulai);
+        }
+        if ($request->waktu_selesai) {
+            $timeBlocks = array_filter($timeBlocks, fn($b) => $b[1] <= $request->waktu_selesai);
+        }
+        
+        $timeBlocks = array_values($timeBlocks);
+        
+        if (empty($timeBlocks)) {
+            return back()->withErrors(['waktu' => 'Tidak ada blok waktu yang tersedia dalam rentang waktu yang dipilih.']);
+        }
 
         $kelas = \App\Models\Kelas::first();
         $mapel = \App\Models\MataPelajaran::first();

@@ -15,6 +15,8 @@ class KomponenGaji extends Model
         'nilai_default',
         'is_taxable',
         'is_active',
+        'urutan',
+        'tampil_di_matrix',
     ];
 
     public function pegawais()

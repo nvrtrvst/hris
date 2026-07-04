@@ -25,17 +25,19 @@ Route::middleware('auth:web_admin')->group(function () {
     
     // Jadwal — index bisa diakses staff (lihat jadwal sendiri)
     Route::get('jadwal', [\App\Http\Controllers\JadwalController::class, 'index'])->name('jadwal.index');
-    Route::get('jadwal/{jadwal}', [\App\Http\Controllers\JadwalController::class, 'show'])->name('jadwal.show');
 
     // Presensi — index bisa diakses staff (lihat presensi sendiri)
     Route::get('presensi', [\App\Http\Controllers\PresensiController::class, 'index'])->name('presensi.index');
 
     // Penggajian — index/show bisa diakses staff (lihat slip gaji sendiri)
     Route::get('penggajian', [\App\Http\Controllers\PenggajianController::class, 'index'])->name('penggajian.index');
-    Route::get('penggajian/{id}', [\App\Http\Controllers\PenggajianController::class, 'show'])->name('penggajian.show');
 
     // ─── Rute KHUSUS Admin (superadmin + admin_unit) ───
     Route::middleware('role:superadmin,admin_unit')->group(function () {
+        // Pegawai Keuangan Khusus
+        Route::get('pegawai/{pegawai}/keuangan', [\App\Http\Controllers\PegawaiController::class, 'keuangan'])->name('pegawai.keuangan');
+        Route::post('pegawai/{pegawai}/keuangan', [\App\Http\Controllers\PegawaiController::class, 'updateKeuangan'])->name('pegawai.keuangan.update');
+        
         // Pegawai Import/Template
         Route::get('pegawai/template', [\App\Http\Controllers\PegawaiController::class, 'downloadTemplate'])->name('pegawai.template');
         Route::post('pegawai/import', [\App\Http\Controllers\PegawaiController::class, 'import'])->name('pegawai.import');
@@ -55,13 +57,29 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::post('presensi', [\App\Http\Controllers\PresensiController::class, 'store'])->name('presensi.store');
         Route::put('presensi/{presensi}', [\App\Http\Controllers\PresensiController::class, 'update'])->name('presensi.update');
         
+        // Komponen Gaji Matrix
+        Route::get('komponen-gaji/matrix', [\App\Http\Controllers\PegawaiKomponenController::class, 'matrix'])->name('komponen-gaji.matrix');
+        Route::post('komponen-gaji/matrix', [\App\Http\Controllers\PegawaiKomponenController::class, 'updateMatrix'])->name('komponen-gaji.matrix.update');
+
         // Komponen Gaji
         Route::resource('komponen-gaji', \App\Http\Controllers\KomponenGajiController::class);
+        Route::resource('skala-masa-bakti', \App\Http\Controllers\SkalaMasaBaktiController::class)->only(['index', 'store', 'destroy']);
         
-        // Penggajian — generate/finalize/destroy hanya admin
-        Route::post('penggajian/generate', [\App\Http\Controllers\PenggajianController::class, 'generate'])->name('penggajian.generate');
-        Route::post('penggajian/finalize-period', [\App\Http\Controllers\PenggajianController::class, 'finalizePeriod'])->name('penggajian.finalize_period');
-        Route::post('/penggajian/{id}/finalize', [\App\Http\Controllers\PenggajianController::class, 'finalize'])->name('penggajian.finalize');
+        // Atur Nominal Spesifik per Pegawai (Manual / Import Excel)
+        Route::get('komponen-gaji/{komponen_gaji}/pegawai', [\App\Http\Controllers\PegawaiKomponenController::class, 'index'])->name('komponen-gaji.pegawai.index');
+        Route::post('komponen-gaji/{komponen_gaji}/pegawai/batch', [\App\Http\Controllers\PegawaiKomponenController::class, 'updateBatch'])->name('komponen-gaji.pegawai.batch');
+        Route::get('komponen-gaji/{komponen_gaji}/pegawai/template', [\App\Http\Controllers\PegawaiKomponenController::class, 'downloadTemplate'])->name('komponen-gaji.pegawai.template');
+        Route::post('komponen-gaji/{komponen_gaji}/pegawai/import', [\App\Http\Controllers\PegawaiKomponenController::class, 'import'])->name('komponen-gaji.pegawai.import');
+        
+        
+        // Penggajian — Run Payroll Wizard
+        Route::get('penggajian/run', [\App\Http\Controllers\PenggajianController::class, 'indexRun'])->name('penggajian.run');
+        Route::post('penggajian/run/init', [\App\Http\Controllers\PenggajianController::class, 'createDraft'])->name('penggajian.run.init');
+        Route::get('penggajian/run/draft/{month}/{year}', [\App\Http\Controllers\PenggajianController::class, 'worksheet'])->name('penggajian.run.worksheet');
+        Route::get('penggajian/run/draft/{month}/{year}/data', [\App\Http\Controllers\PenggajianController::class, 'getWorksheetData'])->name('penggajian.run.worksheet_data');
+        Route::post('penggajian/run/draft/{month}/{year}/save', [\App\Http\Controllers\PenggajianController::class, 'saveWorksheet'])->name('penggajian.run.worksheet_save');
+        Route::post('penggajian/run/draft/{month}/{year}/finalize', [\App\Http\Controllers\PenggajianController::class, 'finalizeWorksheet'])->name('penggajian.run.worksheet_finalize');
+
         Route::delete('penggajian/destroy-period', [\App\Http\Controllers\PenggajianController::class, 'destroyPeriod'])->name('penggajian.destroy_period');
         Route::delete('penggajian/{id}', [\App\Http\Controllers\PenggajianController::class, 'destroy'])->name('penggajian.destroy');
 
@@ -77,6 +95,9 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::get('laporan/penggajian', [\App\Http\Controllers\LaporanController::class, 'exportPenggajian'])->name('laporan.penggajian');
         Route::get('laporan/lemburan', [\App\Http\Controllers\LaporanController::class, 'exportLemburan'])->name('laporan.lemburan');
     });
+
+    // Rute slip gaji ditempatkan setelah rute admin agar tidak tabrakan dengan /penggajian/run
+    Route::get('penggajian/{id}', [\App\Http\Controllers\PenggajianController::class, 'show'])->name('penggajian.show');
 
     // ─── Rute KHUSUS Super Admin ───
     Route::middleware('role:superadmin')->group(function () {

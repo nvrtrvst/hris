@@ -11,6 +11,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
         const [genData, setGenData] = useState({
             tahun_ajaran: '2026/2027',
             semester: '1',
+            waktu_mulai: '',
+            waktu_selesai: '',
         });
 
         // Swap Modal State
@@ -263,6 +265,28 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                         <option value="1">1 (Ganjil)</option>
                                         <option value="2">2 (Genap)</option>
                                     </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Batas Jam Mulai (Opsional)</label>
+                                        <input 
+                                            type="time" 
+                                            value={genData.waktu_mulai} 
+                                            onChange={e => setGenData({...genData, waktu_mulai: e.target.value})}
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                                            title="Kosongkan jika tidak dibatasi"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Batas Jam Selesai (Opsional)</label>
+                                        <input 
+                                            type="time" 
+                                            value={genData.waktu_selesai} 
+                                            onChange={e => setGenData({...genData, waktu_selesai: e.target.value})}
+                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                                            title="Kosongkan jika tidak dibatasi"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="mt-6 flex justify-end gap-3">
                                     <button 

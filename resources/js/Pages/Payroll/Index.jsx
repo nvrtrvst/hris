@@ -48,24 +48,14 @@ export default function Index({ auth, penggajians, filters }) {
                             </Link>
                         </div>
 
-                        <div className="bg-indigo-600 p-6 shadow-xl sm:rounded-2xl border border-indigo-700">
-                            <form onSubmit={handleGenerate} className="flex flex-col sm:flex-row items-end sm:items-center justify-between gap-4">
-                                <div className="flex-1 w-full">
-                                    <label className="block text-sm font-bold text-indigo-100 mb-1">Generate Gaji Periode</label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="MM-YYYY (Contoh: 06-2026)" 
-                                        value={data.periode_bulan}
-                                        onChange={e => setData('periode_bulan', e.target.value)}
-                                        className="w-full bg-indigo-700 text-white border-indigo-500 rounded-lg placeholder-indigo-300 focus:ring-white focus:border-white"
-                                    />
-                                    {errors.periode_bulan && <p className="text-xs text-red-200 mt-1">{errors.periode_bulan}</p>}
-                                    {errors.error && <p className="text-xs text-red-200 mt-1">{errors.error}</p>}
-                                </div>
-                                <button type="submit" disabled={processing} className="w-full sm:w-auto bg-white text-indigo-600 hover:bg-gray-100 font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50">
-                                    {processing ? 'Processing...' : 'Run Payroll'}
-                                </button>
-                            </form>
+                        <div className="bg-indigo-600 p-6 shadow-xl sm:rounded-2xl border border-indigo-700 flex flex-col sm:flex-row items-center justify-between">
+                            <div>
+                                <h3 className="text-xl font-bold text-white mb-1">Mulai Proses Penggajian Baru</h3>
+                                <p className="text-indigo-200 text-sm">Gunakan Run Payroll Wizard untuk menarik data absensi, jadwal, dan uang kaget bulanan.</p>
+                            </div>
+                            <Link href={route('penggajian.run')} className="mt-4 sm:mt-0 bg-white text-indigo-600 hover:bg-gray-100 font-bold py-3 px-8 rounded-xl transition-colors shadow-lg">
+                                Buka Run Payroll Wizard &rarr;
+                            </Link>
                         </div>
                     </div>
 
@@ -74,30 +64,6 @@ export default function Index({ auth, penggajians, filters }) {
                         <div className="px-6 py-5 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center space-x-4">
                                 <h3 className="text-lg font-bold text-gray-900">Riwayat Penggajian Pegawai</h3>
-                                {filterPeriode && auth.user.role === 'admin_unit' && (
-                                    <>
-                                        <Link 
-                                            href={route('penggajian.destroy_period')} 
-                                            method="delete" 
-                                            data={{ periode_bulan: filterPeriode }}
-                                            as="button" 
-                                            onClick={(e) => { if(!confirm('Hati-hati! Yakin ingin menghapus SEMUA draft di periode ini?')) e.preventDefault(); }}
-                                            className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors shadow-sm"
-                                        >
-                                            Hapus Semua Draft
-                                        </Link>
-                                        <Link 
-                                            href={route('penggajian.finalize_period')} 
-                                            method="post" 
-                                            data={{ periode_bulan: filterPeriode }}
-                                            as="button" 
-                                            onClick={(e) => { if(!confirm('Yakin ingin memfinalisasi SEMUA draft di periode ini?')) e.preventDefault(); }}
-                                            className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors shadow-sm"
-                                        >
-                                            Finalisasi Semua Draft
-                                        </Link>
-                                    </>
-                                )}
                             </div>
                             <div className="flex items-center space-x-2">
                                 <label className="text-sm text-gray-600">Filter Periode:</label>
