@@ -144,6 +144,16 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                     </div>
                                 </div>
     
+                                {/* Print Header */}
+                                <div className="hidden print:block">
+                                    <div className="print-header">
+                                        <h1>JADWAL PEGAWAI</h1>
+                                        <div className="sub">
+                                            Unit: {units.find(u => u.id == unitFilter)?.nama || 'Semua Unit'} &mdash; {filters.tahun_ajaran ? 'T.A. ' + filters.tahun_ajaran : ''}{filters.semester ? ' Semester ' + filters.semester : ''}
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Matrix Table Board */}
                                 <div className="overflow-hidden border border-gray-200 rounded-xl shadow-sm print:shadow-none print:border-none print:rounded-none">
                                     <table className="w-full table-fixed divide-y divide-gray-200 bg-white text-sm">
@@ -228,6 +238,14 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                     </table>
                                 </div>
                                 
+                                {/* Print Footer */}
+                                <div className="hidden print:block print-footer">
+                                    Dicetak oleh: <span className="font-bold">{auth.user.name}</span>
+                                    {' '}&mdash;{' '}
+                                    {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                    <div className="signature-line"></div>
+                                </div>
+
                                 <div className="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-md">
                                 <div className="flex">
                                     <div className="flex-shrink-0">
