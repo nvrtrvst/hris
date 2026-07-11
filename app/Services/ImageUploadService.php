@@ -45,8 +45,9 @@ class ImageUploadService
             throw new \InvalidArgumentException('Konten bukan gambar yang valid.');
         }
 
+        $disk = config('filesystems.image_disk', 'public');
         $fileName = $folder.'/'.Str::uuid().'.'.$extension;
-        Storage::disk('public')->put($fileName, $decoded);
+        Storage::disk($disk)->put($fileName, $decoded);
 
         return $fileName;
     }

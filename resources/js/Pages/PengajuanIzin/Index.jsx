@@ -187,8 +187,8 @@ export default function Index({ auth, pengajuans, filters }) {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center">
                                                     <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden border border-indigo-200">
-                                                        {item.pegawai?.foto ? (
-                                                            <img src={item.pegawai.foto} className="h-full w-full object-cover" alt="" />
+{item.pegawai?.foto_url ? (
+                                                             <img src={item.pegawai.foto_url} className="h-full w-full object-cover" alt="" />
                                                         ) : (
                                                             <span className="text-indigo-600 font-bold text-sm">
                                                                 {item.pegawai?.nama_lengkap?.charAt(0) || 'P'}
@@ -332,11 +332,11 @@ export default function Index({ auth, pengajuans, filters }) {
                                     </div>
                                 </div>
                                 
-                                {selectedItem.bukti_foto && (
-                                    <div className="mt-5 pt-5 border-t border-gray-200">
-                                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-3">Bukti Lampiran</span>
-                                        <div className="bg-gray-200 rounded-lg overflow-hidden border border-gray-300">
-                                            <img src={selectedItem.bukti_foto} alt="Bukti Lampiran" className="w-full h-auto max-h-80 object-contain" />
+{selectedItem.bukti_foto_url && (
+                                     <div className="mt-5 pt-5 border-t border-gray-200">
+                                         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-3">Bukti Lampiran</span>
+                                         <div className="bg-gray-200 rounded-lg overflow-hidden border border-gray-300">
+                                             <img src={selectedItem.bukti_foto_url} alt="Bukti Lampiran" className="w-full h-auto max-h-80 object-contain" />
                                         </div>
                                     </div>
                                 )}

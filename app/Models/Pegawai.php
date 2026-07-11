@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\FileHelper;
 use App\Observers\PegawaiObserver;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -52,7 +53,7 @@ class Pegawai extends Model
         'jatah_cuti_tahunan',
     ];
 
-    protected $appends = ['sisa_cuti', 'cuti_terpakai'];
+    protected $appends = ['sisa_cuti', 'cuti_terpakai', 'foto_url'];
 
     protected $casts = [
         'tanggal_lahir' => 'date',
@@ -146,6 +147,11 @@ class Pegawai extends Model
         $jatah = $this->jatah_cuti_tahunan ?? 12;
 
         return max(0, $jatah - $this->cuti_terpakai);
+    }
+
+    public function getFotoUrlAttribute(): ?string
+    {
+        return FileHelper::fotoUrl($this->foto);
     }
 
     public function jadwals(): HasMany

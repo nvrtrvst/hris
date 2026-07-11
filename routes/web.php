@@ -55,6 +55,8 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::get('presensi/create', [\App\Http\Controllers\PresensiController::class, 'create'])->name('presensi.create');
         Route::post('presensi', [\App\Http\Controllers\PresensiController::class, 'store'])->name('presensi.store');
         Route::put('presensi/{presensi}', [\App\Http\Controllers\PresensiController::class, 'update'])->name('presensi.update');
+        Route::post('presensi/{presensi}/approve-lembur', [\App\Http\Controllers\PresensiController::class, 'approveLembur'])->name('presensi.approveLembur');
+        Route::post('presensi/{presensi}/reject-lembur', [\App\Http\Controllers\PresensiController::class, 'rejectLembur'])->name('presensi.rejectLembur');
         
         // Komponen Gaji Matrix
         Route::get('komponen-gaji/matrix', [\App\Http\Controllers\PegawaiKomponenController::class, 'matrix'])->name('komponen-gaji.matrix');

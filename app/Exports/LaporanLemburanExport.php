@@ -2,9 +2,11 @@
 
 namespace App\Exports;
 
-use App\Models\PenggajianDetail;
+use App\Helpers\FileHelper;
+use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
@@ -18,9 +20,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     protected $start_date;
-
     protected $end_date;
-
     protected $unit_id;
 
     public function __construct($start_date, $end_date, $unit_id = null)
@@ -32,52 +32,63 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
 
     public function collection()
     {
-        $query = PenggajianDetail::with(['penggajian.pegawai.units'])
-            ->whereHas('penggajian', function ($q) {
-                $q->whereBetween('tanggal_generate', [$this->start_date, $this->end_date]);
+        $query = Presensi::with(['pegawai.units'])
+            ->where('is_lembur', true)
+            ->where('lembur_status', 'disetujui')
+            ->whereNotNull('jam_masuk')
+            ->whereNotNull('jam_keluar')
+            ->whereBetween('tanggal', [$this->start_date, $this->end_date]);
 
-                if ($this->unit_id) {
-                    $q->whereHas('pegawai.units', function ($q2) {
-                        $q2->where('unit_sekolah.id', $this->unit_id);
-                    });
-                }
+        if ($this->unit_id) {
+            $query->whereHas('pegawai.units', function ($q) {
+                $q->where('unit_sekolah.id', $this->unit_id);
             });
-
-        return $query->get();
-    }
-
-    public function map($detail): array
-    {
-        $unitName = '-';
-        if ($detail->penggajian && $detail->penggajian->pegawai && $detail->penggajian->pegawai->units->isNotEmpty()) {
-            $unitName = $detail->penggajian->pegawai->units->first()->nama;
         }
 
+        return $query->orderBy('tanggal')->get();
+    }
+
+    public function map($presensi): array
+    {
+        $pegawai = $presensi->pegawai;
+        $unitName = $pegawai && $pegawai->units->isNotEmpty()
+            ? $pegawai->units->first()->nama
+            : '-';
+
+        $jamMulai = Carbon::parse($presensi->jam_masuk);
+        $jamSelesai = Carbon::parse($presensi->jam_keluar);
+        $totalMinutes = $jamMulai->diffInMinutes($jamSelesai);
+        $totalHours = round($totalMinutes / 60, 2);
+
         return [
-            $detail->penggajian->pegawai->nik ?? '-',
-            $detail->penggajian->pegawai->nama_lengkap ?? '-',
+            $pegawai->nik ?? '-',
+            $pegawai->nama_lengkap ?? '-',
             $unitName,
-            $detail->nama_komponen,
-            ucfirst($detail->tipe),
-            $detail->nominal,
+            $presensi->tanggal->format('d/m/Y'),
+            $jamMulai->format('H:i'),
+            $jamSelesai->format('H:i'),
+            $totalHours,
+            FileHelper::fotoUrl($presensi->foto_masuk),
         ];
     }
 
     public function headings(): array
     {
         return [
-            'NIP',
+            'NIK',
             'Nama Pegawai',
             'Unit Sekolah',
-            'Komponen Gaji',
-            'Tipe',
-            'Nominal (Rp)',
+            'Tanggal',
+            'Jam Mulai',
+            'Jam Selesai',
+            'Total Jam',
+            'Foto Bukti',
         ];
     }
 
     public function startCell(): string
     {
-        return 'A6';
+        return 'A7';
     }
 
     public function registerEvents(): array
@@ -95,32 +106,36 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
                 $periodeStr = Carbon::parse($this->start_date)->format('d/m/Y').' s/d '.Carbon::parse($this->end_date)->format('d/m/Y');
 
                 // Kop Yayasan
-                $sheet->mergeCells('A1:F1');
+                $sheet->mergeCells('A1:H1');
                 $sheet->setCellValue('A1', 'YAYASAN PENDIDIKAN');
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A2:F2');
-                $sheet->setCellValue('A2', 'LAPORAN DETAIL KOMPONEN GAJI (LEMBUR & POTONGAN)');
+                $sheet->mergeCells('A2:H2');
+                $sheet->setCellValue('A2', 'LAPORAN LEMBUR');
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A3:F3');
+                $sheet->mergeCells('A3:H3');
                 $sheet->setCellValue('A3', 'Periode: '.$periodeStr.' | Unit: '.$namaUnit);
                 $sheet->getStyle('A3')->getFont()->setItalic(true);
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
+                $sheet->mergeCells('A4:H4');
+                $sheet->setCellValue('A4', '*Hanya menampilkan lembur yang sudah DISETUJUI');
+                $sheet->getStyle('A4')->getFont()->setItalic(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF6B7280'));
+
                 // Styling for Headings
-                $sheet->getStyle('A6:F6')->applyFromArray([
+                $sheet->getStyle('A7:H7')->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
-                        'startColor' => ['argb' => 'FFC9A227'], // Accent color
+                        'startColor' => ['argb' => 'FFC9A227'],
                     ],
                 ]);
 
-                // Format Columns as Currency
-                $sheet->getStyle('F7:F1000')->getNumberFormat()->setFormatCode('"Rp "#,##0.00_-');
+                // Wrap + link foto
+                $sheet->getStyle('H8:H1000')->getNumberFormat()->setFormatCode('@');
             },
         ];
     }

@@ -17,6 +17,7 @@ class KomponenGajiSeeder extends Seeder
             ['nama' => 'PPh 21', 'tipe' => 'potongan', 'jenis' => 'persentase', 'nilai_default' => 5, 'is_active' => true],
             ['nama' => 'BPJS Kesehatan', 'tipe' => 'potongan', 'jenis' => 'persentase', 'nilai_default' => 1, 'is_active' => true],
             ['nama' => 'BPJS Ketenagakerjaan', 'tipe' => 'potongan', 'jenis' => 'persentase', 'nilai_default' => 2, 'is_active' => true],
+            ['nama' => 'Tunjangan Lembur', 'tipe' => 'pendapatan', 'jenis' => 'dinamis_lembur', 'nilai_default' => 25000, 'kode' => 'lembur', 'is_taxable' => true, 'is_active' => true],
         ];
 
         foreach ($komponens as $komponen) {

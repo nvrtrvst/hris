@@ -478,9 +478,10 @@ class PenggajianController extends Controller
         $countIzin = (int) $pAtt->where('status', 'izin')->sum('total');
         $countCuti = (int) $pAtt->where('status', 'cuti')->sum('total');
 
-        // [FIX] Auto-alpha: hari kerja (dari jadwal) - (hadir/telat/izin/cuti disetujui)
+        // [FIX] Auto-alpha: hari kerja (dari jadwal, kecuali lembur) - (hadir/telat/izin/cuti disetujui)
         $workingDays = 0;
         foreach ($pegawai->jadwals as $jadwal) {
+            if ($jadwal->jenis_jadwal === 'lembur') continue;
             $workingDays += $this->countWeekdayInRange($jadwal->hari, $periodeStart, $attendanceCutoff);
         }
         $presentOrLeave = $countHadir + $countTelat + $countSakit + $countIzin + $countCuti;
@@ -579,6 +580,21 @@ class PenggajianController extends Controller
                 $totalHoursMonthly += $sessionHours * $occurrences;
             }
             $nominal = $rate * $totalHoursMonthly;
+        } elseif ($komponen->jenis === 'dinamis_lembur') {
+            $rate = $pegawaiKomponens->has($komponen->id) && $pegawaiKomponens[$komponen->id]->pivot->nominal !== null
+                ? $pegawaiKomponens[$komponen->id]->pivot->nominal
+                : ($komponen->nilai_default ?? 0);
+
+            $totalMinutes = Presensi::where('pegawai_id', $pegawai->id)
+                ->where('is_lembur', true)
+                ->where('lembur_status', 'disetujui')
+                ->whereNotNull('jam_masuk')
+                ->whereNotNull('jam_keluar')
+                ->whereBetween('tanggal', [$periodeStart, $attendanceCutoff])
+                ->get()
+                ->sum(fn ($p) => Carbon::parse($p->jam_masuk)->diffInMinutes(Carbon::parse($p->jam_keluar)));
+
+            $nominal = $rate * ($totalMinutes / 60);
         }
 
         return (float) $nominal;

@@ -49,8 +49,19 @@ class PresensiController extends Controller
             });
         }
 
+        // Filter lembur
+        if ($request->lembur_filter === 'lembur_pending') {
+            $query->where('is_lembur', true)->where('lembur_status', 'pending');
+        } elseif ($request->lembur_filter === 'lembur_disetujui') {
+            $query->where('is_lembur', true)->where('lembur_status', 'disetujui');
+        } elseif ($request->lembur_filter === 'lembur_ditolak') {
+            $query->where('is_lembur', true)->where('lembur_status', 'ditolak');
+        } elseif ($request->lembur_filter === 'lembur_semua') {
+            $query->where('is_lembur', true);
+        }
+
         $presensis = $query->orderBy('tanggal', 'desc')->paginate(10);
-        $presensis->appends($request->only(['start_date', 'end_date', 'unit_id']));
+        $presensis->appends($request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter']));
 
         $units = [];
         if ($user->can('view_all_units')) {
@@ -60,7 +71,7 @@ class PresensiController extends Controller
         return inertia('Presensi/Index', [
             'presensis' => $presensis,
             'pegawai' => $isAdmin ? null : ($pegawai ?? null),
-            'filters' => $request->only(['start_date', 'end_date', 'unit_id']),
+            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter']),
             'units' => $units,
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
         ]);
@@ -149,7 +160,7 @@ class PresensiController extends Controller
                 $presensi->jam_masuk = Carbon::now()->format('H:i:s');
                 $presensi->latitude_masuk = $request->latitude;
                 $presensi->longitude_masuk = $request->longitude;
-                $presensi->foto_masuk = '/storage/'.$imageName;
+                $presensi->foto_masuk = $imageName;
                 $presensi->jarak_masuk_meter = $distance;
 
                 // Tentukan status telat
@@ -168,7 +179,7 @@ class PresensiController extends Controller
                 $presensi->jam_keluar = Carbon::now()->format('H:i:s');
                 $presensi->latitude_keluar = $request->latitude;
                 $presensi->longitude_keluar = $request->longitude;
-                $presensi->foto_keluar = '/storage/'.$imageName;
+                $presensi->foto_keluar = $imageName;
                 $presensi->jarak_keluar_meter = $distance;
             }
 
@@ -199,5 +210,43 @@ class PresensiController extends Controller
         $presensi->update(['status' => $request->status]);
 
         return redirect()->back()->with('message', 'Status presensi berhasil diubah menjadi '.strtoupper($request->status));
+    }
+
+    public function approveLembur($id)
+    {
+        $this->authorize('view_presensi');
+
+        $presensi = Presensi::with('pegawai')->findOrFail($id);
+        if (! $presensi->is_lembur || $presensi->lembur_status !== 'pending') {
+            return back()->withErrors(['error' => 'Hanya lembur dengan status pending yang bisa disetujui.']);
+        }
+
+        $user = auth()->user();
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $presensi->update(['lembur_status' => 'disetujui']);
+
+        return redirect()->back()->with('message', 'Lembur berhasil disetujui.');
+    }
+
+    public function rejectLembur($id)
+    {
+        $this->authorize('view_presensi');
+
+        $presensi = Presensi::with('pegawai')->findOrFail($id);
+        if (! $presensi->is_lembur || $presensi->lembur_status !== 'pending') {
+            return back()->withErrors(['error' => 'Hanya lembur dengan status pending yang bisa ditolak.']);
+        }
+
+        $user = auth()->user();
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $presensi->update(['lembur_status' => 'ditolak']);
+
+        return redirect()->back()->with('message', 'Lembur ditolak.');
     }
 }

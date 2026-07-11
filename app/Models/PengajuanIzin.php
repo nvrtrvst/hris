@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\FileHelper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -19,6 +20,13 @@ class PengajuanIzin extends Model
         'status',
         'alasan_penolakan',
     ];
+
+    protected $appends = ['bukti_foto_url'];
+
+    public function getBuktiFotoUrlAttribute(): ?string
+    {
+        return FileHelper::fotoUrl($this->bukti_foto);
+    }
 
     public function pegawai()
     {

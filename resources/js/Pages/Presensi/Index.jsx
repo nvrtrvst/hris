@@ -8,9 +8,10 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
     const [startDate, setStartDate] = React.useState(filters?.start_date || '');
     const [endDate, setEndDate] = React.useState(filters?.end_date || '');
     const [unitId, setUnitId] = React.useState(filters?.unit_id || '');
+    const [lemburFilter, setLemburFilter] = React.useState(filters?.lembur_filter || '');
 
     const applyFilter = () => {
-        router.get(route('presensi.index'), { start_date: startDate, end_date: endDate, unit_id: unitId }, { preserveState: true });
+        router.get(route('presensi.index'), { start_date: startDate, end_date: endDate, unit_id: unitId, lembur_filter: lemburFilter }, { preserveState: true });
     };
 
     return (
@@ -42,6 +43,13 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                                 <div className="w-px h-5 bg-gray-300 mx-1"></div>
                                             </>
                                         )}
+                                        <select className="border-gray-300 rounded-md shadow-sm text-xs h-8 pr-8" value={lemburFilter} onChange={e => setLemburFilter(e.target.value)}>
+                                            <option value="">Semua Status</option>
+                                            <option value="lembur_semua">Semua Lembur</option>
+                                            <option value="lembur_pending">Lembur Pending</option>
+                                            <option value="lembur_disetujui">Lembur Disetujui</option>
+                                            <option value="lembur_ditolak">Lembur Ditolak</option>
+                                        </select>
                                         <input type="date" className="border-gray-300 rounded-md shadow-sm text-xs h-8" value={startDate} onChange={e => setStartDate(e.target.value)} />
                                         <span className="text-gray-500">-</span>
                                         <input type="date" className="border-gray-300 rounded-md shadow-sm text-xs h-8" value={endDate} onChange={e => setEndDate(e.target.value)} />
@@ -69,6 +77,7 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jam Masuk</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jam Keluar</th>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Lembur</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                                             <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Geofence (Jarak)</th>
                                         </tr>
@@ -88,8 +97,8 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                                         {presensi.jam_masuk ? (
                                                             <div className="flex items-center space-x-2">
                                                                 <span className="text-sm font-medium text-gray-900">{presensi.jam_masuk.substring(0,5)}</span>
-                                                                {presensi.foto_masuk && (
-                                                                    <a href={presensi.foto_masuk} target="_blank" className="text-indigo-500 hover:text-indigo-700">
+                                                                {presensi.foto_masuk_url && (
+                                                                    <a href={presensi.foto_masuk_url} target="_blank" className="text-indigo-500 hover:text-indigo-700">
                                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                                     </a>
                                                                 )}
@@ -102,14 +111,45 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                                         {presensi.jam_keluar ? (
                                                             <div className="flex items-center space-x-2">
                                                                 <span className="text-sm font-medium text-gray-900">{presensi.jam_keluar.substring(0,5)}</span>
-                                                                {presensi.foto_keluar && (
-                                                                    <a href={presensi.foto_keluar} target="_blank" className="text-indigo-500 hover:text-indigo-700">
+                                                                {presensi.foto_keluar_url && (
+                                                                    <a href={presensi.foto_keluar_url} target="_blank" className="text-indigo-500 hover:text-indigo-700">
                                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                                     </a>
                                                                 )}
                                                             </div>
                                                         ) : (
                                                             <span className="text-sm text-gray-400">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {presensi.is_lembur ? (
+                                                            <div>
+                                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase ${
+                                                                    presensi.lembur_status === 'disetujui' ? 'bg-green-100 text-green-800' :
+                                                                    presensi.lembur_status === 'ditolak' ? 'bg-red-100 text-red-800' :
+                                                                    'bg-yellow-100 text-yellow-800'
+                                                                }`}>
+                                                                    {presensi.lembur_status || 'pending'}
+                                                                </span>
+                                                                {presensi.lembur_status === 'pending' && (
+                                                                    <div className="flex space-x-1 mt-1">
+                                                                        <button
+                                                                            onClick={() => router.post(route('presensi.approveLembur', presensi.id), {}, { preserveState: true })}
+                                                                            className="text-xs bg-green-500 hover:bg-green-600 text-white font-medium py-0.5 px-2 rounded"
+                                                                        >
+                                                                            Setuju
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => router.post(route('presensi.rejectLembur', presensi.id), {}, { preserveState: true })}
+                                                                            className="text-xs bg-red-500 hover:bg-red-600 text-white font-medium py-0.5 px-2 rounded"
+                                                                        >
+                                                                            Tolak
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-sm text-gray-400">Reguler</span>
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -156,7 +196,7 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                             ))
                                         ) : (
                                             <tr>
-                                                <td colSpan="5" className="px-6 py-12 text-center">
+                                                <td colSpan="7" className="px-6 py-12 text-center">
                                                     <div className="flex flex-col items-center">
                                                         <svg className="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                                         <p className="text-gray-500 text-lg">Belum ada riwayat absensi.</p>

@@ -34,8 +34,8 @@ export default function Show({ auth, pegawai }) {
                             <div className="flex justify-between items-start mb-8 border-b pb-6">
                                 <div className="flex items-center">
                                     <div className="flex-shrink-0 h-20 w-20">
-                                        {pegawai.foto ? (
-                                            <img className="h-20 w-20 rounded-full object-cover border-4 border-indigo-50" src={pegawai.foto} alt="" />
+{pegawai.foto_url ? (
+                                             <img className="h-20 w-20 rounded-full object-cover border-4 border-indigo-50" src={pegawai.foto_url} alt="" />
                                         ) : (
                                             <div className="h-20 w-20 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-3xl">
                                                 {pegawai.nama_lengkap.charAt(0)}

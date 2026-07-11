@@ -1,0 +1,72 @@
+CARA PINDAH UPLOAD FOTO KE MINIO (SELF-HOSTED S3)
+=================================================
+
+PRASYARAT
+- MinIO server sudah jalan di VPS (binary atau Docker)
+- Akses key + secret key sudah dibuat
+- Bucket `hris-files` sudah dibuat
+
+LANGKAH
+
+1. SETUP MINIO (cukup sekali)
+   Linux (binary):
+     wget https://dl.min.io/server/minio/release/linux-amd64/minio
+     chmod +x minio
+     mkdir -p /data/hris-files
+     ./minio server /data/hris-files --console-address :9001
+
+   Windows (binary):
+     Download minio.exe dari https://dl.min.io
+     D:\minio\minio.exe server D:\minio-data --console-address :9001
+
+   Buka http://VPS_IP:9001, login (default: minioadmin / minioadmin), buat bucket "hris-files".
+
+2. UBAH .ENV (file di root project)
+   Tambah/ubah baris ini:
+
+     FILESYSTEM_IMAGE_DISK=s3
+     AWS_ACCESS_KEY_ID=minioadmin
+     AWS_SECRET_ACCESS_KEY=minioadmin
+     AWS_DEFAULT_REGION=us-east-1
+     AWS_BUCKET=hris-files
+     AWS_ENDPOINT=http://VPS_IP:9000
+     AWS_USE_PATH_STYLE_ENDPOINT=true
+
+   CATATAN: VPS_IP = 127.0.0.1 kalau MinIO di server yang sama.
+
+3. TEST (dari terminal project)
+   php artisan tinker
+     > Storage::disk('s3')->put('test.txt', 'Hello MinIO');
+     > Storage::disk('s3')->url('test.txt');
+     > Storage::disk('s3')->delete('test.txt');
+
+   Kalau error, cek endpoint dan firewall port 9000.
+
+4. MIGRASI FILE LAMA (dari local ke MinIO)
+   Semua file foto ada di storage/app/public/
+   Jalankan sekali:
+
+     php artisan tinker
+       $disk = Storage::disk('public');
+       $files = $disk->allFiles('presensi');
+       $s3 = Storage::disk('s3');
+       foreach ($files as $f) {
+           $s3->put($f, $disk->get($f));
+       }
+
+   Ulangi untuk folder lain (pegawai, izin, dll) kalau ada.
+
+5. VERIFIKASI
+   Buka halaman Presensi/Pegawai — foto harus tampil normal.
+   Kalau foto lama (path /storage/...) tidak muncul, berarti perlu
+   update FileHelper.php untuk handle legacy path via S3 juga
+   (ganti asset() dengan Storage::disk('s3')->url(str_replace('/storage/','',$path))).
+
+6. ROLLBACK (kalau error)
+   Kembalikan .env: FILESYSTEM_IMAGE_DISK=public
+   Clear config: php artisan config:clear
+
+KENAPA PAKAI FILESYSTEM_IMAGE_DISK (bukan FILESYSTEM_DISK)
+- FILESYSTEM_DISK default 'local' (storage/app/, tidak public).
+- Untuk foto kita pakai disk 'public' (storage/app/public/).
+- env FILESYSTEM_IMAGE_DISK khusus untuk ImageUploadService + FileHelper.

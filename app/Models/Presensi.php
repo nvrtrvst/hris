@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\FileHelper;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -32,13 +33,28 @@ class Presensi extends Model
         'lokasi_perlu_review',
         'captured_at',
         'keterangan',
+        'is_lembur',
+        'lembur_status',
     ];
 
     protected $casts = [
         'tanggal' => 'date',
         'lokasi_perlu_review' => 'boolean',
         'captured_at' => 'datetime',
+        'is_lembur' => 'boolean',
     ];
+
+    protected $appends = ['foto_masuk_url', 'foto_keluar_url'];
+
+    public function getFotoMasukUrlAttribute(): ?string
+    {
+        return FileHelper::fotoUrl($this->foto_masuk);
+    }
+
+    public function getFotoKeluarUrlAttribute(): ?string
+    {
+        return FileHelper::fotoUrl($this->foto_keluar);
+    }
 
     public function pegawai(): BelongsTo
     {

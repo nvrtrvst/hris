@@ -78,7 +78,7 @@ class MobileIzinController extends Controller
 
         if ($request->bukti_foto) {
             $imageName = app(ImageUploadService::class)->storeBase64($request->bukti_foto, 'izin');
-            $pengajuan->bukti_foto = '/storage/'.$imageName;
+            $pengajuan->bukti_foto = $imageName;
         }
 
         $pengajuan->save();

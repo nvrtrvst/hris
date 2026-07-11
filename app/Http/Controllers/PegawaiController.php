@@ -157,7 +157,7 @@ class PegawaiController extends Controller
 
         if ($request->hasFile('foto')) {
             $path = $request->file('foto')->store('pegawai_fotos', 'public');
-            $pegawaiData['foto'] = '/storage/'.$path;
+            $pegawaiData['foto'] = $path;
         }
 
         $pegawai = Pegawai::create($pegawaiData);
@@ -238,7 +238,7 @@ class PegawaiController extends Controller
                 Storage::disk('public')->delete(str_replace('/storage/', '', $pegawai->foto));
             }
             $path = $request->file('foto')->store('pegawai_fotos', 'public');
-            $dataToUpdate['foto'] = '/storage/'.$path;
+            $dataToUpdate['foto'] = $path;
         }
 
         $pegawai->update($dataToUpdate);

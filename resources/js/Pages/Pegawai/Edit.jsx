@@ -51,10 +51,10 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">Foto Pegawai</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                                        {pegawai.foto && (
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-700 mb-2">Foto Saat Ini:</p>
-                                                <img src={pegawai.foto} alt="Foto Pegawai" className="w-32 h-32 object-cover rounded-md shadow-sm border" />
+{pegawai.foto_url && (
+                                             <div>
+                                                 <p className="text-sm font-medium text-gray-700 mb-2">Foto Saat Ini:</p>
+                                                 <img src={pegawai.foto_url} alt="Foto Pegawai" className="w-32 h-32 object-cover rounded-md shadow-sm border" />
                                             </div>
                                         )}
                                         <div>

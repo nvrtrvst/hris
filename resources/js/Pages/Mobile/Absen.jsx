@@ -12,6 +12,7 @@ export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni })
         speed: null,
         captured_at: '',
         mock_suspect: false,
+        is_lembur: false,
         foto: ''
     });
 
@@ -21,12 +22,23 @@ export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni })
     const [locationStatus, setLocationStatus] = useState('Mencari lokasi...');
     const [photoCaptured, setPhotoCaptured] = useState(false);
 
-    const selectedPresensi = presensiHariIni?.find(p => p.jadwal_id == data.jadwal_id);
+    const selectedPresensi = data.is_lembur
+        ? presensiHariIni?.find(p => p.is_lembur)
+        : presensiHariIni?.find(p => p.jadwal_id == data.jadwal_id);
     let allowedTipe = 'masuk';
     let labelTipe = 'Masuk';
     let isCompleted = false;
 
-    if (selectedPresensi) {
+    if (data.is_lembur) {
+        labelTipe = 'Lembur — Presensi Masuk';
+        if (selectedPresensi?.jam_masuk && !selectedPresensi?.jam_keluar) {
+            allowedTipe = 'keluar';
+            labelTipe = 'Lembur — Presensi Pulang';
+        } else if (selectedPresensi?.jam_masuk && selectedPresensi?.jam_keluar) {
+            isCompleted = true;
+            labelTipe = 'Lembur — Selesai';
+        }
+    } else if (selectedPresensi) {
         if (selectedPresensi.jam_masuk && !selectedPresensi.jam_keluar) {
             allowedTipe = 'keluar';
             labelTipe = 'Keluar/Pulang';
@@ -34,7 +46,7 @@ export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni })
             isCompleted = true;
             labelTipe = 'Sudah Presensi Lengkap';
         }
-    } else if (!data.jadwal_id) {
+    } else if (!data.jadwal_id && !data.is_lembur) {
         labelTipe = 'Pilih Jadwal Dulu';
     }
 
@@ -178,24 +190,39 @@ export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni })
         const stampHeight = baseSize * 5.5;
         
         // Tambahkan background semi-transparan untuk watermark
+        // Background watermark
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fillRect(0, targetHeight - stampHeight, targetWidth, stampHeight);
-        
-        // Set alignment text di tengah agar lebih aman dan estetik
         ctx.textAlign = 'center';
-        
-        // Teks Nama Pegawai
-        ctx.fillStyle = 'white';
+
+        // Label (BUKTI LEMBUR or Nama)
+        ctx.fillStyle = data.is_lembur ? '#fbbf24' : 'white';
         ctx.font = `bold ${baseSize * 1.2}px sans-serif`;
-        ctx.fillText(auth.user.name, targetWidth / 2, targetHeight - (baseSize * 3.5));
-        
-        // Teks Waktu
+        ctx.fillText(data.is_lembur ? 'BUKTI LEMBUR' : auth.user.name, targetWidth / 2, targetHeight - (baseSize * 4.3));
+
+        // Nama (if lembur, show name as second line)
+        if (data.is_lembur) {
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${baseSize}px sans-serif`;
+            ctx.fillText(`Nama: ${auth.user.name}`, targetWidth / 2, targetHeight - (baseSize * 3.2));
+        }
+
+        // Unit
+        ctx.fillStyle = 'white';
         ctx.font = `${baseSize}px sans-serif`;
-        ctx.fillText(`Waktu: ${new Date().toLocaleString('id-ID')}`, targetWidth / 2, targetHeight - (baseSize * 2.0));
-        
-        // Teks Koordinat (Dibatasi 5 desimal)
+        ctx.fillText(`Unit: ${pegawai?.units?.[0]?.nama || '-'}`, targetWidth / 2, targetHeight - (baseSize * (data.is_lembur ? 2.2 : 2.8)));
+
+        // Waktu eksplisit dengan detik
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const timeStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        ctx.fillStyle = 'white';
         ctx.font = `${baseSize * 0.9}px sans-serif`;
-        ctx.fillText(`Lokasi: ${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`, targetWidth / 2, targetHeight - (baseSize * 0.6));
+        ctx.fillText(`Waktu: ${timeStr}`, targetWidth / 2, targetHeight - (baseSize * (data.is_lembur ? 1.4 : 1.8)));
+
+        // Koordinat
+        ctx.font = `${baseSize * 0.9}px sans-serif`;
+        ctx.fillText(`Lokasi: ${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`, targetWidth / 2, targetHeight - (baseSize * (data.is_lembur ? 0.6 : 0.8)));
         
         // Simpan hasil ke form
         const photoData = canvas.toDataURL('image/jpeg', 0.8);
@@ -208,6 +235,52 @@ export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni })
         setPhotoCaptured(false);
         setData('foto', '');
         startCamera();
+    };
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = canvasRef.current;
+                const targetWidth = 480;
+                const targetHeight = 640;
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+                const baseSize = 18;
+                const stampHeight = baseSize * 6;
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(0, targetHeight - stampHeight, targetWidth, stampHeight);
+                ctx.textAlign = 'center';
+
+                ctx.fillStyle = data.is_lembur ? '#fbbf24' : 'white';
+                ctx.font = `bold ${baseSize * 1.2}px sans-serif`;
+                ctx.fillText(data.is_lembur ? 'BUKTI LEMBUR' : auth.user.name, targetWidth / 2, targetHeight - (baseSize * 4.5));
+
+                ctx.fillStyle = 'white';
+                ctx.font = `${baseSize * 0.9}px sans-serif`;
+                ctx.fillText(`Nama: ${auth.user.name}`, targetWidth / 2, targetHeight - (baseSize * 3.2));
+
+                ctx.fillText(`Unit: ${pegawai?.units?.[0]?.nama || '-'}`, targetWidth / 2, targetHeight - (baseSize * 2.2));
+
+                const now = new Date();
+                const pad = n => String(n).padStart(2, '0');
+                const timeStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+                ctx.fillText(`Waktu: ${timeStr}`, targetWidth / 2, targetHeight - (baseSize * 1.2));
+
+                const photoData = canvas.toDataURL('image/jpeg', 0.8);
+                setData('foto', photoData);
+                setPhotoCaptured(true);
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
     };
 
     const submitPresensi = (e) => {
@@ -285,6 +358,15 @@ export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni })
                                         </button>
                                     </div>
                                 )}
+
+                                {/* Upload file (alternatif) */}
+                                <div className="absolute bottom-20 w-full flex justify-center">
+                                    <label className="cursor-pointer bg-black/50 hover:bg-black/60 text-white backdrop-blur-md px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center shadow-lg border border-white/10 transition-colors">
+                                        <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+                                        Upload Foto
+                                        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileUpload} className="hidden" />
+                                    </label>
+                                </div>
                             </div>
                         ) : (
                             <>
@@ -307,29 +389,61 @@ export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni })
                         </div>
                     </div>
 
+                    {/* Toggle Lembur */}
+                    <div className="p-3 bg-gray-50 border-b border-gray-100">
+                        <label className="flex items-center justify-between cursor-pointer">
+                            <span className="text-sm font-bold text-gray-700 flex items-center gap-1.5">
+                                <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Absen Lembur?
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setData(d => ({ ...d, is_lembur: !d.is_lembur, jadwal_id: '' }));
+                                    setPhotoCaptured(false);
+                                    setData('foto', '');
+                                }}
+                                className={`relative w-12 h-6 rounded-full transition-colors ${data.is_lembur ? 'bg-amber-500' : 'bg-gray-300'}`}
+                            >
+                                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${data.is_lembur ? 'translate-x-6' : ''}`}></span>
+                            </button>
+                        </label>
+                        {data.is_lembur && (
+                            <p className="mt-1.5 text-[11px] text-amber-700 font-medium">Lembur dadakan — jadwal tidak diperlukan. Foto akan ditandai BUKTI LEMBUR.</p>
+                        )}
+                    </div>
+
                     {/* Form Controls */}
                     <div className="p-5">
                         <form onSubmit={submitPresensi}>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Pilih Jadwal / Unit</label>
-                                    <select 
-                                        className="w-full rounded-xl border-gray-200 bg-gray-50 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 font-medium"
-                                        value={data.jadwal_id}
-                                        onChange={e => setData('jadwal_id', e.target.value)}
-                                        required
-                                    >
-                                        <option value="">-- Pilih Jadwal Hari Ini --</option>
-                                        {jadwals && jadwals.map(j => (
-                                            <option key={j.id} value={j.id}>{j.unit_sekolah.nama} ({j.jam_mulai.substring(0,5)} - {j.jam_selesai.substring(0,5)})</option>
-                                        ))}
-                                    </select>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
+                                        {data.is_lembur ? 'Unit Sekolah' : 'Pilih Jadwal / Unit'}
+                                    </label>
+                                    {data.is_lembur ? (
+                                        <div className="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-700 px-3 py-2.5 text-sm font-medium">
+                                            {pegawai?.units?.[0]?.nama || 'Unit tidak ditemukan'}
+                                        </div>
+                                    ) : (
+                                        <select 
+                                            className="w-full rounded-xl border-gray-200 bg-gray-50 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 font-medium"
+                                            value={data.jadwal_id}
+                                            onChange={e => setData('jadwal_id', e.target.value)}
+                                            required
+                                        >
+                                            <option value="">-- Pilih Jadwal Hari Ini --</option>
+                                            {jadwals && jadwals.map(j => (
+                                                <option key={j.id} value={j.id}>{j.unit_sekolah.nama} ({j.jam_mulai.substring(0,5)} - {j.jam_selesai.substring(0,5)})</option>
+                                            ))}
+                                        </select>
+                                    )}
                                 </div>
 
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Tipe Absen</label>
                                     <div className="flex bg-gray-100 p-1 rounded-xl">
-                                        <div className={`flex-1 py-2 text-sm font-bold text-center rounded-lg shadow-sm transition-colors ${isCompleted ? 'bg-emerald-100 text-emerald-700' : (data.jadwal_id ? 'bg-white text-indigo-600' : 'bg-gray-200 text-gray-400')}`}>
+                                        <div className={`flex-1 py-2 text-sm font-bold text-center rounded-lg shadow-sm transition-colors ${isCompleted ? 'bg-emerald-100 text-emerald-700' : ((data.jadwal_id || data.is_lembur) ? 'bg-white text-indigo-600' : 'bg-gray-200 text-gray-400')}`}>
                                             {labelTipe}
                                         </div>
                                     </div>
@@ -337,10 +451,10 @@ export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni })
 
                                 <button 
                                     type="submit" 
-                                    disabled={!photoCaptured || !data.latitude || processing || isCompleted || !data.jadwal_id}
-                                    className={`w-full py-3.5 rounded-xl text-white font-bold text-lg shadow-lg transition-all flex items-center justify-center ${photoCaptured && data.latitude && !isCompleted && data.jadwal_id ? 'bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98]' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                                    disabled={!photoCaptured || !data.latitude || processing || isCompleted || (!data.jadwal_id && !data.is_lembur)}
+                                    className={`w-full py-3.5 rounded-xl text-white font-bold text-lg shadow-lg transition-all flex items-center justify-center ${photoCaptured && data.latitude && !isCompleted && (data.jadwal_id || data.is_lembur) ? (data.is_lembur ? 'bg-amber-600 hover:bg-amber-700 active:scale-[0.98]' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98]') : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                                 >
-                                    {processing ? 'Menyimpan...' : (isCompleted ? 'Presensi Selesai' : 'Kirim Presensi')}
+                                    {processing ? 'Menyimpan...' : (isCompleted ? 'Presensi Selesai' : (data.is_lembur ? 'Kirim Lembur' : 'Kirim Presensi'))}
                                     {photoCaptured && data.latitude && !processing && !isCompleted && <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>}
                                 </button>
                             </div>

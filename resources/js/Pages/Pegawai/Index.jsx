@@ -142,8 +142,8 @@ export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelaj
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <div className="flex items-center">
                                                             <div className="flex-shrink-0 h-10 w-10">
-                                                                {pegawai.foto ? (
-                                                                    <img className="h-10 w-10 rounded-full object-cover" src={pegawai.foto} alt="" />
+{pegawai.foto_url ? (
+                                                                     <img className="h-10 w-10 rounded-full object-cover" src={pegawai.foto_url} alt="" />
                                                                 ) : (
                                                                     <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
                                                                         {pegawai.nama_lengkap.charAt(0)}

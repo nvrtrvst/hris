@@ -103,7 +103,8 @@ class MobileController extends Controller
     public function storeAbsen(Request $request)
     {
         $request->validate([
-            'jadwal_id' => 'required|exists:jadwal,id',
+            'jadwal_id' => 'nullable|exists:jadwal,id',
+            'is_lembur' => 'nullable|boolean',
             'tipe' => 'required|in:masuk,keluar',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
@@ -115,8 +116,22 @@ class MobileController extends Controller
         ]);
 
         $pegawai = $this->getPegawai();
-        $jadwal = Jadwal::with('unitSekolah')->findOrFail($request->jadwal_id);
-        $unit = $jadwal->unitSekolah;
+        $isLembur = (bool) $request->input('is_lembur', false);
+
+        // Resolve unit: dari jadwal atau primary unit pegawai
+        if ($request->jadwal_id) {
+            $jadwal = Jadwal::with('unitSekolah')->findOrFail($request->jadwal_id);
+            $unit = $jadwal->unitSekolah;
+        } elseif ($isLembur) {
+            $primaryUnit = $pegawai->units()->first();
+            if (! $primaryUnit) {
+                return back()->withErrors(['geofence' => 'Pegawai tidak memiliki unit sekolah.']);
+            }
+            $unit = $primaryUnit;
+            $jadwal = null;
+        } else {
+            return back()->withErrors(['jadwal_id' => 'Pilih jadwal terlebih dahulu.']);
+        }
 
         $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);
 
@@ -124,7 +139,6 @@ class MobileController extends Controller
             return back()->withErrors(['geofence' => "Anda berada di luar jangkauan Unit Sekolah. Jarak Anda: {$distance} meter (Batas: {$unit->radius_meter}m)"]);
         }
 
-        // [ANTISPOOF] Deteksi lokasi palsu (Opsi A: heuristik web)
         $accuracy = $request->filled('accuracy') ? (float) $request->accuracy : null;
         $speed = $request->filled('speed') ? (float) $request->speed : null;
         $mockSuspect = (bool) $request->input('mock_suspect', false);
@@ -139,14 +153,23 @@ class MobileController extends Controller
         $lokasiPerluReview = $mockSuspect || ($accuracy !== null && $accuracy < 10);
         $capturedAt = $request->filled('captured_at') ? Carbon::parse($request->captured_at) : null;
 
-        $imageName = app(ImageUploadService::class)->storeBase64($request->foto, 'presensi');
+        $imageName = app(ImageUploadService::class)->storeBase64($request->foto, $isLembur ? 'presensi/lembur' : 'presensi');
 
-        DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $imageName) {
-            $presensi = Presensi::where('pegawai_id', $pegawai->id)
-                ->where('jadwal_id', $request->jadwal_id)
-                ->where('tanggal', Carbon::today())
-                ->lockForUpdate()
-                ->first();
+        DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $imageName, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview) {
+            // Cari presensi existing
+            if ($isLembur) {
+                $presensi = Presensi::where('pegawai_id', $pegawai->id)
+                    ->where('is_lembur', true)
+                    ->where('tanggal', Carbon::today())
+                    ->lockForUpdate()
+                    ->first();
+            } else {
+                $presensi = Presensi::where('pegawai_id', $pegawai->id)
+                    ->where('jadwal_id', $request->jadwal_id)
+                    ->where('tanggal', Carbon::today())
+                    ->lockForUpdate()
+                    ->first();
+            }
 
             if (! $presensi) {
                 $presensi = new Presensi([
@@ -157,22 +180,28 @@ class MobileController extends Controller
             }
 
             $presensi->unit_sekolah_id = $unit->id;
+            $presensi->is_lembur = $isLembur;
 
             if ($request->tipe === 'masuk') {
                 if ($presensi->jam_masuk) {
-                    throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen masuk untuk jadwal ini.']);
+                    throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen masuk.']);
                 }
                 $presensi->jam_masuk = Carbon::now()->format('H:i:s');
                 $presensi->latitude_masuk = $request->latitude;
                 $presensi->longitude_masuk = $request->longitude;
-                $presensi->foto_masuk = '/storage/'.$imageName;
+                $presensi->foto_masuk = $imageName;
                 $presensi->jarak_masuk_meter = $distance;
                 $presensi->akurasi_masuk = $accuracy;
                 $presensi->kecepatan_masuk = $speed;
                 $presensi->captured_at = $capturedAt;
                 $presensi->lokasi_perlu_review = $lokasiPerluReview;
 
-                $presensi->status = Carbon::now()->format('H:i:s') > $jadwal->jam_mulai ? 'telat' : 'hadir';
+                if ($isLembur) {
+                    $presensi->status = 'hadir';
+                    $presensi->lembur_status = 'pending';
+                } else {
+                    $presensi->status = Carbon::now()->format('H:i:s') > $jadwal->jam_mulai ? 'telat' : 'hadir';
+                }
             } else {
                 if (! $presensi->exists || ! $presensi->jam_masuk) {
                     throw ValidationException::withMessages(['conflict' => 'Anda belum absen masuk.']);
@@ -183,7 +212,7 @@ class MobileController extends Controller
                 $presensi->jam_keluar = Carbon::now()->format('H:i:s');
                 $presensi->latitude_keluar = $request->latitude;
                 $presensi->longitude_keluar = $request->longitude;
-                $presensi->foto_keluar = '/storage/'.$imageName;
+                $presensi->foto_keluar = $imageName;
                 $presensi->jarak_keluar_meter = $distance;
                 $presensi->akurasi_keluar = $accuracy;
                 $presensi->kecepatan_keluar = $speed;
@@ -193,6 +222,7 @@ class MobileController extends Controller
             $presensi->save();
         });
 
-        return redirect()->route('mobile.dashboard')->with('message', "Absen {$request->tipe} berhasil dicatat! Jarak: {$distance}m");
+        $label = $isLembur ? 'Lembur' : 'Absen';
+        return redirect()->route('mobile.dashboard')->with('message', "{$label} {$request->tipe} berhasil dicatat! Jarak: {$distance}m");
     }
 }

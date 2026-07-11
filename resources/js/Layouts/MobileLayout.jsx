@@ -25,8 +25,8 @@ export default function MobileLayout({ user, header, children }) {
                         <Dropdown.Trigger>
                             <button className="flex items-center space-x-2 focus:outline-none">
                                 <div className="w-9 h-9 rounded-full bg-indigo-800 border-2 border-indigo-400 flex items-center justify-center font-bold text-sm shadow-sm text-white hover:bg-indigo-700 transition-colors overflow-hidden">
-                                    {user?.pegawai?.foto ? (
-                                        <img src={user.pegawai.foto} alt="Profile" className="w-full h-full object-cover" />
+{user?.pegawai?.foto_url ? (
+                                         <img src={user.pegawai.foto_url} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
                                         user?.name ? user.name.charAt(0).toUpperCase() : 'P'
                                     )}

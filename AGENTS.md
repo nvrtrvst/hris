@@ -46,11 +46,12 @@ Role: `superadmin` (all), `admin_unit` (view_*), `pegawai` (none).
   mapels (M2M), dokumen (1M), pengajuanIzins (1M), riwayat (1M), jadwals (1M, via pegawai_id).
   Accessor: `sisa_cuti`, `cuti_terpakai` (via PengajuanIzin).
   Field `encrypted`: no_rekening, nama_bank, npwp, no_bpjs_kesehatan, no_bpjs_ketenagakerjaan.
-- Jadwal: pegawai_id, unit_sekolah_id, mata_pelajaran_id, kelas_id, hari (Senin..Minggu), jam_mulai/selesai.
-- Presensi: pegawai_id, jadwal_id, unit_sekolah_id, tanggal, jam_masuk/keluar, lat/long, foto (path /storage/...), jarak_meter, status.
+- Jadwal: pegawai_id, unit_sekolah_id, mata_pelajaran_id, kelas_id, hari (Senin..Minggu), jam_mulai/selesai, `jenis_jadwal` VARCHAR (reguler|lembur) default 'reguler'.
+- Presensi: pegawai_id, jadwal_id (nullable untuk lembur), unit_sekolah_id, tanggal, jam_masuk/keluar, lat/long, foto (relative path, resolve via `FileHelper::fotoUrl()` di accessor), jarak_meter, status.
   Status enum: `hadir|telat|izin|sakit|alpa` (default `alpa`). Kolom anti-spoof: `akurasi_*`, `kecepatan_*`, `lokasi_perlu_review`, `captured_at`.
+  Kolom lembur: `is_lembur` BOOLEAN, `lembur_status` VARCHAR(20) (pending|disetujui|ditolak) default NULL.
 - Penggajian (1 periode "m-Y" per pegawai) -> PenggajianDetail (komponen_gaji_id, nama_komponen, tipe, nominal). Status: draft -> finalized -> paid.
-- KomponenGaji: jenis VARCHAR(50) (fixed|persentase|dinamis_kehadiran|dinamis_masa_bakti|dinamis_jam_mengajar), tipe ENUM(pendapatan|potongan),
+- KomponenGaji: jenis VARCHAR(50) (fixed|persentase|dinamis_kehadiran|dinamis_masa_bakti|dinamis_jam_mengajar|dinamis_lembur), tipe ENUM(pendapatan|potongan),
   `nilai_default` (bukan `nilai`), `kode`, `is_taxable` (bukan `taxable`), `unit_sekolah_id`, `is_active`, `urutan`, `tampil_di_matrix`.
   TIDAK ada kolom `persentase` — nilai persen disimpan di `nilai_default` (dibagi 100 di kode).
   PERINGATAN: logika payroll memakai `stripos($komponen->nama, ...)` — ganti nama = payroll rusak; idealnya pakai kolom flag.
@@ -61,7 +62,10 @@ Role: `superadmin` (all), `admin_unit` (view_*), `pegawai` (none).
 ## 7. ALUR INTI
 - LOGIN: Desktop `AuthenticatedSessionController` (web_admin); Mobile `MobileAuthController` (web_mobile). Logout invalidate session + regenerate token.
 - PRESENSI (mobile): `MobileController::storeAbsen` -> validasi geofence (Haversine `CalculatesDistance`, vs unit.radius_meter) ->
-  simpan foto base64 (UUID) ke storage/app/public/presensi -> upsert Presensi dalam DB transaction + lockForUpdate.
+  simpan foto via `ImageUploadService` (config disk) -> upsert Presensi dalam DB transaction + lockForUpdate.
+- LEMBUR (mobile): toggle `is_lembur` di absen -> geofence via primary unit, `lembur_status='pending'`, skip telat check.
+  Foto bukti lembur overlay: label + nama + unit + waktu detik + lokasi (canvas burn-in).
+  Approval admin: `PresensiController::approveLembur`/`rejectLembur` di route `presensi/{id}/approve-lembur`/`reject-lembur`.
 - IZIN: `MobileIzinController` (pegawai) + `PengajuanIzinController` (admin approve/reject).
 - PAYROLL WIZARD: `penggajian/run` pilih periode -> `createDraft` (loop pegawai aktif, hitung komponen dari Presensi+SkalaMasaBakti+jam mengajar)
   -> `worksheet` (edit JSON) -> `finalizeWorksheet`. `createDraft` jalan **sinkron** (dalam DB transaction). Step-1 route = `penggajian.run.indexRun`.
@@ -85,12 +89,13 @@ Role: `superadmin` (all), `admin_unit` (view_*), `pegawai` (none).
 - **Status** ditentukan SAAT absen MASUK: `now('H:i:s') > $jadwal->jam_mulai ? 'telat' : 'hadir'`. Cek string `H:i:s` — TANPA toleransi menit. Absen keluar TIDAK ubah status. `izin/sakit/alpa` dari PengajuanIzin or admin manual. Default `alpa`.
 - **Anti-spoof** (migrasi `2026_07_02_...`): kolom `akurasi_masuk/keluar`, `kecepatan_masuk/keluar`, `lokasi_perlu_review` (OR dari `$mockSuspect || $accuracy < 10`), `captured_at`. TIDAK ada kolom `device_id`/`mock_location` — nilai input `mock_suspect` hanya feed ke flag review lalu dibuang.
 - **TIDAK ADA** perhitungan jam kerja / menit telat / lembur dari `jam_masuk−jam_keluar`. Kolom anti-spoof cuma disimpan, TIDAK dipakai perhitungan.
+- **Lembur**: saat absen MASUK dgn toggle, `jadwal_id` nullable (skip telat check), geofence via primary unit. `lembur_status='pending'`. Approval admin via `PresensiController::approveLembur`/`rejectLembur`. Foto overlay: label BUKTI LEMBUR + nama + unit + waktu HH:mm:ss + lokasi.
 
 ### 9.2 Payroll (Komponen Gaji & Penggajian)
 Semua di `PenggajianController` (`computeComponentNominal`:502-585, `computeAttendance`:471-497).
 
 **KomponenGaji**:
-- `jenis` VARCHAR(50) divalidasi: `fixed|persentase|dinamis_kehadiran|dinamis_masa_bakti|dinamis_jam_mengajar`.
+- `jenis` VARCHAR(50) divalidasi: `fixed|persentase|dinamis_kehadiran|dinamis_masa_bakti|dinamis_jam_mengajar|dinamis_lembur`.
 - `tipe` ENUM `pendapatan|potongan`.
 - `nilai_default` (bkn `nilai`), `kode`, `is_taxable` (bkn `taxable`), `unit_sekolah_id`, `is_active`, `urutan`, `tampil_di_matrix`.
 - TIDAK ada kolom `persentase` — nilai persen disimpan di `nilai_default` (dibagi 100 di kode).
@@ -101,9 +106,10 @@ Semua di `PenggajianController` (`computeComponentNominal`:502-585, `computeAtte
 - **persentase**: base = gaji pokok (`kode === 'gaji_pokok'` ATAU `stripos(nama, 'Gaji Pokok'/'Basic Salary')`). `nominal = (nilai_default / 100) × baseSalary`. Base HANYA gaji pokok, bukan total pendapatan.
 - **dinamis_kehadiran**: `rate × count`. Count dipilih via `kode` (`kehadiran_telat/alpa/sakit/izin/cuti/tunjangan_kehadiran`) ATAU `stripos(nama, 'telat'|'alpa'|'sakit'|'izin'|'cuti'|'makan'|'transport'|'hadir')`. Catch-all `tunjangan_kehadiran/makan/transport/hadir` = rate × (hadir + telat).
 - **dinamis_masa_bakti**: tenure = `tanggal_mulai_kerja->diffInYears($periodeEnd)`. Ambil skala PERTAMA dgn `masa_kerja_tahun <= yearsOfService` (skala DESC). Jika `tanggal_mulai_kerja` null → 0.
-- **dinamis_jam_mengajar**: `rate × totalJamBulanan`. Jam = Σ(`jam_selesai−jam_mulai` per jadwal × jumlah hari `hari` tsb di periode), filter unit via `komponen.unit_sekolah_id`. Pakai **jadwal** (bukan presensi aktual).
+- **dinamis_jam_mengajar**: `rate × totalJamBulanan`. Jam = Σ(`jam_selesai−jam_mulai` per jadwal × jumlah hari `hari` tsb di periode), filter unit via `komponen.unit_sekolah_id`. Pakai **jadwal** (bukan presensi aktual). **Skip** jadwal dgn `jenis_jadwal='lembur'` (cegah dobel bayar).
+- **dinamis_lembur**: `rate × totalJamLembur`. Total jam = Σ jam aktual (`jam_keluar−jam_masuk` dalam jam, minimal 0) dari `Presensi` di periode dgn `is_lembur=true` AND `lembur_status='disetujui'`. Pakai **presensi aktual** (bukan jadwal). Filter unit via `komponen.unit_sekolah_id`.
 
-**Attendance counts** (`computeAttendance`): hadir/telat/sakit/izin/cuti dari `Presensi::groupBy(status)`. `alpa = manual_alpa + max(0, workingDays - (hadir+telat+sakit+izin+cuti))`. `workingDays` = Σ `countWeekdayInRange(jadwal.hari, ...)`.
+**Attendance counts** (`computeAttendance`): hadir/telat/sakit/izin/cuti dari `Presensi::groupBy(status)`. Skip `is_lembur=true`. `alpa = manual_alpa + max(0, workingDays - (hadir+telat+sakit+izin+cuti))`. `workingDays` = Σ `countWeekdayInRange(jadwal.hari)` untuk jadwal `jenis_jadwal='reguler'`.
 
 **Total**: akumulasi `bcadd`/`bcsub` (PHP). `gaji_bersih = totalPendapatan - totalPotongan`. `total_taxable` = Σ pendapatan yg `is_taxable`. **TIDAK ada hitungan PPh21/PTKP/pajak** — hanya akumulasi flag.
 
