@@ -14,6 +14,7 @@ class PenggajianDetail extends Model
         'nama_komponen',
         'tipe',
         'nominal',
+        'is_taxable',
     ];
 
     public function penggajian()

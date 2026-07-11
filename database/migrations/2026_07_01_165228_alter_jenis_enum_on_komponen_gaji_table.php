@@ -1,8 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,7 +10,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE komponen_gaji MODIFY COLUMN jenis ENUM('fixed', 'persentase', 'dinamis_kehadiran', 'dinamis_jam_mengajar') NOT NULL");
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
+        DB::statement("ALTER TABLE komponen_gaji MODIFY COLUMN jenis ENUM('fixed', 'persentase', 'dinamis_kehadiran', 'dinamis_jam_mengajar') NOT NULL");
     }
 
     /**
@@ -19,6 +22,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE komponen_gaji MODIFY COLUMN jenis ENUM('fixed', 'persentase', 'dinamis_kehadiran') NOT NULL");
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
+        DB::statement("ALTER TABLE komponen_gaji MODIFY COLUMN jenis ENUM('fixed', 'persentase', 'dinamis_kehadiran') NOT NULL");
     }
 };

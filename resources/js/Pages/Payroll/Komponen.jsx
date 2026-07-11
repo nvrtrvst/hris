@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router, Link } from '@inertiajs/react';
+import { formatRupiah } from '@/Utils/format';
 
-export default function Komponen({ auth, komponens }) {
+export default function Komponen({ auth, komponens, units }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editId, setEditId] = useState(null);
 
     const { data, setData, post, put, reset, processing, errors, clearErrors } = useForm({
         nama: '',
+        kode: '',
         tipe: 'pendapatan',
         jenis: 'fixed',
         nilai_default: '',
+        unit_sekolah_id: '',
         is_taxable: true,
         is_active: true,
         urutan: 99,
@@ -22,9 +25,11 @@ export default function Komponen({ auth, komponens }) {
         setEditId(k.id);
         setData({
             nama: k.nama,
+            kode: k.kode || '',
             tipe: k.tipe,
             jenis: k.jenis,
             nilai_default: k.nilai_default || '',
+            unit_sekolah_id: k.unit_sekolah_id || '',
             is_taxable: k.is_taxable == 1,
             is_active: k.is_active == 1,
             urutan: k.urutan || 99,
@@ -53,10 +58,6 @@ export default function Komponen({ auth, komponens }) {
         }
     };
 
-    const formatRupiah = (angka) => {
-        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
-    };
-
     return (
         <AuthenticatedLayout
             user={auth.user}
@@ -77,6 +78,13 @@ export default function Komponen({ auth, komponens }) {
                                     <label className="block text-sm font-medium text-gray-700">Nama Komponen</label>
                                     <input type="text" value={data.nama} onChange={e => setData('nama', e.target.value)} placeholder="Contoh: Gaji Pokok / PPh21" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
                                     {errors.nama && <p className="mt-1 text-sm text-red-600">{errors.nama}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Kode (stabil untuk logika)</label>
+                                    <input type="text" value={data.kode} onChange={e => setData('kode', e.target.value)} placeholder="Contoh: gaji_pokok, kehadiran_telat, kehadiran_alpa, tunjangan_kehadiran" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                                    <p className="text-xs text-gray-500 mt-1">Isi agar payroll tidak bergantung pada nama. Kosong = pakai pencocokan nama (legacy).</p>
+                                    {errors.kode && <p className="mt-1 text-sm text-red-600">{errors.kode}</p>}
                                 </div>
                                 
                                 <div>
@@ -105,6 +113,18 @@ export default function Komponen({ auth, komponens }) {
                                     <input type="number" step="0.01" value={data.nilai_default} onChange={e => setData('nilai_default', e.target.value)} placeholder="Contoh: 5000000 atau 5 untuk 5%" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
                                     <p className="text-xs text-gray-500 mt-1">Biarkan kosong jika nilai diatur spesifik per pegawai.</p>
                                     {errors.nilai_default && <p className="mt-1 text-sm text-red-600">{errors.nilai_default}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Unit (khusus Honor Jam Mengajar)</label>
+                                    <select value={data.unit_sekolah_id} onChange={e => setData('unit_sekolah_id', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                        <option value="">Semua Unit</option>
+                                        {units && units.map(u => (
+                                            <option key={u.id} value={u.id}>{u.nama}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">Isi bila komponen hanya berlaku untuk unit tertentu (mis. Honor Mengajar unit TK).</p>
+                                    {errors.unit_sekolah_id && <p className="mt-1 text-sm text-red-600">{errors.unit_sekolah_id}</p>}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -173,7 +193,11 @@ export default function Komponen({ auth, komponens }) {
                                             <tr key={k.id} className="hover:bg-gray-50 group">
                                                 <td className="px-6 py-4">
                                                     <div className="text-sm font-bold text-gray-900">{k.nama}</div>
-                                                    {k.is_taxable == 1 && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800 mt-1">Taxable</span>}
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                        {k.kode && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-700">{k.kode}</span>}
+                                                        {k.unit_sekolah_id && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">Unit</span>}
+                                                        {k.is_taxable == 1 && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800">Taxable</span>}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${k.tipe === 'pendapatan' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>

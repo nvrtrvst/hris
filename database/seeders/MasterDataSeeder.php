@@ -2,7 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Jabatan;
+use App\Models\UnitSekolah;
 use Illuminate\Database\Seeder;
 
 class MasterDataSeeder extends Seeder
@@ -21,7 +22,7 @@ class MasterDataSeeder extends Seeder
         ];
 
         foreach ($units as $unit) {
-            \App\Models\UnitSekolah::firstOrCreate(['nama' => $unit['nama']], $unit);
+            UnitSekolah::firstOrCreate(['nama' => $unit['nama']], $unit);
         }
 
         $jabatans = [
@@ -35,7 +36,7 @@ class MasterDataSeeder extends Seeder
         ];
 
         foreach ($jabatans as $jabatan) {
-            \App\Models\Jabatan::firstOrCreate(['nama' => $jabatan['nama']], $jabatan);
+            Jabatan::firstOrCreate(['nama' => $jabatan['nama']], $jabatan);
         }
     }
 }

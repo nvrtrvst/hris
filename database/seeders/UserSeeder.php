@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\User;
 use App\Models\UnitSekolah;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
@@ -12,7 +12,7 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Superadmin
-        User::firstOrCreate(
+        $superadmin = User::firstOrCreate(
             ['email' => 'admin@yayasan.com'],
             [
                 'name' => 'Super Admin Yayasan',
@@ -20,19 +20,21 @@ class UserSeeder extends Seeder
                 'role' => 'superadmin',
             ]
         );
+        $superadmin->assignRole('superadmin');
 
         // Admin Unit (SMP as example)
         $smp = UnitSekolah::where('nama', 'SMP Yayasan')->first();
         if ($smp) {
-            User::firstOrCreate(
+            $adminUnit = User::firstOrCreate(
                 ['email' => 'admin_smp@yayasan.com'],
                 [
                     'name' => 'Admin SMP Yayasan',
                     'password' => Hash::make('password'),
                     'role' => 'admin_unit',
-                    'unit_sekolah_id' => $smp->id
+                    'unit_sekolah_id' => $smp->id,
                 ]
             );
+            $adminUnit->assignRole('admin_unit');
         }
     }
 }

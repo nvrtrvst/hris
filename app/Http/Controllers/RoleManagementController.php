@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RoleManagementController extends Controller
 {
@@ -25,7 +25,7 @@ class RoleManagementController extends Controller
 
         return Inertia::render('Roles/Index', [
             'roles' => $roles,
-            'filters' => $request->only(['search'])
+            'filters' => $request->only(['search']),
         ]);
     }
 
@@ -34,14 +34,14 @@ class RoleManagementController extends Controller
      */
     public function create()
     {
-        $allPermissions = Permission::all()->groupBy(function($perm) {
+        $allPermissions = Permission::all()->groupBy(function ($perm) {
             return explode('_', $perm->name)[1] ?? 'lainnya';
         });
 
         return Inertia::render('Roles/Form', [
             'role' => null,
             'rolePermissions' => [],
-            'allPermissions' => $allPermissions
+            'allPermissions' => $allPermissions,
         ]);
     }
 
@@ -53,7 +53,7 @@ class RoleManagementController extends Controller
         $request->validate([
             'name' => 'required|string|unique:roles,name|max:255',
             'permissions' => 'nullable|array',
-            'permissions.*' => 'exists:permissions,name'
+            'permissions.*' => 'exists:permissions,name',
         ]);
 
         $role = Role::create(['name' => strtolower($request->name)]);
@@ -70,14 +70,14 @@ class RoleManagementController extends Controller
      */
     public function edit(Role $role)
     {
-        $allPermissions = Permission::all()->groupBy(function($perm) {
+        $allPermissions = Permission::all()->groupBy(function ($perm) {
             return explode('_', $perm->name)[1] ?? 'lainnya';
         });
 
         return Inertia::render('Roles/Form', [
             'role' => $role,
             'rolePermissions' => $role->permissions->pluck('name'),
-            'allPermissions' => $allPermissions
+            'allPermissions' => $allPermissions,
         ]);
     }
 
@@ -91,9 +91,9 @@ class RoleManagementController extends Controller
         }
 
         $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
+            'name' => 'required|string|max:255|unique:roles,name,'.$role->id,
             'permissions' => 'nullable|array',
-            'permissions.*' => 'exists:permissions,name'
+            'permissions.*' => 'exists:permissions,name',
         ]);
 
         $role->update(['name' => strtolower($request->name)]);

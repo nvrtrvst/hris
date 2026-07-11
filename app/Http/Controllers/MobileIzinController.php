@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Storage;
+use App\Services\ImageUploadService;
 use App\Traits\ResolvesPegawai;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class MobileIzinController extends Controller
 {
@@ -17,48 +16,54 @@ class MobileIzinController extends Controller
     public function index()
     {
         $pegawai = $this->getPegawai();
-        if (!$pegawai) abort(403, 'Akses ditolak.');
+        if (! $pegawai) {
+            abort(403, 'Akses ditolak.');
+        }
 
         $pengajuan = PengajuanIzin::where('pegawai_id', $pegawai->id)
             ->orderBy('created_at', 'desc')
             ->get();
 
         return Inertia::render('Mobile/Izin/Index', [
-            'pengajuan' => $pengajuan
+            'pengajuan' => $pengajuan,
         ]);
     }
 
     public function create()
     {
         $pegawai = $this->getPegawai();
-        if (!$pegawai) abort(403, 'Akses ditolak.');
+        if (! $pegawai) {
+            abort(403, 'Akses ditolak.');
+        }
 
         return Inertia::render('Mobile/Izin/Create', [
-            'pegawai' => $pegawai
+            'pegawai' => $pegawai,
         ]);
     }
 
     public function store(Request $request)
     {
         $pegawai = $this->getPegawai();
-        if (!$pegawai) abort(403, 'Akses ditolak.');
+        if (! $pegawai) {
+            abort(403, 'Akses ditolak.');
+        }
 
         $request->validate([
             'jenis_izin' => 'required|in:sakit,izin,cuti',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'alasan' => 'required|string',
-            'bukti_foto' => 'nullable|string'
+            'bukti_foto' => ['nullable', 'string', 'regex:/^data:image\/\w+;base64,/'],
         ]);
 
-        if ($request->jenis_izin === 'sakit' && !$request->bukti_foto) {
+        if ($request->jenis_izin === 'sakit' && ! $request->bukti_foto) {
             return back()->withErrors(['bukti_foto' => 'Surat keterangan dokter / bukti foto wajib dilampirkan untuk pengajuan Sakit.']);
         }
 
         if ($request->jenis_izin === 'cuti') {
-            $requestedDays = \Carbon\Carbon::parse($request->tanggal_mulai)->diffInDays(\Carbon\Carbon::parse($request->tanggal_selesai)) + 1;
+            $requestedDays = Carbon::parse($request->tanggal_mulai)->diffInDays(Carbon::parse($request->tanggal_selesai)) + 1;
             if ($requestedDays > $pegawai->sisa_cuti) {
-                return back()->withErrors(['alasan' => 'Sisa cuti Anda tidak mencukupi. Anda mengajukan ' . $requestedDays . ' hari, sedangkan sisa cuti: ' . $pegawai->sisa_cuti . ' hari.']);
+                return back()->withErrors(['alasan' => 'Sisa cuti Anda tidak mencukupi. Anda mengajukan '.$requestedDays.' hari, sedangkan sisa cuti: '.$pegawai->sisa_cuti.' hari.']);
             }
         }
 
@@ -68,16 +73,11 @@ class MobileIzinController extends Controller
             'tanggal_mulai' => $request->tanggal_mulai,
             'tanggal_selesai' => $request->tanggal_selesai,
             'alasan' => $request->alasan,
-            'status' => 'pending'
+            'status' => 'pending',
         ]);
 
         if ($request->bukti_foto) {
-            $image = $request->bukti_foto;
-            $image = str_replace('data:image/jpeg;base64,', '', $image);
-            $image = str_replace('data:image/png;base64,', '', $image);
-            $image = str_replace(' ', '+', $image);
-            $imageName = 'izin/'.\Illuminate\Support\Str::uuid().'.jpg';
-            Storage::disk('public')->put($imageName, base64_decode($image));
+            $imageName = app(ImageUploadService::class)->storeBase64($request->bukti_foto, 'izin');
             $pengajuan->bukti_foto = '/storage/'.$imageName;
         }
 

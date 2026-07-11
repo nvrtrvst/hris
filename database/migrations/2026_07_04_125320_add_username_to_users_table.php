@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Pegawai;
+use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -17,9 +19,9 @@ return new class extends Migration
 
         // Set default username for existing users
         // For Pegawai, use NIP or NIK. For others, use email.
-        $users = \App\Models\User::all();
+        $users = User::all();
         foreach ($users as $user) {
-            $pegawai = \App\Models\Pegawai::where('user_id', $user->id)->first();
+            $pegawai = Pegawai::where('user_id', $user->id)->first();
             if ($pegawai) {
                 $user->username = $pegawai->nip ?: $pegawai->nik;
             } else {

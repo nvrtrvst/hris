@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Jadwal;
+use App\Models\Kelas;
+use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\UnitSekolah;
 use Illuminate\Http\Request;
@@ -16,10 +18,10 @@ class JadwalController extends Controller
         $isAdmin = $user && $user->can('view_jadwal');
         $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'kelas:id,nama', 'mataPelajaran:id,nama']);
 
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $query->where('unit_sekolah_id', $user->unit_sekolah_id);
-        } elseif (!$isAdmin) {
-            $pegawai = \App\Models\Pegawai::where('user_id', auth()->id())->first();
+        } elseif (! $isAdmin) {
+            $pegawai = Pegawai::where('user_id', auth()->id())->first();
             if ($pegawai) {
                 $query->where('pegawai_id', $pegawai->id);
             } else {
@@ -36,24 +38,24 @@ class JadwalController extends Controller
         $pegawaiQuery = Pegawai::with(['units:id,singkatan'])
             ->select(['id', 'nama_lengkap'])
             ->where('status_aktif', 'aktif');
-        
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
-            $pegawaiQuery->whereHas('units', function($q) use ($user) {
+
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $pegawaiQuery->whereHas('units', function ($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
             });
         } elseif ($request->filled('unit_sekolah_id')) {
-            $pegawaiQuery->whereHas('units', function($q) use ($request) {
+            $pegawaiQuery->whereHas('units', function ($q) use ($request) {
                 $q->where('unit_sekolah.id', $request->unit_sekolah_id);
             });
         }
-        
+
         $pegawais = $pegawaiQuery->orderBy('nama_lengkap')->get();
 
         return inertia('Jadwal/Index', [
             'jadwals' => $jadwals,
             'pegawais' => $pegawais,
             'units' => $units,
-            'filters' => $request->only(['unit_sekolah_id'])
+            'filters' => $request->only(['unit_sekolah_id']),
         ]);
     }
 
@@ -61,8 +63,8 @@ class JadwalController extends Controller
     {
         $pegawais = Pegawai::where('status_aktif', 'aktif')->get(['id', 'nama_lengkap']);
         $units = UnitSekolah::all(['id', 'nama', 'singkatan']);
-        $kelas = \App\Models\Kelas::all(['id', 'nama', 'tingkat', 'unit_sekolah_id']);
-        $mapel = \App\Models\MataPelajaran::all(['id', 'nama']);
+        $kelas = Kelas::all(['id', 'nama', 'tingkat', 'unit_sekolah_id']);
+        $mapel = MataPelajaran::all(['id', 'nama']);
 
         return inertia('Jadwal/Create', [
             'pegawais' => $pegawais,
@@ -76,9 +78,11 @@ class JadwalController extends Controller
     {
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_jadwal');
-        if (!$isAdmin) abort(403);
+        if (! $isAdmin) {
+            abort(403);
+        }
 
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
         }
 
@@ -102,7 +106,7 @@ class JadwalController extends Controller
                 ->where('hari', $validated['hari'])
                 ->where(function ($query) use ($validated) {
                     $query->where('jam_mulai', '<', $validated['jam_selesai'])
-                          ->where('jam_selesai', '>', $validated['jam_mulai']);
+                        ->where('jam_selesai', '>', $validated['jam_mulai']);
                 })
                 ->lockForUpdate()
                 ->with('unitSekolah:id,nama')
@@ -110,7 +114,7 @@ class JadwalController extends Controller
 
             if ($conflict) {
                 return back()->withErrors([
-                    'conflict' => "Terdeteksi bentrok jadwal! Pegawai ini sudah memiliki jadwal {$conflict->jenis_jadwal} di unit {$conflict->unitSekolah->nama} pada pukul " . substr($conflict->jam_mulai, 0, 5) . " - " . substr($conflict->jam_selesai, 0, 5)
+                    'conflict' => "Terdeteksi bentrok jadwal! Pegawai ini sudah memiliki jadwal {$conflict->jenis_jadwal} di unit {$conflict->unitSekolah->nama} pada pukul ".substr($conflict->jam_mulai, 0, 5).' - '.substr($conflict->jam_selesai, 0, 5),
                 ])->withInput();
             }
 
@@ -124,7 +128,9 @@ class JadwalController extends Controller
     {
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_jadwal');
-        if (!$isAdmin) abort(403);
+        if (! $isAdmin) {
+            abort(403);
+        }
 
         $request->validate([
             'tahun_ajaran' => 'required|string|max:10',
@@ -135,14 +141,14 @@ class JadwalController extends Controller
         ]);
 
         $unitId = $request->unit_sekolah_id;
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $unitId = $user->unit_sekolah_id;
         }
 
         // Get pegawais to generate for
         $pegawaiQuery = Pegawai::where('status_aktif', 'aktif');
         if ($unitId) {
-            $pegawaiQuery->whereHas('units', function($q) use ($unitId) {
+            $pegawaiQuery->whereHas('units', function ($q) use ($unitId) {
                 $q->where('unit_sekolah.id', $unitId);
             });
         }
@@ -157,20 +163,20 @@ class JadwalController extends Controller
 
         // Filter timeBlocks based on input
         if ($request->waktu_mulai) {
-            $timeBlocks = array_filter($timeBlocks, fn($b) => $b[0] >= $request->waktu_mulai);
+            $timeBlocks = array_filter($timeBlocks, fn ($b) => $b[0] >= $request->waktu_mulai);
         }
         if ($request->waktu_selesai) {
-            $timeBlocks = array_filter($timeBlocks, fn($b) => $b[1] <= $request->waktu_selesai);
+            $timeBlocks = array_filter($timeBlocks, fn ($b) => $b[1] <= $request->waktu_selesai);
         }
-        
+
         $timeBlocks = array_values($timeBlocks);
-        
+
         if (empty($timeBlocks)) {
             return back()->withErrors(['waktu' => 'Tidak ada blok waktu yang tersedia dalam rentang waktu yang dipilih.']);
         }
 
-        $kelas = \App\Models\Kelas::first();
-        $mapel = \App\Models\MataPelajaran::first();
+        $kelas = Kelas::first();
+        $mapel = MataPelajaran::first();
 
         // [FIX] Bungkus dalam transaction untuk mencegah data partial
         $generatedCount = DB::transaction(function () use ($pegawais, $days, $timeBlocks, $kelas, $mapel, $unitId, $request) {
@@ -178,22 +184,22 @@ class JadwalController extends Controller
 
             foreach ($pegawais as $pegawai) {
                 $empUnitId = $unitId ?? ($pegawai->units->first()->id ?? 1);
-                
+
                 // Generate 2 random shifts for this teacher
                 $assignedDays = (array) array_rand(array_flip($days), 2);
-                
+
                 foreach ($assignedDays as $day) {
                     $time = $timeBlocks[array_rand($timeBlocks)];
-                    
+
                     // Cek bentrok dengan lock
                     $conflict = Jadwal::where('pegawai_id', $pegawai->id)
                         ->where('hari', $day)
                         ->where(function ($query) use ($time) {
                             $query->where('jam_mulai', '<', $time[1])
-                                  ->where('jam_selesai', '>', $time[0]);
+                                ->where('jam_selesai', '>', $time[0]);
                         })->lockForUpdate()->exists();
 
-                    if (!$conflict) {
+                    if (! $conflict) {
                         Jadwal::create([
                             'pegawai_id' => $pegawai->id,
                             'unit_sekolah_id' => $empUnitId,
@@ -221,7 +227,9 @@ class JadwalController extends Controller
     {
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_jadwal');
-        if (!$isAdmin) abort(403);
+        if (! $isAdmin) {
+            abort(403);
+        }
 
         $request->validate([
             'jadwal_asal_id' => 'required|exists:jadwal,id',
@@ -234,7 +242,7 @@ class JadwalController extends Controller
             $jadwalTujuan = Jadwal::lockForUpdate()->findOrFail($request->jadwal_tujuan_id);
 
             // Security check for admin_unit
-            if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
+            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 if ($jadwalAsal->unit_sekolah_id !== $user->unit_sekolah_id || $jadwalTujuan->unit_sekolah_id !== $user->unit_sekolah_id) {
                     abort(403, 'Akses ditolak. Tidak bisa menukar lintas unit tanpa akses Superadmin.');
                 }
@@ -246,7 +254,7 @@ class JadwalController extends Controller
                 ->where('id', '!=', $jadwalAsal->id)
                 ->where(function ($query) use ($jadwalTujuan) {
                     $query->where('jam_mulai', '<', $jadwalTujuan->jam_selesai)
-                          ->where('jam_selesai', '>', $jadwalTujuan->jam_mulai);
+                        ->where('jam_selesai', '>', $jadwalTujuan->jam_mulai);
                 })->exists();
 
             if ($conflictAsal) {
@@ -259,7 +267,7 @@ class JadwalController extends Controller
                 ->where('id', '!=', $jadwalTujuan->id)
                 ->where(function ($query) use ($jadwalAsal) {
                     $query->where('jam_mulai', '<', $jadwalAsal->jam_selesai)
-                          ->where('jam_selesai', '>', $jadwalAsal->jam_mulai);
+                        ->where('jam_selesai', '>', $jadwalAsal->jam_mulai);
                 })->exists();
 
             if ($conflictTujuan) {
@@ -279,11 +287,13 @@ class JadwalController extends Controller
     {
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_jadwal');
-        if (!$isAdmin) abort(403);
+        if (! $isAdmin) {
+            abort(403);
+        }
 
         $jadwal = Jadwal::findOrFail($id);
-        
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && $jadwal->unit_sekolah_id !== $user->unit_sekolah_id) {
+
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && $jadwal->unit_sekolah_id !== $user->unit_sekolah_id) {
             abort(403, 'Akses ditolak.');
         }
 

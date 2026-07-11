@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Observers\PegawaiObserver;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[ObservedBy([PegawaiObserver::class])]
 class Pegawai extends Model
@@ -83,29 +83,29 @@ class Pegawai extends Model
     public function units(): BelongsToMany
     {
         return $this->belongsToMany(UnitSekolah::class, 'pegawai_unit')
-                    ->withPivot(['jabatan_id', 'is_primary'])
-                    ->withTimestamps();
+            ->withPivot(['jabatan_id', 'is_primary'])
+            ->withTimestamps();
     }
 
     public function jabatans(): BelongsToMany
     {
         return $this->belongsToMany(Jabatan::class, 'pegawai_unit')
-                    ->withPivot('unit_sekolah_id', 'is_primary')
-                    ->withTimestamps();
+            ->withPivot('unit_sekolah_id', 'is_primary')
+            ->withTimestamps();
     }
 
     public function komponenGaji(): BelongsToMany
     {
         return $this->belongsToMany(KomponenGaji::class, 'pegawai_komponen_gaji')
-                    ->withPivot('nominal')
-                    ->withTimestamps();
+            ->withPivot('nominal')
+            ->withTimestamps();
     }
 
     public function mapels(): BelongsToMany
     {
         return $this->belongsToMany(MataPelajaran::class, 'pegawai_mapel')
-                    ->withPivot('unit_sekolah_id')
-                    ->withTimestamps();
+            ->withPivot('unit_sekolah_id')
+            ->withTimestamps();
     }
 
     public function dokumen(): HasMany
@@ -125,24 +125,48 @@ class Pegawai extends Model
 
     public function getCutiTerpakaiAttribute()
     {
-        return $this->pengajuanIzins()
+        $year = (int) date('Y');
+        $collection = $this->relationLoaded('pengajuanIzins')
+            ? $this->pengajuanIzins
+            : $this->pengajuanIzins()->get();
+
+        return $collection
             ->where('jenis_izin', 'cuti')
             ->where('status', 'disetujui')
-            ->whereYear('tanggal_mulai', date('Y'))
-            ->get()
+            ->filter(function ($izin) use ($year) {
+                return Carbon::parse($izin->tanggal_mulai)->year === $year;
+            })
             ->sum(function ($izin) {
-                return \Carbon\Carbon::parse($izin->tanggal_mulai)->diffInDays(\Carbon\Carbon::parse($izin->tanggal_selesai)) + 1;
+                return Carbon::parse($izin->tanggal_mulai)->diffInDays(Carbon::parse($izin->tanggal_selesai)) + 1;
             });
     }
 
     public function getSisaCutiAttribute()
     {
         $jatah = $this->jatah_cuti_tahunan ?? 12;
+
         return max(0, $jatah - $this->cuti_terpakai);
     }
 
     public function jadwals(): HasMany
     {
         return $this->hasMany(Jadwal::class, 'pegawai_id', 'id');
+    }
+
+    /**
+     * Scope: batasi ke pegawai yang termasuk unit tertentu.
+     * Pegawai TIDAK punya kolom unit_sekolah_id — relasi via pegawai_unit.
+     */
+    public function scopeForUnit($query, $unitId)
+    {
+        return $query->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitId));
+    }
+
+    /**
+     * Cek apakah pegawai termasuk unit tertentu.
+     */
+    public function belongsToUnit($unitId): bool
+    {
+        return $this->units()->where('unit_sekolah.id', $unitId)->exists();
     }
 }

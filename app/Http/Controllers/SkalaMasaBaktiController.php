@@ -10,6 +10,7 @@ class SkalaMasaBaktiController extends Controller
     public function index()
     {
         $skalas = SkalaMasaBakti::orderBy('masa_kerja_tahun', 'asc')->get();
+
         return inertia('Payroll/SkalaMasaBakti', ['skalas' => $skalas]);
     }
 
@@ -21,12 +22,14 @@ class SkalaMasaBaktiController extends Controller
         ]);
 
         SkalaMasaBakti::create($validated);
+
         return redirect()->back()->with('message', 'Skala masa bakti berhasil ditambah.');
     }
 
     public function destroy($id)
     {
         SkalaMasaBakti::destroy($id);
+
         return redirect()->back()->with('message', 'Skala masa bakti dihapus.');
     }
 }

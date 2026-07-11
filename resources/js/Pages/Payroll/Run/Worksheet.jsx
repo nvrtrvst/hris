@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import axios from 'axios';
+import { formatRupiah } from '@/Utils/format';
 
 export default function RunPayrollWorksheet({ auth, month, year, periode }) {
     const [data, setData] = useState([]);
@@ -22,9 +23,6 @@ export default function RunPayrollWorksheet({ auth, month, year, periode }) {
     }, [month, year]);
 
     // Format Rupiah
-    const formatRp = (angka) => {
-        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
-    };
 
     // Add Ad-Hoc Column (One-Time Component)
     const addAdHoc = (tipe) => {
@@ -171,7 +169,7 @@ export default function RunPayrollWorksheet({ auth, month, year, periode }) {
                                                     }
                                                 })}
                                                 <td className={`sticky right-0 z-10 px-3 py-2 whitespace-nowrap text-right font-black text-indigo-900 text-[11px] border-l border-indigo-200 shadow-[-1px_0_0_0_#c7d2fe] ${pIdx % 2 !== 0 ? 'bg-indigo-100/40' : 'bg-indigo-50'} group-hover:bg-indigo-100`}>
-                                                    {formatRp(p.gaji_bersih)}
+                                                    {formatRupiah(p.gaji_bersih)}
                                                 </td>
                                             </tr>
                                         ))}

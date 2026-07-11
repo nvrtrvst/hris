@@ -4,19 +4,23 @@ namespace App\Exports;
 
 use App\Models\Penggajian;
 use App\Models\UnitSekolah;
+use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithEvents;
-use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Events\AfterSheet;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class LaporanPenggajianExport implements FromCollection, WithHeadings, WithMapping, WithEvents, WithCustomStartCell, ShouldAutoSize
+class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     protected $start_date;
+
     protected $end_date;
+
     protected $unit_id;
 
     public function __construct($start_date, $end_date, $unit_id = null)
@@ -32,7 +36,7 @@ class LaporanPenggajianExport implements FromCollection, WithHeadings, WithMappi
             ->whereBetween('tanggal_generate', [$this->start_date, $this->end_date]);
 
         if ($this->unit_id) {
-            $query->whereHas('pegawai.units', function($q) {
+            $query->whereHas('pegawai.units', function ($q) {
                 $q->where('unit_sekolah.id', $this->unit_id);
             });
         }
@@ -55,7 +59,7 @@ class LaporanPenggajianExport implements FromCollection, WithHeadings, WithMappi
             $penggajian->total_pendapatan,
             $penggajian->total_potongan,
             $penggajian->gaji_bersih,
-            ucfirst($penggajian->status)
+            ucfirst($penggajian->status),
         ];
     }
 
@@ -69,7 +73,7 @@ class LaporanPenggajianExport implements FromCollection, WithHeadings, WithMappi
             'Total Pendapatan (Rp)',
             'Total Potongan (Rp)',
             'Take Home Pay (Rp)',
-            'Status'
+            'Status',
         ];
     }
 
@@ -81,40 +85,40 @@ class LaporanPenggajianExport implements FromCollection, WithHeadings, WithMappi
     public function registerEvents(): array
     {
         return [
-            AfterSheet::class => function(AfterSheet $event) {
+            AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                
+
                 $namaUnit = 'Semua Unit Sekolah';
                 if ($this->unit_id) {
                     $unit = UnitSekolah::find($this->unit_id);
                     $namaUnit = $unit ? $unit->nama : 'Semua Unit Sekolah';
                 }
 
-                $periodeStr = Carbon::parse($this->start_date)->format('d/m/Y') . ' s/d ' . Carbon::parse($this->end_date)->format('d/m/Y');
+                $periodeStr = Carbon::parse($this->start_date)->format('d/m/Y').' s/d '.Carbon::parse($this->end_date)->format('d/m/Y');
 
                 // Kop Yayasan
                 $sheet->mergeCells('A1:H1');
                 $sheet->setCellValue('A1', 'YAYASAN PENDIDIKAN');
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
-                $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells('A2:H2');
                 $sheet->setCellValue('A2', 'LAPORAN REKAPITULASI PENGGAJIAN PEGAWAI');
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
-                $sheet->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells('A3:H3');
-                $sheet->setCellValue('A3', 'Periode: ' . $periodeStr . ' | Unit: ' . $namaUnit);
+                $sheet->setCellValue('A3', 'Periode: '.$periodeStr.' | Unit: '.$namaUnit);
                 $sheet->getStyle('A3')->getFont()->setItalic(true);
-                $sheet->getStyle('A3')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 // Styling for Headings
                 $sheet->getStyle('A6:H6')->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
                     'fill' => [
-                        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                        'startColor' => ['argb' => 'FF1C5D5E'] // Secondary color
-                    ]
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => ['argb' => 'FF1C5D5E'], // Secondary color
+                    ],
                 ]);
 
                 // Format Columns as Currency

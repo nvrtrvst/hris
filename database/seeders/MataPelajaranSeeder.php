@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\MataPelajaran;
+use Illuminate\Database\Seeder;
 
 class MataPelajaranSeeder extends Seeder
 {
@@ -19,7 +19,7 @@ class MataPelajaranSeeder extends Seeder
             'Pendidikan Kewarganegaraan',
             'Pendidikan Jasmani dan Rohani',
             'Seni Budaya',
-            'Teknologi Informasi dan Komunikasi'
+            'Teknologi Informasi dan Komunikasi',
         ];
 
         foreach ($mapels as $mapel) {

@@ -23,13 +23,13 @@ class PegawaiObserver
             'status_kepegawaian',
             'status_aktif',
             'atasan_langsung_id',
-            'tanggal_akhir_kontrak'
+            'tanggal_akhir_kontrak',
         ];
 
         foreach ($trackedFields as $field) {
             if ($pegawai->isDirty($field)) {
                 $pegawai->riwayat()->create([
-                    'jenis_perubahan' => 'perubahan_' . $field,
+                    'jenis_perubahan' => 'perubahan_'.$field,
                     'nilai_lama' => $pegawai->getOriginal($field),
                     'nilai_baru' => $pegawai->getAttribute($field),
                     'changed_by' => auth()->id(),

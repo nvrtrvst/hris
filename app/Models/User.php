@@ -16,8 +16,11 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
 
+    // Guard Spatie HARUS cocok dengan guard_name di tabel permissions & roles.
+    // Permissions di-seed dengan guard 'web', bukan 'web_admin'/'web_mobile'.
+    // Sesuaikan agar $user->can('...') bisa resolve permission dengan benar.
     protected $guard_name = 'web';
 
     /**

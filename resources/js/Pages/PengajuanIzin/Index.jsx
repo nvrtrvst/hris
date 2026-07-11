@@ -4,6 +4,7 @@ import { Head, useForm, usePage, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
+import Pagination from '@/Components/Pagination';
 import { Search, Filter, CheckCircle, XCircle, Clock, Info, User, FileText, Calendar, AlertCircle } from 'lucide-react';
 
 export default function Index({ auth, pengajuans, filters }) {
@@ -245,21 +246,13 @@ export default function Index({ auth, pengajuans, filters }) {
                         {/* Pagination Component if needed */}
                         {pengajuans.links && pengajuans.data.length > 0 && (
                             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                                {/* Pagination UI omitted for brevity, fallback to simple Prev/Next if required */}
                                 <div className="text-sm text-gray-500">
                                     Menampilkan {pengajuans.from} hingga {pengajuans.to} dari {pengajuans.total} entri
                                 </div>
-                                <div className="flex space-x-1">
-                                    {pengajuans.links.map((link, idx) => (
-                                        <button 
-                                            key={idx} 
-                                            onClick={() => link.url && router.get(link.url, { search, status: statusFilter, tanggal: dateFilter }, { preserveState: true })}
-                                            className={`px-3 py-1 rounded-md text-sm ${link.active ? 'bg-indigo-600 text-white font-bold' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'} ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                            disabled={!link.url}
-                                        />
-                                    ))}
-                                </div>
+                                <Pagination
+                                    links={pengajuans.links}
+                                    data={{ search, status: statusFilter, tanggal: dateFilter }}
+                                />
                             </div>
                         )}
                     </div>

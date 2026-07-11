@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * [FIX] Menambahkan composite index untuk optimasi query conflict detection 
+     * [FIX] Menambahkan composite index untuk optimasi query conflict detection
      * dan filter jadwal per pegawai + hari.
      */
     public function up(): void

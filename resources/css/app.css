@@ -9,3 +9,6 @@
 .animate-fade-in-up {
     animation: fadeInUp 0.4s ease-out forwards;
 }
+.pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+}

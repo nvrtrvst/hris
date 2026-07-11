@@ -2,16 +2,16 @@
 
 namespace App\Imports;
 
+use App\Models\Jabatan;
 use App\Models\Pegawai;
 use App\Models\User;
-use App\Models\Jabatan;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Maatwebsite\Excel\Concerns\ToCollection;
 use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Concerns\ToCollection;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
-use Carbon\Carbon;
 
 class PegawaiImport implements ToCollection
 {
@@ -24,7 +24,9 @@ class PegawaiImport implements ToCollection
 
     private function parseDate($value)
     {
-        if (empty($value)) return null;
+        if (empty($value)) {
+            return null;
+        }
         if (is_numeric($value)) {
             return Date::excelToDateTimeObject($value)->format('Y-m-d');
         }
@@ -44,6 +46,7 @@ class PegawaiImport implements ToCollection
         $data = $rows->map(function ($row) {
             $row[4] = $this->parseDate($row[4]); // Tanggal Lahir
             $row[11] = $this->parseDate($row[11]); // Tanggal Mulai Kerja
+
             return $row;
         })->toArray();
 
@@ -75,14 +78,14 @@ class PegawaiImport implements ToCollection
 
         // Validate that the jabatan exists
         $jabatanNames = collect($data)->pluck(13)->unique()->toArray();
-        $jabatans = Jabatan::whereIn('nama', $jabatanNames)->get()->keyBy(function($item) {
+        $jabatans = Jabatan::whereIn('nama', $jabatanNames)->get()->keyBy(function ($item) {
             return strtolower($item->nama);
         });
 
         foreach ($data as $index => $row) {
             $namaJabatan = strtolower(trim($row[13]));
-            if (!$jabatans->has($namaJabatan)) {
-                $validator->errors()->add($index . '.13', "Jabatan '{$row[13]}' tidak ditemukan dalam sistem pada baris " . ($index + 2));
+            if (! $jabatans->has($namaJabatan)) {
+                $validator->errors()->add($index.'.13', "Jabatan '{$row[13]}' tidak ditemukan dalam sistem pada baris ".($index + 2));
             }
         }
 
@@ -94,11 +97,12 @@ class PegawaiImport implements ToCollection
         foreach ($data as $row) {
             $user = User::create([
                 'name' => $row[2],
-                'email' => $row[0] . '@yayasan.com', // email berbasis NIK pasti unik
+                'email' => $row[0].'@yayasan.com', // email berbasis NIK pasti unik
                 'password' => Hash::make($row[0]), // password default is NIK
-                'role' => 'staff',
+                'role' => 'pegawai',
                 'unit_sekolah_id' => $this->unitSekolahId,
             ]);
+            $user->assignRole('pegawai');
 
             $pegawai = Pegawai::create([
                 'user_id' => $user->id,

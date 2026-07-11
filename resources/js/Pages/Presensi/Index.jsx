@@ -1,5 +1,6 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import Pagination from '@/Components/Pagination';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 
 export default function Index({ auth, presensis, pegawai, filters, units, userRole }) {
@@ -145,6 +146,11 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                                     <td className="px-6 py-4 whitespace-nowrap text-right">
                                                         <div className="text-sm text-gray-900">{presensi.jarak_masuk_meter ? `${presensi.jarak_masuk_meter}m` : '-'} (Masuk)</div>
                                                         <div className="text-sm text-gray-500">{presensi.jarak_keluar_meter ? `${presensi.jarak_keluar_meter}m` : '-'} (Keluar)</div>
+                                                        {presensi.lokasi_perlu_review && (
+                                                            <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">
+                                                                ⚠ Lokasi curiga
+                                                            </span>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))
@@ -162,18 +168,9 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                 </table>
                             </div>
 
-                            {presensis.links && presensis.links.length > 3 && (
-                                <div className="mt-8 flex justify-end">
-                                    <div className="flex space-x-1">
-                                        {presensis.links.map((link, index) => (
-                                            <Link
-                                                key={index}
-                                                href={link.url || '#'}
-                                                className={`px-4 py-2 border rounded-md text-sm font-medium transition-colors ${link.active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'} ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        ))}
-                                    </div>
+                            {presensis.links && (
+                                <div className="mt-8">
+                                    <Pagination links={presensis.links} />
                                 </div>
                             )}
 

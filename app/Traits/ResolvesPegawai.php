@@ -18,8 +18,6 @@ trait ResolvesPegawai
      * Mendapatkan data Pegawai dari user yang sedang login.
      * Di production: abort(403) jika user tidak terhubung dengan pegawai.
      * Di local/testing: fallback ke pegawai yang punya jadwal hari ini untuk simulasi.
-     *
-     * @return Pegawai
      */
     private function getPegawai(): Pegawai
     {
@@ -29,7 +27,7 @@ trait ResolvesPegawai
         }
 
         // Di production, user tanpa data pegawai tidak boleh mengakses mobile.
-        if (!app()->environment('local', 'testing')) {
+        if (! app()->environment('local', 'testing')) {
             abort(403, 'Akses ditolak. Akun Anda tidak terhubung dengan data pegawai.');
         }
 
@@ -37,7 +35,7 @@ trait ResolvesPegawai
         $hariMap = [
             'Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa',
             'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat',
-            'Saturday' => 'Sabtu'
+            'Saturday' => 'Sabtu',
         ];
         $hariIniIndo = $hariMap[Carbon::now()->format('l')];
 

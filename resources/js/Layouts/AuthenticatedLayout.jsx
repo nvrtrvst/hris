@@ -26,7 +26,11 @@ export default function AuthenticatedLayout({ user, header, children }) {
 
     const { auth } = usePage().props;
     const permissions = auth.permissions || [];
-    const role = user?.role || 'pegawai';
+    const role = auth.roles?.includes('superadmin')
+        ? 'superadmin'
+        : auth.roles?.includes('admin_unit')
+            ? 'admin_unit'
+            : 'pegawai';
 
     // Groups of menus
     const menuGroups = [];

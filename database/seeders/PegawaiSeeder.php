@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\Pegawai;
-use App\Models\User;
 use App\Models\Jabatan;
 use App\Models\MataPelajaran;
+use App\Models\Pegawai;
 use App\Models\UnitSekolah;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class PegawaiSeeder extends Seeder
@@ -24,10 +24,11 @@ class PegawaiSeeder extends Seeder
                 [
                     'name' => 'Budi Santoso',
                     'password' => Hash::make('password'),
-                    'role' => 'staff',
-                    'unit_sekolah_id' => $smpUnit->id
+                    'role' => 'pegawai',
+                    'unit_sekolah_id' => $smpUnit->id,
                 ]
             );
+            $user->assignRole('pegawai');
 
             $pegawai = Pegawai::firstOrCreate(
                 ['nik' => '1234567890123456'],
@@ -51,12 +52,12 @@ class PegawaiSeeder extends Seeder
             );
 
             // Attach to Unit and Jabatan
-            if (!$pegawai->units()->where('unit_sekolah.id', $smpUnit->id)->exists()) {
+            if (! $pegawai->units()->where('unit_sekolah.id', $smpUnit->id)->exists()) {
                 $pegawai->units()->attach($smpUnit->id, ['jabatan_id' => $guruJabatan->id, 'is_primary' => true]);
             }
 
             // Attach Mapel
-            if (!$pegawai->mapels()->where('mata_pelajaran.id', $mapelMtk->id)->exists()) {
+            if (! $pegawai->mapels()->where('mata_pelajaran.id', $mapelMtk->id)->exists()) {
                 $pegawai->mapels()->attach($mapelMtk->id, ['unit_sekolah_id' => $smpUnit->id]);
             }
         }

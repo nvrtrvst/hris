@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -11,6 +12,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Kolom team (unit_sekolah_id) pada tabel Spatie permission hanya ada
+        // saat fitur Teams aktif (MySQL). Pada sqlite kolom/index tsb tidak ada.
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         Schema::table('roles', function (Blueprint $table) {
             $table->dropIndex('roles_team_foreign_key_index');
             $table->dropColumn('unit_sekolah_id');
@@ -39,8 +46,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('permission_tables', function (Blueprint $table) {
-            //
-        });
+        //
     }
 };

@@ -31,7 +31,7 @@ export default function MobileLogin({ status }) {
 
             {status && <div className="mb-4 text-sm font-medium text-emerald-600 text-center">{status}</div>}
 
-            <form onSubmit={submit} className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100">
+            <form onSubmit={submit} autoComplete="off" className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100">
                 <div className="mb-5">
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Email / No Induk Guru (NIP)</label>
                     <TextInput
@@ -41,7 +41,7 @@ export default function MobileLogin({ status }) {
                         value={data.login}
                         className="w-full bg-gray-50 border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl"
                         placeholder="nama@yayasan.com atau 1980..."
-                        autoComplete="username"
+                        autoComplete="off"
                         isFocused={true}
                         onChange={(e) => setData('login', e.target.value)}
                     />
@@ -57,7 +57,7 @@ export default function MobileLogin({ status }) {
                         value={data.password}
                         className="w-full bg-gray-50 border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl"
                         placeholder="••••••••"
-                        autoComplete="current-password"
+                        autoComplete="new-password"
                         onChange={(e) => setData('password', e.target.value)}
                     />
                     <InputError message={errors.password} className="mt-2" />

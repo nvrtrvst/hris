@@ -10,9 +10,11 @@ class KomponenGaji extends Model
 
     protected $fillable = [
         'nama',
+        'kode',
         'tipe',
         'jenis',
         'nilai_default',
+        'unit_sekolah_id',
         'is_taxable',
         'is_active',
         'urutan',
@@ -22,7 +24,12 @@ class KomponenGaji extends Model
     public function pegawais()
     {
         return $this->belongsToMany(Pegawai::class, 'pegawai_komponen_gaji')
-                    ->withPivot('nominal')
-                    ->withTimestamps();
+            ->withPivot('nominal')
+            ->withTimestamps();
+    }
+
+    public function unitSekolah()
+    {
+        return $this->belongsTo(UnitSekolah::class);
     }
 }

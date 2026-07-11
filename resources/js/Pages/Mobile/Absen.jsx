@@ -8,6 +8,10 @@ export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni })
         tipe: 'masuk',
         latitude: '',
         longitude: '',
+        accuracy: null,
+        speed: null,
+        captured_at: '',
+        mock_suspect: false,
         foto: ''
     });
 
@@ -41,26 +45,79 @@ export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni })
     }, [data.jadwal_id, allowedTipe, isCompleted]);
 
     useEffect(() => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    setData(d => ({ ...d, latitude: lat, longitude: lng }));
-                    // Ubah "Lokasi ditemukan" menjadi nampilin latitude longitude
-                    setLocationStatus(`Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`);
-                    startCamera();
-                },
-                (error) => {
-                    setLocationStatus('Gagal mendapatkan lokasi GPS.');
-                },
-                { enableHighAccuracy: true }
-            );
-        } else {
+        if (!navigator.geolocation) {
             setLocationStatus('Browser Anda tidak mendukung Geolocation.');
+            return;
         }
 
-        return () => stopCamera();
+        setLocationStatus('Mencari lokasi GPS...');
+        const samples = [];
+
+        const finalize = () => {
+            const avgLat = samples.reduce((s, x) => s + x.lat, 0) / samples.length;
+            const avgLng = samples.reduce((s, x) => s + x.lng, 0) / samples.length;
+            const last = samples[samples.length - 1];
+            const accuracy = last.accuracy;
+            const speed = last.speed;
+
+            // [ANTISPOOF] Mock GPS sering menghasilkan koordinat persis sama di tiap sampel.
+            const variance = samples.reduce((s, x) => s + Math.abs(x.lat - avgLat) + Math.abs(x.lng - avgLng), 0);
+            const mockSuspect = variance < 1e-7;
+
+                setData(d => ({
+                    ...d,
+                    latitude: avgLat,
+                    longitude: avgLng,
+                    accuracy: accuracy ?? null,
+                    speed: speed ?? null,
+                    captured_at: new Date().toISOString(),
+                    mock_suspect: mockSuspect,
+                }));
+
+            setLocationStatus(
+                `Lat: ${avgLat.toFixed(5)}, Lng: ${avgLng.toFixed(5)} | Akurasi: ${accuracy ? accuracy.toFixed(0) + 'm' : '?'}` +
+                (mockSuspect ? ' (curiga mock GPS)' : '')
+            );
+            startCamera();
+        };
+
+        const watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+                samples.push({
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy,
+                    speed: pos.coords.speed,
+                });
+                if (samples.length >= 3) {
+                    navigator.geolocation.clearWatch(watchId);
+                    finalize();
+                }
+            },
+            () => {
+                navigator.geolocation.clearWatch(watchId);
+                if (samples.length > 0) {
+                    finalize();
+                } else {
+                    setLocationStatus('Gagal mendapatkan lokasi GPS.');
+                }
+            },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+        );
+
+        // Fallback: pakai apa yang ada setelah 4 detik
+        const fallback = setTimeout(() => {
+            if (samples.length > 0) {
+                navigator.geolocation.clearWatch(watchId);
+                finalize();
+            }
+        }, 4000);
+
+        return () => {
+            clearTimeout(fallback);
+            navigator.geolocation.clearWatch(watchId);
+            stopCamera();
+        };
     }, []);
 
     const startCamera = async () => {
@@ -171,6 +228,11 @@ export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni })
                 {errors.conflict && (
                     <div className="bg-orange-50 text-orange-700 p-4 rounded-xl border border-orange-200 text-sm font-medium">
                         <span className="flex items-center"><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> {errors.conflict}</span>
+                    </div>
+                )}
+                {data.mock_suspect && (
+                    <div className="bg-amber-50 text-amber-800 p-4 rounded-xl border border-amber-200 text-sm font-medium">
+                        <span className="flex items-center"><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg> Lokasi terdeteksi mencurigakan (kemungkinan mock GPS). Presensi akan direview admin.</span>
                     </div>
                 )}
 

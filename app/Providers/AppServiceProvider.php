@@ -2,10 +2,10 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\Facades\Vite;
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,7 +28,7 @@ class AppServiceProvider extends ServiceProvider
         ResetPassword::toMailUsing(function (object $notifiable, string $token) {
             return (new MailMessage)
                 ->subject('Pemberitahuan Pemulihan Kata Sandi - Yayasan Nuurul Muttaqiin')
-                ->greeting('Yth. ' . $notifiable->name . ',')
+                ->greeting('Yth. '.$notifiable->name.',')
                 ->line('Kami menerima permohonan untuk melakukan pemulihan kata sandi pada akun portal HRIS Anda yang terdaftar di sistem Yayasan Nuurul Muttaqiin.')
                 ->line('Demi keamanan data Anda, silakan klik tombol di bawah ini untuk mengatur ulang kata sandi Anda:')
                 ->action('Atur Ulang Kata Sandi', url(route('password.reset', [

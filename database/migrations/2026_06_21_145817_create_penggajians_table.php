@@ -22,7 +22,7 @@ return new class extends Migration
             $table->enum('status', ['draft', 'finalized', 'paid'])->default('draft');
             $table->text('keterangan')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['pegawai_id', 'periode_bulan']);
         });
     }

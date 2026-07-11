@@ -19,7 +19,7 @@ class PegawaiKomponenExport implements FromCollection, WithHeadings, WithMapping
     public function collection()
     {
         return Pegawai::where('status_aktif', 'aktif')
-            ->with(['komponenGaji' => function($q) {
+            ->with(['komponenGaji' => function ($q) {
                 $q->where('komponen_gaji_id', $this->komponenId);
             }])->get();
     }
@@ -40,7 +40,7 @@ class PegawaiKomponenExport implements FromCollection, WithHeadings, WithMapping
 
         return [
             // Tambahkan petik satu agar NIK dibaca sebagai teks (tidak diubah jadi scientific E+ oleh Excel)
-            "'" . $pegawai->nik, 
+            "'".$pegawai->nik,
             $pegawai->nama_lengkap,
             $nominal,
         ];

@@ -94,18 +94,6 @@ export default function MobileLayout({ user, header, children }) {
                 </Link>
             </div>
 
-            <style dangerouslySetInnerHTML={{__html: `
-                @keyframes fadeInUp {
-                    from { opacity: 0; transform: translateY(15px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .animate-fade-in-up {
-                    animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-                }
-                .pb-safe {
-                    padding-bottom: env(safe-area-inset-bottom);
-                }
-            `}} />
             <FlashToast />
         </div>
     );

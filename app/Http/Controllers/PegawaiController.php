@@ -2,38 +2,54 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\PegawaiTemplateExport;
+use App\Imports\PegawaiImport;
+use App\Models\Jabatan;
+use App\Models\KomponenGaji;
+use App\Models\MataPelajaran;
+use App\Models\Pegawai;
+use App\Models\UnitSekolah;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PegawaiController extends Controller
 {
     public function downloadTemplate()
     {
-        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\PegawaiTemplateExport, 'template_pegawai.xlsx');
+        return Excel::download(new PegawaiTemplateExport, 'template_pegawai.xlsx');
     }
 
     public function import(Request $request)
     {
         $user = auth()->user();
         $rules = [
-            'file' => 'required|mimes:xlsx,xls,csv|max:5120'
+            'file' => 'required|mimes:xlsx,xls,csv|max:5120',
         ];
-        
-        if ($user && $user->role !== 'admin_unit') {
+
+        if ($user && ! $user->can('view_all_units')) {
             $rules['unit_sekolah_id'] = 'required|exists:unit_sekolah,id';
         }
 
         $request->validate($rules);
-        $unitId = ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) ? $user->unit_sekolah_id : $request->unit_sekolah_id;
+        $unitId = ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) ? $user->unit_sekolah_id : $request->unit_sekolah_id;
 
         try {
-            \Illuminate\Support\Facades\DB::transaction(function() use ($request, $unitId) {
-                \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\PegawaiImport($unitId), $request->file('file'));
+            DB::transaction(function () use ($request, $unitId) {
+                Excel::import(new PegawaiImport($unitId), $request->file('file'));
             });
+
             return back()->with('message', 'Data pegawai berhasil diimport.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->with('error', 'Gagal import, periksa kembali file Anda. Terjadi kesalahan validasi baris.');
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Import error: ' . $e->getMessage());
+            Log::error('Import error: '.$e->getMessage());
+
             return back()->with('error', 'Terjadi kesalahan sistem. Silakan coba lagi nanti atau hubungi administrator.');
         }
     }
@@ -43,67 +59,67 @@ class PegawaiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = \App\Models\Pegawai::with(['units', 'jabatans', 'mapels']);
+        $query = Pegawai::with(['units', 'jabatans', 'mapels', 'pengajuanIzins']);
 
         $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
-            $query->whereHas('units', function($q) use ($user) {
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $query->whereHas('units', function ($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
             });
         } elseif ($request->filled('unit_sekolah_id')) {
-            $query->whereHas('units', function($q) use ($request) {
+            $query->whereHas('units', function ($q) use ($request) {
                 $q->where('unit_sekolah.id', $request->unit_sekolah_id);
             });
         }
 
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
-                $q->where('nama_lengkap', 'like', '%' . $request->search . '%')
-                  ->orWhere('nik', 'like', '%' . $request->search . '%');
+            $query->where(function ($q) use ($request) {
+                $q->where('nama_lengkap', 'like', '%'.$request->search.'%')
+                    ->orWhere('nik', 'like', '%'.$request->search.'%');
             });
         }
 
         if ($request->filled('mata_pelajaran_id')) {
-            $query->whereHas('mapels', function($q) use ($request) {
+            $query->whereHas('mapels', function ($q) use ($request) {
                 $q->where('mata_pelajaran.id', $request->mata_pelajaran_id);
             });
         }
 
         $pegawais = $query->paginate(10)->withQueryString();
 
-        $unitSekolahs = \App\Models\UnitSekolah::all();
-        $mataPelajarans = \App\Models\MataPelajaran::all();
+        $unitSekolahs = UnitSekolah::all();
+        $mataPelajarans = MataPelajaran::all();
 
         return inertia('Pegawai/Index', [
             'pegawais' => $pegawais,
             'filters' => $request->only(['search', 'unit_sekolah_id', 'mata_pelajaran_id']),
-            'userRole' => $user->role,
+            'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'userUnitId' => $user->unit_sekolah_id,
             'unitSekolahs' => $unitSekolahs,
-            'mataPelajarans' => $mataPelajarans
+            'mataPelajarans' => $mataPelajarans,
         ]);
     }
 
     public function create()
     {
         $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
-            $unitSekolahs = \App\Models\UnitSekolah::where('id', $user->unit_sekolah_id)->get();
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $unitSekolahs = UnitSekolah::where('id', $user->unit_sekolah_id)->get();
         } else {
-            $unitSekolahs = \App\Models\UnitSekolah::all();
+            $unitSekolahs = UnitSekolah::all();
         }
-        $jabatans = \App\Models\Jabatan::all();
+        $jabatans = Jabatan::all();
 
         return inertia('Pegawai/Create', [
             'unitSekolahs' => $unitSekolahs,
-            'jabatans' => $jabatans
+            'jabatans' => $jabatans,
         ]);
     }
 
     public function store(Request $request)
     {
         $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
         }
 
@@ -129,11 +145,11 @@ class PegawaiController extends Controller
             'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $user = \App\Models\User::create([
+        $user = User::create([
             'name' => $request->nama_lengkap,
             'email' => $request->email,
             'username' => $request->nip ?: $request->nik,
-            'password' => \Illuminate\Support\Facades\Hash::make($request->password ?: $request->nik),
+            'password' => Hash::make($request->password ?: $request->nik),
         ]);
 
         $pegawaiData = collect($validated)->except(['email', 'password', 'foto'])->toArray();
@@ -141,10 +157,10 @@ class PegawaiController extends Controller
 
         if ($request->hasFile('foto')) {
             $path = $request->file('foto')->store('pegawai_fotos', 'public');
-            $pegawaiData['foto'] = '/storage/' . $path;
+            $pegawaiData['foto'] = '/storage/'.$path;
         }
 
-        $pegawai = \App\Models\Pegawai::create($pegawaiData);
+        $pegawai = Pegawai::create($pegawaiData);
         $pegawai->units()->attach($request->unit_sekolah_id, ['jabatan_id' => $request->jabatan_id, 'is_primary' => true]);
 
         return redirect()->route('pegawai.index')->with('message', 'Data Pegawai berhasil ditambahkan.');
@@ -152,53 +168,53 @@ class PegawaiController extends Controller
 
     public function show(string $id)
     {
-        $pegawai = \App\Models\Pegawai::with(['units', 'jabatans', 'dokumen', 'riwayat', 'atasanLangsung'])->findOrFail($id);
-        
+        $pegawai = Pegawai::with(['units', 'jabatans', 'dokumen', 'riwayat', 'atasanLangsung'])->findOrFail($id);
+
         $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
-        
+
         return inertia('Pegawai/Show', [
-            'pegawai' => $pegawai
+            'pegawai' => $pegawai,
         ]);
     }
 
     public function edit(string $id)
     {
-        $pegawai = \App\Models\Pegawai::with('units')->findOrFail($id);
-        
+        $pegawai = Pegawai::with('units')->findOrFail($id);
+
         $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
 
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
-            $unitSekolahs = \App\Models\UnitSekolah::where('id', $user->unit_sekolah_id)->get();
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $unitSekolahs = UnitSekolah::where('id', $user->unit_sekolah_id)->get();
         } else {
-            $unitSekolahs = \App\Models\UnitSekolah::all();
+            $unitSekolahs = UnitSekolah::all();
         }
-        $jabatans = \App\Models\Jabatan::all();
+        $jabatans = Jabatan::all();
 
         return inertia('Pegawai/Edit', [
             'pegawai' => $pegawai,
             'unitSekolahs' => $unitSekolahs,
-            'jabatans' => $jabatans
+            'jabatans' => $jabatans,
         ]);
     }
 
     public function update(Request $request, string $id)
     {
-        $pegawai = \App\Models\Pegawai::findOrFail($id);
+        $pegawai = Pegawai::findOrFail($id);
 
         $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
 
         $validated = $request->validate([
-            'nik' => 'required|string|size:16|unique:pegawai,nik,' . $pegawai->id,
-            'nip' => 'nullable|string|max:50|unique:pegawai,nip,' . $pegawai->id,
+            'nik' => 'required|string|size:16|unique:pegawai,nik,'.$pegawai->id,
+            'nip' => 'nullable|string|max:50|unique:pegawai,nip,'.$pegawai->id,
             'nama_lengkap' => 'required|string|max:255',
             'tempat_lahir' => 'required|string|max:255',
             'tanggal_lahir' => 'required|date',
@@ -219,16 +235,16 @@ class PegawaiController extends Controller
 
         if ($request->hasFile('foto')) {
             if ($pegawai->foto) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete(str_replace('/storage/', '', $pegawai->foto));
+                Storage::disk('public')->delete(str_replace('/storage/', '', $pegawai->foto));
             }
             $path = $request->file('foto')->store('pegawai_fotos', 'public');
-            $dataToUpdate['foto'] = '/storage/' . $path;
+            $dataToUpdate['foto'] = '/storage/'.$path;
         }
 
         $pegawai->update($dataToUpdate);
 
         if ($pegawai->user_id) {
-            $userAcc = \App\Models\User::find($pegawai->user_id);
+            $userAcc = User::find($pegawai->user_id);
             if ($userAcc) {
                 $userAcc->update([
                     'name' => $pegawai->nama_lengkap,
@@ -242,22 +258,22 @@ class PegawaiController extends Controller
 
     public function destroy(Request $request, string $id)
     {
-        $pegawai = \App\Models\Pegawai::findOrFail($id);
+        $pegawai = Pegawai::findOrFail($id);
 
         $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
-        
+
         $request->validate([
-            'alasan_nonaktif' => 'required|string|max:255'
+            'alasan_nonaktif' => 'required|string|max:255',
         ]);
 
         $pegawai->update([
             'status_aktif' => 'nonaktif',
-            'alasan_nonaktif' => $request->alasan_nonaktif
+            'alasan_nonaktif' => $request->alasan_nonaktif,
         ]);
-        
+
         $pegawai->delete();
 
         return redirect()->route('pegawai.index')->with('message', 'Data Pegawai berhasil dinonaktifkan.');
@@ -268,18 +284,18 @@ class PegawaiController extends Controller
      */
     public function keuangan($id)
     {
-        $pegawai = \App\Models\Pegawai::with('komponenGaji')->findOrFail($id);
-        
+        $pegawai = Pegawai::with('komponenGaji')->findOrFail($id);
+
         $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
 
-        $komponens = \App\Models\KomponenGaji::where('is_active', true)->get();
+        $komponens = KomponenGaji::where('is_active', true)->get();
 
         return inertia('Pegawai/Keuangan', [
             'pegawai' => $pegawai,
-            'komponens' => $komponens
+            'komponens' => $komponens,
         ]);
     }
 
@@ -288,15 +304,15 @@ class PegawaiController extends Controller
      */
     public function updateKeuangan(Request $request, $id)
     {
-        $pegawai = \App\Models\Pegawai::findOrFail($id);
-        
+        $pegawai = Pegawai::findOrFail($id);
+
         $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && !$pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
 
         $request->validate([
-            'komponens' => 'nullable|array'
+            'komponens' => 'nullable|array',
         ]);
 
         $syncData = [];

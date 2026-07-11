@@ -2,16 +2,16 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use App\Models\Pegawai;
-use App\Models\UnitSekolah;
 use App\Models\Jabatan;
 use App\Models\KomponenGaji;
+use App\Models\Pegawai;
 use App\Models\Presensi;
-use Illuminate\Support\Facades\Hash;
+use App\Models\UnitSekolah;
+use App\Models\User;
 use Carbon\Carbon;
 use Faker\Factory as Faker;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DummyDataSeeder extends Seeder
 {
@@ -77,16 +77,18 @@ class DummyDataSeeder extends Seeder
             // Assign Unit & Jabatan
             $pegawai->jabatans()->attach($jabatans->random()->id, [
                 'unit_sekolah_id' => $units->random()->id,
-                'is_primary' => true
+                'is_primary' => true,
             ]);
 
             // Create Presensi (Last 5 days)
             for ($d = 0; $d <= 4; $d++) {
                 $date = Carbon::today()->subDays($d);
-                if ($date->isWeekend()) continue;
+                if ($date->isWeekend()) {
+                    continue;
+                }
 
                 $status = $faker->randomElement(['hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'telat', 'alpa']);
-                
+
                 if ($status !== 'alpa') {
                     Presensi::create([
                         'pegawai_id' => $pegawai->id,

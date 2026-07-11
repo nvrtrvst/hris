@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Presensi;
 use App\Models\Jadwal;
-use App\Models\UnitSekolah;
 use App\Models\Pegawai;
-use Illuminate\Http\Request;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Storage;
+use App\Models\Presensi;
+use App\Models\UnitSekolah;
+use App\Services\ImageUploadService;
 use App\Traits\CalculatesDistance;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PresensiController extends Controller
 {
@@ -21,11 +23,11 @@ class PresensiController extends Controller
         $isAdmin = $user && $user->can('view_presensi');
         $query = Presensi::with(['unitSekolah', 'pegawai', 'jadwal']);
 
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
-            $query->whereHas('pegawai', function($q) use ($user) {
-                $q->where('unit_sekolah_id', $user->unit_sekolah_id);
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $query->whereHas('pegawai', function ($q) use ($user) {
+                $q->forUnit($user->unit_sekolah_id);
             });
-        } elseif (!$isAdmin) {
+        } elseif (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
             if ($pegawai) {
                 $query->where('pegawai_id', $pegawai->id);
@@ -42,13 +44,13 @@ class PresensiController extends Controller
         }
 
         if ($request->unit_id && $user->can('view_all_units')) {
-            $query->whereHas('pegawai', function($q) use ($request) {
+            $query->whereHas('pegawai', function ($q) use ($request) {
                 $q->where('unit_sekolah_id', $request->unit_id);
             });
         }
 
         $presensis = $query->orderBy('tanggal', 'desc')->paginate(10);
-        $presensis->appends($request->all());
+        $presensis->appends($request->only(['start_date', 'end_date', 'unit_id']));
 
         $units = [];
         if ($user->can('view_all_units')) {
@@ -60,14 +62,16 @@ class PresensiController extends Controller
             'pegawai' => $isAdmin ? null : ($pegawai ?? null),
             'filters' => $request->only(['start_date', 'end_date', 'unit_id']),
             'units' => $units,
-            'userRole' => $user->role
+            'userRole' => $user->roles->first()?->name ?? 'pegawai',
         ]);
     }
 
     public function create()
     {
         $isAdmin = auth()->user() && auth()->user()->can('view_presensi');
-        if (!$isAdmin) abort(403, 'Akses ditolak. Presensi hanya bisa dilakukan via Mobile Portal.');
+        if (! $isAdmin) {
+            abort(403, 'Akses ditolak. Presensi hanya bisa dilakukan via Mobile Portal.');
+        }
 
         $pegawai = Pegawai::first(); // Mock user for simulation only
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
@@ -85,14 +89,16 @@ class PresensiController extends Controller
         return inertia('Presensi/Create', [
             'jadwals' => $jadwalHariIni,
             'presensis' => $presensiHariIni,
-            'pegawai' => $pegawai
+            'pegawai' => $pegawai,
         ]);
     }
 
     public function store(Request $request)
     {
         $isAdmin = auth()->user() && auth()->user()->can('view_presensi');
-        if (!$isAdmin) abort(403, 'Akses ditolak. Presensi hanya bisa dilakukan via Mobile Portal.');
+        if (! $isAdmin) {
+            abort(403, 'Akses ditolak. Presensi hanya bisa dilakukan via Mobile Portal.');
+        }
 
         $request->validate([
             'pegawai_id' => 'required|exists:pegawai,id',
@@ -100,7 +106,7 @@ class PresensiController extends Controller
             'tipe' => 'required|in:masuk,keluar',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'foto' => 'required|string', // base64 image
+            'foto' => ['required', 'string', 'regex:/^data:image\/\w+;base64,/'],
         ]);
 
         $jadwal = Jadwal::with('unitSekolah')->findOrFail($request->jadwal_id);
@@ -108,31 +114,23 @@ class PresensiController extends Controller
 
         // Validasi Geofencing
         $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);
-        
+
         if ($distance > $unit->radius_meter) {
             return back()->withErrors(['geofence' => "Anda berada di luar jangkauan Unit Sekolah. Jarak Anda: {$distance} meter (Batas: {$unit->radius_meter}m)"]);
         }
 
-        // Simpan Foto
+        // Simpan Foto (UUID, hindari path traversal via nama pegawai)
         $pegawai = Pegawai::findOrFail($request->pegawai_id);
-        $safeName = strtolower(preg_replace('/\s+/', '', $pegawai->nama_lengkap));
-        $dateStr = Carbon::now()->format('Ymd');
-        $tipeStr = $request->tipe; // 'masuk' atau 'keluar'
+        $imageName = app(ImageUploadService::class)->storeBase64($request->foto, 'presensi');
 
-        $image = $request->foto;
-        $image = str_replace('data:image/jpeg;base64,', '', $image);
-        $image = str_replace(' ', '+', $image);
-        $imageName = "presensi/{$safeName}_{$dateStr}_{$tipeStr}.jpg";
-        Storage::disk('public')->put($imageName, base64_decode($image));
-
-        \Illuminate\Support\Facades\DB::transaction(function() use ($request, $unit, $distance, $imageName) {
+        DB::transaction(function () use ($request, $unit, $distance, $imageName) {
             $presensi = Presensi::where('pegawai_id', $request->pegawai_id)
                 ->where('jadwal_id', $request->jadwal_id)
                 ->where('tanggal', Carbon::today())
                 ->lockForUpdate()
                 ->first();
 
-            if (!$presensi) {
+            if (! $presensi) {
                 $presensi = new Presensi([
                     'pegawai_id' => $request->pegawai_id,
                     'jadwal_id' => $request->jadwal_id,
@@ -141,19 +139,19 @@ class PresensiController extends Controller
             }
 
             $presensi->unit_sekolah_id = $unit->id;
-            
+
             $jadwal = Jadwal::find($request->jadwal_id);
 
             if ($request->tipe === 'masuk') {
                 if ($presensi->jam_masuk) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen masuk untuk jadwal ini.']);
+                    throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen masuk untuk jadwal ini.']);
                 }
                 $presensi->jam_masuk = Carbon::now()->format('H:i:s');
                 $presensi->latitude_masuk = $request->latitude;
                 $presensi->longitude_masuk = $request->longitude;
                 $presensi->foto_masuk = '/storage/'.$imageName;
                 $presensi->jarak_masuk_meter = $distance;
-                
+
                 // Tentukan status telat
                 if (Carbon::now()->format('H:i:s') > $jadwal->jam_mulai) {
                     $presensi->status = 'telat';
@@ -161,11 +159,11 @@ class PresensiController extends Controller
                     $presensi->status = 'hadir';
                 }
             } else {
-                if (!$presensi->exists || !$presensi->jam_masuk) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['conflict' => 'Anda belum absen masuk.']);
+                if (! $presensi->exists || ! $presensi->jam_masuk) {
+                    throw ValidationException::withMessages(['conflict' => 'Anda belum absen masuk.']);
                 }
                 if ($presensi->jam_keluar) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen keluar.']);
+                    throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen keluar.']);
                 }
                 $presensi->jam_keluar = Carbon::now()->format('H:i:s');
                 $presensi->latitude_keluar = $request->latitude;
@@ -184,11 +182,13 @@ class PresensiController extends Controller
     {
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_presensi');
-        if (!$isAdmin) abort(403);
+        if (! $isAdmin) {
+            abort(403);
+        }
 
         $presensi = Presensi::with('pegawai')->findOrFail($id);
-        
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units') && $presensi->pegawai->unit_sekolah_id !== $user->unit_sekolah_id) {
+
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -198,6 +198,6 @@ class PresensiController extends Controller
 
         $presensi->update(['status' => $request->status]);
 
-        return redirect()->back()->with('message', 'Status presensi berhasil diubah menjadi ' . strtoupper($request->status));
+        return redirect()->back()->with('message', 'Status presensi berhasil diubah menjadi '.strtoupper($request->status));
     }
 }

@@ -45,7 +45,7 @@ class PegawaiTemplateExport implements FromArray, WithHeadings
                 '2020-01-01',
                 'S1 Pendidikan',
                 'Guru',
-            ]
+            ],
         ];
     }
 }

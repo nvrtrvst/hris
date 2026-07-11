@@ -27,11 +27,11 @@ class PegawaiKomponenImport implements ToCollection, WithHeadingRow
                 if ($nominal !== null && $nominal !== '') {
                     // Hapus format mata uang jika ada (misal: "Rp 500.000" -> 500000)
                     $nominal = preg_replace('/[^0-9]/', '', $nominal);
-                    
+
                     $pegawai = Pegawai::where('nik', $nik)->first();
                     if ($pegawai) {
                         $pegawai->komponenGaji()->syncWithoutDetaching([
-                            $this->komponenId => ['nominal' => $nominal]
+                            $this->komponenId => ['nominal' => $nominal],
                         ]);
                     }
                 } else {

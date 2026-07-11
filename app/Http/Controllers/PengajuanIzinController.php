@@ -4,33 +4,34 @@ namespace App\Http\Controllers;
 
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class PengajuanIzinController extends Controller
 {
     public function index(Request $request)
     {
         $user = auth()->user();
-        if (!$user || !$user->can('view_izin')) {
+        if (! $user || ! $user->can('view_izin')) {
             abort(403, 'Akses ditolak.');
         }
 
         $query = PengajuanIzin::with('pegawai');
 
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
-            $query->whereHas('pegawai', function($q) use ($user) {
-                $q->where('unit_sekolah_id', $user->unit_sekolah_id);
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $query->whereHas('pegawai', function ($q) use ($user) {
+                $q->forUnit($user->unit_sekolah_id);
             });
         }
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('pegawai', function($q) use ($search) {
+            $query->whereHas('pegawai', function ($q) use ($search) {
                 $q->where('nama_lengkap', 'like', "%{$search}%")
-                  ->orWhere('nik', 'like', "%{$search}%");
+                    ->orWhere('nik', 'like', "%{$search}%");
             });
         }
 
@@ -40,53 +41,52 @@ class PengajuanIzinController extends Controller
 
         if ($request->filled('tanggal')) {
             $query->whereDate('tanggal_mulai', '<=', $request->tanggal)
-                  ->whereDate('tanggal_selesai', '>=', $request->tanggal);
+                ->whereDate('tanggal_selesai', '>=', $request->tanggal);
         }
 
         $pengajuans = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
         return Inertia::render('PengajuanIzin/Index', [
             'pengajuans' => $pengajuans,
-            'filters' => $request->only(['search', 'status', 'tanggal'])
+            'filters' => $request->only(['search', 'status', 'tanggal']),
         ]);
     }
 
     public function approve($id)
     {
         $user = auth()->user();
-        if (!$user || !$user->can('view_izin')) {
+        if (! $user || ! $user->can('view_izin')) {
             abort(403, 'Akses ditolak.');
         }
 
-        $pengajuan = \Illuminate\Support\Facades\DB::transaction(function () use ($id, $user) {
+        $pengajuan = DB::transaction(function () use ($id, $user) {
             $pengajuan = PengajuanIzin::with('pegawai')->lockForUpdate()->findOrFail($id);
 
             // [FIX] IDOR: Pastikan admin_unit hanya bisa approve izin dari unitnya sendiri
-            if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
-                $pegawaiUnit = $pengajuan->pegawai->unit_sekolah_id ?? null;
-                if ($pegawaiUnit !== $user->unit_sekolah_id) {
+            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+                if (! $pengajuan->pegawai->belongsToUnit($user->unit_sekolah_id)) {
                     abort(403, 'Akses ditolak. Anda tidak berhak menyetujui izin pegawai dari unit lain.');
                 }
             }
 
             if ($pengajuan->status !== 'pending') {
-                throw \Illuminate\Validation\ValidationException::withMessages(['error' => 'Hanya pengajuan berstatus pending yang dapat disetujui.']);
+                throw ValidationException::withMessages(['error' => 'Hanya pengajuan berstatus pending yang dapat disetujui.']);
             }
 
             $pengajuan->update(['status' => 'disetujui']);
 
             // Generate Presensi
-            $period = \Carbon\CarbonPeriod::create($pengajuan->tanggal_mulai, $pengajuan->tanggal_selesai);
+            $period = CarbonPeriod::create($pengajuan->tanggal_mulai, $pengajuan->tanggal_selesai);
             foreach ($period as $date) {
                 // Skip weekend if needed (assuming Saturday & Sunday are off, adjust if necessary)
                 if ($date->isWeekend()) {
                     continue;
                 }
 
-                \App\Models\Presensi::updateOrCreate(
+                Presensi::updateOrCreate(
                     [
                         'pegawai_id' => $pengajuan->pegawai_id,
-                        'tanggal' => $date->format('Y-m-d')
+                        'tanggal' => $date->format('Y-m-d'),
                     ],
                     [
                         'status' => $pengajuan->jenis_izin, // sakit, izin, cuti
@@ -94,41 +94,41 @@ class PengajuanIzinController extends Controller
                     ]
                 );
             }
-            
+
             return $pengajuan;
         });
+
         return back()->with('message', 'Pengajuan berhasil disetujui dan data absensi telah di-generate.');
     }
 
     public function reject(Request $request, $id)
     {
         $user = auth()->user();
-        if (!$user || !$user->can('view_izin')) {
+        if (! $user || ! $user->can('view_izin')) {
             abort(403, 'Akses ditolak.');
         }
 
         $request->validate([
-            'alasan_penolakan' => 'required|string|max:255'
+            'alasan_penolakan' => 'required|string|max:255',
         ]);
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($id, $user, $request) {
+        DB::transaction(function () use ($id, $user, $request) {
             $pengajuan = PengajuanIzin::with('pegawai')->lockForUpdate()->findOrFail($id);
 
             // [FIX] IDOR: Pastikan admin_unit hanya bisa reject izin dari unitnya sendiri
-            if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
-                $pegawaiUnit = $pengajuan->pegawai->unit_sekolah_id ?? null;
-                if ($pegawaiUnit !== $user->unit_sekolah_id) {
+            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+                if (! $pengajuan->pegawai->belongsToUnit($user->unit_sekolah_id)) {
                     abort(403, 'Akses ditolak. Anda tidak berhak menolak izin pegawai dari unit lain.');
                 }
             }
-            
+
             if ($pengajuan->status !== 'pending') {
-                throw \Illuminate\Validation\ValidationException::withMessages(['error' => 'Hanya pengajuan berstatus pending yang dapat ditolak.']);
+                throw ValidationException::withMessages(['error' => 'Hanya pengajuan berstatus pending yang dapat ditolak.']);
             }
 
             $pengajuan->update([
                 'status' => 'ditolak',
-                'alasan_penolakan' => $request->alasan_penolakan
+                'alasan_penolakan' => $request->alasan_penolakan,
             ]);
         });
 

@@ -1,12 +1,10 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { formatRupiah } from '@/Utils/format';
+import { PAYROLL_STATUS } from '@/Constants';
 
 export default function Show({ auth, penggajian }) {
-    const formatRupiah = (angka) => {
-        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
-    };
-
     const pendapatan = penggajian.details.filter(d => d.tipe === 'pendapatan');
     const potongan = penggajian.details.filter(d => d.tipe === 'potongan');
 
@@ -28,6 +26,18 @@ export default function Show({ auth, penggajian }) {
                         <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium shadow-md hover:bg-indigo-700 print:hidden" onClick={() => window.print()}>
                             Cetak Slip
                         </button>
+                        {penggajian.status === PAYROLL_STATUS.FINALIZED && (
+                            <button
+                                className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium shadow-md hover:bg-green-700 print:hidden"
+                                onClick={() => {
+                                    if (confirm('Tandai slip gaji ini sudah DIBAYAR?')) {
+                                        router.post(route('penggajian.mark_paid', penggajian.id));
+                                    }
+                                }}
+                            >
+                                Tandai Dibayar
+                            </button>
+                        )}
                     </div>
 
                     <div className="bg-white overflow-hidden shadow-2xl sm:rounded-2xl border border-gray-100 print:shadow-none print:border-none p-10">
@@ -141,6 +151,7 @@ export default function Show({ auth, penggajian }) {
                             <div className="text-4xl font-extrabold tracking-tight mt-4 md:mt-0">
                                 {formatRupiah(penggajian.gaji_bersih)}
                             </div>
+                            <p className="text-xs text-indigo-300 italic mt-2">Total Kena Pajak: {formatRupiah(penggajian.total_taxable)}</p>
                         </div>
 
                         {/* Signatures */}

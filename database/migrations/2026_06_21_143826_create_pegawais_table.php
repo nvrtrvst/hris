@@ -28,23 +28,23 @@ return new class extends Migration
             $table->string('no_hp');
             $table->string('no_hp_darurat')->nullable();
             $table->string('email')->nullable();
-            
+
             $table->enum('status_kepegawaian', ['tetap', 'kontrak', 'honorer', 'gtt']);
             $table->date('tanggal_mulai_kerja');
             $table->date('tanggal_akhir_kontrak')->nullable();
             $table->foreignId('atasan_langsung_id')->nullable()->constrained('pegawai')->onDelete('set null');
             $table->enum('status_aktif', ['aktif', 'cuti', 'nonaktif', 'resign'])->default('aktif');
             $table->text('alasan_nonaktif')->nullable();
-            
+
             $table->string('pendidikan_terakhir');
             $table->string('nuptk')->nullable();
-            
+
             $table->text('no_rekening')->nullable(); // encrypted
             $table->text('nama_bank')->nullable(); // encrypted
             $table->text('npwp')->nullable(); // encrypted
             $table->text('no_bpjs_kesehatan')->nullable(); // encrypted
             $table->text('no_bpjs_ketenagakerjaan')->nullable(); // encrypted
-            
+
             $table->timestamps();
             $table->softDeletes();
         });

@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\UnitSekolah;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class UserManagementController extends Controller
 {
@@ -14,9 +18,9 @@ class UserManagementController extends Controller
         $query = User::with(['roles', 'permissions', 'unitSekolah']);
 
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -24,18 +28,18 @@ class UserManagementController extends Controller
 
         return Inertia::render('Users/Index', [
             'users' => $users,
-            'filters' => $request->only(['search'])
+            'filters' => $request->only(['search']),
         ]);
     }
 
     public function create()
     {
-        $allRoles = \Spatie\Permission\Models\Role::all();
-        $unitSekolah = \App\Models\UnitSekolah::all();
+        $allRoles = Role::all();
+        $unitSekolah = UnitSekolah::all();
 
         return Inertia::render('Users/Create', [
             'allRoles' => $allRoles,
-            'unitSekolah' => $unitSekolah
+            'unitSekolah' => $unitSekolah,
         ]);
     }
 
@@ -46,13 +50,17 @@ class UserManagementController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'role' => 'required|string|exists:roles,name',
-            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id'
+            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
         ]);
+
+        if ($request->role === 'superadmin' && ! $request->user()->can('view_all_units')) {
+            abort(403, 'Hanya Super Admin yang dapat menetapkan role superadmin.');
+        }
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => \Illuminate\Support\Facades\Hash::make($request->password),
+            'password' => Hash::make($request->password),
             'role' => $request->role,
             'unit_sekolah_id' => $request->unit_sekolah_id,
         ]);
@@ -65,13 +73,13 @@ class UserManagementController extends Controller
     public function edit(User $user)
     {
         $user->load(['roles', 'permissions', 'unitSekolah']);
-        $allPermissions = \Spatie\Permission\Models\Permission::all();
-        $allRoles = \Spatie\Permission\Models\Role::all();
+        $allPermissions = Permission::all();
+        $allRoles = Role::all();
 
         return Inertia::render('Users/Edit', [
             'userData' => $user, // Avoid conflict with auth.user
             'allPermissions' => $allPermissions,
-            'allRoles' => $allRoles
+            'allRoles' => $allRoles,
         ]);
     }
 
@@ -85,19 +93,28 @@ class UserManagementController extends Controller
         ]);
 
         if ($request->has('role') && $request->role) {
+            if ($request->user()->id === $user->id && $request->role !== $user->roles->first()?->name) {
+                abort(403, 'Anda tidak dapat mengubah role sendiri.');
+            }
+            if ($request->role === 'superadmin' && ! $request->user()->can('view_all_units')) {
+                abort(403, 'Hanya Super Admin yang dapat menetapkan role superadmin.');
+            }
             $user->syncRoles([$request->role]);
             $user->role = $request->role; // Keep the standard role column in sync for fallback
             $user->save();
         }
 
         if ($request->has('permissions')) {
+            if (! $request->user()->can('view_all_units')) {
+                abort(403, 'Hanya Super Admin yang dapat mengubah permission langsung.');
+            }
             $user->syncPermissions($request->permissions);
         } else {
             $user->syncPermissions([]); // Revoke all direct permissions if array is missing/empty
         }
 
         if ($request->filled('password')) {
-            $user->password = \Illuminate\Support\Facades\Hash::make($request->password);
+            $user->password = Hash::make($request->password);
             $user->save();
         }
 

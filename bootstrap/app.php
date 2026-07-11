@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\IsolatePortalSession;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -12,21 +15,30 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append([
+            IsolatePortalSession::class,
+        ]);
+
         $middleware->web(
             append: [
-                \App\Http\Middleware\HandleInertiaRequests::class,
-                \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+                HandleInertiaRequests::class,
+                AddLinkHeadersForPreloadedAssets::class,
             ]
         );
 
+        $middleware->validateCsrfTokens(except: [
+            'dev-login',
+        ]);
+
         $middleware->alias([
-            'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'isolate.portal' => IsolatePortalSession::class,
         ]);
 
         $middleware->redirectGuestsTo(function (Request $request) {
             if ($request->is('mobile') || $request->is('mobile/*')) {
                 return route('mobile.login');
             }
+
             return route('login');
         });
 
@@ -34,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('mobile') || $request->is('mobile/*')) {
                 return route('mobile.dashboard');
             }
+
             return route('dashboard');
         });
     })

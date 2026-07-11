@@ -15,6 +15,7 @@ class Penggajian extends Model
         'total_pendapatan',
         'total_potongan',
         'gaji_bersih',
+        'total_taxable',
         'status',
         'keterangan',
     ];

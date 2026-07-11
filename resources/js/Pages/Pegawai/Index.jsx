@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import Modal from '@/Components/Modal';
+import Pagination from '@/Components/Pagination';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 
 export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelajarans }) {
@@ -10,7 +12,7 @@ export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelaj
 
     const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
         file: null,
-        unit_sekolah_id: auth.user.role === 'admin_unit' ? auth.user.unit_sekolah_id : ''
+        unit_sekolah_id: auth.roles?.includes('admin_unit') ? auth.user.unit_sekolah_id : ''
     });
 
     const handleImportSubmit = (e) => {
@@ -86,7 +88,7 @@ export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelaj
                                             />
                                         </div>
                                     </div>
-                                    {auth.user.role !== 'admin_unit' && (
+                                    {auth.roles?.includes('admin_unit') === false && (
                                         <div className="md:col-span-1">
                                             <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">Unit Sekolah</label>
                                             <select
@@ -203,18 +205,8 @@ export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelaj
                             </div>
 
                             {pegawais.links && (
-                                <div className="mt-8 flex justify-end">
-                                    {/* Simplified Pagination for now */}
-                                    <div className="flex space-x-1">
-                                        {pegawais.links.map((link, index) => (
-                                            <Link
-                                                key={index}
-                                                href={link.url || '#'}
-                                                className={`px-4 py-2 border rounded-md text-sm font-medium transition-colors ${link.active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'} ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        ))}
-                                    </div>
+                                <div className="mt-8">
+                                    <Pagination links={pegawais.links} />
                                 </div>
                             )}
 
@@ -224,13 +216,8 @@ export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelaj
             </div>
 
             {/* Modal Import Excel */}
-            {showImportModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowImportModal(false)}></div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                            <form onSubmit={handleImportSubmit}>
+            <Modal show={showImportModal} onClose={() => setShowImportModal(false)} maxWidth="lg">
+                <form onSubmit={handleImportSubmit}>
                                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                                     <div className="sm:flex sm:items-start">
                                         <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 sm:mx-0 sm:h-10 sm:w-10">
@@ -243,7 +230,7 @@ export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelaj
                                                 Import Data Pegawai
                                             </h3>
                                             <div className="mt-4 space-y-4">
-                                                {auth.user.role !== 'admin_unit' && (
+                                                {auth.roles?.includes('admin_unit') === false && (
                                                     <div>
                                                         <label className="block text-sm font-medium text-gray-700">Pilih Unit Sekolah <span className="text-red-500">*</span></label>
                                                         <select
@@ -297,10 +284,7 @@ export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelaj
                                     </button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-                </div>
-            )}
+            </Modal>
 
         </AuthenticatedLayout>
     );

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import Modal from '@/Components/Modal';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 
     export default function Index({ auth, jadwals, pegawais, units, filters }) {
@@ -8,12 +9,24 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
         
         // Modal State
         const [showGenerateModal, setShowGenerateModal] = useState(false);
+        const [generating, setGenerating] = useState(false);
         const [genData, setGenData] = useState({
             tahun_ajaran: '2026/2027',
             semester: '1',
-            waktu_mulai: '',
-            waktu_selesai: '',
+            unit_sekolah_id: '',
+            waktu_mulai: '07:00',
+            waktu_selesai: '15:00',
         });
+
+        // Hitung jumlah pegawai per unit buat info di modal generate
+        const pegawaiCountByUnit = pegawais.reduce((acc, p) => {
+            const u = p.units?.[0]?.id || '0';
+            acc[u] = (acc[u] || 0) + 1;
+            return acc;
+        }, {});
+        const selectedUnitPegCount = genData.unit_sekolah_id
+            ? (pegawaiCountByUnit[genData.unit_sekolah_id] || 0)
+            : pegawais.length;
 
         // Swap Modal State
         const [showSwapModal, setShowSwapModal] = useState(false);
@@ -34,14 +47,15 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
         
         const handleGenerate = (e) => {
             e.preventDefault();
-            if(confirm('Mesin akan mengacak shift guru dan mengisi jadwal kosong. Lanjutkan?')) {
-                router.post(route('jadwal.generate'), {
-                    ...genData,
-                    unit_sekolah_id: unitFilter
-                }, {
-                    onSuccess: () => setShowGenerateModal(false)
-                });
-            }
+            setGenerating(true);
+            router.post(route('jadwal.generate'), genData, {
+                onSuccess: () => {
+                    setShowGenerateModal(false);
+                    setGenerating(false);
+                },
+                onError: () => setGenerating(false),
+                onFinish: () => setGenerating(false),
+            });
         };
 
         const handleSwap = (e) => {
@@ -50,15 +64,13 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                 alert('Pilih jadwal target terlebih dahulu!');
                 return;
             }
-            if(confirm('Tukar jadwal ini?')) {
-                router.post(route('jadwal.swap'), swapData, {
-                    onSuccess: () => {
-                        setShowSwapModal(false);
-                        setSwapData({jadwal_asal_id: '', jadwal_tujuan_id: ''});
-                        setTargetPegawaiId('');
-                    }
-                });
-            }
+            router.post(route('jadwal.swap'), swapData, {
+                onSuccess: () => {
+                    setShowSwapModal(false);
+                    setSwapData({jadwal_asal_id: '', jadwal_tujuan_id: ''});
+                    setTargetPegawaiId('');
+                }
+            });
         };
     
         const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -236,85 +248,129 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
             </div>
 
             {/* Generate Modal */}
-            {showGenerateModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-                        <div className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm" onClick={() => setShowGenerateModal(false)}></div>
-                        <div className="relative inline-block w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
-                            <h3 className="text-xl font-bold leading-6 text-gray-900">Generate Jadwal Otomatis</h3>
-                            <div className="mt-2 text-sm text-gray-500">
-                                Mesin akan mengacak dan menebar jadwal ke guru (Senin-Jumat) pada unit ini. Jadwal akan diisi 2 shift secara acak per orang tanpa bentrok.
-                            </div>
-                            <form onSubmit={handleGenerate} className="mt-4 space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Tahun Ajaran</label>
-                                    <input 
-                                        type="text" 
-                                        value={genData.tahun_ajaran} 
-                                        onChange={e => setGenData({...genData, tahun_ajaran: e.target.value})}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Semester</label>
-                                    <select 
-                                        value={genData.semester} 
-                                        onChange={e => setGenData({...genData, semester: e.target.value})}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
-                                    >
-                                        <option value="1">1 (Ganjil)</option>
-                                        <option value="2">2 (Genap)</option>
-                                    </select>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Batas Jam Mulai (Opsional)</label>
-                                        <input 
-                                            type="time" 
-                                            value={genData.waktu_mulai} 
-                                            onChange={e => setGenData({...genData, waktu_mulai: e.target.value})}
-                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
-                                            title="Kosongkan jika tidak dibatasi"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Batas Jam Selesai (Opsional)</label>
-                                        <input 
-                                            type="time" 
-                                            value={genData.waktu_selesai} 
-                                            onChange={e => setGenData({...genData, waktu_selesai: e.target.value})}
-                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
-                                            title="Kosongkan jika tidak dibatasi"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="mt-6 flex justify-end gap-3">
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setShowGenerateModal(false)}
-                                        className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                                    >
-                                        Batal
-                                    </button>
-                                    <button 
-                                        type="submit" 
-                                        className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md bg-accent hover:bg-yellow-500 text-primary font-bold"
-                                    >
-                                        Mulai Pahat!
-                                    </button>
-                                </div>
-                            </form>
+            <Modal show={showGenerateModal} onClose={() => setShowGenerateModal(false)} maxWidth="md">
+                <div className="px-6 py-5">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-900">Generate Jadwal Otomatis</h3>
+                            <p className="text-sm text-gray-500 mt-0.5">Algoritma mengisi jadwal mengajar per pegawai secara acak tanpa bentrok</p>
                         </div>
                     </div>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-4 flex items-start gap-2">
+                        <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                        <span>Jadwal yang <strong>sudah ada tidak akan dihapus</strong>. Generate hanya menambah jadwal baru jika tidak ada bentrok. Anda bisa generate berulang kali.</span>
+                    </div>
+
+                    <form onSubmit={handleGenerate} className="space-y-4">
+                        {/* Unit + Semester baris pertama */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Unit Sekolah</label>
+                                <select
+                                    value={genData.unit_sekolah_id}
+                                    onChange={e => setGenData({...genData, unit_sekolah_id: e.target.value})}
+                                    className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                                >
+                                    <option value="">Semua Unit</option>
+                                    {units.map(unit => (
+                                        <option key={unit.id} value={unit.id}>{unit.nama}</option>
+                                    ))}
+                                </select>
+                                {selectedUnitPegCount > 0 && (
+                                    <p className="mt-1 text-xs text-gray-500">≈ {selectedUnitPegCount} pegawai aktif</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                                <select 
+                                    value={genData.semester} 
+                                    onChange={e => setGenData({...genData, semester: e.target.value})}
+                                    className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                                >
+                                    <option value="1">1 (Ganjil)</option>
+                                    <option value="2">2 (Genap)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Tahun Ajaran */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran</label>
+                            <select
+                                value={genData.tahun_ajaran}
+                                onChange={e => setGenData({...genData, tahun_ajaran: e.target.value})}
+                                className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                            >
+                                <option value="2024/2025">2024/2025</option>
+                                <option value="2025/2026">2025/2026</option>
+                                <option value="2026/2027">2026/2027</option>
+                                <option value="2027/2028">2027/2028</option>
+                                <option value="2028/2029">2028/2029</option>
+                            </select>
+                        </div>
+
+                        {/* Batas Waktu */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Rentang Jam</label>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="relative">
+                                    <span className="absolute -top-2 left-3 text-[10px] text-gray-400 bg-white px-1">Mulai</span>
+                                    <input 
+                                        type="time" 
+                                        value={genData.waktu_mulai} 
+                                        onChange={e => setGenData({...genData, waktu_mulai: e.target.value})}
+                                        className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm pt-2"
+                                    />
+                                </div>
+                                <div className="relative">
+                                    <span className="absolute -top-2 left-3 text-[10px] text-gray-400 bg-white px-1">Selesai</span>
+                                    <input 
+                                        type="time" 
+                                        value={genData.waktu_selesai} 
+                                        onChange={e => setGenData({...genData, waktu_selesai: e.target.value})}
+                                        className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm pt-2"
+                                    />
+                                </div>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-400">Blok waktu default: 07:00-09:00, 09:30-11:30, 13:00-15:00. Filter ini mempersempit blok yang digunakan.</p>
+                        </div>
+
+                        {/* Tombol */}
+                        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                            <button 
+                                type="button" 
+                                onClick={() => setShowGenerateModal(false)}
+                                disabled={generating}
+                                className="inline-flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit" 
+                                disabled={generating}
+                                className="inline-flex items-center px-5 py-2.5 text-sm font-bold text-primary bg-accent border border-transparent rounded-lg hover:bg-yellow-500 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                            >
+                                {generating ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        Memproses...
+                                    </>
+                                ) : 'Generate Jadwal'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            )}
+            </Modal>
 
             {/* Swap Modal */}
-            {showSwapModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-                        <div className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm" onClick={() => setShowSwapModal(false)}></div>
-                        <div className="relative inline-block w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
+            <Modal show={showSwapModal} onClose={() => setShowSwapModal(false)} maxWidth="md">
                             <h3 className="text-xl font-bold leading-6 text-gray-900 flex items-center gap-2">
                                 <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
                                 Tukar Jadwal
@@ -397,10 +453,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                     </button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-                </div>
-            )}
+            </Modal>
         </AuthenticatedLayout>
     );
 }

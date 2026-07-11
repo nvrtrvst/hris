@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\PegawaiKomponenExport;
+use App\Imports\PegawaiKomponenImport;
 use App\Models\KomponenGaji;
 use App\Models\Pegawai;
+use App\Models\SkalaMasaBakti;
+use App\Models\UnitSekolah;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use App\Imports\PegawaiKomponenImport;
-use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PegawaiKomponenController extends Controller
 {
@@ -18,15 +22,16 @@ class PegawaiKomponenController extends Controller
     public function index(Request $request, $komponenId)
     {
         $komponen = KomponenGaji::findOrFail($komponenId);
-        
+
         // Ambil semua pegawai beserta nilai pivot jika ada
         $pegawais = Pegawai::where('status_aktif', 'aktif')
-            ->with(['komponenGaji' => function($q) use ($komponenId) {
+            ->with(['komponenGaji' => function ($q) use ($komponenId) {
                 $q->where('komponen_gaji_id', $komponenId);
             }, 'units'])
             ->get()
             ->map(function ($pegawai) {
                 $pivot = $pegawai->komponenGaji->first();
+
                 return [
                     'id' => $pegawai->id,
                     'nik' => $pegawai->nik,
@@ -38,7 +43,7 @@ class PegawaiKomponenController extends Controller
 
         return Inertia::render('Payroll/PegawaiKomponen', [
             'komponen' => $komponen,
-            'pegawais' => $pegawais
+            'pegawais' => $pegawais,
         ]);
     }
 
@@ -48,18 +53,18 @@ class PegawaiKomponenController extends Controller
     public function updateBatch(Request $request, $komponenId)
     {
         $komponen = KomponenGaji::findOrFail($komponenId);
-        
+
         $request->validate([
             'pegawai_data' => 'required|array',
             'pegawai_data.*.id' => 'required|exists:pegawai,id',
-            'pegawai_data.*.nominal' => 'nullable|numeric|min:0'
+            'pegawai_data.*.nominal' => 'nullable|numeric|min:0',
         ]);
 
         foreach ($request->pegawai_data as $data) {
             $pegawai = Pegawai::find($data['id']);
             if ($data['nominal'] !== null && $data['nominal'] !== '') {
                 $pegawai->komponenGaji()->syncWithoutDetaching([
-                    $komponen->id => ['nominal' => $data['nominal']]
+                    $komponen->id => ['nominal' => $data['nominal']],
                 ]);
             } else {
                 // Jika dikosongkan, hapus dari pivot agar kembali menggunakan nilai default
@@ -76,9 +81,9 @@ class PegawaiKomponenController extends Controller
     public function downloadTemplate($komponenId)
     {
         $komponen = KomponenGaji::findOrFail($komponenId);
-        $filename = "Template_Nominal_" . str_replace(' ', '_', $komponen->nama) . ".xlsx";
+        $filename = 'Template_Nominal_'.str_replace(' ', '_', $komponen->nama).'.xlsx';
 
-        return Excel::download(new \App\Exports\PegawaiKomponenExport($komponenId), $filename);
+        return Excel::download(new PegawaiKomponenExport($komponenId), $filename);
     }
 
     /**
@@ -87,23 +92,24 @@ class PegawaiKomponenController extends Controller
     public function import(Request $request, $komponenId)
     {
         $request->validate([
-            'file' => 'required|mimes:csv,txt,xls,xlsx'
+            'file' => 'required|mimes:csv,txt,xls,xlsx',
         ]);
 
         Excel::import(new PegawaiKomponenImport($komponenId), $request->file('file'));
 
         return back()->with('message', 'Data nominal berhasil di-import dari Excel.');
     }
+
     /**
      * Menampilkan halaman Matrix untuk edit massal semua komponen
      */
     public function matrix(Request $request)
     {
         $user = auth()->user();
-        
-        $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'units']);
-        if ($user && $user->unit_sekolah_id && !$user->can('view_all_units')) {
-            $query->whereHas('units', function($q) use ($user) {
+
+        $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'units', 'pengajuanIzins']);
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $query->whereHas('units', function ($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
             });
         }
@@ -113,31 +119,32 @@ class PegawaiKomponenController extends Controller
             ->where('tampil_di_matrix', true)
             ->orderBy('urutan', 'asc')
             ->get();
-            
-        $skalas = \App\Models\SkalaMasaBakti::orderBy('masa_kerja_tahun', 'desc')->get();
+
+        $skalas = SkalaMasaBakti::orderBy('masa_kerja_tahun', 'desc')->get();
         $masaBaktiKomponens = $komponens->where('jenis', 'dinamis_masa_bakti')->pluck('id')->toArray();
 
-        $pegawais = $pegawais->map(function($pegawai) use ($skalas, $masaBaktiKomponens) {
+        $pegawais = $pegawais->map(function ($pegawai) use ($skalas, $masaBaktiKomponens) {
             $dynamic_defaults = [];
-            if ($pegawai->tanggal_mulai_kerja && !empty($masaBaktiKomponens)) {
-                $yearsOfService = \Carbon\Carbon::parse($pegawai->tanggal_mulai_kerja)->diffInYears(\Carbon\Carbon::now());
+            if ($pegawai->tanggal_mulai_kerja && ! empty($masaBaktiKomponens)) {
+                $yearsOfService = Carbon::parse($pegawai->tanggal_mulai_kerja)->diffInYears(Carbon::now());
                 $skala = $skalas->firstWhere('masa_kerja_tahun', '<=', $yearsOfService);
                 $nominal = $skala ? $skala->nominal_gaji : 0;
-                
-                foreach($masaBaktiKomponens as $compId) {
+
+                foreach ($masaBaktiKomponens as $compId) {
                     $dynamic_defaults[$compId] = $nominal;
                 }
             }
             $pegawai->setAttribute('dynamic_defaults', $dynamic_defaults);
+
             return $pegawai;
         });
 
-        $unitSekolahs = \App\Models\UnitSekolah::all();
+        $unitSekolahs = UnitSekolah::all();
 
         return inertia('Payroll/Matrix', [
             'pegawais' => $pegawais,
             'komponens' => $komponens,
-            'unitSekolahs' => $unitSekolahs
+            'unitSekolahs' => $unitSekolahs,
         ]);
     }
 
@@ -150,12 +157,14 @@ class PegawaiKomponenController extends Controller
             'pegawai_data' => 'required|array',
         ]);
 
-        DB::transaction(function() use ($request) {
+        DB::transaction(function () use ($request) {
             foreach ($request->pegawai_data as $data) {
                 $pegawai = Pegawai::find($data['pegawai_id']);
-                if (!$pegawai) continue;
-                
-                if (!isset($data['komponens']) || !is_array($data['komponens'])) {
+                if (! $pegawai) {
+                    continue;
+                }
+
+                if (! isset($data['komponens']) || ! is_array($data['komponens'])) {
                     continue;
                 }
 
@@ -165,13 +174,13 @@ class PegawaiKomponenController extends Controller
                         $syncData[$komponenId] = ['nominal' => preg_replace('/[^0-9]/', '', $nominal)];
                     }
                 }
-                
+
                 // Hapus hanya komponen-komponen yang ada dalam matriks ini dari pivot
                 $komponenIds = array_keys($data['komponens']);
                 $pegawai->komponenGaji()->detach($komponenIds);
-                
+
                 // Attach kembali yang ada nilainya
-                if (!empty($syncData)) {
+                if (! empty($syncData)) {
                     $pegawai->komponenGaji()->attach($syncData);
                 }
             }

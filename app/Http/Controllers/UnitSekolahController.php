@@ -10,6 +10,7 @@ class UnitSekolahController extends Controller
     public function index()
     {
         $units = UnitSekolah::all();
+
         return inertia('UnitSekolah/Index', ['units' => $units]);
     }
 

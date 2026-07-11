@@ -112,6 +112,27 @@ Route::middleware('auth:web_admin')->group(function () {
     });
 });
 
+// Debug: cek semua cookies yg dikirim browser
+Route::get('/debug/cookies', function (\Illuminate\Http\Request $req) {
+    $adminRemember = 'remember_web_admin_'.sha1(\Illuminate\Auth\SessionGuard::class);
+    $mobileRemember = 'remember_web_mobile_'.sha1(\Illuminate\Auth\SessionGuard::class);
+    return response()->json([
+        'uri' => $req->getRequestUri(),
+        'all_cookies' => collect($req->cookies->all())->keys()->values(),
+        'cookie_details' => collect($req->cookies->all())->map(fn($v, $k) => [
+            'name' => $k,
+            'truncated' => strlen($v) > 40 ? substr($v, 0, 40).'...' : $v,
+            'is_admin_remember' => $k === $adminRemember,
+            'is_mobile_remember' => $k === $mobileRemember,
+        ])->values(),
+        'auth_web_admin' => auth('web_admin')->check(),
+        'auth_web_mobile' => auth('web_mobile')->check(),
+        'guard_config' => config('auth.defaults.guard'),
+        'session_cookie' => config('session.cookie'),
+        'session_id' => session()->getId(),
+    ]);
+});
+
 // Mobile PWA Routes untuk Pegawai
 Route::prefix('mobile')->group(function () {
     Route::get('/login', [\App\Http\Controllers\MobileAuthController::class, 'create'])
@@ -136,5 +157,16 @@ Route::prefix('mobile')->group(function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('mobile.profile.edit');
     });
 });
+
+// Dev login (CSRF excluded, hapus setelah debug selesai)
+Route::post('/dev-login', function (\Illuminate\Http\Request $request) {
+    $credentials = $request->only('login', 'password');
+    $field = filter_var($credentials['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'no_induk';
+    if (Auth::attempt([$field => $credentials['login'], 'password' => $credentials['password']], true)) {
+        $request->session()->regenerate();
+        return redirect('/debug/cookies');
+    }
+    return response()->json(['error' => 'Login failed'], 401);
+})->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
 
 require __DIR__.'/auth.php';

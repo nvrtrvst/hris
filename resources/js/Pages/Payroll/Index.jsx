@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import Pagination from '@/Components/Pagination';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 
 export default function Index({ auth, penggajians, filters }) {
@@ -160,18 +161,9 @@ export default function Index({ auth, penggajians, filters }) {
                             </table>
                         </div>
                         
-                        {penggajians.links && penggajians.links.length > 3 && (
-                            <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end">
-                                <div className="flex space-x-1">
-                                    {penggajians.links.map((link, index) => (
-                                        <Link
-                                            key={index}
-                                            href={link.url || '#'}
-                                            className={`px-4 py-2 border rounded-md text-sm font-medium transition-colors ${link.active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'} ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
-                                    ))}
-                                </div>
+                        {penggajians.links && (
+                            <div className="p-4 border-t border-gray-200 bg-gray-50">
+                                <Pagination links={penggajians.links} />
                             </div>
                         )}
                     </div>
