@@ -214,15 +214,17 @@ class PresensiController extends Controller
 
     public function approveLembur($id)
     {
-        $this->authorize('view_presensi');
+        $user = auth()->user();
+        if (! $user || ! $user->can('view_presensi')) {
+            abort(403);
+        }
 
         $presensi = Presensi::with('pegawai')->findOrFail($id);
         if (! $presensi->is_lembur || $presensi->lembur_status !== 'pending') {
             return back()->withErrors(['error' => 'Hanya lembur dengan status pending yang bisa disetujui.']);
         }
 
-        $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -233,15 +235,17 @@ class PresensiController extends Controller
 
     public function rejectLembur($id)
     {
-        $this->authorize('view_presensi');
+        $user = auth()->user();
+        if (! $user || ! $user->can('view_presensi')) {
+            abort(403);
+        }
 
         $presensi = Presensi::with('pegawai')->findOrFail($id);
         if (! $presensi->is_lembur || $presensi->lembur_status !== 'pending') {
             return back()->withErrors(['error' => 'Hanya lembur dengan status pending yang bisa ditolak.']);
         }
 
-        $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
 
