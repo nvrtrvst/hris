@@ -239,18 +239,18 @@ class MobileController extends Controller
         } elseif ($isLembur) {
             $primaryUnit = $pegawai->units()->first();
             if (! $primaryUnit) {
-                return back()->withErrors(['geofence' => 'Pegawai tidak memiliki unit sekolah.']);
+                return response()->json(['success' => false, 'message' => 'Pegawai tidak memiliki unit sekolah.', 'errors' => ['geofence' => 'Pegawai tidak memiliki unit sekolah.']], 422);
             }
             $unit = $primaryUnit;
             $jadwal = null;
         } else {
-            return back()->withErrors(['jadwal_id' => 'Pilih jadwal terlebih dahulu.']);
+            return response()->json(['success' => false, 'message' => 'Pilih jadwal terlebih dahulu.', 'errors' => ['jadwal_id' => 'Pilih jadwal terlebih dahulu.']], 422);
         }
 
         $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);
 
         if ($distance > $unit->radius_meter) {
-            return back()->withErrors(['geofence' => "Anda berada di luar jangkauan Unit Sekolah. Jarak Anda: {$distance} meter (Batas: {$unit->radius_meter}m)"]);
+            return response()->json(['success' => false, 'message' => "Anda berada di luar jangkauan Unit Sekolah. Jarak Anda: {$distance} meter (Batas: {$unit->radius_meter}m)", 'errors' => ['geofence' => "Anda berada di luar jangkauan Unit Sekolah. Jarak Anda: {$distance} meter (Batas: {$unit->radius_meter}m)"]], 422);
         }
 
         $accuracy = $request->filled('accuracy') ? (float) $request->accuracy : null;
@@ -258,10 +258,10 @@ class MobileController extends Controller
         $mockSuspect = (bool) $request->input('mock_suspect', false);
 
         if ($accuracy !== null && $accuracy <= 0) {
-            return back()->withErrors(['geofence' => 'Akurasi lokasi 0 meter (dicurigai lokasi palsu / mock GPS). Gunakan GPS asli.']);
+            return response()->json(['success' => false, 'message' => 'Akurasi lokasi 0 meter (dicurigai lokasi palsu / mock GPS). Gunakan GPS asli.', 'errors' => ['geofence' => 'Akurasi lokasi 0 meter (dicurigai lokasi palsu / mock GPS). Gunakan GPS asli.']], 422);
         }
         if ($accuracy !== null && $accuracy > $unit->radius_meter) {
-            return back()->withErrors(['geofence' => "Akurasi GPS buruk ({$accuracy}m > batas {$unit->radius_meter}m). Coba dari tempat terbuka."]);
+            return response()->json(['success' => false, 'message' => "Akurasi GPS buruk ({$accuracy}m > batas {$unit->radius_meter}m). Coba dari tempat terbuka.", 'errors' => ['geofence' => "Akurasi GPS buruk ({$accuracy}m > batas {$unit->radius_meter}m). Coba dari tempat terbuka."]], 422);
         }
 
         $lokasiPerluReview = $mockSuspect || ($accuracy !== null && $accuracy < 10);
@@ -338,6 +338,9 @@ class MobileController extends Controller
 
         $label = $isLembur ? 'Lembur' : 'Absen';
 
-        return redirect()->route('presensi.dashboard')->with('message', "{$label} {$request->tipe} berhasil dicatat! Jarak: {$distance}m");
+        return response()->json([
+            'success' => true,
+            'message' => "{$label} {$request->tipe} berhasil dicatat! Jarak: {$distance}m",
+        ]);
     }
 }

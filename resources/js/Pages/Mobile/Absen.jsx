@@ -117,15 +117,15 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
 
         ctx.fillStyle = 'rgba(0,0,0,0.55)';
         ctx.fillRect(0, h - 90, w, 90);
+        ctx.textBaseline = 'bottom';
         ctx.fillStyle = '#fff';
         ctx.font = `bold ${Math.max(14, Math.round(w * 0.039))}px sans-serif`;
-        ctx.textBaseline = 'bottom';
         ctx.fillText(ts, 12, h - 46);
+        ctx.fillStyle = '#fff';
         ctx.font = `${Math.max(10, Math.round(w * 0.028))}px sans-serif`;
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
         ctx.fillText(ds, 12, h - 28);
+        ctx.fillStyle = '#fff';
         ctx.font = `${Math.max(9, Math.round(w * 0.025))}px sans-serif`;
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
         ctx.fillText(loc.length > 50 ? loc.substring(0, 47) + '...' : loc, 12, h - 10);
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
