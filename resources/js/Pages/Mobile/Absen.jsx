@@ -267,21 +267,22 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
 
             {/* Camera */}
             <Card className="overflow-hidden p-0">
-                <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-900">
+                <div className="relative aspect-[3/4] w-full overflow-hidden rounded-[2rem] bg-slate-900">
                     {showLive ? (
                         <>
-                            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" />
+                            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover [transform:scaleX(1.07)]" />
                             {tileUrl && (
                                 <>
                                     <img
                                         src={tileUrl}
                                         alt=""
                                         onError={() => setMapError(true)}
-                                        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20"
+                                        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20 [transform:scaleX(1.07)]"
                                     />
                                     <MapPin className="pointer-events-none absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 text-emerald-300 drop-shadow" />
                                 </>
                             )}
+                            <div className="pointer-events-none absolute inset-0 rounded-[2rem] shadow-[inset_0_0_60px_22px_rgba(0,0,0,0.45)]" />
                         </>
                     ) : capturedPhoto ? (
                         <img src={capturedPhoto} alt="captured" className="h-full w-full object-cover" />
