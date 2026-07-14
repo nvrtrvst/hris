@@ -40,10 +40,10 @@ class RolePermissionSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission]);
         }
 
-        $roleSuperadmin = Role::firstOrCreate(['name' => 'superadmin', 'guard_name' => 'web_admin']);
+        $roleSuperadmin = Role::firstOrCreate(['name' => 'superadmin', 'guard_name' => 'web']);
         $roleSuperadmin->syncPermissions(Permission::all());
 
-        $roleAdminUnit = Role::firstOrCreate(['name' => 'admin_unit', 'guard_name' => 'web_admin']);
+        $roleAdminUnit = Role::firstOrCreate(['name' => 'admin_unit', 'guard_name' => 'web']);
         $roleAdminUnit->syncPermissions([
             'view_dashboard',
             'view_pegawai',
@@ -54,7 +54,7 @@ class RolePermissionSeeder extends Seeder
             'manage_payroll',
         ]);
 
-        $rolePegawai = Role::firstOrCreate(['name' => 'pegawai', 'guard_name' => 'web_admin']);
+        $rolePegawai = Role::firstOrCreate(['name' => 'pegawai', 'guard_name' => 'web']);
         $rolePegawai->syncPermissions([]);
     }
 }
