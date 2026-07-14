@@ -85,6 +85,8 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         }
     };
 
+    const pad = (n) => String(n).padStart(2, '0');
+
     const capturePhoto = () => {
         if (geoBlocked) return;
         if (!videoRef.current || !canvasRef.current) return;
@@ -99,8 +101,33 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         }
         canvas.width = w;
         canvas.height = h;
-        const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0, w, h);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, w, h);
+
+        // Burn-in overlay: jam, tgl, lokasi
+        const now = new Date();
+        const ts = `${pad(now.getHours())}.${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        const ds = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const pp = [];
+        if (geoInfo?.streetName) pp.push(`Jl. ${geoInfo.streetName}${geoInfo.streetNumber ? ' No. ' + geoInfo.streetNumber : ''}`);
+        if (geoInfo?.locality) pp.push(geoInfo.locality);
+        if (geoInfo?.city && geoInfo.city !== geoInfo.locality) pp.push(geoInfo.city);
+        if (geoInfo?.principalSubdivision) pp.push(geoInfo.principalSubdivision);
+        const loc = pp.length ? pp.join(', ') : 'Lokasi belum tersedia';
+
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(0, h - 90, w, 90);
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${Math.max(14, Math.round(w * 0.039))}px sans-serif`;
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(ts, 12, h - 46);
+        ctx.font = `${Math.max(10, Math.round(w * 0.028))}px sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillText(ds, 12, h - 28);
+        ctx.font = `${Math.max(9, Math.round(w * 0.025))}px sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fillText(loc.length > 50 ? loc.substring(0, 47) + '...' : loc, 12, h - 10);
+
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedPhoto(dataUrl);
         stopCamera();
@@ -229,7 +256,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
 
         setIsSubmitting(true);
         const openPresensi = presensiHariIni?.find((p) => p.jam_masuk && !p.jam_keluar);
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         const payload = {
+            _token: token,
             foto: capturedPhoto,
             is_lembur: isLembur,
             jadwal_id: isLembur ? null : jadwalId,
@@ -243,6 +272,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
@@ -278,7 +308,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         tileUrl = `https://tile.openstreetmap.org/${z}/${xt}/${yt}.png`;
     }
 
-    const pad = (n) => String(n).padStart(2, '0');
     const now = new Date();
     const timeString = `${pad(now.getHours())}.${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     const dateString = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
