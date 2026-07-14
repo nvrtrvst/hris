@@ -31,6 +31,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     const [currentPosition, setCurrentPosition] = useState(null);
     const [geoInfo, setGeoInfo] = useState(null);
     const [geoInfoLoading, setGeoInfoLoading] = useState(false);
+    const [started, setStarted] = useState(false);
     const [mapError, setMapError] = useState(false);
 
     const videoRef = useRef(null);
@@ -42,12 +43,10 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     const { flash } = usePage().props;
 
     useEffect(() => {
-        startCamera();
         const clock = setInterval(() => {
             const now = new Date();
             setCurrentTime(now.toLocaleTimeString('id-ID', { hour12: false }));
         }, 1000);
-        getCurrentPosition();
         return () => {
             clearInterval(clock);
             if (streamRef.current) {
@@ -56,6 +55,12 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
             if (watchId) navigator.geolocation.clearWatch(watchId);
         };
     }, []);
+
+    const handleStart = () => {
+        setStarted(true);
+        startCamera();
+        getCurrentPosition();
+    };
 
     useEffect(() => {
         if (showLive && videoRef.current && streamRef.current) {
@@ -317,23 +322,34 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                 </div>
             )}
 
-            {geoReady && (
+            {started && (
                 <div className={`mb-4 flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold ${
-                    geofence.inside
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                        : 'border-rose-200 bg-rose-50 text-rose-700'
+                    geoStatus === 'ready' ? (geofence?.inside ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700')
+                    : geoStatus === 'error' ? 'border-rose-200 bg-rose-50 text-rose-700'
+                    : 'border-slate-200 bg-slate-50 text-slate-500'
                 }`}>
                     <MapPin className="h-4 w-4 shrink-0" />
-                    {geofence.inside
-                        ? `Dalam radius ${geofence.name} (${Math.round(geofence.distance)}m)`
-                        : `Di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m)`}
+                    {geoStatus === 'loading' ? 'Mendeteksi lokasi ...'
+                    : geoStatus === 'error' ? `Lokasi tidak tersedia: ${locationError || 'periksa izin GPS/iOS'}`
+                    : geoStatus === 'ready' && geofence?.inside ? `Dalam radius ${geofence.name} (${Math.round(geofence.distance)}m)`
+                    : geoStatus === 'ready' && !geofence?.inside ? `Di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m)`
+                    : 'Lokasi belum tersedia'}
+                    {geoStatus === 'error' && <button type="button" onClick={getCurrentPosition} className="ml-auto shrink-0 rounded-lg border border-rose-300 bg-white px-3 py-1 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-50">Coba Lagi</button>}
                 </div>
             )}
 
             {/* Camera */}
             <Card className="overflow-hidden p-0">
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-900">
-                    {showLive ? (
+                    {!started ? (
+                        <button type="button" onClick={handleStart} className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-emerald-500 to-primary px-6 text-center text-white transition-transform active:scale-[0.98]">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white/20 backdrop-blur">
+                                <Camera className="h-8 w-8" />
+                            </div>
+                            <p className="text-lg font-extrabold">Mulai Presensi</p>
+                            <p className="text-sm text-white/80">Ketuk untuk mengaktifkan kamera &amp; lokasi</p>
+                        </button>
+                    ) : showLive ? (
                         <>
                             <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" style={{ transform: 'scaleX(-1)' }} />
                             {tileUrl && (
