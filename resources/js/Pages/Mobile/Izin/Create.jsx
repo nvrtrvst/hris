@@ -30,7 +30,7 @@ export default function Create({ pegawai }) {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('mobile.izin.store'));
+        post(route('presensi.izin.store'));
     };
 
     const { auth } = usePage().props;
@@ -46,7 +46,7 @@ export default function Create({ pegawai }) {
             <Head title="Buat Pengajuan" />
 
             <div className="mb-5 px-1">
-                <Link href={route('mobile.izin.index')} className="mb-2 inline-flex items-center text-sm font-semibold text-primary transition-colors active:scale-95">
+                <Link href={route('presensi.izin.index')} className="mb-2 inline-flex items-center text-sm font-semibold text-primary transition-colors active:scale-95">
                     <ArrowLeft className="mr-1 h-4 w-4" />
                     Kembali
                 </Link>

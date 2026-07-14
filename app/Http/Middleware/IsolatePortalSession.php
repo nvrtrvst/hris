@@ -39,11 +39,18 @@ class IsolatePortalSession
         $adminRemember = $this->getRecallerName('web_admin');
         $mobileRemember = $this->getRecallerName('web_mobile');
 
+        // Deteksi portal via subdomain (production) dengan fallback path (local dev).
+        $mobileDomain = env('MOBILE_DOMAIN');
+        $isMobile = $request->getHost() === $mobileDomain;
+        if (!$isMobile && ($request->is('mobile') || $request->is('mobile/*'))) {
+            $isMobile = true;
+        }
+
         $expireCookies = [];
 
-        if ($request->is('mobile') || $request->is('mobile/*')) {
+        if ($isMobile) {
             Config::set('session.cookie', 'hris_mobile_session');
-            Config::set('session.path', '/mobile');
+            Config::set('session.path', '/');
             Config::set('session.lifetime', 1440);
             Config::set('auth.defaults.guard', 'web_mobile');
 
@@ -65,12 +72,12 @@ class IsolatePortalSession
 
             $request->cookies->remove('hris_mobile_session');
             $request->cookies->remove($defaultCookie);
-            $expireCookies[] = ['hris_mobile_session', '/mobile'];
+            $expireCookies[] = ['hris_mobile_session', '/'];
 
             foreach ($request->cookies->all() as $name => $value) {
                 if ($name === $mobileRemember) {
                     $request->cookies->remove($name);
-                    $expireCookies[] = [$name, '/mobile'];
+                    $expireCookies[] = [$name, '/'];
                 }
             }
         }

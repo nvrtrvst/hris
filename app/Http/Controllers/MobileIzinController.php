@@ -83,6 +83,6 @@ class MobileIzinController extends Controller
 
         $pengajuan->save();
 
-        return redirect()->route('mobile.izin.index')->with('message', 'Pengajuan berhasil dikirim dan menunggu persetujuan.');
+        return redirect()->route('presensi.izin.index')->with('message', 'Pengajuan berhasil dikirim dan menunggu persetujuan.');
     }
 }

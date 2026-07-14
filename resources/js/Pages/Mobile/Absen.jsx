@@ -232,7 +232,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
             accuracy: currentPosition?.accuracy ?? null,
         };
         try {
-            const res = await fetch(route('mobile.absen.store'), {
+            const res = await fetch(route('presensi.absen.store'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

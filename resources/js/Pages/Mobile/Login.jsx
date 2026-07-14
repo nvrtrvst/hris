@@ -122,7 +122,7 @@ export default function MobileLogin({ status }) {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('mobile.login.store'), { onFinish: () => reset('password') });
+        post(route('presensi.login.store'), { onFinish: () => reset('password') });
     };
 
     return (

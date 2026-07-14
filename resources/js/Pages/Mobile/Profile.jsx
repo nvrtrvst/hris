@@ -75,7 +75,7 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
 
     const submitEdit = (e) => {
         e.preventDefault();
-        editForm.patch(route('mobile.profile.update'), {
+        editForm.patch(route('presensi.profile.update'), {
             preserveScroll: true,
             onSuccess: () => setEditOpen(false),
         });
@@ -83,7 +83,7 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
 
     const submitPass = (e) => {
         e.preventDefault();
-        passForm.put(route('mobile.password.update'), {
+        passForm.put(route('presensi.password.update'), {
             preserveScroll: true,
             onSuccess: () => {
                 passForm.reset();
@@ -251,7 +251,7 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
 
                 {/* LOGOUT */}
                 <Link
-                    href={route('mobile.logout')}
+                    href={route('presensi.logout')}
                     method="post"
                     as="button"
                     className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50 py-3.5 text-sm font-bold text-red-600 transition active:scale-[0.98]"

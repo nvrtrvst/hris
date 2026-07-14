@@ -64,7 +64,7 @@ export default function Index({ auth, pengajuan }) {
                 </div>
             )}
 
-            <FAB href={route('mobile.izin.create')} icon={Plus} label="Buat Pengajuan" />
+            <FAB href={route('presensi.izin.create')} icon={Plus} label="Buat Pengajuan" />
         </MobileLayout>
     );
 }

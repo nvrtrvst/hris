@@ -67,7 +67,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
             .map((s) => ({ nis: s.nis, status: absenState[s.nis] }));
         if (absens.length === 0) return;
         setSavingBatch(true);
-        fetch(route('mobile.jadwal.siswa.absen-batch'), {
+        fetch(route('presensi.jadwal.siswa.absen-batch'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -111,7 +111,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
             kelas: kelas.nama ?? '',
             jurusan,
         });
-        fetch(`${route('mobile.jadwal.siswa')}?${params.toString()}`)
+        fetch(`${route('presensi.jadwal.siswa')}?${params.toString()}`)
             .then((r) => r.json())
             .then((d) => setSiswa(d.siswa || []))
             .catch(() => setSiswa([]))

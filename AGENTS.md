@@ -20,10 +20,11 @@ multi-unit (TK, SD, SMP, SMK, LPQ). Fungsi inti:
 - Export/Import: Maatwebsite Excel v3. Backup: Spatie DB Dumper v4.
 
 ## 3. DUA PORTAL & GUARD
-- Portal Desktop/Admin: tanpa prefix, guard `web_admin`. Route `routes/web.php` group `auth:web_admin`.
-- Portal Mobile PWA (pegawai): prefix `/mobile`, guard `web_mobile`. Route group `mobile` di `routes/web.php`.
+- Portal Desktop/Admin: subdomain `ADMIN_DOMAIN` (mis. `simsdm.nuurulmuttaqiin.or.id`), fallback path `/` di local. Guard `web_admin`. Route `routes/admin.php` group `auth:web_admin`.
+- Portal Mobile PWA (pegawai): subdomain `MOBILE_DOMAIN` (mis. `presensi.nuurulmuttaqiin`), fallback path `/mobile` di local. Guard `web_mobile`. Route `routes/mobile.php` named `presensi.*` (TIDAK ada prefix `/mobile` di produksi).
+- `routes/web.php` mendaftarkan kedua portal via `Route::domain(env(...))` dengan fallback `Route::group`/`prefix('mobile')` bila env kosong.
 - Kedua guard pakai provider `users` sama. `User.$guard_name = 'web'`.
-- `IsolatePortalSession` (cookie/path/lifetime beda) HARUS didaftarkan di `bootstrap/app.php`.
+- `IsolatePortalSession` (cookie berbeda `hris_mgmt_session`/`hris_mobile_session`, deteksi via `request()->getHost()` vs `MOBILE_DOMAIN`, fallback path `/mobile`) HARUS didaftarkan di `bootstrap/app.php`.
 
 ## 4. MODEL OTORISASI (Spatie can() ONLY — sudah direfactor)
 Gunakan Spatie `can()`/`hasRole()` EXKLUSIF. Kolom string `role` di `users` sudah tidak

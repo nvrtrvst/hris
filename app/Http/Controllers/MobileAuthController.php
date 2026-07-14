@@ -21,7 +21,7 @@ class MobileAuthController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('mobile.dashboard', absolute: false));
+        return redirect()->intended(route('presensi.dashboard', absolute: false));
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -31,6 +31,6 @@ class MobileAuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/mobile/login');
+        return redirect()->route('presensi.login');
     }
 }

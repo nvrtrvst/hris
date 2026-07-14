@@ -4,11 +4,11 @@ import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
 
 const navItems = [
-    { route: 'mobile.dashboard', label: 'Beranda', match: (u) => u === '/mobile' || u === '/mobile/dashboard', icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" {...p} />) },
-    { route: 'mobile.jadwal', label: 'Jadwal', match: (u) => u.startsWith('/mobile/jadwal'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" {...p} />) },
-    { route: 'mobile.absen', label: 'Presensi', match: (u) => u === '/mobile/absen', icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" {...p} />) },
-    { route: 'mobile.izin.index', label: 'Izin', match: (u) => u.startsWith('/mobile/izin'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" {...p} />) },
-    { route: 'mobile.profile.edit', label: 'Profil', match: (u) => u.startsWith('/mobile/profile'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" {...p} />) },
+    { route: 'presensi.dashboard', label: 'Beranda', match: () => route().current('presensi.dashboard'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" {...p} />) },
+    { route: 'presensi.jadwal', label: 'Jadwal', match: () => route().current('presensi.jadwal*'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" {...p} />) },
+    { route: 'presensi.absen', label: 'Presensi', match: () => route().current('presensi.absen'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" {...p} />) },
+    { route: 'presensi.izin.index', label: 'Izin', match: () => route().current('presensi.izin.*'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" {...p} />) },
+    { route: 'presensi.profile.edit', label: 'Profil', match: () => route().current('presensi.profile.*'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" {...p} />) },
 ];
 
 export default function MobileLayout({ user, header, children }) {
@@ -49,7 +49,7 @@ export default function MobileLayout({ user, header, children }) {
                             </button>
                         </Dropdown.Trigger>
                         <Dropdown.Content align="right" width="48">
-                            <Dropdown.Link href={route('mobile.logout')} method="post" as="button" className="text-red-600 font-bold flex items-center">
+                            <Dropdown.Link href={route('presensi.logout')} method="post" as="button" className="text-red-600 font-bold flex items-center">
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                                 Log Out
                             </Dropdown.Link>

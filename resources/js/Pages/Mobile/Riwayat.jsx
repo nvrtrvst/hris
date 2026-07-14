@@ -30,7 +30,7 @@ export default function Riwayat({ auth, presensi, filters }) {
         const val = e.target.value;
         setMonthFilter(val);
         router.get(
-            route('mobile.riwayat'),
+            route('presensi.riwayat'),
             { bulan: val },
             { preserveState: true, replace: true }
         );

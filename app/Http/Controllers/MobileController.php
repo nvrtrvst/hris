@@ -338,6 +338,6 @@ class MobileController extends Controller
 
         $label = $isLembur ? 'Lembur' : 'Absen';
 
-        return redirect()->route('mobile.dashboard')->with('message', "{$label} {$request->tipe} berhasil dicatat! Jarak: {$distance}m");
+        return redirect()->route('presensi.dashboard')->with('message', "{$label} {$request->tipe} berhasil dicatat! Jarak: {$distance}m");
     }
 }

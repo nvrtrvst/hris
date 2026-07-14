@@ -34,16 +34,16 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->redirectGuestsTo(function (Request $request) {
-            if ($request->is('mobile') || $request->is('mobile/*')) {
-                return route('mobile.login');
+            if ($request->getHost() === env('MOBILE_DOMAIN')) {
+                return route('presensi.login');
             }
 
             return route('login');
         });
 
         $middleware->redirectUsersTo(function (Request $request) {
-            if ($request->is('mobile') || $request->is('mobile/*')) {
-                return route('mobile.dashboard');
+            if ($request->getHost() === env('MOBILE_DOMAIN')) {
+                return route('presensi.dashboard');
             }
 
             return route('dashboard');
