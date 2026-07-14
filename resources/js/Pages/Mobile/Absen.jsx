@@ -267,22 +267,21 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
 
             {/* Camera */}
             <Card className="overflow-hidden p-0">
-                <div className="relative aspect-[3/4] w-full overflow-hidden rounded-[2rem] bg-slate-900">
+                <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-900">
                     {showLive ? (
                         <>
-                            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover [transform:scaleX(1.07)]" />
+                            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" />
                             {tileUrl && (
                                 <>
                                     <img
                                         src={tileUrl}
                                         alt=""
                                         onError={() => setMapError(true)}
-                                        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20 [transform:scaleX(1.07)]"
+                                        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20"
                                     />
                                     <MapPin className="pointer-events-none absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 text-emerald-300 drop-shadow" />
                                 </>
                             )}
-                            <div className="pointer-events-none absolute inset-0 rounded-[2rem] shadow-[inset_0_0_60px_22px_rgba(0,0,0,0.45)]" />
                         </>
                     ) : capturedPhoto ? (
                         <img src={capturedPhoto} alt="captured" className="h-full w-full object-cover" />
@@ -309,6 +308,12 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
 
                     {isLembur && (
                         <span className="absolute right-3 top-3 rounded-full bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">LEMBUR</span>
+                    )}
+
+                    {currentPosition && (
+                        <span className={`absolute right-3 ${isLembur ? 'top-12' : 'top-3'} rounded-full bg-black/50 px-2.5 py-1 text-[10px] font-mono font-semibold text-white backdrop-blur`}>
+                            {currentPosition.latitude.toFixed(5)}, {currentPosition.longitude.toFixed(5)}
+                        </span>
                     )}
 
                     {/* overlay bawah 40%: info di ujung bawah-kiri, tombol di tengah */}
