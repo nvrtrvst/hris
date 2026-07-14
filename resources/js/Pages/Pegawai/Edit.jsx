@@ -45,6 +45,52 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
                             Kembali ke Daftar Pegawai
                         </Link>
                     </div>
+
+                    <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl border border-gray-100 mb-6">
+                        <div className="p-6 bg-gray-50 border-b border-gray-100">
+                            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center">
+                                <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                Penugasan Saat Ini (Read-only)
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Unit &amp; Jabatan</p>
+                                    {pegawai.units && pegawai.units.length > 0 ? (
+                                        <div className="space-y-1">
+                                            {pegawai.units.map((unit) => (
+                                                <p key={unit.id} className="font-medium text-gray-900 text-sm">
+                                                    {unit.nama}
+                                                    <span className="font-normal text-gray-600">
+                                                        {' — '}
+                                                        {pegawai.jabatans?.find((j) => j.pivot?.unit_sekolah_id === unit.id)?.nama || 'Belum ada jabatan'}
+                                                    </span>
+                                                    {unit.pivot?.is_primary === 1 && (
+                                                        <span className="ml-2 px-2 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full bg-green-100 text-green-800 uppercase">Primary</span>
+                                                    )}
+                                                </p>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-500">Belum ada unit</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Mata Pelajaran (Guru)</p>
+                                    {pegawai.mapels && pegawai.mapels.length > 0 ? (
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {pegawai.mapels.map((mapel) => (
+                                                <span key={mapel.id} className="px-2.5 py-1 inline-flex text-xs font-medium rounded-md bg-amber-100 text-amber-800">
+                                                    {mapel.nama}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-500">Bukan guru / belum ada mapel</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl border border-gray-100">
                         <div className="p-8">
                             <form onSubmit={submit} className="space-y-6">

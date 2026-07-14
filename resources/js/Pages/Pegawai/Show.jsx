@@ -129,6 +129,20 @@ export default function Show({ auth, pegawai }) {
                                             )}
                                         </div>
                                         <div>
+                                            <p className="text-sm text-gray-500">Mata Pelajaran (Guru)</p>
+                                            {pegawai.mapels && pegawai.mapels.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1.5 mt-1">
+                                                    {pegawai.mapels.map(mapel => (
+                                                        <span key={mapel.id} className="px-2.5 py-1 inline-flex text-xs font-medium rounded-md bg-amber-100 text-amber-800">
+                                                            {mapel.nama}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="text-gray-500">Bukan guru / belum ada mapel</p>
+                                            )}
+                                        </div>
+                                        <div>
                                             <p className="text-sm text-gray-500">Pendidikan Terakhir</p>
                                             <p className="font-medium text-gray-900">{pegawai.pendidikan_terakhir}</p>
                                         </div>

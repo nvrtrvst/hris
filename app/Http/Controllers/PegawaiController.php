@@ -168,7 +168,7 @@ class PegawaiController extends Controller
 
     public function show(string $id)
     {
-        $pegawai = Pegawai::with(['units', 'jabatans', 'dokumen', 'riwayat', 'atasanLangsung'])->findOrFail($id);
+        $pegawai = Pegawai::with(['units', 'jabatans', 'mapels', 'dokumen', 'riwayat', 'atasanLangsung'])->findOrFail($id);
 
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
@@ -182,7 +182,7 @@ class PegawaiController extends Controller
 
     public function edit(string $id)
     {
-        $pegawai = Pegawai::with('units')->findOrFail($id);
+        $pegawai = Pegawai::with(['units', 'jabatans', 'mapels'])->findOrFail($id);
 
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
