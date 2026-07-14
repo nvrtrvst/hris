@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\KomponenGajiController;
 use App\Http\Controllers\LaporanController;
+use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileIzinController;
