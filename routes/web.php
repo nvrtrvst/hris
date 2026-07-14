@@ -133,6 +133,7 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::middleware('can:manage_master_data')->group(function () {
         Route::get('backup', [BackupController::class, 'index'])->name('backup.index');
         Route::get('backup/download', [BackupController::class, 'download'])->name('backup.download');
+        Route::resource('mata-pelajaran', MataPelajaranController::class)->only(['index', 'store', 'destroy']);
     });
 });
 
