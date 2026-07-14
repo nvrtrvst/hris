@@ -43,6 +43,13 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         };
     }, []);
 
+    useEffect(() => {
+        if (showLive && videoRef.current && streamRef.current) {
+            videoRef.current.srcObject = streamRef.current;
+            videoRef.current.play().catch(() => {});
+        }
+    }, [showLive]);
+
     const startCamera = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -50,9 +57,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                 audio: false,
             });
             streamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
             setShowLive(true);
         } catch (err) {
             setShowLive(false);
