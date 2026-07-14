@@ -20,6 +20,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     const [currentPosition, setCurrentPosition] = useState(null);
     const [geoInfo, setGeoInfo] = useState(null);
     const [geoInfoLoading, setGeoInfoLoading] = useState(false);
+    const [mapError, setMapError] = useState(false);
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
@@ -213,6 +214,16 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         year: 'numeric',
     });
 
+    let tileUrl = null;
+    if (currentPosition && !mapError) {
+        const z = 15;
+        const n = 2 ** z;
+        const xt = Math.floor(((currentPosition.longitude + 180) / 360) * n);
+        const latRad = (currentPosition.latitude * Math.PI) / 180;
+        const yt = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n);
+        tileUrl = `https://tile.openstreetmap.org/${z}/${xt}/${yt}.png`;
+    }
+
     return (
         <MobileLayout user={auth.user}>
             <Head title="Presensi" />
@@ -246,13 +257,16 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                     {showLive ? (
                         <>
                             <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" />
-                            {currentPosition && (
-                                <iframe
-                                    title="Geo tag"
-                                    loading="lazy"
-                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${(currentPosition.longitude - 0.004).toFixed(6)}%2C${(currentPosition.latitude - 0.004).toFixed(6)}%2C${(currentPosition.longitude + 0.004).toFixed(6)}%2C${(currentPosition.latitude + 0.004).toFixed(6)}&layer=mapnik&marker=${currentPosition.latitude}%2C${currentPosition.longitude}`}
-                                    className="pointer-events-none absolute inset-0 h-full w-full opacity-20"
-                                />
+                            {tileUrl && (
+                                <>
+                                    <img
+                                        src={tileUrl}
+                                        alt=""
+                                        onError={() => setMapError(true)}
+                                        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20"
+                                    />
+                                    <MapPin className="pointer-events-none absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 text-emerald-300 drop-shadow" />
+                                </>
                             )}
                             <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-black/60 to-transparent p-3">
                                 <span className="rounded-lg bg-black/50 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur">{fullDate}</span>
