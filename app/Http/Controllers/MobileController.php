@@ -84,7 +84,7 @@ class MobileController extends Controller
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIniIndo = $hariMap[Carbon::now()->format('l')];
 
-        $jadwalHariIni = Jadwal::with('unitSekolah')
+        $jadwalHariIni = Jadwal::with(['unitSekolah', 'mataPelajaran', 'kelas'])
             ->where('pegawai_id', $pegawai->id)
             ->where('hari', $hariIniIndo)
             ->get();
@@ -223,6 +223,7 @@ class MobileController extends Controller
         });
 
         $label = $isLembur ? 'Lembur' : 'Absen';
+
         return redirect()->route('mobile.dashboard')->with('message', "{$label} {$request->tipe} berhasil dicatat! Jarak: {$distance}m");
     }
 }

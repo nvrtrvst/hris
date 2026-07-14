@@ -1,467 +1,334 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Card, Toggle, Badge } from '@/Components/MobileUI';
+import { Camera, RefreshCw, MapPin, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
-export default function MobileAbsen({ auth, pegawai, jadwals, presensiHariIni }) {
-    const { data, setData, post, processing, errors } = useForm({
-        jadwal_id: jadwals?.[0]?.id || '',
-        tipe: 'masuk',
-        latitude: '',
-        longitude: '',
-        accuracy: null,
-        speed: null,
-        captured_at: '',
-        mock_suspect: false,
-        is_lembur: false,
-        foto: ''
-    });
+export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [loadingLocation, setLoadingLocation] = useState(false);
+    const [locationError, setLocationError] = useState(null);
+    const [showLive, setShowLive] = useState(false);
+    const [error, setError] = useState(null);
+    const [successMessage, setSuccessMessage] = useState(null);
+    const [capturedPhoto, setCapturedPhoto] = useState(null);
+    const [isLembur, setIsLembur] = useState(false);
+    const [jadwalId, setJadwalId] = useState(null);
+    const [currentTime, setCurrentTime] = useState('');
+    const [watchId, setWatchId] = useState(null);
+    const [geoStatus, setGeoStatus] = useState('idle');
+    const [currentPosition, setCurrentPosition] = useState(null);
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
-    const [cameraActive, setCameraActive] = useState(false);
-    const [locationStatus, setLocationStatus] = useState('Mencari lokasi...');
-    const [photoCaptured, setPhotoCaptured] = useState(false);
+    const streamRef = useRef(null);
+    const fileInputRef = useRef(null);
+    const photoInputRef = useRef(null);
 
-    const selectedPresensi = data.is_lembur
-        ? presensiHariIni?.find(p => p.is_lembur)
-        : presensiHariIni?.find(p => p.jadwal_id == data.jadwal_id);
-    let allowedTipe = 'masuk';
-    let labelTipe = 'Masuk';
-    let isCompleted = false;
-
-    if (data.is_lembur) {
-        labelTipe = 'Lembur — Presensi Masuk';
-        if (selectedPresensi?.jam_masuk && !selectedPresensi?.jam_keluar) {
-            allowedTipe = 'keluar';
-            labelTipe = 'Lembur — Presensi Pulang';
-        } else if (selectedPresensi?.jam_masuk && selectedPresensi?.jam_keluar) {
-            isCompleted = true;
-            labelTipe = 'Lembur — Selesai';
-        }
-    } else if (selectedPresensi) {
-        if (selectedPresensi.jam_masuk && !selectedPresensi.jam_keluar) {
-            allowedTipe = 'keluar';
-            labelTipe = 'Keluar/Pulang';
-        } else if (selectedPresensi.jam_masuk && selectedPresensi.jam_keluar) {
-            isCompleted = true;
-            labelTipe = 'Sudah Presensi Lengkap';
-        }
-    } else if (!data.jadwal_id && !data.is_lembur) {
-        labelTipe = 'Pilih Jadwal Dulu';
-    }
+    const { flash } = usePage().props;
 
     useEffect(() => {
-        if (data.jadwal_id && data.tipe !== allowedTipe && !isCompleted) {
-            setData('tipe', allowedTipe);
-        }
-    }, [data.jadwal_id, allowedTipe, isCompleted]);
-
-    useEffect(() => {
-        if (!navigator.geolocation) {
-            setLocationStatus('Browser Anda tidak mendukung Geolocation.');
-            return;
-        }
-
-        setLocationStatus('Mencari lokasi GPS...');
-        const samples = [];
-
-        const finalize = () => {
-            const avgLat = samples.reduce((s, x) => s + x.lat, 0) / samples.length;
-            const avgLng = samples.reduce((s, x) => s + x.lng, 0) / samples.length;
-            const last = samples[samples.length - 1];
-            const accuracy = last.accuracy;
-            const speed = last.speed;
-
-            // [ANTISPOOF] Mock GPS sering menghasilkan koordinat persis sama di tiap sampel.
-            const variance = samples.reduce((s, x) => s + Math.abs(x.lat - avgLat) + Math.abs(x.lng - avgLng), 0);
-            const mockSuspect = variance < 1e-7;
-
-                setData(d => ({
-                    ...d,
-                    latitude: avgLat,
-                    longitude: avgLng,
-                    accuracy: accuracy ?? null,
-                    speed: speed ?? null,
-                    captured_at: new Date().toISOString(),
-                    mock_suspect: mockSuspect,
-                }));
-
-            setLocationStatus(
-                `Lat: ${avgLat.toFixed(5)}, Lng: ${avgLng.toFixed(5)} | Akurasi: ${accuracy ? accuracy.toFixed(0) + 'm' : '?'}` +
-                (mockSuspect ? ' (curiga mock GPS)' : '')
-            );
-            startCamera();
-        };
-
-        const watchId = navigator.geolocation.watchPosition(
-            (pos) => {
-                samples.push({
-                    lat: pos.coords.latitude,
-                    lng: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy,
-                    speed: pos.coords.speed,
-                });
-                if (samples.length >= 3) {
-                    navigator.geolocation.clearWatch(watchId);
-                    finalize();
-                }
-            },
-            () => {
-                navigator.geolocation.clearWatch(watchId);
-                if (samples.length > 0) {
-                    finalize();
-                } else {
-                    setLocationStatus('Gagal mendapatkan lokasi GPS.');
-                }
-            },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
-        );
-
-        // Fallback: pakai apa yang ada setelah 4 detik
-        const fallback = setTimeout(() => {
-            if (samples.length > 0) {
-                navigator.geolocation.clearWatch(watchId);
-                finalize();
-            }
-        }, 4000);
-
+        startCamera();
+        const clock = setInterval(() => {
+            const now = new Date();
+            setCurrentTime(now.toLocaleTimeString('id-ID', { hour12: false }));
+        }, 1000);
+        getCurrentPosition();
         return () => {
-            clearTimeout(fallback);
-            navigator.geolocation.clearWatch(watchId);
-            stopCamera();
+            clearInterval(clock);
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach((t) => t.stop());
+            }
+            if (watchId) navigator.geolocation.clearWatch(watchId);
         };
     }, []);
 
     const startCamera = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user' },
+                audio: false,
+            });
+            streamRef.current = stream;
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                setCameraActive(true);
             }
+            setShowLive(true);
         } catch (err) {
-            console.error("Error accessing camera:", err);
-            setLocationStatus('Gagal mengakses kamera. Beri izin kamera.');
+            setShowLive(false);
+            if (!locationError) setLocationError('Kamera tidak dapat diakses. Gunakan tombol di bawah untuk unggah foto.');
         }
     };
 
     const stopCamera = () => {
-        if (videoRef.current && videoRef.current.srcObject) {
-            videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach((t) => t.stop());
+            streamRef.current = null;
         }
     };
 
-    // Fungsi untuk mengambil foto dari video stream
-    const handleCameraCapture = () => {
-        if (!cameraActive || !videoRef.current || !canvasRef.current) return;
-        
+    const capturePhoto = () => {
+        if (!videoRef.current || !canvasRef.current) return;
         const video = videoRef.current;
-        const vw = video.videoWidth;
-        const vh = video.videoHeight;
-        
-        // UI menggunakan aspect-[3/4] (Width/Height = 0.75)
-        // Kita harus crop (potong) gambar asli dari webcam agar sesuai dengan preview di UI (terutama di Simulator Desktop yg kameranya landscape)
-        let targetWidth = vw;
-        let targetHeight = vh;
-        
-        if (vw / vh > 0.75) {
-            // Jika video lebih lebar dari 3:4 (Misal landscape 16:9), potong sampingnya
-            targetWidth = vh * 0.75;
-        } else {
-            // Jika video lebih tinggi dari 3:4, potong atas/bawah
-            targetHeight = vw / 0.75;
-        }
-
         const canvas = canvasRef.current;
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
-        
-        const ctx = canvas.getContext('2d');
-        
-        // Ambil area tengah dari video
-        const startX = (vw - targetWidth) / 2;
-        const startY = (vh - targetHeight) / 2;
-        
-        // Gambar potongan frame ke canvas
-        ctx.drawImage(video, startX, startY, targetWidth, targetHeight, 0, 0, targetWidth, targetHeight);
-        
-        // Setup dinamis font size agar proporsional di resolusi berapapun
-        const baseSize = Math.max(12, Math.floor(targetWidth * 0.035));
-        const stampHeight = baseSize * 5.5;
-        
-        // Tambahkan background semi-transparan untuk watermark
-        // Background watermark
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(0, targetHeight - stampHeight, targetWidth, stampHeight);
-        ctx.textAlign = 'center';
-
-        // Label (BUKTI LEMBUR or Nama)
-        ctx.fillStyle = data.is_lembur ? '#fbbf24' : 'white';
-        ctx.font = `bold ${baseSize * 1.2}px sans-serif`;
-        ctx.fillText(data.is_lembur ? 'BUKTI LEMBUR' : auth.user.name, targetWidth / 2, targetHeight - (baseSize * 4.3));
-
-        // Nama (if lembur, show name as second line)
-        if (data.is_lembur) {
-            ctx.fillStyle = 'white';
-            ctx.font = `bold ${baseSize}px sans-serif`;
-            ctx.fillText(`Nama: ${auth.user.name}`, targetWidth / 2, targetHeight - (baseSize * 3.2));
-        }
-
-        // Unit
-        ctx.fillStyle = 'white';
-        ctx.font = `${baseSize}px sans-serif`;
-        ctx.fillText(`Unit: ${pegawai?.units?.[0]?.nama || '-'}`, targetWidth / 2, targetHeight - (baseSize * (data.is_lembur ? 2.2 : 2.8)));
-
-        // Waktu eksplisit dengan detik
-        const now = new Date();
-        const pad = n => String(n).padStart(2, '0');
-        const timeStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-        ctx.fillStyle = 'white';
-        ctx.font = `${baseSize * 0.9}px sans-serif`;
-        ctx.fillText(`Waktu: ${timeStr}`, targetWidth / 2, targetHeight - (baseSize * (data.is_lembur ? 1.4 : 1.8)));
-
-        // Koordinat
-        ctx.font = `${baseSize * 0.9}px sans-serif`;
-        ctx.fillText(`Lokasi: ${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`, targetWidth / 2, targetHeight - (baseSize * (data.is_lembur ? 0.6 : 0.8)));
-        
-        // Simpan hasil ke form
-        const photoData = canvas.toDataURL('image/jpeg', 0.8);
-        setData('foto', photoData);
-        setPhotoCaptured(true);
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        setCapturedPhoto(dataUrl);
         stopCamera();
+        setShowLive(false);
     };
 
     const retakePhoto = () => {
-        setPhotoCaptured(false);
-        setData('foto', '');
+        setCapturedPhoto(null);
         startCamera();
     };
 
-    const handleFileUpload = (e) => {
+    const toggleLembur = () => setIsLembur((prev) => !prev);
+
+    const getCurrentPosition = () => {
+        setLoadingLocation(true);
+        setGeoStatus('loading');
+        if (!navigator.geolocation) {
+            setGeoStatus('error');
+            setLocationError('Geolocation tidak didukung di perangkat ini.');
+            setLoadingLocation(false);
+            return;
+        }
+        const id = navigator.geolocation.watchPosition(
+            (pos) => {
+                setCurrentPosition({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy,
+                });
+                setGeoStatus('ready');
+                setLoadingLocation(false);
+            },
+            (err) => {
+                setGeoStatus('error');
+                setLocationError(err.message || 'Tidak dapat mengambil lokasi.');
+                setLoadingLocation(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+        setWatchId(id);
+    };
+
+    const handleFileFallback = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = () => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = canvasRef.current;
-                const targetWidth = 480;
-                const targetHeight = 640;
-                canvas.width = targetWidth;
-                canvas.height = targetHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-
-                const baseSize = 18;
-                const stampHeight = baseSize * 6;
-
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                ctx.fillRect(0, targetHeight - stampHeight, targetWidth, stampHeight);
-                ctx.textAlign = 'center';
-
-                ctx.fillStyle = data.is_lembur ? '#fbbf24' : 'white';
-                ctx.font = `bold ${baseSize * 1.2}px sans-serif`;
-                ctx.fillText(data.is_lembur ? 'BUKTI LEMBUR' : auth.user.name, targetWidth / 2, targetHeight - (baseSize * 4.5));
-
-                ctx.fillStyle = 'white';
-                ctx.font = `${baseSize * 0.9}px sans-serif`;
-                ctx.fillText(`Nama: ${auth.user.name}`, targetWidth / 2, targetHeight - (baseSize * 3.2));
-
-                ctx.fillText(`Unit: ${pegawai?.units?.[0]?.nama || '-'}`, targetWidth / 2, targetHeight - (baseSize * 2.2));
-
-                const now = new Date();
-                const pad = n => String(n).padStart(2, '0');
-                const timeStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-                ctx.fillText(`Waktu: ${timeStr}`, targetWidth / 2, targetHeight - (baseSize * 1.2));
-
-                const photoData = canvas.toDataURL('image/jpeg', 0.8);
-                setData('foto', photoData);
-                setPhotoCaptured(true);
-            };
-            img.src = reader.result;
-        };
+        reader.onloadend = () => setCapturedPhoto(reader.result);
         reader.readAsDataURL(file);
     };
 
-    const submitPresensi = (e) => {
+    const selectJadwal = (id) => setJadwalId(id);
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        post(route('mobile.storeAbsen'));
+        setError(null);
+        setSuccessMessage(null);
+
+        if (!capturedPhoto) {
+            setError('Silakan ambil foto presensi terlebih dahulu.');
+            return;
+        }
+        if (!isLembur && jadwals.length > 0 && !jadwalId) {
+            setError('Silakan pilih jadwal presensi Anda.');
+            return;
+        }
+        if (!currentPosition && !isLembur) {
+            setError('Lokasi belum tersedia. Pastikan GPS aktif.');
+            return;
+        }
+
+        setIsSubmitting(true);
+        const payload = {
+            photo: capturedPhoto,
+            is_lembur: isLembur,
+            jadwal_id: isLembur ? null : jadwalId,
+            latitude: currentPosition?.latitude ?? null,
+            longitude: currentPosition?.longitude ?? null,
+            accuracy: currentPosition?.accuracy ?? null,
+        };
+        try {
+            const res = await fetch(route('mobile.absen.store'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setSuccessMessage(data.message || 'Presensi berhasil dikirim.');
+                setCapturedPhoto(null);
+                setJadwalId(null);
+                setTimeout(() => {
+                    if (typeof window !== 'undefined') window.location.reload();
+                }, 1500);
+            } else {
+                setError(data.message || 'Gagal mengirim presensi.');
+            }
+        } catch (err) {
+            setError('Terjadi kesalahan jaringan. Coba lagi.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
+    const accent = isLembur ? 'amber' : 'indigo';
+
     return (
-        <MobileLayout user={auth.user} header="Presensi Kamera">
-            <Head title="Presensi Mobile" />
+        <MobileLayout user={auth.user}>
+            <Head title="Presensi" />
 
-            <div className="space-y-6">
-                {errors.geofence && (
-                    <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 text-sm font-medium">
-                        <span className="flex items-center"><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> {errors.geofence}</span>
-                    </div>
-                )}
-                {errors.conflict && (
-                    <div className="bg-orange-50 text-orange-700 p-4 rounded-xl border border-orange-200 text-sm font-medium">
-                        <span className="flex items-center"><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> {errors.conflict}</span>
-                    </div>
-                )}
-                {data.mock_suspect && (
-                    <div className="bg-amber-50 text-amber-800 p-4 rounded-xl border border-amber-200 text-sm font-medium">
-                        <span className="flex items-center"><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg> Lokasi terdeteksi mencurigakan (kemungkinan mock GPS). Presensi akan direview admin.</span>
-                    </div>
-                )}
+            <div className="mb-5 px-1">
+                <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Presensi</h1>
+                <p className="mt-0.5 text-sm text-slate-500">Ambil foto & pastikan lokasi terdeteksi</p>
+            </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    {/* Live Camera Area */}
-                    <div className="relative bg-gray-900 aspect-[3/4] flex flex-col items-center justify-center overflow-hidden">
-                        
-                        {!photoCaptured ? (
-                            <div className="w-full h-full relative">
-                                <video 
-                                    ref={videoRef} 
-                                    autoPlay 
-                                    playsInline 
-                                    className={`w-full h-full object-cover ${cameraActive ? 'opacity-100' : 'opacity-0'}`}
-                                ></video>
-                                
-                                {!cameraActive && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50">
-                                        <svg className="w-12 h-12 mb-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
-                                        <span>Menyiapkan Kamera...</span>
-                                    </div>
-                                )}
+            {flash.message && (
+                <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{flash.message}</div>
+            )}
+            {flash.error && (
+                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{flash.error}</div>
+            )}
 
-                                {/* Map Overlay (Semi-transparent) di bagian bawah */}
-                                {cameraActive && data.latitude && (
-                                    <div className="absolute bottom-0 left-0 w-full h-1/2 opacity-50 pointer-events-none">
-                                        <iframe 
-                                            width="100%" 
-                                            height="100%" 
-                                            frameBorder="0" 
-                                            scrolling="no" 
-                                            marginHeight="0" 
-                                            marginWidth="0" 
-                                            src={`https://www.openstreetmap.org/export/embed.html?bbox=${data.longitude-0.002},${data.latitude-0.002},${data.longitude+0.002},${data.latitude+0.002}&layer=mapnik&marker=${data.latitude},${data.longitude}`}
-                                        ></iframe>
-                                        {/* Gradient fade to blend with camera */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent"></div>
-                                    </div>
-                                )}
+            {successMessage && (
+                <div className="mb-4 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                    <CheckCircle className="h-5 w-5" /> {successMessage}
+                </div>
+            )}
+            {error && (
+                <div className="mb-4 flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                    <AlertCircle className="h-5 w-5" /> {error}
+                </div>
+            )}
 
-                                {/* Camera Capture Button overlay */}
-                                {cameraActive && (
-                                    <div className="absolute bottom-6 w-full flex justify-center">
-                                        <button 
-                                            type="button" 
-                                            onClick={handleCameraCapture} 
-                                            className="w-16 h-16 rounded-full bg-indigo-600 border-4 border-white/50 flex items-center justify-center focus:outline-none active:scale-95 transition-transform shadow-2xl"
-                                        >
-                                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* Upload file (alternatif) */}
-                                <div className="absolute bottom-20 w-full flex justify-center">
-                                    <label className="cursor-pointer bg-black/50 hover:bg-black/60 text-white backdrop-blur-md px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center shadow-lg border border-white/10 transition-colors">
-                                        <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
-                                        Upload Foto
-                                        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileUpload} className="hidden" />
-                                    </label>
-                                </div>
+            {/* Camera */}
+            <Card className="overflow-hidden p-0">
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-900">
+                    {showLive ? (
+                        <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+                    ) : capturedPhoto ? (
+                        <img src={capturedPhoto} alt="captured" className="h-full w-full object-cover" />
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => photoInputRef.current?.click()}
+                            className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-900 px-6 text-center text-slate-300 transition-colors active:bg-slate-800"
+                        >
+                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-slate-200">
+                                <Camera className="h-6 w-6" />
                             </div>
-                        ) : (
-                            <>
-                                <img src={data.foto} alt="Selfie with Stamp" className="w-full h-full object-cover" />
-                                <div className="absolute top-4 right-4">
-                                    <button type="button" onClick={retakePhoto} className="bg-black/50 text-white backdrop-blur-md px-4 py-2 rounded-full text-xs font-bold flex items-center shadow-lg">
-                                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Foto Ulang
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                        
-                        {/* Hidden canvas for image processing */}
-                        <canvas ref={canvasRef} className="hidden"></canvas>
+                            <p className="text-sm font-medium">{locationError || 'Kamera tidak dapat diakses'}</p>
+                            <p className="text-xs text-slate-400">Ketuk untuk mengunggah foto dari galeri</p>
+                        </button>
+                    )}
 
-                        {/* Overlay Location Status */}
-                        <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md text-white text-[10px] px-3 py-1.5 rounded-full font-medium flex items-center border border-white/10 shadow-md">
-                            <span className={`w-2 h-2 rounded-full mr-2 ${data.latitude ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`}></span>
-                            {locationStatus}
-                        </div>
-                    </div>
+                    <span className="absolute left-3 top-3 rounded-full bg-black/50 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
+                        <Clock className="mr-1 inline h-3 w-3" />{currentTime}
+                    </span>
 
-                    {/* Toggle Lembur */}
-                    <div className="p-3 bg-gray-50 border-b border-gray-100">
-                        <label className="flex items-center justify-between cursor-pointer">
-                            <span className="text-sm font-bold text-gray-700 flex items-center gap-1.5">
-                                <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                Absen Lembur?
-                            </span>
+                    {isLembur && (
+                        <span className="absolute right-3 top-3 rounded-full bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">LEMBUR</span>
+                    )}
+
+                    {/* bottom gradient + action */}
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-center bg-gradient-to-t from-black/50 to-transparent p-5">
+                        {capturedPhoto ? (
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setData(d => ({ ...d, is_lembur: !d.is_lembur, jadwal_id: '' }));
-                                    setPhotoCaptured(false);
-                                    setData('foto', '');
-                                }}
-                                className={`relative w-12 h-6 rounded-full transition-colors ${data.is_lembur ? 'bg-amber-500' : 'bg-gray-300'}`}
+                                onClick={retakePhoto}
+                                className="flex items-center gap-2 rounded-2xl bg-white/90 px-5 py-3 text-sm font-bold text-slate-800 shadow-lg backdrop-blur transition-transform active:scale-95"
                             >
-                                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${data.is_lembur ? 'translate-x-6' : ''}`}></span>
+                                <RefreshCw className="h-4 w-4" /> Ambil Ulang
                             </button>
-                        </label>
-                        {data.is_lembur && (
-                            <p className="mt-1.5 text-[11px] text-amber-700 font-medium">Lembur dadakan — jadwal tidak diperlukan. Foto akan ditandai BUKTI LEMBUR.</p>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={capturePhoto}
+                                className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_-4px_rgba(0,0,0,0.5)] transition-transform active:scale-90"
+                            >
+                                <span className={`h-12 w-12 rounded-full ${isLembur ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                            </button>
                         )}
                     </div>
+                </div>
+            </Card>
 
-                    {/* Form Controls */}
-                    <div className="p-5">
-                        <form onSubmit={submitPresensi}>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
-                                        {data.is_lembur ? 'Unit Sekolah' : 'Pilih Jadwal / Unit'}
-                                    </label>
-                                    {data.is_lembur ? (
-                                        <div className="w-full rounded-xl border border-gray-200 bg-gray-50 text-gray-700 px-3 py-2.5 text-sm font-medium">
-                                            {pegawai?.units?.[0]?.nama || 'Unit tidak ditemukan'}
-                                        </div>
-                                    ) : (
-                                        <select 
-                                            className="w-full rounded-xl border-gray-200 bg-gray-50 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 font-medium"
-                                            value={data.jadwal_id}
-                                            onChange={e => setData('jadwal_id', e.target.value)}
-                                            required
-                                        >
-                                            <option value="">-- Pilih Jadwal Hari Ini --</option>
-                                            {jadwals && jadwals.map(j => (
-                                                <option key={j.id} value={j.id}>{j.unit_sekolah.nama} ({j.jam_mulai.substring(0,5)} - {j.jam_selesai.substring(0,5)})</option>
-                                            ))}
-                                        </select>
-                                    )}
-                                </div>
+            <input type="file" accept="image/*" capture="environment" ref={photoInputRef} className="hidden" onChange={handleFileFallback} />
 
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Tipe Absen</label>
-                                    <div className="flex bg-gray-100 p-1 rounded-xl">
-                                        <div className={`flex-1 py-2 text-sm font-bold text-center rounded-lg shadow-sm transition-colors ${isCompleted ? 'bg-emerald-100 text-emerald-700' : ((data.jadwal_id || data.is_lembur) ? 'bg-white text-indigo-600' : 'bg-gray-200 text-gray-400')}`}>
-                                            {labelTipe}
-                                        </div>
-                                    </div>
-                                </div>
+            {/* Lembur toggle */}
+            <Card className="mt-3 flex items-center justify-between py-4">
+                <div>
+                    <p className="font-bold text-slate-800">Mode Lembur</p>
+                    <p className="text-xs text-slate-500">Presensi tanpa jadwal & cek telat</p>
+                </div>
+                <Toggle checked={isLembur} onChange={toggleLembur} tone="amber" />
+            </Card>
 
-                                <button 
-                                    type="submit" 
-                                    disabled={!photoCaptured || !data.latitude || processing || isCompleted || (!data.jadwal_id && !data.is_lembur)}
-                                    className={`w-full py-3.5 rounded-xl text-white font-bold text-lg shadow-lg transition-all flex items-center justify-center ${photoCaptured && data.latitude && !isCompleted && (data.jadwal_id || data.is_lembur) ? (data.is_lembur ? 'bg-amber-600 hover:bg-amber-700 active:scale-[0.98]' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98]') : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                                >
-                                    {processing ? 'Menyimpan...' : (isCompleted ? 'Presensi Selesai' : (data.is_lembur ? 'Kirim Lembur' : 'Kirim Presensi'))}
-                                    {photoCaptured && data.latitude && !processing && !isCompleted && <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>}
-                                </button>
-                            </div>
-                        </form>
+            {/* Jadwal */}
+            {!isLembur && jadwals.length > 0 && (
+                <div className="mt-5">
+                    <h3 className="mb-3 px-1 text-sm font-extrabold uppercase tracking-wider text-slate-500">Pilih Jadwal</h3>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                        {jadwals.map((j) => (
+                            <button
+                                key={j.id}
+                                type="button"
+                                onClick={() => selectJadwal(j.id)}
+                                className={`flex-shrink-0 rounded-2xl border-2 p-3 text-left transition-all active:scale-95 ${
+                                    jadwalId === j.id
+                                        ? 'border-emerald-500 bg-emerald-50 shadow-md'
+                                        : 'border-slate-200 bg-white hover:border-emerald-200'
+                                }`}
+                            >
+                                <p className="text-sm font-bold text-slate-800">{j.mata_pelajaran?.nama || 'Jadwal'}</p>
+                                <p className="text-xs text-slate-500">{j.kelas ? `Kls ${j.kelas.tingkat} ${j.kelas.nama}` : (j.hari || '')}</p>
+                                <p className="mt-1 text-xs font-semibold text-emerald-500">{j.jam_mulai} – {j.jam_selesai}</p>
+                            </button>
+                        ))}
                     </div>
                 </div>
-            </div>
+            )}
+
+            {/* Lokasi */}
+            <Card className="mt-3 py-4">
+                <div className="flex items-center gap-3">
+                    <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+                        geoStatus === 'ready' ? 'bg-emerald-100 text-emerald-600' : geoStatus === 'error' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400'
+                    }`}>
+                        {loadingLocation ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapPin className="h-5 w-5" />}
+                    </div>
+                    <div className="flex-1">
+                        <p className="font-bold text-slate-800">
+                            {geoStatus === 'ready' ? 'Lokasi Terdeteksi' : geoStatus === 'error' ? 'Lokasi Gagal' : 'Mendeteksi Lokasi…'}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                            {currentPosition ? `${currentPosition.latitude.toFixed(5)}, ${currentPosition.longitude.toFixed(5)}` : (locationError || 'Aktifkan GPS')}
+                        </p>
+                    </div>
+                </div>
+            </Card>
+
+            {/* Submit */}
+            <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className={`mt-5 w-full rounded-2xl bg-gradient-to-br ${isLembur ? 'from-amber-500 to-orange-500 shadow-[0_10px_24px_-6px_rgba(245,158,11,0.6)]' : 'from-emerald-500 to-primary shadow-[0_10px_24px_-6px_rgba(79,70,229,0.6)]'} py-4 font-extrabold text-white transition-transform active:scale-[0.98] disabled:opacity-60`}
+            >
+                {isSubmitting ? <><Loader2 className="mr-2 inline h-5 w-5 animate-spin" />Memproses…</> : isLembur ? 'Kirim Lembur' : 'Kirim Presensi'}
+            </button>
+
+            <canvas ref={canvasRef} className="hidden" />
         </MobileLayout>
     );
 }

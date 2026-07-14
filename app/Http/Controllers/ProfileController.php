@@ -37,7 +37,7 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
-        return Redirect::route('profile.edit');
+        return Redirect::route(auth('web_mobile')->check() ? 'mobile.profile.edit' : 'profile.edit');
     }
 
     /**

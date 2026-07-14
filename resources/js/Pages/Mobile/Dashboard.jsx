@@ -1,157 +1,175 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Card, SectionTitle, Badge, Empty } from '@/Components/MobileUI';
+import { CalendarCheck, Clock, MapPin, AlertTriangle, TrendingUp, FileText } from 'lucide-react';
 
-export default function MobileDashboard({ auth, pegawai, presensi, presensiSeminggu }) {
-    const [currentTime, setCurrentTime] = useState(new Date());
+export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu }) {
+    const { flash } = usePage().props;
+    const today = format(new Date(), 'EEEE, d MMMM yyyy', { locale: id });
 
-    useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
+    const jabatan = pegawai?.units?.[0]?.pivot?.jabatan?.nama_jabatan || 'Pegawai';
+    const unit = pegawai?.units?.[0]?.nama_unit || '-';
+    const namaDepan = auth?.user?.name?.split(' ')[0] || 'Pegawai';
 
-    const formatDate = (date) => {
-        return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const jadwalHariIni = presensi?.jadwal_hari_ini || [];
+    const izinHariIni = presensi?.izin_hari_ini || null;
+    const statusBadge = presensi?.status_badge || { label: 'Belum Presensi', color: 'slate' };
+    const lokasiPerluReview = presensi?.lokasi_perlu_review || false;
+
+    const stats = {
+        hadir: presensi?.hadir || 0,
+        telat: presensi?.telat || 0,
+        sakit_izin: (presensi?.sakit || 0) + (presensi?.izin || 0),
+        alpa: presensi?.alpa || 0,
     };
 
-    const formatTime = (date) => {
-        return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const getStatusTone = (color) => {
+        const map = { green: 'emerald', yellow: 'amber', red: 'rose', blue: 'sky', slate: 'slate' };
+        return map[color] || 'slate';
     };
+
+    const chartData = useMemo(() => {
+        const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+        return days.map((day) => {
+            const d = presensiSeminggu?.[day] || { hadir: 0, telat: 0, izin: 0, sakit: 0, alpa: 0 };
+            return { day: day.slice(0, 3), total: d.hadir + d.telat + d.izin + d.sakit + d.alpa, hadir: d.hadir, telat: d.telat, izin: d.izin, sakit: d.sakit, alpa: d.alpa };
+        });
+    }, [presensiSeminggu]);
+
+    const statCards = [
+        { label: 'Hadir', value: stats.hadir, tone: 'emerald', icon: CalendarCheck },
+        { label: 'Telat', value: stats.telat, tone: 'amber', icon: Clock },
+        { label: 'Izin/Sakit', value: stats.sakit_izin, tone: 'sky', icon: FileText },
+        { label: 'Alpa', value: stats.alpa, tone: 'rose', icon: AlertTriangle },
+    ];
 
     return (
         <MobileLayout user={auth.user}>
-            <Head title="Beranda Mobile" />
+            <Head title="Dashboard" />
 
-            <div className="space-y-6">
-                {/* Greeting Card */}
-                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
-                    <div className="relative z-10">
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <p className="text-indigo-100 text-sm mb-1">{formatDate(currentTime)}</p>
-                                <h2 className="text-2xl font-bold">Halo, {auth.user.name.split(' ')[0]}!</h2>
-                            </div>
-                            <div className="bg-white/20 backdrop-blur-md rounded-lg px-3 py-1.5 text-center border border-white/20 shadow-sm">
-                                <p className="text-[10px] text-indigo-100 uppercase tracking-wider font-semibold">Sisa Cuti</p>
-                                <p className="text-lg font-bold">{pegawai.sisa_cuti}</p>
-                            </div>
-                        </div>
-                        
-                        <div className="bg-white/20 backdrop-blur-md rounded-xl p-4 text-center border border-white/10">
-                            <p className="text-xs text-indigo-100 mb-1 uppercase tracking-wider">Waktu Saat Ini</p>
-                            <p className="text-4xl font-mono font-bold tracking-tight">{formatTime(currentTime)}</p>
-                        </div>
-                    </div>
-                    {/* Decorative circles */}
-                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
-                    <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-purple-400 opacity-20 rounded-full blur-lg"></div>
-                </div>
-
-                {/* Status Presensi Hari Ini */}
-                <div>
-                    <h3 className="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wider flex items-center">
-                        <svg className="w-4 h-4 mr-1.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Status Kehadiran
-                    </h3>
-                    
-                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                        {presensi ? (
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center pb-3 border-b border-gray-50">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Jam Masuk</p>
-                                            <p className="font-bold text-gray-900">{presensi.jam_masuk || '--:--'}</p>
-                                        </div>
-                                    </div>
-                                    {presensi.status === 'telat' && <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-md font-bold">Telat</span>}
-                                    {presensi.status === 'hadir' && <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-md font-bold">Tepat Waktu</span>}
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500">Jam Pulang</p>
-                                            <p className="font-bold text-gray-900">{presensi.jam_keluar || '--:--'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="text-center py-6">
-                                <div className="w-12 h-12 rounded-full bg-gray-100 mx-auto flex items-center justify-center mb-3">
-                                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                </div>
-                                <p className="text-gray-500 text-sm mb-4">Anda belum melakukan absen masuk hari ini.</p>
-                                <Link href={route('mobile.absen')} className="inline-block bg-indigo-600 text-white font-bold py-2 px-6 rounded-full shadow-md text-sm">
-                                    Absen Sekarang
-                                </Link>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Quick Menu */}
-                {/* <div className="grid grid-cols-2 gap-4">
-                    <Link href={route('mobile.absen')} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all active:scale-95">
-                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-2">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        </div>
-                        <span className="text-sm font-semibold text-gray-800">Absen</span>
-                    </Link>
-                    
-                    <Link href={route('mobile.izin.index')} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all active:scale-95">
-                        <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-2">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        </div>
-                        <span className="text-sm font-semibold text-gray-800">Izin & Cuti</span>
-                    </Link>
-                </div> */}
-
-                {/* Riwayat Kehadiran (Seminggu Terakhir) */}
-                <div>
-                    <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center">
-                            <svg className="w-4 h-4 mr-1.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            Riwayat Kehadiran
-                        </h3>
-                        <Link href={route('mobile.riwayat')} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">
-                            Lihat Semua
-                        </Link>
-                    </div>
-                    
-                    <div className="space-y-3">
-                        {presensiSeminggu && presensiSeminggu.length > 0 ? (
-                            presensiSeminggu.slice(0, 5).map(item => (
-                                <Link key={item.id} href={route('mobile.riwayat')} className="bg-white rounded-2xl p-4 shadow-sm border border-l-4 border-l-indigo-500 flex items-center hover:bg-gray-50 transition-colors">
-                                    <div className="flex-1">
-                                        <p className="font-bold text-gray-900">{new Date(item.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                                        <div className="flex items-center text-xs text-gray-500 mt-0.5">
-                                            <span className="inline-block w-2 h-2 rounded-full mr-1.5 bg-emerald-500"></span>
-                                            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md text-sm">
-                                            {item.jam_masuk ? item.jam_masuk.substring(0, 5) : '--:--'}
-                                            {item.jam_keluar ? ` - ${item.jam_keluar.substring(0, 5)}` : ''}
-                                        </p>
-                                    </div>
-                                </Link>
-                            ))
-                        ) : (
-                            <div className="bg-gray-50 border border-dashed border-gray-300 rounded-2xl p-6 text-center">
-                                <p className="text-gray-500 text-sm">Belum ada riwayat kehadiran dalam 3 hari terakhir.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
+            {/* Greeting */}
+            <div className="mb-5 px-1">
+                <p className="text-sm font-medium text-slate-500">{today}</p>
+                <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
+                    Halo, {namaDepan} 👋
+                </h1>
+                <p className="mt-0.5 text-sm text-slate-500">{jabatan} • {unit}</p>
             </div>
+
+            {flash.message && (
+                <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                    {flash.message}
+                </div>
+            )}
+            {flash.error && (
+                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                    {flash.error}
+                </div>
+            )}
+
+            {/* Today presensi */}
+            <Card className="relative overflow-hidden">
+                <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-100/60 blur-2xl" />
+                <div className="relative">
+                    <div className="mb-3 flex items-center justify-between">
+                        <h2 className="text-base font-extrabold text-slate-800">Presensi Hari Ini</h2>
+                        <Badge tone={getStatusTone(statusBadge.color)}>
+                            {statusBadge.label}
+                        </Badge>
+                    </div>
+
+                    {jadwalHariIni.length === 0 && !izinHariIni ? (
+                        <Empty icon={Clock} title="Tidak ada jadwal hari ini" subtitle="Nikmati waktumu, sampai jumpa besok!" />
+                    ) : izinHariIni ? (
+                        <div className="rounded-2xl bg-emerald-50 p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                                    <FileText className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-800 capitalize">{izinHariIni.jenis_izin}</p>
+                                    <p className="text-sm text-slate-500">Disetujui • {format(new Date(izinHariIni.tanggal_mulai), 'd MMM', { locale: id })}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {jadwalHariIni.map((jadwal, idx) => (
+                                <div key={idx} className="rounded-2xl bg-slate-50 p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-bold text-slate-800">{jadwal.mata_pelajaran}</p>
+                                            <p className="text-xs text-slate-500">{jadwal.kelas} • {jadwal.hari}</p>
+                                        </div>
+                                        <Badge tone={getStatusTone(jadwal.status_color)}>
+                                            {jadwal.status}
+                                        </Badge>
+                                    </div>
+                                    <div className="mt-3 flex items-center gap-4 text-sm text-slate-600">
+                                        <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4 text-emerald-400" /> {jadwal.jam_mulai}–{jadwal.jam_selesai}</span>
+                                        {jadwal.jam_masuk && (
+                                            <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4 text-emerald-400" /> {jadwal.jam_masuk}</span>
+                                        )}
+                                        {jadwal.jam_keluar && (
+                                            <span className="inline-flex items-center gap-1 text-rose-400"><MapPin className="h-4 w-4" /> {jadwal.jam_keluar}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                            {lokasiPerluReview && (
+                                <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                                    <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
+                                    <p className="text-xs font-medium text-amber-700">Lokasi presensi Anda berada di luar area kantor dan perlu ditinjau oleh admin.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </Card>
+
+            {/* Stats */}
+            <SectionTitle icon={TrendingUp} className="mt-6">Ringkasan Bulan Ini</SectionTitle>
+            <div className="grid grid-cols-2 gap-3">
+                {statCards.map((s) => (
+                    <Card key={s.label} className="flex items-center gap-3 py-4">
+                        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+                            s.tone === 'emerald' ? 'bg-emerald-100 text-emerald-600' :
+                            s.tone === 'amber' ? 'bg-amber-100 text-amber-600' :
+                            s.tone === 'sky' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
+                        }`}>
+                            <s.icon className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-extrabold leading-none text-slate-800">{s.value}</p>
+                            <p className="text-xs font-medium text-slate-500">{s.label}</p>
+                        </div>
+                    </Card>
+                ))}
+            </div>
+
+            {/* Weekly chart */}
+            <SectionTitle icon={TrendingUp} className="mt-6">Kehadiran 7 Hari</SectionTitle>
+            <Card className="pb-2">
+                <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={chartData} barCategoryGap="25%">
+                        <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                        <Tooltip
+                            cursor={{ fill: 'rgba(99,102,241,0.06)' }}
+                            contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 8px 30px -12px rgba(79,70,229,0.4)', fontSize: 12 }}
+                        />
+                        <Bar dataKey="total" radius={[8, 8, 8, 8]}>
+                            {chartData.map((entry, index) => (
+                                <Cell key={index} fill={entry.total > 0 ? '#6366f1' : '#e2e8f0'} />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </Card>
         </MobileLayout>
     );
 }

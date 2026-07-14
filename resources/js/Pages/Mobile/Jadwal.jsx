@@ -1,94 +1,89 @@
-import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Clock, MapPin, CalendarDays, BookOpen, Layers } from 'lucide-react';
+import { Card, Badge, Empty } from '@/Components/MobileUI';
+import { format, addMonths, subMonths } from 'date-fns';
+import { id } from 'date-fns/locale';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const hariUrut = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
 export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
-    const hariUrutan = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-    
-    // Urutkan jadwal sesuai hari kerja
-    const sortedHari = Object.keys(jadwalPerHari).sort(
-        (a, b) => hariUrutan.indexOf(a) - hariUrutan.indexOf(b)
-    );
+    const [currentMonth, setCurrentMonth] = useState(new Date());
 
-    const getHariIni = () => {
-        const date = new Date();
-        const hariMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        return hariMap[date.getDay()];
-    };
+    const hariMap = { Senin: [], Selasa: [], Rabu: [], Kamis: [], Jumat: [], Sabtu: [], Minggu: [] };
+    Object.keys(jadwalPerHari || {}).forEach((hari) => {
+        if (hariMap[hari]) hariMap[hari] = jadwalPerHari[hari];
+    });
 
-    const hariIni = getHariIni();
+    const onPrevMonth = () => setCurrentMonth((prev) => subMonths(prev, 1));
+    const onNextMonth = () => setCurrentMonth((prev) => addMonths(prev, 1));
+
+    const totalJadwal = hariUrut.reduce((sum, h) => sum + (hariMap[h]?.length || 0), 0);
 
     return (
         <MobileLayout user={auth.user}>
-            <Head title="Jadwal Kerja" />
+            <Head title="Jadwal" />
 
-            <div className="mb-6">
-                <h1 className="text-xl font-extrabold text-gray-900">Jadwal Anda</h1>
-                <p className="text-sm text-gray-500">Jadwal kerja dan mengajar Anda</p>
+            <div className="mb-4 px-1">
+                <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Jadwal</h1>
+                <p className="mt-0.5 text-sm text-slate-500">{totalJadwal} jadwal • {format(currentMonth, 'MMMM yyyy', { locale: id })}</p>
             </div>
 
-            <div className="space-y-6 pb-8">
-                {sortedHari.length === 0 ? (
-                    <div className="bg-white rounded-2xl p-6 text-center border border-gray-100 shadow-sm mt-4">
-                        <CalendarDays className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                        <h3 className="text-gray-800 font-bold mb-1">Belum Ada Jadwal</h3>
-                        <p className="text-gray-500 text-sm">Tidak ada jadwal yang terdaftar.</p>
-                    </div>
-                ) : (
-                    sortedHari.map(hari => (
-                        <div key={hari} className="mb-2">
-                            {/* Header Hari */}
-                            <div className="flex items-center space-x-2 mb-2 ml-1">
-                                <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">
-                                    {hari}
-                                </h2>
-                                {hari === hariIni && (
-                                    <span className="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                        Hari Ini
-                                    </span>
-                                )}
-                            </div>
-                            
-                            {/* Daftar Jadwal per Hari dalam satu Card (List) */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
-                                {jadwalPerHari[hari].map((jadwal, index) => (
-                                    <div key={jadwal.id} className={`p-4 flex items-start ${hari === hariIni ? 'bg-indigo-50/30' : ''}`}>
-                                        
-                                        {/* Waktu (Kiri) */}
-                                        <div className="flex-shrink-0 w-16 text-center mr-3 pt-0.5 border-r border-gray-100 pr-3">
-                                            <p className="text-sm font-extrabold text-indigo-600 leading-none mb-1">{jadwal.jam_mulai.substring(0, 5)}</p>
-                                            <p className="text-xs font-semibold text-gray-400 leading-none">{jadwal.jam_selesai.substring(0, 5)}</p>
-                                        </div>
+            {/* Compact month navigator */}
+            <div className="mb-4 flex items-center justify-between rounded-2xl bg-white/80 px-2 py-2 shadow-[0_8px_30px_-12px_rgba(15,61,62,0.2)] ring-1 ring-black/5 backdrop-blur">
+                <button type="button" onClick={onPrevMonth} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-transform active:scale-90 hover:bg-slate-100">
+                    <ChevronLeft className="h-5 w-5" />
+                </button>
+                <p className="text-sm font-extrabold capitalize text-slate-800">{format(currentMonth, 'MMMM yyyy', { locale: id })}</p>
+                <button type="button" onClick={onNextMonth} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-transform active:scale-90 hover:bg-slate-100">
+                    <ChevronRight className="h-5 w-5" />
+                </button>
+            </div>
 
-                                        {/* Info Utama (Kanan) */}
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="text-sm font-bold text-gray-900 mb-1 truncate">
-                                                {jadwal.mata_pelajaran ? jadwal.mata_pelajaran.nama : (jadwal.jenis_jadwal.charAt(0).toUpperCase() + jadwal.jenis_jadwal.slice(1))}
-                                            </h3>
-                                            
-                                            {/* Detail Tambahan (Lokasi & Kelas) */}
-                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] text-gray-500 font-medium">
-                                                <span className="flex items-center bg-gray-50 px-1.5 py-0.5 rounded text-gray-600">
-                                                    <MapPin className="w-3 h-3 mr-1 text-gray-400" />
-                                                    <span className="truncate max-w-[120px]">{jadwal.unit_sekolah?.singkatan || jadwal.unit_sekolah?.nama || '-'}</span>
-                                                </span>
-                                                
-                                                {jadwal.kelas && (
-                                                    <span className="flex items-center bg-gray-50 px-1.5 py-0.5 rounded text-gray-600">
-                                                        <Layers className="w-3 h-3 mr-1 text-gray-400" />
-                                                        <span className="truncate">Kls {jadwal.kelas.tingkat} {jadwal.kelas.nama}</span>
-                                                    </span>
+            {totalJadwal === 0 ? (
+                <Empty icon={Calendar} title="Belum ada jadwal" subtitle="Jadwal mengajar akan muncul di sini." />
+            ) : (
+                <div className="space-y-4">
+                    {hariUrut.map((hari) => {
+                        const list = hariMap[hari] || [];
+                        if (list.length === 0) return null;
+                        return (
+                            <div key={hari}>
+                                <div className="mb-2 flex items-center gap-2 px-1">
+                                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                    <h3 className="text-sm font-extrabold text-slate-700">{hari}</h3>
+                                    <span className="text-xs font-medium text-slate-400">{list.length}</span>
+                                </div>
+                                <Card className="divide-y divide-slate-50 p-0">
+                                    {list.map((j) => {
+                                        const mapel = j.mata_pelajaran?.nama
+                                            || (j.jenis_jadwal ? j.jenis_jadwal.charAt(0).toUpperCase() + j.jenis_jadwal.slice(1) : 'Jadwal');
+                                        const kelas = j.kelas ? `Kls ${j.kelas.tingkat} ${j.kelas.nama}` : null;
+                                        const unit = j.unit_sekolah?.singkatan || j.unit_sekolah?.nama || pegawai?.units?.[0]?.nama_unit || null;
+                                        const isLembur = j.jenis_jadwal === 'lembur';
+                                        return (
+                                            <div key={j.id} className="flex items-center gap-3 px-4 py-3">
+                                                <div className="w-14 shrink-0 text-center">
+                                                    <p className="text-sm font-extrabold leading-none text-primary">{j.jam_mulai}</p>
+                                                    <p className="mt-0.5 text-[11px] text-slate-400">{j.jam_selesai}</p>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate font-bold text-slate-800">{mapel}</p>
+                                                    <p className="truncate text-xs text-slate-500">{[kelas, unit].filter(Boolean).join(' • ')}</p>
+                                                </div>
+                                                {isLembur && (
+                                                    <Badge tone="amber" className="shrink-0">Lembur</Badge>
                                                 )}
                                             </div>
-                                        </div>
-                                    </div>
-                                ))}
+                                        );
+                                    })}
+                                </Card>
                             </div>
-                        </div>
-                    ))
-                )}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
         </MobileLayout>
     );
 }
