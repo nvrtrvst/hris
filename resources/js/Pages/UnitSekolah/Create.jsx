@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 import UnitForm from './UnitForm';
 
-export default function Create() {
+export default function Create({ auth }) {
     const { data, setData, post, processing, errors } = useForm({
         nama: '',
         singkatan: '',
@@ -18,7 +18,7 @@ export default function Create() {
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800">Tambah Unit Sekolah</h2>}>
+        <AuthenticatedLayout user={auth.user} header={<h2 className="font-semibold text-xl text-gray-800">Tambah Unit Sekolah</h2>}>
             <Head title="Tambah Unit Sekolah" />
             <div className="py-12">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">

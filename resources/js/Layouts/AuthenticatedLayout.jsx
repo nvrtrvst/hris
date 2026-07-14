@@ -6,7 +6,9 @@ import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 import FlashToast from '@/Components/FlashToast';
 
-export default function AuthenticatedLayout({ user, header, children }) {
+export default function AuthenticatedLayout({ user: userProp, header, children }) {
+    const { auth } = usePage().props;
+    const user = userProp ?? auth.user;
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const { url } = usePage();
@@ -24,7 +26,6 @@ export default function AuthenticatedLayout({ user, header, children }) {
         }));
     };
 
-    const { auth } = usePage().props;
     const permissions = auth.permissions || [];
     const role = auth.roles?.includes('superadmin')
         ? 'superadmin'
