@@ -43,6 +43,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     const fileInputRef = useRef(null);
     const photoInputRef = useRef(null);
     const nativeInputRef = useRef(null);
+    const capturedFileRef = useRef(null);
 
     const { flash } = usePage().props;
 
@@ -57,6 +58,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                 streamRef.current.getTracks().forEach((t) => t.stop());
             }
             if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (capturedPhoto?.startsWith('blob:')) URL.revokeObjectURL(capturedPhoto);
         };
     }, []);
 
@@ -64,9 +66,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         setCameraOpening(false);
         const file = e.target.files?.[0];
         if (!file) { setStarted(false); return; }
-        const reader = new FileReader();
-        reader.onloadend = () => setCapturedPhoto(reader.result);
-        reader.readAsDataURL(file);
+        if (capturedPhoto?.startsWith('blob:')) URL.revokeObjectURL(capturedPhoto);
+        capturedFileRef.current = file;
+        setCapturedPhoto(URL.createObjectURL(file));
     };
 
     const handleStart = () => {
@@ -130,7 +132,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     };
 
     const retakePhoto = () => {
+        if (capturedPhoto?.startsWith('blob:')) URL.revokeObjectURL(capturedPhoto);
         setCapturedPhoto(null);
+        capturedFileRef.current = null;
         if (isIOS) {
             setCameraOpening(true);
             nativeInputRef.current?.click();
@@ -261,9 +265,19 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         }
 
         setIsSubmitting(true);
+
+        let fotoBase64 = capturedPhoto;
+        if (capturedFileRef.current) {
+            fotoBase64 = await new Promise((resolve) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.readAsDataURL(capturedFileRef.current);
+            });
+        }
+
         const openPresensi = presensiHariIni?.find((p) => p.jam_masuk && !p.jam_keluar);
         const payload = {
-            foto: capturedPhoto,
+            foto: fotoBase64,
             is_lembur: isLembur,
             jadwal_id: isLembur ? null : jadwalId,
             tipe: openPresensi ? 'keluar' : 'masuk',
@@ -284,7 +298,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
             const data = await res.json();
             if (res.ok && data.success) {
                 setSuccessMessage(data.message || 'Presensi berhasil dikirim.');
+                if (capturedPhoto?.startsWith('blob:')) URL.revokeObjectURL(capturedPhoto);
                 setCapturedPhoto(null);
+                capturedFileRef.current = null;
                 setJadwalId(null);
                 setTimeout(() => {
                     if (typeof window !== 'undefined') window.location.reload();
