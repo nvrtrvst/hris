@@ -115,18 +115,19 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         if (geoInfo?.principalSubdivision) pp.push(geoInfo.principalSubdivision);
         const loc = pp.length ? pp.join(', ') : 'Lokasi belum tersedia';
 
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(0, h - 90, w, 90);
         ctx.textBaseline = 'bottom';
         ctx.fillStyle = '#fff';
-        ctx.font = `bold ${Math.max(14, Math.round(w * 0.039))}px sans-serif`;
-        ctx.fillText(ts, 12, h - 46);
-        ctx.fillStyle = '#fff';
-        ctx.font = `${Math.max(10, Math.round(w * 0.028))}px sans-serif`;
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 2;
+        ctx.font = `bold ${Math.max(16, Math.round(w * 0.045))}px sans-serif`;
+        ctx.fillText(ts, 12, h - 48);
+        ctx.font = `bold ${Math.max(12, Math.round(w * 0.032))}px sans-serif`;
         ctx.fillText(ds, 12, h - 28);
-        ctx.fillStyle = '#fff';
-        ctx.font = `${Math.max(9, Math.round(w * 0.025))}px sans-serif`;
+        ctx.font = `bold ${Math.max(10, Math.round(w * 0.028))}px sans-serif`;
         ctx.fillText(loc.length > 50 ? loc.substring(0, 47) + '...' : loc, 12, h - 10);
+        ctx.shadowBlur = 0;
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedPhoto(dataUrl);
@@ -401,7 +402,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                         </button>
                     )}
 
-                    {!showLive && (
+                    {!showLive && !capturedPhoto && (
                         <span className="absolute left-3 top-3 rounded-full bg-black/50 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
                             <Clock className="mr-1 inline h-3 w-3" />
                             {currentTime}
@@ -412,7 +413,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                         <span className="absolute right-3 top-3 rounded-full bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">LEMBUR</span>
                     )}
 
-                    {currentPosition && (
+                    {currentPosition && !capturedPhoto && (
                         <span className={`absolute right-3 ${isLembur ? 'top-12' : 'top-3'} rounded-full bg-black/50 px-2.5 py-1 text-[10px] font-mono font-semibold text-white backdrop-blur`}>
                             {currentPosition.latitude.toFixed(5)}, {currentPosition.longitude.toFixed(5)}
                         </span>
