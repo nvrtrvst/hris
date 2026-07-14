@@ -311,7 +311,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                     )}
 
                     {/* overlay bawah 40%: info di ujung bawah-kiri, tombol di tengah */}
-                    <div className="absolute inset-x-0 bottom-0 flex h-[40%] flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent">
+                    <div className="absolute inset-x-0 bottom-0 flex h-[50%] flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent">
                         {showLive && (
                             <div className="absolute bottom-3 left-3 right-1/2 pr-2">
                                 <p className="text-[16px] font-extrabold leading-tight text-white">{timeString}</p>
