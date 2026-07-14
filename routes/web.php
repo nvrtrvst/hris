@@ -195,17 +195,4 @@ Route::prefix('mobile')->group(function () {
     });
 });
 
-// Dev login (CSRF excluded, hapus setelah debug selesai)
-Route::post('/dev-login', function (Request $request) {
-    $credentials = $request->only('login', 'password');
-    $field = filter_var($credentials['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'no_induk';
-    if (Auth::attempt([$field => $credentials['login'], 'password' => $credentials['password']], true)) {
-        $request->session()->regenerate();
-
-        return redirect('/debug/cookies');
-    }
-
-    return response()->json(['error' => 'Login failed'], 401);
-})->withoutMiddleware(VerifyCsrfToken::class);
-
 require __DIR__.'/auth.php';
