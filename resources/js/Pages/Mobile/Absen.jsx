@@ -267,58 +267,24 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
 
             {/* Camera */}
             <Card className="overflow-hidden p-0">
-                <div className="relative aspect-square w-full overflow-hidden bg-slate-900">
-                    {showLive || capturedPhoto ? (
+                <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-900">
+                    {showLive ? (
                         <>
-                            {showLive ? (
+                            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" />
+                            {tileUrl && (
                                 <>
-                                    <video ref={videoRef} autoPlay playsInline muted className="absolute inset-x-0 top-0 h-1/2 w-full object-cover" />
-                                    {tileUrl && (
-                                        <>
-                                            <img
-                                                src={tileUrl}
-                                                alt=""
-                                                onError={() => setMapError(true)}
-                                                className="pointer-events-none absolute inset-x-0 top-0 h-1/2 w-full object-cover opacity-20"
-                                            />
-                                            <MapPin className="pointer-events-none absolute left-1/2 top-1/4 h-7 w-7 -translate-x-1/2 -translate-y-1/2 text-emerald-300 drop-shadow" />
-                                        </>
-                                    )}
+                                    <img
+                                        src={tileUrl}
+                                        alt=""
+                                        onError={() => setMapError(true)}
+                                        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20"
+                                    />
+                                    <MapPin className="pointer-events-none absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 text-emerald-300 drop-shadow" />
                                 </>
-                            ) : (
-                                <img src={capturedPhoto} alt="captured" className="absolute inset-x-0 top-0 h-1/2 w-full object-cover" />
                             )}
-                            {/* setengah bawah: info + tombol */}
-                            <div className="absolute inset-x-0 bottom-0 flex h-1/2 flex-col justify-end bg-slate-900 p-3">
-                                <div className="mb-3">
-                                    <p className="text-[16px] font-extrabold leading-tight text-white">{timeString}</p>
-                                    <p className="text-[11px] font-semibold text-white/90">{dateString}</p>
-                                    <p className="mt-1 flex items-start gap-1 text-[10px] leading-tight text-white/80">
-                                        <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-300" />
-                                        <span className="line-clamp-2">{placeString}</span>
-                                    </p>
-                                </div>
-                                <div className="flex justify-center">
-                                    {capturedPhoto ? (
-                                        <button
-                                            type="button"
-                                            onClick={retakePhoto}
-                                            className="flex items-center gap-2 rounded-2xl bg-white/90 px-5 py-3 text-sm font-bold text-slate-800 shadow-lg backdrop-blur transition-transform active:scale-95"
-                                        >
-                                            <RefreshCw className="h-4 w-4" /> Ambil Ulang
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={capturePhoto}
-                                            className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_-4px_rgba(0,0,0,0.5)] transition-transform active:scale-90"
-                                        >
-                                            <span className={`h-12 w-12 rounded-full ${isLembur ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
                         </>
+                    ) : capturedPhoto ? (
+                        <img src={capturedPhoto} alt="captured" className="h-full w-full object-cover" />
                     ) : (
                         <button
                             type="button"
@@ -333,7 +299,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                         </button>
                     )}
 
-                    {!showLive && !capturedPhoto && (
+                    {!showLive && (
                         <span className="absolute left-3 top-3 rounded-full bg-black/50 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
                             <Clock className="mr-1 inline h-3 w-3" />
                             {currentTime}
@@ -343,6 +309,39 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                     {isLembur && (
                         <span className="absolute right-3 top-3 rounded-full bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">LEMBUR</span>
                     )}
+
+                    {/* overlay bawah 40%: info di ujung bawah-kiri, tombol di tengah */}
+                    <div className="absolute inset-x-0 bottom-0 flex h-[50%] flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent">
+                        {showLive && (
+                            <div className="absolute bottom-3 left-3 right-1/2 pr-2">
+                                <p className="text-[16px] font-extrabold leading-tight text-white">{timeString}</p>
+                                <p className="text-[11px] font-semibold text-white/90">{dateString}</p>
+                                <p className="mt-1 flex items-start gap-1 text-[10px] leading-tight text-white/80">
+                                    <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-300" />
+                                    <span className="line-clamp-2">{placeString}</span>
+                                </p>
+                            </div>
+                        )}
+                        <div className="mb-3 flex justify-center">
+                            {capturedPhoto ? (
+                                <button
+                                    type="button"
+                                    onClick={retakePhoto}
+                                    className="flex items-center gap-2 rounded-2xl bg-white/90 px-5 py-3 text-sm font-bold text-slate-800 shadow-lg backdrop-blur transition-transform active:scale-95"
+                                >
+                                    <RefreshCw className="h-4 w-4" /> Ambil Ulang
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={capturePhoto}
+                                    className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_-4px_rgba(0,0,0,0.5)] transition-transform active:scale-90"
+                                >
+                                    <span className={`h-12 w-12 rounded-full ${isLembur ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </Card>
 
