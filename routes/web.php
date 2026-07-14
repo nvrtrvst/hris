@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return redirect()->route('login');
+    return redirect('/mobile');
 });
 
 // Rute Desktop (Manajemen & Portal Staff)
