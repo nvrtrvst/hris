@@ -277,7 +277,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                                         src={tileUrl}
                                         alt=""
                                         onError={() => setMapError(true)}
-                                        className="pointer-events-none absolute left-1/2 top-1/2 h-3/4 w-3/4 -translate-x-1/2 -translate-y-1/2 rounded-2xl object-cover opacity-20"
+                                        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20"
                                     />
                                     <MapPin className="pointer-events-none absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 text-emerald-300 drop-shadow" />
                                 </>
@@ -310,10 +310,10 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                         <span className="absolute right-3 top-3 rounded-full bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">LEMBUR</span>
                     )}
 
-                    {/* overlay bawah 40%: jam → hari → alamat, lalu tombol */}
-                    <div className="absolute inset-x-0 bottom-0 flex h-[40%] flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3">
+                    {/* overlay bawah 40%: info di ujung bawah-kiri, tombol di tengah */}
+                    <div className="absolute inset-x-0 bottom-0 flex h-[40%] flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent">
                         {showLive && (
-                            <div className="mb-2">
+                            <div className="absolute bottom-3 left-3 right-1/2 pr-2">
                                 <p className="text-[16px] font-extrabold leading-tight text-white">{timeString}</p>
                                 <p className="text-[11px] font-semibold text-white/90">{dateString}</p>
                                 <p className="mt-1 flex items-start gap-1 text-[10px] leading-tight text-white/80">
@@ -322,7 +322,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                                 </p>
                             </div>
                         )}
-                        <div className="flex justify-center">
+                        <div className="mb-3 flex justify-center">
                             {capturedPhoto ? (
                                 <button
                                     type="button"
