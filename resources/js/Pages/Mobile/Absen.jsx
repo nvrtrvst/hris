@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 
+const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
 const haversine = (lat1, lon1, lat2, lon2) => {
     const R = 6371000;
     const toRad = (d) => (d * Math.PI) / 180;
@@ -32,6 +34,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     const [geoInfo, setGeoInfo] = useState(null);
     const [geoInfoLoading, setGeoInfoLoading] = useState(false);
     const [started, setStarted] = useState(false);
+    const [cameraOpening, setCameraOpening] = useState(false);
     const [mapError, setMapError] = useState(false);
 
     const videoRef = useRef(null);
@@ -39,6 +42,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     const streamRef = useRef(null);
     const fileInputRef = useRef(null);
     const photoInputRef = useRef(null);
+    const nativeInputRef = useRef(null);
 
     const { flash } = usePage().props;
 
@@ -56,11 +60,26 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         };
     }, []);
 
+    const handleNativeCapture = (e) => {
+        setCameraOpening(false);
+        const file = e.target.files?.[0];
+        if (!file) { setStarted(false); return; }
+        const reader = new FileReader();
+        reader.onloadend = () => setCapturedPhoto(reader.result);
+        reader.readAsDataURL(file);
+    };
+
     const handleStart = () => {
         setStarted(true);
         try {
-            startCamera();
-            getCurrentPosition();
+            if (isIOS) {
+                setCameraOpening(true);
+                getCurrentPosition();
+                nativeInputRef.current?.click();
+            } else {
+                startCamera();
+                getCurrentPosition();
+            }
         } catch (e) {
             setLocationError(e?.message || 'Gagal memulai perangkat. Coba upload foto manual.');
             setGeoStatus('error');
@@ -112,7 +131,12 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
 
     const retakePhoto = () => {
         setCapturedPhoto(null);
-        startCamera();
+        if (isIOS) {
+            setCameraOpening(true);
+            nativeInputRef.current?.click();
+        } else {
+            startCamera();
+        }
     };
 
     const toggleLembur = () => setIsLembur((prev) => !prev);
@@ -360,6 +384,12 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                             <p className="text-lg font-extrabold">Mulai Presensi</p>
                             <p className="text-sm text-white/80">Ketuk untuk mengaktifkan kamera &amp; lokasi</p>
                         </button>
+                    ) : cameraOpening ? (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-slate-900 px-6 text-center text-white">
+                            <Loader2 className="h-8 w-8 animate-spin text-emerald-300" />
+                            <p className="text-lg font-extrabold">Membuka kamera…</p>
+                            <p className="text-sm text-white/80">Izinkan akses kamera saat diminta</p>
+                        </div>
                     ) : showLive ? (
                         <>
                             <video ref={videoRef} autoPlay playsInline muted className={`absolute inset-0 h-full w-full object-cover transition-opacity ${showLive ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} style={{ transform: 'scaleX(-1)' }} />
@@ -446,6 +476,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
             </Card>
 
             <input type="file" accept="image/*" capture="environment" ref={photoInputRef} className="hidden" onChange={handleFileFallback} />
+            <input type="file" accept="image/*" capture="user" ref={nativeInputRef} className="hidden" onChange={handleNativeCapture} />
 
             {/* Lembur toggle */}
             <Card className="mt-3 flex items-center justify-between py-4">
