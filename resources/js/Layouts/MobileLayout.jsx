@@ -15,6 +15,8 @@ export default function MobileLayout({ user, header, children }) {
     const { url } = usePage();
 
     return (
+        <>
+        <style>{`html,body{overscroll-behavior-y:contain}`}</style>
         <div className="min-h-screen pb-24 font-sans font-antialiased text-gray-900 max-w-md mx-auto relative overflow-hidden bg-transparent">
             {/* Ambient 3D background */}
             <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -100,5 +102,6 @@ export default function MobileLayout({ user, header, children }) {
 
             <FlashToast />
         </div>
+        </>
     );
 }
