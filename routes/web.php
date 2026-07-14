@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Route;
  *   presensi.nuurulmuttaqiin   → portal Mobile PWA (routes/mobile.php)
  */
 
-$adminDomain  = env('ADMIN_DOMAIN');
-$mobileDomain = env('MOBILE_DOMAIN');
+$adminDomain  = config('domains.admin');
+$mobileDomain = config('domains.mobile');
 
 // ─── Admin Portal ───────────────────────────────────────────────────
 if ($adminDomain) {

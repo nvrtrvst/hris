@@ -40,7 +40,7 @@ class IsolatePortalSession
         $mobileRemember = $this->getRecallerName('web_mobile');
 
         // Deteksi portal via subdomain (production) dengan fallback path (local dev).
-        $mobileDomain = env('MOBILE_DOMAIN');
+        $mobileDomain = config('domains.mobile');
         $isMobile = $request->getHost() === $mobileDomain;
         if (!$isMobile && ($request->is('mobile') || $request->is('mobile/*'))) {
             $isMobile = true;

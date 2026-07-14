@@ -34,7 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->redirectGuestsTo(function (Request $request) {
-            if ($request->getHost() === env('MOBILE_DOMAIN')) {
+            if ($request->getHost() === config('domains.mobile')) {
                 return route('presensi.login');
             }
 
@@ -42,7 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $middleware->redirectUsersTo(function (Request $request) {
-            if ($request->getHost() === env('MOBILE_DOMAIN')) {
+            if ($request->getHost() === config('domains.mobile')) {
                 return route('presensi.dashboard');
             }
 
