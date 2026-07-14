@@ -19,6 +19,15 @@ export default function Index({ auth, units }) {
                                     <h3 className="text-xl font-bold text-gray-900">Daftar Unit & Lokasi GPS</h3>
                                     <p className="text-gray-500 text-sm mt-1">Atur titik koordinat (Latitude/Longitude) dan Radius toleransi absen untuk setiap unit.</p>
                                 </div>
+                                <a
+                                    href={route('unit-sekolah.create')}
+                                    className="inline-flex items-center gap-2 bg-primary hover:bg-[#0c2f30] text-white font-bold py-2.5 px-5 rounded-lg shadow-md transition-all duration-200"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Tambah Unit
+                                </a>
                             </div>
 
                             <div className="overflow-x-auto rounded-xl border border-gray-200">

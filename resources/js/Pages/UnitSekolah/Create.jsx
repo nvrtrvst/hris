@@ -3,26 +3,23 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 import UnitForm from './UnitForm';
 
-export default function Edit({ auth, unit }) {
-    const { data, setData, put, processing, errors } = useForm({
-        nama: unit.nama,
-        singkatan: unit.singkatan,
-        latitude: String(unit.latitude),
-        longitude: String(unit.longitude),
-        radius_meter: unit.radius_meter,
+export default function Create() {
+    const { data, setData, post, processing, errors } = useForm({
+        nama: '',
+        singkatan: '',
+        latitude: '-6.200000',
+        longitude: '106.800000',
+        radius_meter: 50,
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(route('unit-sekolah.update', unit.id));
+        post(route('unit-sekolah.store'));
     };
 
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800">Edit Unit: {unit.nama}</h2>}
-        >
-            <Head title={`Edit Unit - ${unit.nama}`} />
+        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800">Tambah Unit Sekolah</h2>}>
+            <Head title="Tambah Unit Sekolah" />
             <div className="py-12">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl p-6">
@@ -32,8 +29,7 @@ export default function Edit({ auth, unit }) {
                             errors={errors}
                             processing={processing}
                             onSubmit={handleSubmit}
-                            isEdit={true}
-                            unitName={unit.nama}
+                            isEdit={false}
                         />
                     </div>
                 </div>

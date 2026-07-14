@@ -63,7 +63,7 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::post('pegawai/import', [PegawaiController::class, 'import'])->name('pegawai.import');
 
     // Unit Sekolah
-    Route::resource('unit-sekolah', UnitSekolahController::class)->only(['index', 'edit', 'update']);
+    Route::resource('unit-sekolah', UnitSekolahController::class)->only(['index', 'create', 'store', 'edit', 'update']);
 
     // Jadwal — create/store/generate/swap/destroy hanya admin
     Route::get('jadwal/create', [JadwalController::class, 'create'])->name('jadwal.create');

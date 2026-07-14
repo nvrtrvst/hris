@@ -14,6 +14,26 @@ class UnitSekolahController extends Controller
         return inertia('UnitSekolah/Index', ['units' => $units]);
     }
 
+    public function create()
+    {
+        return inertia('UnitSekolah/Create');
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'nama' => 'required|string|max:255',
+            'singkatan' => 'required|string|max:255',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'radius_meter' => 'required|integer|min:10',
+        ]);
+
+        UnitSekolah::create($validated);
+
+        return redirect()->route('unit-sekolah.index')->with('message', 'Unit Sekolah berhasil ditambahkan.');
+    }
+
     public function edit(UnitSekolah $unit_sekolah)
     {
         return inertia('UnitSekolah/Edit', ['unit' => $unit_sekolah]);
