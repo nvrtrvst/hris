@@ -124,6 +124,80 @@ class JadwalController extends Controller
         });
     }
 
+    public function edit(Jadwal $jadwal)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('view_jadwal')) {
+            abort(403);
+        }
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units') && $jadwal->unit_sekolah_id !== $user->unit_sekolah_id) {
+            abort(403);
+        }
+
+        $pegawais = Pegawai::where('status_aktif', 'aktif')->get(['id', 'nama_lengkap']);
+        $units = UnitSekolah::all(['id', 'nama', 'singkatan']);
+        $kelas = Kelas::all(['id', 'nama', 'tingkat', 'unit_sekolah_id']);
+        $mapel = MataPelajaran::all(['id', 'nama']);
+
+        return inertia('Jadwal/Edit', [
+            'jadwal' => $jadwal,
+            'pegawais' => $pegawais,
+            'units' => $units,
+            'kelas' => $kelas,
+            'mapel' => $mapel,
+        ]);
+    }
+
+    public function update(Request $request, Jadwal $jadwal)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('view_jadwal')) {
+            abort(403);
+        }
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            if ($jadwal->unit_sekolah_id !== $user->unit_sekolah_id) {
+                abort(403);
+            }
+            $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
+        }
+
+        $validated = $request->validate([
+            'pegawai_id' => 'required|exists:pegawai,id',
+            'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
+            'kelas_id' => 'nullable|exists:kelas,id',
+            'mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
+            'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu',
+            'jam_mulai' => 'required|date_format:H:i',
+            'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
+            'jenis_jadwal' => 'required|in:mengajar,piket,ekskul,shift_satpam,shift_kebersihan,lainnya',
+            'tahun_ajaran' => 'required|string|max:10',
+            'semester' => 'required|integer|in:1,2',
+        ]);
+
+        return DB::transaction(function () use ($validated, $jadwal) {
+            $conflict = Jadwal::where('pegawai_id', $validated['pegawai_id'])
+                ->where('hari', $validated['hari'])
+                ->where('id', '!=', $jadwal->id)
+                ->where(function ($query) use ($validated) {
+                    $query->where('jam_mulai', '<', $validated['jam_selesai'])
+                        ->where('jam_selesai', '>', $validated['jam_mulai']);
+                })
+                ->lockForUpdate()
+                ->with('unitSekolah:id,nama')
+                ->first();
+
+            if ($conflict) {
+                return back()->withErrors([
+                    'conflict' => "Terdeteksi bentrok jadwal! Pegawai ini sudah memiliki jadwal {$conflict->jenis_jadwal} di unit {$conflict->unitSekolah->nama} pada pukul ".substr($conflict->jam_mulai, 0, 5).' - '.substr($conflict->jam_selesai, 0, 5),
+                ])->withInput();
+            }
+
+            $jadwal->update($validated);
+
+            return redirect()->route('jadwal.index')->with('message', 'Jadwal berhasil diperbarui.');
+        });
+    }
+
     public function generate(Request $request)
     {
         $user = auth()->user();

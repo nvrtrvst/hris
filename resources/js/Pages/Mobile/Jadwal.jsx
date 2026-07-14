@@ -22,6 +22,102 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
     const totalJadwal = hariUrut.reduce((sum, h) => sum + (hariMap[h]?.length || 0), 0);
     const activeHari = hariUrut.filter((h) => (hariMap[h]?.length || 0) > 0);
 
+    const [selected, setSelected] = useState(null);
+    const [siswa, setSiswa] = useState([]);
+    const [loadingSiswa, setLoadingSiswa] = useState(false);
+    const [absenState, setAbsenState] = useState({});
+    const [search, setSearch] = useState('');
+    const [savingBatch, setSavingBatch] = useState(false);
+    const [savedBatch, setSavedBatch] = useState(false);
+
+    const setStatus = (s, status) => {
+        setSavedBatch(false);
+        setAbsenState((prev) => ({ ...prev, [s.nis]: status }));
+    };
+
+    const markAll = (status = 'hadir') => {
+        setSavedBatch(false);
+        setAbsenState((prev) => {
+            const next = { ...prev };
+            siswa.forEach((s) => {
+                next[s.nis] = status;
+            });
+            return next;
+        });
+    };
+
+    const markRest = (status = 'hadir') => {
+        setSavedBatch(false);
+        setAbsenState((prev) => {
+            const next = { ...prev };
+            siswa.forEach((s) => {
+                if (!next[s.nis]) next[s.nis] = status;
+            });
+            return next;
+        });
+    };
+
+    const submitBatch = () => {
+        if (!selected?.kelas || savingBatch) return;
+        const unit = selected.unit_sekolah?.nama || selected.unit_sekolah?.singkatan || '';
+        const jurusan = selected.kelas?.jurusan?.nama || '';
+        const tanggal = new Date().toISOString().slice(0, 10);
+        const absens = siswa
+            .filter((s) => absenState[s.nis])
+            .map((s) => ({ nis: s.nis, status: absenState[s.nis] }));
+        if (absens.length === 0) return;
+        setSavingBatch(true);
+        fetch(route('mobile.jadwal.siswa.absen-batch'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+                unit,
+                tingkat: String(selected.kelas.tingkat ?? ''),
+                kelas: selected.kelas.nama ?? '',
+                jurusan,
+                tanggal,
+                absens,
+            }),
+        })
+            .then((r) => r.json())
+            .then((d) => {
+                if (d.success) setSavedBatch(true);
+            })
+            .catch(() => {})
+            .finally(() => setSavingBatch(false));
+    };
+
+    const openDetail = (j) => {
+        setSelected(j);
+        setSiswa([]);
+        setAbsenState({});
+        setSearch('');
+        setSavedBatch(false);
+        const kelas = j.kelas;
+        if (!kelas) {
+            setLoadingSiswa(false);
+            return;
+        }
+        setLoadingSiswa(true);
+        const unit = j.unit_sekolah?.nama || j.unit_sekolah?.singkatan || '';
+        const jurusan = kelas.jurusan?.nama || '';
+        const params = new URLSearchParams({
+            unit,
+            tingkat: String(kelas.tingkat ?? ''),
+            kelas: kelas.nama ?? '',
+            jurusan,
+        });
+        fetch(`${route('mobile.jadwal.siswa')}?${params.toString()}`)
+            .then((r) => r.json())
+            .then((d) => setSiswa(d.siswa || []))
+            .catch(() => setSiswa([]))
+            .finally(() => setLoadingSiswa(false));
+    };
+
     return (
         <MobileLayout user={auth.user}>
             <Head title="Jadwal" />
@@ -81,7 +177,12 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
                                         null;
                                     const isLembur = j.jenis_jadwal === 'lembur';
                                     return (
-                                        <div key={j.id} className="flex items-center gap-3 px-4 py-2.5">
+                                        <button
+                                            key={j.id}
+                                            type="button"
+                                            onClick={() => openDetail(j)}
+                                            className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors active:bg-slate-50"
+                                        >
                                             <div className="w-14 shrink-0 leading-none">
                                                 <p className="text-sm font-extrabold text-slate-800">{j.jam_mulai}</p>
                                                 <p className="mt-0.5 text-[11px] text-slate-400">{j.jam_selesai}</p>
@@ -98,13 +199,191 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
                                                     Lembur
                                                 </Badge>
                                             )}
-                                        </div>
+                                        </button>
                                     );
                                 })}
-                            </div>
-                        );
-                    })}
-                </Card>
+                </div>
+            );
+        })}
+    </Card>
+    )}
+
+    {selected && (
+                <div
+                    className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40"
+                    onClick={() => setSelected(null)}
+                >
+                    <div
+                        className="max-h-[82vh] overflow-y-auto rounded-t-3xl bg-white p-5"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-300" />
+                        <div className="mb-4">
+                            <p className="text-xs font-bold uppercase tracking-wide text-primary">
+                                {selected.kelas
+                                    ? `Kelas ${selected.kelas.tingkat} ${selected.kelas.nama}`
+                                    : 'Jadwal'}
+                            </p>
+                            <p className="text-lg font-extrabold text-slate-800">
+                                {selected.mata_pelajaran?.nama || 'Jadwal'}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                                {[
+                                    selected.kelas
+                                        ? `Kls ${selected.kelas.tingkat} ${selected.kelas.nama}`
+                                        : null,
+                                    selected.unit_sekolah?.nama || selected.unit_sekolah?.singkatan,
+                                    selected.kelas?.jurusan?.nama,
+                                ]
+                                    .filter(Boolean)
+                                    .join(' • ')}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                                {selected.jam_mulai} – {selected.jam_selesai}
+                            </p>
+                        </div>
+
+                        {!selected.kelas ? (
+                            <p className="py-6 text-center text-sm text-slate-400">
+                                Jadwal ini tidak terikat kelas.
+                            </p>
+                        ) : loadingSiswa ? (
+                            <p className="py-6 text-center text-sm text-slate-400">Memuat…</p>
+                        ) : siswa.length === 0 ? (
+                            <p className="py-6 text-center text-sm text-slate-400">
+                                Tidak ada data siswa yang cocok di app keuangan.
+                            </p>
+                        ) : (
+                            (() => {
+                                const q = search.trim().toLowerCase();
+                                const filtered = siswa.filter(
+                                    (s) => !q || s.nama.toLowerCase().includes(q) || (s.nis || '').toLowerCase().includes(q)
+                                );
+                                const counts = { hadir: 0, izin: 0, sakit: 0, alpa: 0, belum: 0 };
+                                siswa.forEach((s) => {
+                                    const v = absenState[s.nis];
+                                    if (v && counts[v] !== undefined) counts[v] += 1;
+                                    else counts.belum += 1;
+                                });
+                                const marked = siswa.length - counts.belum;
+                                const opts = [
+                                    ['hadir', 'Hadir', 'bg-emerald-500'],
+                                    ['izin', 'Izin', 'bg-amber-500'],
+                                    ['sakit', 'Sakit', 'bg-orange-500'],
+                                    ['alpa', 'Alpa', 'bg-rose-500'],
+                                ];
+                                const summary = [
+                                    ['hadir', `${counts.hadir} Hadir`, 'bg-emerald-50 text-emerald-700'],
+                                    ['izin', `${counts.izin} Izin`, 'bg-amber-50 text-amber-700'],
+                                    ['sakit', `${counts.sakit} Sakit`, 'bg-orange-50 text-orange-700'],
+                                    ['alpa', `${counts.alpa} Alpa`, 'bg-rose-50 text-rose-700'],
+                                    ['belum', `${counts.belum} Belum`, 'bg-slate-100 text-slate-500'],
+                                ];
+                                return (
+                                    <>
+                                        <input
+                                            value={search}
+                                            onChange={(e) => setSearch(e.target.value)}
+                                            placeholder="Cari nama / NIS murid…"
+                                            className="mb-2 w-full rounded-xl bg-slate-100 px-3 py-2.5 text-sm outline-none ring-1 ring-black/5 placeholder:text-slate-400 focus:ring-2 focus:ring-primary"
+                                        />
+                                        <div className="mb-2 grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => markAll('hadir')}
+                                                className="rounded-xl bg-emerald-500 py-2.5 text-xs font-extrabold text-white transition active:scale-95"
+                                            >
+                                                ✓ Semua Hadir
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => markRest('hadir')}
+                                                className="rounded-xl bg-white py-2.5 text-xs font-extrabold text-slate-600 ring-1 ring-slate-200 transition active:scale-95"
+                                            >
+                                                Sisanya Hadir
+                                            </button>
+                                        </div>
+                                        <p className="mb-3 text-[11px] leading-snug text-slate-400">
+                                            <b className="text-slate-500">Kecuali:</b> tandai dulu murid yang berhalangan
+                                            (Izin/Sakit/Alpa), lalu tekan <b className="text-slate-500">Sisanya Hadir</b>.
+                                        </p>
+                                        <div className="mb-3 flex flex-wrap gap-1.5">
+                                            {summary.map(([key, label, cls]) => (
+                                                <span key={key} className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${cls}`}>
+                                                    {label}
+                                                </span>
+                                            ))}
+                                        </div>
+                                        <h4 className="mb-2 text-sm font-extrabold text-slate-700">
+                                            Daftar Murid ({filtered.length}/{siswa.length})
+                                        </h4>
+                                        <ul className="space-y-2">
+                                            {filtered.map((s, i) => {
+                                                const genderText =
+                                                    s.gender === 'L' ? 'Laki-laki' : s.gender === 'P' ? 'Perempuan' : s.gender;
+                                                return (
+                                                    <li key={i} className="rounded-xl bg-slate-50 px-3 py-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="min-w-0">
+                                                                <p className="truncate text-sm font-bold text-slate-800">{s.nama}</p>
+                                                                <p className="text-xs text-slate-400">NIS {s.nis} • {genderText}</p>
+                                                            </div>
+                                                            {absenState[s.nis] && (
+                                                                <span className="ml-2 shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
+                                                                    ✓ {absenState[s.nis]}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="mt-2 grid grid-cols-4 gap-1.5">
+                                                            {opts.map(([val, label, active]) => {
+                                                                const on = absenState[s.nis] === val;
+                                                                return (
+                                                                    <button
+                                                                        key={val}
+                                                                        type="button"
+                                                                        disabled={savingBatch}
+                                                                        onClick={() => setStatus(s, val)}
+                                                                        className={`rounded-lg py-1.5 text-[11px] font-bold transition active:scale-95 disabled:opacity-50 ${
+                                                                            on ? `${active} text-white` : 'bg-white text-slate-500 ring-1 ring-slate-200'
+                                                                        }`}
+                                                                    >
+                                                                        {label}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </li>
+                                                );
+                                            })}
+                                            {filtered.length === 0 && (
+                                                <li className="py-6 text-center text-sm text-slate-400">Tidak ada nama cocok.</li>
+                                            )}
+                                        </ul>
+                                        <button
+                                            type="button"
+                                            onClick={submitBatch}
+                                            disabled={savingBatch || marked === 0}
+                                            className="mt-4 w-full rounded-2xl bg-primary py-3 font-extrabold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
+                                        >
+                                            {savingBatch
+                                                ? 'Menyimpan…'
+                                                : savedBatch
+                                                ? `✓ Tersimpan (${marked})`
+                                                : `Simpan ${marked > 0 ? `(${marked})` : ''}`}
+                                        </button>
+                                    </>
+                                );
+                            })()
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setSelected(null)}
+                            className="mt-3 w-full rounded-2xl bg-slate-100 py-3 font-bold text-slate-600 transition-transform active:scale-[0.98]"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+                </div>
             )}
         </MobileLayout>
     );

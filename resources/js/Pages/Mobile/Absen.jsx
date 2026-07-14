@@ -1,4 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+
+const haversine = (lat1, lon1, lat2, lon2) => {
+    const R = 6371000;
+    const toRad = (d) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
 import { Head, useForm, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Toggle, Badge } from '@/Components/MobileUI';
@@ -75,6 +86,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     };
 
     const capturePhoto = () => {
+        if (geoBlocked) return;
         if (!videoRef.current || !canvasRef.current) return;
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -143,6 +155,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     };
 
     const handleFileFallback = (e) => {
+        if (geoBlocked) return;
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
@@ -151,6 +164,37 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     };
 
     const selectJadwal = (id) => setJadwalId(id);
+
+    // Unit geofence target: lembur -> unit primer; reguler -> unit jadwal terpilih (atau primer).
+    const lemburUnit =
+        pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
+    const selectedJadwal = jadwals.find((j) => j.id === jadwalId);
+    const targetUnit = isLembur
+        ? lemburUnit
+        : selectedJadwal?.unit_sekolah ?? lemburUnit;
+
+    const geofence = useMemo(() => {
+        if (!currentPosition || !targetUnit) return null;
+        const lat = parseFloat(targetUnit.latitude);
+        const lon = parseFloat(targetUnit.longitude);
+        if (isNaN(lat) || isNaN(lon)) return null;
+        const distance = haversine(
+            currentPosition.latitude,
+            currentPosition.longitude,
+            lat,
+            lon
+        );
+        const radius = targetUnit.radius_meter ?? 50;
+        return {
+            name: targetUnit.nama_unit || targetUnit.nama || 'Unit Sekolah',
+            distance,
+            radius,
+            inside: distance <= radius,
+        };
+    }, [currentPosition, targetUnit]);
+
+    const geoBlocked = geofence && !geofence.inside;
+    const geoReady = geofence !== null;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -169,12 +213,20 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
             setError('Lokasi belum tersedia. Pastikan GPS aktif.');
             return;
         }
+        if (geoBlocked) {
+            setError(
+                `Anda di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m). Tidak dapat presensi.`
+            );
+            return;
+        }
 
         setIsSubmitting(true);
+        const openPresensi = presensiHariIni?.find((p) => p.jam_masuk && !p.jam_keluar);
         const payload = {
-            photo: capturedPhoto,
+            foto: capturedPhoto,
             is_lembur: isLembur,
             jadwal_id: isLembur ? null : jadwalId,
+            tipe: openPresensi ? 'keluar' : 'masuk',
             latitude: currentPosition?.latitude ?? null,
             longitude: currentPosition?.longitude ?? null,
             accuracy: currentPosition?.accuracy ?? null,
@@ -265,6 +317,19 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                 </div>
             )}
 
+            {geoReady && (
+                <div className={`mb-4 flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold ${
+                    geofence.inside
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : 'border-rose-200 bg-rose-50 text-rose-700'
+                }`}>
+                    <MapPin className="h-4 w-4 shrink-0" />
+                    {geofence.inside
+                        ? `Dalam radius ${geofence.name} (${Math.round(geofence.distance)}m)`
+                        : `Di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m)`}
+                </div>
+            )}
+
             {/* Camera */}
             <Card className="overflow-hidden p-0">
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-900">
@@ -286,11 +351,12 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                     ) : capturedPhoto ? (
                         <img src={capturedPhoto} alt="captured" className="h-full w-full object-cover" />
                     ) : (
-                        <button
-                            type="button"
-                            onClick={() => photoInputRef.current?.click()}
-                            className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-900 px-6 text-center text-slate-300 transition-colors active:bg-slate-800"
-                        >
+                                <button
+                                    type="button"
+                                    onClick={() => photoInputRef.current?.click()}
+                                    disabled={geoBlocked}
+                                    className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-900 px-6 text-center text-slate-300 transition-colors active:bg-slate-800 disabled:opacity-40"
+                                >
                             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-slate-200">
                                 <Camera className="h-6 w-6" />
                             </div>
@@ -341,7 +407,8 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                                 <button
                                     type="button"
                                     onClick={capturePhoto}
-                                    className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_-4px_rgba(0,0,0,0.5)] transition-transform active:scale-90"
+                                    disabled={geoBlocked}
+                                    className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_-4px_rgba(0,0,0,0.5)] transition-transform active:scale-90 disabled:opacity-40 disabled:active:scale-100"
                                 >
                                     <span className={`h-12 w-12 rounded-full ${isLembur ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                                 </button>

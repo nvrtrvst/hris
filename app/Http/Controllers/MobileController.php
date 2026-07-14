@@ -10,6 +10,7 @@ use App\Traits\ResolvesPegawai;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 
 class MobileController extends Controller
@@ -65,7 +66,7 @@ class MobileController extends Controller
     {
         $pegawai = $this->getPegawai();
 
-        $jadwals = Jadwal::with(['unitSekolah', 'mataPelajaran', 'kelas'])
+        $jadwals = Jadwal::with(['unitSekolah', 'mataPelajaran', 'kelas', 'kelas.jurusan'])
             ->where('pegawai_id', $pegawai->id)
             ->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu')")
             ->orderBy('jam_mulai', 'asc')
@@ -76,6 +77,119 @@ class MobileController extends Controller
             'pegawai' => $pegawai,
             'jadwalPerHari' => $jadwals,
         ]);
+    }
+
+    // Proxy ke API internal app keuangan untuk mengambil daftar siswa per kelas.
+    // Kunci API disimpan server-side (tidak dikirim ke browser).
+    public function siswaKelas(Request $request)
+    {
+        $unit = $request->query('unit');
+        $tingkat = $request->query('tingkat');
+        $kelas = $request->query('kelas');
+        $jurusan = $request->query('jurusan');
+
+        if (! $unit || ! $tingkat) {
+            return response()->json(['success' => false, 'siswa' => []]);
+        }
+
+        $base = config('keuangan.url');
+        $key = config('keuangan.key');
+
+        $response = Http::withHeaders(['x-internal-key' => $key])
+            ->timeout(8)
+            ->get($base.'/api/integration/siswa-by-class', [
+                'unit' => $unit,
+                'tingkat' => $tingkat,
+                'kelas' => $kelas,
+                'jurusan' => $jurusan,
+            ]);
+
+        if (! $response->successful()) {
+            return response()->json(['success' => false, 'siswa' => []]);
+        }
+
+        $data = $response->json('data') ?? [];
+
+        return response()->json([
+            'success' => true,
+            'school_name' => $data['schoolName'] ?? null,
+            'class_labels' => $data['classLabels'] ?? [],
+            'siswa' => $data['students'] ?? [],
+        ]);
+    }
+
+    // Proxy ke API internal app keuangan untuk menyimpan absen siswa.
+    public function siswaAbsen(Request $request)
+    {
+        $unit = $request->input('unit');
+        $tingkat = $request->input('tingkat');
+        $kelas = $request->input('kelas');
+        $jurusan = $request->input('jurusan');
+        $nis = $request->input('nis');
+        $status = $request->input('status');
+        $tanggal = $request->input('tanggal');
+
+        if (!$unit || !$tingkat || !$nis || !$status) {
+            return response()->json(['success' => false, 'message' => 'Data kurang lengkap.'], 400);
+        }
+
+        $base = config('keuangan.url');
+        $key = config('keuangan.key');
+
+        $response = Http::withHeaders(['x-internal-key' => $key])
+            ->timeout(8)
+            ->post($base . '/api/integration/siswa-absen', [
+                'unit' => $unit,
+                'tingkat' => $tingkat,
+                'kelas' => $kelas,
+                'jurusan' => $jurusan,
+                'nis' => $nis,
+                'status' => $status,
+                'tanggal' => $tanggal,
+            ]);
+
+        if (!$response->successful()) {
+            $msg = $response->json('message') ?? 'Gagal menyimpan absen.';
+            return response()->json(['success' => false, 'message' => $msg], $response->status());
+        }
+
+        return response()->json(['success' => true, 'status' => $response->json('status')]);
+    }
+
+    // Proxy batch: kirim semua absen siswa sekaligus ke app keuangan.
+    public function siswaAbsenBatch(Request $request)
+    {
+        $unit = $request->input('unit');
+        $tingkat = $request->input('tingkat');
+        $kelas = $request->input('kelas');
+        $jurusan = $request->input('jurusan');
+        $tanggal = $request->input('tanggal');
+        $absens = $request->input('absens', []);
+
+        if (!$unit || !$tingkat || !is_array($absens) || count($absens) === 0) {
+            return response()->json(['success' => false, 'message' => 'Data kurang lengkap.'], 400);
+        }
+
+        $base = config('keuangan.url');
+        $key = config('keuangan.key');
+
+        $response = Http::withHeaders(['x-internal-key' => $key])
+            ->timeout(15)
+            ->post($base . '/api/integration/siswa-absen-batch', [
+                'unit' => $unit,
+                'tingkat' => $tingkat,
+                'kelas' => $kelas,
+                'jurusan' => $jurusan,
+                'tanggal' => $tanggal,
+                'absens' => $absens,
+            ]);
+
+        if (!$response->successful()) {
+            $msg = $response->json('message') ?? 'Gagal menyimpan absen.';
+            return response()->json(['success' => false, 'message' => $msg], $response->status());
+        }
+
+        return response()->json(['success' => true, 'saved' => $response->json('saved')]);
     }
 
     public function absen()

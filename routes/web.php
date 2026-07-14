@@ -68,6 +68,8 @@ Route::middleware('auth:web_admin')->group(function () {
     // Jadwal — create/store/generate/swap/destroy hanya admin
     Route::get('jadwal/create', [JadwalController::class, 'create'])->name('jadwal.create');
     Route::post('jadwal', [JadwalController::class, 'store'])->name('jadwal.store');
+    Route::get('jadwal/{jadwal}/edit', [JadwalController::class, 'edit'])->name('jadwal.edit');
+    Route::put('jadwal/{jadwal}', [JadwalController::class, 'update'])->name('jadwal.update');
     Route::post('jadwal/generate', [JadwalController::class, 'generate'])->name('jadwal.generate');
     Route::post('jadwal/swap', [JadwalController::class, 'swap'])->name('jadwal.swap');
     Route::delete('jadwal/{jadwal}', [JadwalController::class, 'destroy'])->name('jadwal.destroy');
@@ -168,6 +170,9 @@ Route::prefix('mobile')->group(function () {
     Route::middleware('auth:web_mobile')->group(function () {
         Route::get('/', [MobileController::class, 'dashboard'])->name('mobile.dashboard');
         Route::get('/jadwal', [MobileController::class, 'jadwal'])->name('mobile.jadwal');
+        Route::get('/jadwal/siswa', [MobileController::class, 'siswaKelas'])->name('mobile.jadwal.siswa');
+        Route::post('/jadwal/siswa/absen', [MobileController::class, 'siswaAbsen'])->name('mobile.jadwal.siswa.absen');
+        Route::post('/jadwal/siswa/absen-batch', [MobileController::class, 'siswaAbsenBatch'])->name('mobile.jadwal.siswa.absen-batch');
         Route::get('/riwayat', [MobileController::class, 'riwayat'])->name('mobile.riwayat');
 
         // Rute Izin Mobile
@@ -176,7 +181,7 @@ Route::prefix('mobile')->group(function () {
         Route::post('/izin', [MobileIzinController::class, 'store'])->name('mobile.izin.store');
 
         Route::get('/absen', [MobileController::class, 'absen'])->name('mobile.absen');
-        Route::post('/absen', [MobileController::class, 'storeAbsen'])->name('mobile.storeAbsen');
+        Route::post('/absen', [MobileController::class, 'storeAbsen'])->name('mobile.absen.store');
         Route::get('/profile', function (Request $request) {
             $request->user()->pegawai?->load('units', 'jabatans');
 

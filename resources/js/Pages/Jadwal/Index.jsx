@@ -194,15 +194,23 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                                                             </span>
                                                                             
                                                                             {/* Action Overlay */}
-                                                                            <div className="absolute inset-0 bg-primary/90 opacity-0 group-hover/card:opacity-100 flex items-center justify-center gap-2 rounded transition-opacity backdrop-blur-sm">
-                                                                                <button 
-                                                                                     onClick={() => {
-                                                                                         setSwapData({...swapData, jadwal_asal_id: jadwal.id});
-                                                                                         setShowSwapModal(true);
-                                                                                     }}
-                                                                                     className="text-blue-300 hover:text-blue-100 transform hover:scale-110 transition-all cursor-pointer"
-                                                                                     title="Tukar Jadwal"
-                                                                                >
+                                                                                <div className="absolute inset-0 bg-primary/90 opacity-0 group-hover/card:opacity-100 flex items-center justify-center gap-2 rounded transition-opacity backdrop-blur-sm">
+                                                                                    <button
+                                                                                        onClick={() => router.get(route('jadwal.edit', jadwal.id))}
+                                                                                        className="text-emerald-300 hover:text-emerald-100 transform hover:scale-110 transition-all cursor-pointer"
+                                                                                        title="Edit Jadwal"
+                                                                                    >
+                                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                                                    </button>
+                                                                                    <div className="w-px h-4 bg-white/30"></div>
+                                                                                    <button
+                                                                                         onClick={() => {
+                                                                                              setSwapData({...swapData, jadwal_asal_id: jadwal.id});
+                                                                                              setShowSwapModal(true);
+                                                                                          }}
+                                                                                          className="text-blue-300 hover:text-blue-100 transform hover:scale-110 transition-all cursor-pointer"
+                                                                                          title="Tukar Jadwal"
+                                                                                    >
                                                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
                                                                                 </button>
                                                                                 <div className="w-px h-4 bg-white/30"></div>
