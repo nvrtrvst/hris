@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 
-const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
-
 const haversine = (lat1, lon1, lat2, lon2) => {
     const R = 6371000;
     const toRad = (d) => (d * Math.PI) / 180;
@@ -33,8 +31,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     const [currentPosition, setCurrentPosition] = useState(null);
     const [geoInfo, setGeoInfo] = useState(null);
     const [geoInfoLoading, setGeoInfoLoading] = useState(false);
-    const [started, setStarted] = useState(false);
-    const [cameraOpening, setCameraOpening] = useState(false);
     const [mapError, setMapError] = useState(false);
 
     const videoRef = useRef(null);
@@ -42,51 +38,24 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     const streamRef = useRef(null);
     const fileInputRef = useRef(null);
     const photoInputRef = useRef(null);
-    const nativeInputRef = useRef(null);
-    const capturedFileRef = useRef(null);
 
     const { flash } = usePage().props;
 
     useEffect(() => {
+        startCamera();
         const clock = setInterval(() => {
             const now = new Date();
             setCurrentTime(now.toLocaleTimeString('id-ID', { hour12: false }));
         }, 1000);
+        getCurrentPosition();
         return () => {
             clearInterval(clock);
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach((t) => t.stop());
             }
             if (watchId) navigator.geolocation.clearWatch(watchId);
-            if (capturedPhoto?.startsWith('blob:')) URL.revokeObjectURL(capturedPhoto);
         };
     }, []);
-
-    const handleNativeCapture = (e) => {
-        setCameraOpening(false);
-        const file = e.target.files?.[0];
-        if (!file) { setStarted(false); return; }
-        if (capturedPhoto?.startsWith('blob:')) URL.revokeObjectURL(capturedPhoto);
-        capturedFileRef.current = file;
-        setCapturedPhoto(URL.createObjectURL(file));
-    };
-
-    const handleStart = () => {
-        setStarted(true);
-        try {
-            if (isIOS) {
-                setCameraOpening(true);
-                getCurrentPosition();
-                nativeInputRef.current?.click();
-            } else {
-                startCamera();
-                getCurrentPosition();
-            }
-        } catch (e) {
-            setLocationError(e?.message || 'Gagal memulai perangkat. Coba upload foto manual.');
-            setGeoStatus('error');
-        }
-    };
 
     useEffect(() => {
         if (showLive && videoRef.current && streamRef.current) {
@@ -121,26 +90,26 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         if (!videoRef.current || !canvasRef.current) return;
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        const MAX = 1024;
+        let w = video.videoWidth;
+        let h = video.videoHeight;
+        if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        canvas.width = w;
+        canvas.height = h;
         const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg');
+        context.drawImage(video, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedPhoto(dataUrl);
         stopCamera();
         setShowLive(false);
     };
 
     const retakePhoto = () => {
-        if (capturedPhoto?.startsWith('blob:')) URL.revokeObjectURL(capturedPhoto);
         setCapturedPhoto(null);
-        capturedFileRef.current = null;
-        if (isIOS) {
-            setCameraOpening(true);
-            nativeInputRef.current?.click();
-        } else {
-            startCamera();
-        }
+        startCamera();
     };
 
     const toggleLembur = () => setIsLembur((prev) => !prev);
@@ -154,8 +123,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
             setLoadingLocation(false);
             return;
         }
-        try {
-            const id = navigator.geolocation.watchPosition(
+        const id = navigator.geolocation.watchPosition(
             (pos) => {
                 setCurrentPosition({
                     latitude: pos.coords.latitude,
@@ -191,11 +159,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
         setWatchId(id);
-        } catch (e) {
-            setGeoStatus('error');
-            setLocationError('Gagal mengakses lokasi. Ketuk "Coba Lagi".');
-            setLoadingLocation(false);
-        }
     };
 
     const handleFileFallback = (e) => {
@@ -265,19 +228,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         }
 
         setIsSubmitting(true);
-
-        let fotoBase64 = capturedPhoto;
-        if (capturedFileRef.current) {
-            fotoBase64 = await new Promise((resolve) => {
-                const r = new FileReader();
-                r.onload = () => resolve(r.result);
-                r.readAsDataURL(capturedFileRef.current);
-            });
-        }
-
         const openPresensi = presensiHariIni?.find((p) => p.jam_masuk && !p.jam_keluar);
         const payload = {
-            foto: fotoBase64,
+            foto: capturedPhoto,
             is_lembur: isLembur,
             jadwal_id: isLembur ? null : jadwalId,
             tipe: openPresensi ? 'keluar' : 'masuk',
@@ -298,9 +251,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
             const data = await res.json();
             if (res.ok && data.success) {
                 setSuccessMessage(data.message || 'Presensi berhasil dikirim.');
-                if (capturedPhoto?.startsWith('blob:')) URL.revokeObjectURL(capturedPhoto);
                 setCapturedPhoto(null);
-                capturedFileRef.current = null;
                 setJadwalId(null);
                 setTimeout(() => {
                     if (typeof window !== 'undefined') window.location.reload();
@@ -341,7 +292,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     if (geoInfo?.principalSubdivision) placeParts.push(geoInfo.principalSubdivision);
     if (geoInfo?.postcode) placeParts.push(geoInfo.postcode);
     const placeString = geoInfoLoading
-        ? 'Mendeteksi alamat…'
+        ? 'Mendeteksi alamat\u2026'
         : placeParts.length
           ? placeParts.join(', ')
           : 'Lokasi belum tersedia';
@@ -373,42 +324,25 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                 </div>
             )}
 
-            {started && (
+            {geoReady && (
                 <div className={`mb-4 flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold ${
-                    geoStatus === 'ready' ? (geofence?.inside ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700')
-                    : geoStatus === 'error' ? 'border-rose-200 bg-rose-50 text-rose-700'
-                    : 'border-slate-200 bg-slate-50 text-slate-500'
+                    geofence.inside
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : 'border-rose-200 bg-rose-50 text-rose-700'
                 }`}>
                     <MapPin className="h-4 w-4 shrink-0" />
-                    {geoStatus === 'loading' ? 'Mendeteksi lokasi ...'
-                    : geoStatus === 'error' ? `Lokasi tidak tersedia: ${locationError || 'periksa izin GPS/iOS'}`
-                    : geoStatus === 'ready' && geofence?.inside ? `Dalam radius ${geofence.name} (${Math.round(geofence.distance)}m)`
-                    : geoStatus === 'ready' && !geofence?.inside ? `Di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m)`
-                    : 'Lokasi belum tersedia'}
-                    {geoStatus === 'error' && <button type="button" onClick={getCurrentPosition} className="ml-auto shrink-0 rounded-lg border border-rose-300 bg-white px-3 py-1 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-50">Coba Lagi</button>}
+                    {geofence.inside
+                        ? `Dalam radius ${geofence.name} (${Math.round(geofence.distance)}m)`
+                        : `Di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m)`}
                 </div>
             )}
 
             {/* Camera */}
             <Card className="overflow-hidden p-0">
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-900">
-                    {!started ? (
-                        <button type="button" onClick={handleStart} className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-emerald-500 to-primary px-6 text-center text-white transition-transform active:scale-[0.98]">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white/20 backdrop-blur">
-                                <Camera className="h-8 w-8" />
-                            </div>
-                            <p className="text-lg font-extrabold">Mulai Presensi</p>
-                            <p className="text-sm text-white/80">Ketuk untuk mengaktifkan kamera &amp; lokasi</p>
-                        </button>
-                    ) : cameraOpening ? (
-                        <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-slate-900 px-6 text-center text-white">
-                            <Loader2 className="h-8 w-8 animate-spin text-emerald-300" />
-                            <p className="text-lg font-extrabold">Membuka kamera…</p>
-                            <p className="text-sm text-white/80">Izinkan akses kamera saat diminta</p>
-                        </div>
-                    ) : showLive ? (
+                    {showLive ? (
                         <>
-                            <video ref={videoRef} autoPlay playsInline muted className={`absolute inset-0 h-full w-full object-cover transition-opacity ${showLive ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} style={{ transform: 'scaleX(-1)' }} />
+                            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" />
                             {tileUrl && (
                                 <>
                                     <img
@@ -492,7 +426,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
             </Card>
 
             <input type="file" accept="image/*" capture="environment" ref={photoInputRef} className="hidden" onChange={handleFileFallback} />
-            <input type="file" accept="image/*" capture="user" ref={nativeInputRef} className="hidden" onChange={handleNativeCapture} />
 
             {/* Lembur toggle */}
             <Card className="mt-3 flex items-center justify-between py-4">
@@ -521,7 +454,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                             >
                                 <p className="text-sm font-bold text-slate-800">{j.mata_pelajaran?.nama || 'Jadwal'}</p>
                                 <p className="text-xs text-slate-500">{j.kelas ? `Kls ${j.kelas.tingkat} ${j.kelas.nama}` : (j.hari || '')}</p>
-                                <p className="mt-1 text-xs font-semibold text-emerald-500">{j.jam_mulai} – {j.jam_selesai}</p>
+                                <p className="mt-1 text-xs font-semibold text-emerald-500">{j.jam_mulai} \u2013 {j.jam_selesai}</p>
                             </button>
                         ))}
                     </div>
@@ -535,7 +468,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                 disabled={isSubmitting}
                 className={`mt-5 w-full rounded-2xl bg-gradient-to-br ${isLembur ? 'from-amber-500 to-orange-500 shadow-[0_10px_24px_-6px_rgba(245,158,11,0.6)]' : 'from-emerald-500 to-primary shadow-[0_10px_24px_-6px_rgba(79,70,229,0.6)]'} py-4 font-extrabold text-white transition-transform active:scale-[0.98] disabled:opacity-60`}
             >
-                {isSubmitting ? <><Loader2 className="mr-2 inline h-5 w-5 animate-spin" />Memproses…</> : isLembur ? 'Kirim Lembur' : 'Kirim Presensi'}
+                {isSubmitting ? <><Loader2 className="mr-2 inline h-5 w-5 animate-spin" />Memproses\u2026</> : isLembur ? 'Kirim Lembur' : 'Kirim Presensi'}
             </button>
 
             <canvas ref={canvasRef} className="hidden" />
