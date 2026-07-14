@@ -221,7 +221,8 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
 
     const pad = (n) => String(n).padStart(2, '0');
     const now = new Date();
-    const dateTimeString = `${now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${pad(now.getHours())}.${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const timeString = `${pad(now.getHours())}.${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const dateString = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
     const placeParts = [];
     if (geoInfo?.streetName) {
@@ -309,15 +310,16 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                         <span className="absolute right-3 top-3 rounded-full bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">LEMBUR</span>
                     )}
 
-                    {/* overlay bawah: info + aksi (satu kesatuan, tanpa batas) */}
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent p-3 pt-12">
+                    {/* overlay bawah 40%: jam → hari → alamat, lalu tombol */}
+                    <div className="absolute inset-x-0 bottom-0 flex h-[40%] flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3">
                         {showLive && (
-                            <div className="mb-2 flex items-end gap-3">
-                                <p className="shrink-0 text-[12px] font-bold leading-tight text-white">{dateTimeString}</p>
-                                <div className="flex min-w-0 items-start gap-1 text-[10px] leading-tight text-white/85">
+                            <div className="mb-2">
+                                <p className="text-[16px] font-extrabold leading-tight text-white">{timeString}</p>
+                                <p className="text-[11px] font-semibold text-white/90">{dateString}</p>
+                                <p className="mt-1 flex items-start gap-1 text-[10px] leading-tight text-white/80">
                                     <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-300" />
                                     <span className="line-clamp-2">{placeString}</span>
-                                </div>
+                                </p>
                             </div>
                         )}
                         <div className="flex justify-center">
