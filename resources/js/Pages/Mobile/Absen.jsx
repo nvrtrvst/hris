@@ -58,8 +58,13 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
 
     const handleStart = () => {
         setStarted(true);
-        startCamera();
-        getCurrentPosition();
+        try {
+            startCamera();
+            getCurrentPosition();
+        } catch (e) {
+            setLocationError(e?.message || 'Gagal memulai perangkat. Coba upload foto manual.');
+            setGeoStatus('error');
+        }
     };
 
     useEffect(() => {
@@ -121,7 +126,8 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
             setLoadingLocation(false);
             return;
         }
-        const id = navigator.geolocation.watchPosition(
+        try {
+            const id = navigator.geolocation.watchPosition(
             (pos) => {
                 setCurrentPosition({
                     latitude: pos.coords.latitude,
@@ -157,6 +163,11 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
         setWatchId(id);
+        } catch (e) {
+            setGeoStatus('error');
+            setLocationError('Gagal mengakses lokasi. Ketuk "Coba Lagi".');
+            setLoadingLocation(false);
+        }
     };
 
     const handleFileFallback = (e) => {
@@ -351,7 +362,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                         </button>
                     ) : showLive ? (
                         <>
-                            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" style={{ transform: 'scaleX(-1)' }} />
+                            <video ref={videoRef} autoPlay playsInline muted className={`absolute inset-0 h-full w-full object-cover transition-opacity ${showLive ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} style={{ transform: 'scaleX(-1)' }} />
                             {tileUrl && (
                                 <>
                                     <img
