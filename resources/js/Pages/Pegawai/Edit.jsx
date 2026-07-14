@@ -2,7 +2,7 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
+export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) {
     const { data, setData, post, processing, errors } = useForm({
         _method: 'put',
         nik: pegawai.nik,
@@ -21,7 +21,32 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
         tanggal_mulai_kerja: pegawai.tanggal_mulai_kerja,
         pendidikan_terakhir: pegawai.pendidikan_terakhir,
         foto: null,
+        units: (pegawai.units || []).map((u) => ({
+            unit_sekolah_id: u.id,
+            jabatan_id: u.pivot?.jabatan_id ?? '',
+            is_primary: !!u.pivot?.is_primary,
+        })),
+        mapels: (pegawai.mapels || []).map((m) => ({
+            mata_pelajaran_id: m.id,
+            unit_sekolah_id: m.pivot?.unit_sekolah_id ?? '',
+        })),
     });
+
+    const updateUnit = (index, field, value) => {
+        const next = [...data.units];
+        next[index] = { ...next[index], [field]: value };
+        setData('units', next);
+    };
+    const addUnit = () => setData('units', [...data.units, { unit_sekolah_id: '', jabatan_id: '', is_primary: false }]);
+    const removeUnit = (index) => setData('units', data.units.filter((_, i) => i !== index));
+
+    const updateMapel = (index, field, value) => {
+        const next = [...data.mapels];
+        next[index] = { ...next[index], [field]: value };
+        setData('mapels', next);
+    };
+    const addMapel = () => setData('mapels', [...data.mapels, { mata_pelajaran_id: '', unit_sekolah_id: '' }]);
+    const removeMapel = (index) => setData('mapels', data.mapels.filter((_, i) => i !== index));
 
     const submit = (e) => {
         e.preventDefault();
@@ -46,51 +71,6 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
                         </Link>
                     </div>
 
-                    <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl border border-gray-100 mb-6">
-                        <div className="p-6 bg-gray-50 border-b border-gray-100">
-                            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center">
-                                <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                                Penugasan Saat Ini (Read-only)
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Unit &amp; Jabatan</p>
-                                    {pegawai.units && pegawai.units.length > 0 ? (
-                                        <div className="space-y-1">
-                                            {pegawai.units.map((unit) => (
-                                                <p key={unit.id} className="font-medium text-gray-900 text-sm">
-                                                    {unit.nama}
-                                                    <span className="font-normal text-gray-600">
-                                                        {' — '}
-                                                        {pegawai.jabatans?.find((j) => j.pivot?.unit_sekolah_id === unit.id)?.nama || 'Belum ada jabatan'}
-                                                    </span>
-                                                    {unit.pivot?.is_primary === 1 && (
-                                                        <span className="ml-2 px-2 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full bg-green-100 text-green-800 uppercase">Primary</span>
-                                                    )}
-                                                </p>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-gray-500">Belum ada unit</p>
-                                    )}
-                                </div>
-                                <div>
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Mata Pelajaran (Guru)</p>
-                                    {pegawai.mapels && pegawai.mapels.length > 0 ? (
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {pegawai.mapels.map((mapel) => (
-                                                <span key={mapel.id} className="px-2.5 py-1 inline-flex text-xs font-medium rounded-md bg-amber-100 text-amber-800">
-                                                    {mapel.nama}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-gray-500">Bukan guru / belum ada mapel</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl border border-gray-100">
                         <div className="p-8">
                             <form onSubmit={submit} className="space-y-6">
@@ -236,6 +216,80 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans }) {
                                             {errors.pendidikan_terakhir && <p className="mt-1 text-sm text-red-600">{errors.pendidikan_terakhir}</p>}
                                         </div>
                                     </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4 mt-8">Penugasan Unit &amp; Jabatan</h3>
+                                    <p className="text-xs text-gray-500 mb-3">Tentukan unit tempat pegawai bertugas beserta jabatannya. Satu unit dapat ditandai <b>Primary</b>.</p>
+                                    <div className="space-y-3">
+                                        {data.units.map((u, i) => (
+                                            <div key={i} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-gray-50 p-3 rounded-lg">
+                                                <div className="md:col-span-5">
+                                                    <select value={u.unit_sekolah_id} onChange={(e) => updateUnit(i, 'unit_sekolah_id', e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                        <option value="">Pilih Unit</option>
+                                                        {unitSekolahs.map((us) => (
+                                                            <option key={us.id} value={us.id}>{us.nama}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="md:col-span-4">
+                                                    <select value={u.jabatan_id} onChange={(e) => updateUnit(i, 'jabatan_id', e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                        <option value="">Pilih Jabatan</option>
+                                                        {jabatans.map((j) => (
+                                                            <option key={j.id} value={j.id}>{j.nama}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="md:col-span-2 flex items-center">
+                                                    <label className="inline-flex items-center text-sm text-gray-700">
+                                                        <input type="checkbox" checked={!!u.is_primary} onChange={(e) => updateUnit(i, 'is_primary', e.target.checked)} className="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                                        Primary
+                                                    </label>
+                                                </div>
+                                                <div className="md:col-span-1 text-right">
+                                                    <button type="button" onClick={() => removeUnit(i)} className="text-red-500 hover:text-red-700 text-sm font-medium">Hapus</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {data.units.length === 0 && <p className="text-sm text-gray-500">Belum ada penugasan unit.</p>}
+                                    </div>
+                                    <button type="button" onClick={addUnit} className="mt-3 inline-flex items-center text-sm font-semibold text-indigo-600 hover:text-indigo-800">
+                                        + Tambah Unit
+                                    </button>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4 mt-8">Mata Pelajaran (Guru)</h3>
+                                    <p className="text-xs text-gray-500 mb-3">Untuk guru: tentukan mata pelajaran yang diampu beserta unitnya. Baris yang tidak lengkap akan diabaikan.</p>
+                                    <div className="space-y-3">
+                                        {data.mapels.map((m, i) => (
+                                            <div key={i} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-gray-50 p-3 rounded-lg">
+                                                <div className="md:col-span-5">
+                                                    <select value={m.mata_pelajaran_id} onChange={(e) => updateMapel(i, 'mata_pelajaran_id', e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                        <option value="">Pilih Mata Pelajaran</option>
+                                                        {mapels.map((mp) => (
+                                                            <option key={mp.id} value={mp.id}>{mp.nama}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="md:col-span-5">
+                                                    <select value={m.unit_sekolah_id} onChange={(e) => updateMapel(i, 'unit_sekolah_id', e.target.value)} className="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                        <option value="">Pilih Unit</option>
+                                                        {unitSekolahs.map((us) => (
+                                                            <option key={us.id} value={us.id}>{us.nama}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="md:col-span-2 text-right">
+                                                    <button type="button" onClick={() => removeMapel(i)} className="text-red-500 hover:text-red-700 text-sm font-medium">Hapus</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {data.mapels.length === 0 && <p className="text-sm text-gray-500">Bukan guru / belum ada mata pelajaran.</p>}
+                                    </div>
+                                    <button type="button" onClick={addMapel} className="mt-3 inline-flex items-center text-sm font-semibold text-indigo-600 hover:text-indigo-800">
+                                        + Tambah Mata Pelajaran
+                                    </button>
                                 </div>
 
                                 <div className="flex items-center justify-end mt-8 border-t pt-6">

@@ -195,11 +195,13 @@ class PegawaiController extends Controller
             $unitSekolahs = UnitSekolah::all();
         }
         $jabatans = Jabatan::all();
+        $mapels = MataPelajaran::orderBy('nama')->get();
 
         return inertia('Pegawai/Edit', [
             'pegawai' => $pegawai,
             'unitSekolahs' => $unitSekolahs,
             'jabatans' => $jabatans,
+            'mapels' => $mapels,
         ]);
     }
 
@@ -229,6 +231,13 @@ class PegawaiController extends Controller
             'tanggal_mulai_kerja' => 'required|date',
             'pendidikan_terakhir' => 'required|string|max:255',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'units' => 'nullable|array',
+            'units.*.unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'units.*.jabatan_id' => 'nullable|exists:jabatans,id',
+            'units.*.is_primary' => 'nullable|boolean',
+            'mapels' => 'nullable|array',
+            'mapels.*.mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
+            'mapels.*.unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
         ]);
 
         $dataToUpdate = collect($validated)->except(['foto'])->toArray();
@@ -242,6 +251,31 @@ class PegawaiController extends Controller
         }
 
         $pegawai->update($dataToUpdate);
+
+        // Sinkronisasi penugasan unit + jabatan
+        $syncUnits = [];
+        foreach ($request->input('units', []) as $u) {
+            if (empty($u['unit_sekolah_id']) || empty($u['jabatan_id'])) {
+                continue;
+            }
+            $syncUnits[$u['unit_sekolah_id']] = [
+                'jabatan_id' => $u['jabatan_id'],
+                'is_primary' => !empty($u['is_primary']),
+            ];
+        }
+        $pegawai->units()->sync($syncUnits);
+
+        // Sinkronisasi mata pelajaran (guru)
+        $syncMapels = [];
+        foreach ($request->input('mapels', []) as $m) {
+            if (empty($m['mata_pelajaran_id']) || empty($m['unit_sekolah_id'])) {
+                continue;
+            }
+            $syncMapels[$m['mata_pelajaran_id']] = [
+                'unit_sekolah_id' => $m['unit_sekolah_id'],
+            ];
+        }
+        $pegawai->mapels()->sync($syncMapels);
 
         if ($pegawai->user_id) {
             $userAcc = User::find($pegawai->user_id);
