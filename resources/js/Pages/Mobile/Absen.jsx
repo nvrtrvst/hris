@@ -387,25 +387,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                 </div>
             )}
 
-            {/* Lokasi */}
-            <Card className="mt-3 py-4">
-                <div className="flex items-center gap-3">
-                    <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
-                        geoStatus === 'ready' ? 'bg-emerald-100 text-emerald-600' : geoStatus === 'error' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400'
-                    }`}>
-                        {loadingLocation ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapPin className="h-5 w-5" />}
-                    </div>
-                    <div className="flex-1">
-                        <p className="font-bold text-slate-800">
-                            {geoStatus === 'ready' ? 'Lokasi Terdeteksi' : geoStatus === 'error' ? 'Lokasi Gagal' : 'Mendeteksi Lokasi…'}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                            {currentPosition ? `${currentPosition.latitude.toFixed(5)}, ${currentPosition.longitude.toFixed(5)}` : (locationError || 'Aktifkan GPS')}
-                        </p>
-                    </div>
-                </div>
-            </Card>
-
             {/* Submit */}
             <button
                 type="button"
