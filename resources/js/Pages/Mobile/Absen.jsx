@@ -335,7 +335,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-900">
                     {showLive ? (
                         <>
-                            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" />
+                            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" style={{ transform: 'scaleX(-1)' }} />
                             {tileUrl && (
                                 <>
                                     <img

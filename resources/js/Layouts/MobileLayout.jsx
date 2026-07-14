@@ -1,4 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
@@ -14,10 +15,21 @@ const navItems = [
 export default function MobileLayout({ user, header, children }) {
     const { url } = usePage();
 
+    useEffect(() => {
+        const block = (e) => {
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase()))) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        };
+        document.addEventListener('keydown', block);
+        return () => document.removeEventListener('keydown', block);
+    }, []);
+
     return (
         <>
         <style>{`html,body{overscroll-behavior-y:contain}`}</style>
-        <div className="min-h-screen pb-24 font-sans font-antialiased text-gray-900 max-w-md mx-auto relative overflow-hidden bg-transparent">
+        <div className="min-h-screen pb-24 font-sans font-antialiased text-gray-900 max-w-md mx-auto relative overflow-hidden bg-transparent" onContextMenu={(e) => e.preventDefault()}>
             {/* Ambient 3D background */}
             <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-emerald-50/90 via-slate-50 to-white" />
