@@ -117,22 +117,20 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
 
         ctx.textBaseline = 'bottom';
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = 3;
-        ctx.miterLimit = 2;
-        ctx.font = `bold ${Math.max(16, Math.round(w * 0.045))}px sans-serif`;
+        ctx.lineWidth = 4;
+        ctx.font = `bold ${Math.max(18, Math.round(w * 0.05))}px sans-serif`;
         ctx.fillStyle = '#fff';
-        ctx.strokeText(ts, 12, h - 48);
-        ctx.fillText(ts, 12, h - 48);
-        ctx.font = `bold ${Math.max(12, Math.round(w * 0.032))}px sans-serif`;
+        ctx.strokeText(ts, 12, h - 50);
+        ctx.fillText(ts, 12, h - 50);
+        ctx.font = `bold ${Math.max(13, Math.round(w * 0.034))}px sans-serif`;
         ctx.strokeText(ds, 12, h - 28);
         ctx.fillText(ds, 12, h - 28);
-        ctx.font = `bold ${Math.max(10, Math.round(w * 0.028))}px sans-serif`;
+        ctx.font = `bold ${Math.max(11, Math.round(w * 0.03))}px sans-serif`;
         ctx.strokeText(loc.length > 50 ? loc.substring(0, 47) + '...' : loc, 12, h - 10);
         ctx.fillText(loc.length > 50 ? loc.substring(0, 47) + '...' : loc, 12, h - 10);
         ctx.lineWidth = 1;
-        ctx.miterLimit = 10;
 
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
         setCapturedPhoto(dataUrl);
         stopCamera();
         setShowLive(false);
