@@ -10,7 +10,9 @@ use App\Models\Presensi;
 use App\Models\SkalaMasaBakti;
 use App\Models\UnitSekolah;
 use Carbon\Carbon;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class PenggajianController extends Controller
@@ -111,6 +113,16 @@ class PenggajianController extends Controller
 
         $attendanceByPegawai = $attendanceRaw->groupBy('pegawai_id');
 
+        // [FIX] N+1: Prefetch presensi lembur untuk semua pegawai sekaligus
+        $lemburQuery = Presensi::whereIn('pegawai_id', $pegawais->pluck('id'))
+            ->where('is_lembur', true)
+            ->where('lembur_status', 'disetujui')
+            ->whereNotNull('jam_masuk')
+            ->whereNotNull('jam_keluar')
+            ->whereBetween('tanggal', [$periodeStart, $attendanceCutoff])
+            ->get();
+        $lemburByPegawai = $lemburQuery->groupBy('pegawai_id');
+
         DB::beginTransaction();
         try {
             foreach ($pegawais as $pegawai) {
@@ -139,7 +151,7 @@ class PenggajianController extends Controller
 
                 foreach ($globalKomponens as $komponen) {
                     $nominal = round((float) $this->computeComponentNominal(
-                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff
+                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai
                     ), 2);
 
                     if ($nominal > 0) {
@@ -341,19 +353,11 @@ class PenggajianController extends Controller
 
     public function finalize($id)
     {
-        $user = auth()->user();
-        $isAdmin = $user && $user->can('view_payroll');
-        if (! $isAdmin) {
-            abort(403, 'Akses ditolak.');
-        }
-
-        if ($user->can('view_all_units')) {
-            abort(403, 'Hanya Admin Unit yang berhak.');
-        }
+        $this->authorizePayrollModification();
 
         $penggajian = Penggajian::with('pegawai')->findOrFail($id);
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $penggajian->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+        if (! $this->userCanAccessPegawai($penggajian->pegawai_id)) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -364,18 +368,11 @@ class PenggajianController extends Controller
 
     public function destroyPeriod(Request $request)
     {
-        $user = auth()->user();
-        $isAdmin = $user && $user->can('view_payroll');
-        if (! $isAdmin) {
-            abort(403, 'Akses ditolak.');
-        }
-
-        if ($user->can('view_all_units')) {
-            abort(403, 'Hanya Admin Unit yang berhak.');
-        }
+        $this->authorizePayrollModification();
 
         $request->validate(['periode_bulan' => 'required|string']);
 
+        $user = auth()->user();
         $query = Penggajian::where('periode_bulan', $request->periode_bulan)->where('status', 'draft');
 
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
@@ -391,19 +388,11 @@ class PenggajianController extends Controller
 
     public function destroy($id)
     {
-        $user = auth()->user();
-        $isAdmin = $user && $user->can('view_payroll');
-        if (! $isAdmin) {
-            abort(403, 'Akses ditolak.');
-        }
-
-        if ($user->can('view_all_units')) {
-            abort(403, 'Hanya Admin Unit yang berhak.');
-        }
+        $this->authorizePayrollModification();
 
         $penggajian = Penggajian::with('pegawai')->findOrFail($id);
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $penggajian->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+        if (! $this->userCanAccessPegawai($penggajian->pegawai_id)) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -438,19 +427,11 @@ class PenggajianController extends Controller
 
     public function markPaid($id)
     {
-        $user = auth()->user();
-        $isAdmin = $user && $user->can('view_payroll');
-        if (! $isAdmin) {
-            abort(403, 'Akses ditolak.');
-        }
-
-        if ($user->can('view_all_units')) {
-            abort(403, 'Hanya Admin Unit yang berhak.');
-        }
+        $this->authorizePayrollModification();
 
         $penggajian = Penggajian::with('pegawai')->findOrFail($id);
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $penggajian->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+        if (! $this->userCanAccessPegawai($penggajian->pegawai_id)) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -464,9 +445,18 @@ class PenggajianController extends Controller
     }
 
     /**
-     * Hitung jumlah kehadiran per status + auto-alpha dari jadwal pegawai.
+     * Hitung jumlah hari kerja dan kehadiran per status untuk pegawai.
      *
-     * @return array{hadir:int,telat:int,alpa:int,sakit:int,izin:int,cuti:int}
+     * Logic:
+     * 1. Count kehadiran berdasarkan status dari Presensi (hadir/telat/sakit/izin/cuti/alpa_manual)
+     * 2. Calculate working days berdasarkan jadwal reguler ( jenis_jadwal != 'lembur')
+     * 3. Auto-fill alpa: working days - (hadir + telat + sakit + izin + cuti)
+     *
+     * @param  Pegawai  $pegawai  Pegawai yang dihitung kehadiran
+     * @param  Collection  $attendanceByPegawai  Data presensi grouping
+     * @param  Carbon  $periodeStart  Awal periode penggajian
+     * @param  Carbon  $attendanceCutoff  Batas cut-off presensi
+     * @return array<string,int> ['hadir'=>X, 'telat'=>Y, 'alpa'=>Z, 'sakit'=>A, 'izin'=>B, 'cuti'=>C]
      */
     protected function computeAttendance(Pegawai $pegawai, $attendanceByPegawai, Carbon $periodeStart, Carbon $attendanceCutoff): array
     {
@@ -481,7 +471,9 @@ class PenggajianController extends Controller
         // [FIX] Auto-alpha: hari kerja (dari jadwal, kecuali lembur) - (hadir/telat/izin/cuti disetujui)
         $workingDays = 0;
         foreach ($pegawai->jadwals as $jadwal) {
-            if ($jadwal->jenis_jadwal === 'lembur') continue;
+            if ($jadwal->jenis_jadwal === 'lembur') {
+                continue;
+            }
             $workingDays += $this->countWeekdayInRange($jadwal->hari, $periodeStart, $attendanceCutoff);
         }
         $presentOrLeave = $countHadir + $countTelat + $countSakit + $countIzin + $countCuti;
@@ -499,8 +491,28 @@ class PenggajianController extends Controller
 
     /**
      * Hitung nominal satu komponen gaji untuk pegawai pada periode tertentu.
+     *
+     * Mendukung beberapa jenis komponen:
+     * - fixed: Override pegawai komponen nominal → nilai_default
+     * - persentase: Hitung dari gaji pokok (base salary)
+     * - dinamis_kehadiran: Rate × count (hadir/telat/alpa/sakit/izin/cuti/tunjangan)
+     * - dinamis_masa_bakti: Lookup pada SkalaMasaBakti berdasarkan masa kerja
+     * - dinamis_jam_mengajar: Rate × total jam jadwal dalam periode
+     * - dinamis_lembur: Rate × total jam lembur disetujui
+     *
+     * @param  KomponenGaji  $komponen  Komponen gaji yang dihitung
+     * @param  Pegawai  $pegawai  Pegawai yang dihitung gajinya
+     * @param  Collection  $pegawaiKomponens  Komponen spesifik pegawai (pivot data)
+     * @param  Collection  $globalKomponens  Semua komponen gaji aktif
+     * @param  array  $counts  Array kehadiran per status dari computeAttendance
+     * @param  Collection  $skalas  Skala masa bakti diurut descending
+     * @param  Carbon  $periodeEnd  Akhir periode penggajian
+     * @param  Carbon  $periodeStart  Awal periode penggajian
+     * @param  Carbon  $attendanceCutoff  Batas cut-off presensi (untuk periode current)
+     * @param  Collection|null  $lemburByPegawai  Data presensi lembur (prefetched)
+     * @return float nominal komponen gaji
      */
-    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff): float
+    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null): float
     {
         $nominal = 0;
 
@@ -511,11 +523,7 @@ class PenggajianController extends Controller
                 $nominal = $komponen->nilai_default ?? 0;
             }
         } elseif ($komponen->jenis === 'persentase') {
-            $gajiPokok = $globalKomponens->first(function ($k) {
-                return $k->kode === 'gaji_pokok'
-                    || stripos($k->nama, 'Gaji Pokok') !== false
-                    || stripos($k->nama, 'Basic Salary') !== false;
-            });
+            $gajiPokok = $this->findKomponenByKode($globalKomponens, 'gaji_pokok', ['Gaji Pokok', 'Basic Salary']);
             $gajiPokokId = $gajiPokok ? $gajiPokok->id : null;
 
             $baseSalary = 0;
@@ -530,18 +538,17 @@ class PenggajianController extends Controller
                 ? $pegawaiKomponens[$komponen->id]->pivot->nominal
                 : ($komponen->nilai_default ?? 0);
 
-            $kode = $komponen->kode;
-            if ($kode === 'kehadiran_telat' || stripos($komponen->nama, 'telat') !== false) {
+            if ($this->isKehadiranType($komponen, 'kehadiran_telat', ['telat'])) {
                 $nominal = $rate * $counts['telat'];
-            } elseif ($kode === 'kehadiran_alpa' || stripos($komponen->nama, 'alpa') !== false) {
+            } elseif ($this->isKehadiranType($komponen, 'kehadiran_alpa', ['alpa'])) {
                 $nominal = $rate * $counts['alpa'];
-            } elseif ($kode === 'kehadiran_sakit' || stripos($komponen->nama, 'sakit') !== false) {
+            } elseif ($this->isKehadiranType($komponen, 'kehadiran_sakit', ['sakit'])) {
                 $nominal = $rate * $counts['sakit'];
-            } elseif ($kode === 'kehadiran_izin' || stripos($komponen->nama, 'izin') !== false) {
+            } elseif ($this->isKehadiranType($komponen, 'kehadiran_izin', ['izin'])) {
                 $nominal = $rate * $counts['izin'];
-            } elseif ($kode === 'kehadiran_cuti' || stripos($komponen->nama, 'cuti') !== false) {
+            } elseif ($this->isKehadiranType($komponen, 'kehadiran_cuti', ['cuti'])) {
                 $nominal = $rate * $counts['cuti'];
-            } elseif ($kode === 'tunjangan_kehadiran' || stripos($komponen->nama, 'makan') !== false || stripos($komponen->nama, 'transport') !== false || stripos($komponen->nama, 'hadir') !== false) {
+            } elseif ($this->isKehadiranType($komponen, 'tunjangan_kehadiran', ['makan', 'transport', 'hadir'])) {
                 $nominal = $rate * ($counts['hadir'] + $counts['telat']);
             } else {
                 $nominal = 0;
@@ -585,14 +592,11 @@ class PenggajianController extends Controller
                 ? $pegawaiKomponens[$komponen->id]->pivot->nominal
                 : ($komponen->nilai_default ?? 0);
 
-            $totalMinutes = Presensi::where('pegawai_id', $pegawai->id)
-                ->where('is_lembur', true)
-                ->where('lembur_status', 'disetujui')
-                ->whereNotNull('jam_masuk')
-                ->whereNotNull('jam_keluar')
-                ->whereBetween('tanggal', [$periodeStart, $attendanceCutoff])
-                ->get()
-                ->sum(fn ($p) => Carbon::parse($p->jam_masuk)->diffInMinutes(Carbon::parse($p->jam_keluar)));
+            $totalMinutes = 0;
+            if ($lemburByPegawai && $lemburByPegawai->has($pegawai->id)) {
+                $totalMinutes = $lemburByPegawai[$pegawai->id]
+                    ->sum(fn ($p) => Carbon::parse($p->jam_masuk)->diffInMinutes(Carbon::parse($p->jam_keluar)));
+            }
 
             $nominal = $rate * ($totalMinutes / 60);
         }
@@ -601,7 +605,68 @@ class PenggajianController extends Controller
     }
 
     /**
+     * Helper untuk mencari komponen berdasarkan kode dengan fallback ke pattern matching nama.
+     * Ini backward compatibility untuk komponen yang sudah ada sebelum migration.
+     *
+     * @param  Collection  $komponens  Collection komponen yang dicari
+     * @param  string  $targetKode  Kode target (primary lookup)
+     * @param  array  $namePatterns  Array pattern untuk stripos fallback (opsional)
+     * @return Komponen|null Komponen yang ditemukan atau null
+     */
+    private function findKomponenByKode($komponens, string $targetKode, array $namePatterns = []): ?KomponenGaji
+    {
+        // Priority 1: Exact kode match
+        $komponen = $komponens->first(function ($k) use ($targetKode) {
+            return $k->kode === $targetKode;
+        });
+
+        // Priority 2: Pattern matching nama (backward compatibility)
+        if (! $komponen && ! empty($namePatterns)) {
+            $komponen = $komponens->first(function ($k) use ($namePatterns) {
+                foreach ($namePatterns as $pattern) {
+                    if (stripos($k->nama, $pattern) !== false) {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+        }
+
+        return $komponen;
+    }
+
+    /**
+     * Helper untuk mengecek apakah komponen adalah jenis kehadiran tertentu.
+     * Prioritas kode > pattern nama untuk backward compatibility.
+     *
+     * @param  KomponenGaji  $komponen  Komponen yang dicek
+     * @param  string  $targetKode  Kode target (primary)
+     * @param  array  $namePatterns  Array pattern untuk stripos fallback (opsional)
+     * @return bool true jika komponen match target type
+     */
+    private function isKehadiranType(KomponenGaji $komponen, string $targetKode, array $namePatterns = []): bool
+    {
+        // Priority 1: Kode exact match
+        if ($komponen->kode === $targetKode) {
+            return true;
+        }
+
+        // Priority 2: Pattern matching nama (backward compatibility)
+        if (! empty($namePatterns)) {
+            foreach ($namePatterns as $pattern) {
+                if (stripos($komponen->nama, $pattern) !== false) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Hitung jumlah hari tertentu (nama Indonesia) dalam rentang tanggal [start, end].
+     * Optimized: O(1) formula daripada loop O(n).
      */
     protected function countWeekdayInRange(string $hari, Carbon $start, Carbon $end): int
     {
@@ -614,15 +679,65 @@ class PenggajianController extends Controller
             return 0;
         }
 
-        $count = 0;
-        $d = $start->copy();
-        while ($d->lte($end)) {
-            if ((int) $d->dayOfWeek === $target) {
+        $totalDays = $start->diffInDays($end) + 1;
+        $fullWeeks = intdiv($totalDays, 7);
+        $remainderDays = $totalDays % 7;
+
+        $count = $fullWeeks;
+
+        $startDayOfWeek = $start->dayOfWeek;
+        for ($i = 0; $i < $remainderDays; $i++) {
+            if ((($startDayOfWeek + $i) % 7) === $target) {
                 $count++;
             }
-            $d->addDay();
         }
 
         return $count;
+    }
+
+    /**
+     * Authorize user untuk aksi payroll modification (finalize, destroy, markPaid).
+     * Harus punya permission 'view_payroll' dan BUKAN superadmin (view_all_units).
+     *
+     * @throws AuthorizationException
+     */
+    private function authorizePayrollModification(): void
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('view_payroll')) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        if ($user->can('view_all_units')) {
+            abort(403, 'Hanya Admin Unit yang berhak.');
+        }
+    }
+
+    /**
+     * Check apakah user punya akses ke pegawai tertentu.
+     *
+     * @param  mixed  $pegawaiId  ID Pegawai atau object Pegawai
+     */
+    private function userCanAccessPegawai($pegawaiId): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->can('view_all_units')) {
+            return true;
+        }
+
+        if (! $user->unit_sekolah_id) {
+            return false;
+        }
+
+        $pegawai = $pegawaiId instanceof Pegawai
+            ? $pegawaiId
+            : Pegawai::find($pegawaiId);
+
+        return $pegawai && $pegawai->belongsToUnit($user->unit_sekolah_id);
     }
 }

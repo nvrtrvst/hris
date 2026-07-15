@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\PresensiMessages;
 use App\Models\Jadwal;
 use App\Models\Presensi;
 use App\Services\ImageUploadService;
@@ -129,7 +130,7 @@ class MobileController extends Controller
         $status = $request->input('status');
         $tanggal = $request->input('tanggal');
 
-        if (!$unit || !$tingkat || !$nis || !$status) {
+        if (! $unit || ! $tingkat || ! $nis || ! $status) {
             return response()->json(['success' => false, 'message' => 'Data kurang lengkap.'], 400);
         }
 
@@ -138,7 +139,7 @@ class MobileController extends Controller
 
         $response = Http::withHeaders(['x-internal-key' => $key])
             ->timeout(8)
-            ->post($base . '/api/integration/siswa-absen', [
+            ->post($base.'/api/integration/siswa-absen', [
                 'unit' => $unit,
                 'tingkat' => $tingkat,
                 'kelas' => $kelas,
@@ -148,8 +149,9 @@ class MobileController extends Controller
                 'tanggal' => $tanggal,
             ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $msg = $response->json('message') ?? 'Gagal menyimpan absen.';
+
             return response()->json(['success' => false, 'message' => $msg], $response->status());
         }
 
@@ -166,7 +168,7 @@ class MobileController extends Controller
         $tanggal = $request->input('tanggal');
         $absens = $request->input('absens', []);
 
-        if (!$unit || !$tingkat || !is_array($absens) || count($absens) === 0) {
+        if (! $unit || ! $tingkat || ! is_array($absens) || count($absens) === 0) {
             return response()->json(['success' => false, 'message' => 'Data kurang lengkap.'], 400);
         }
 
@@ -175,7 +177,7 @@ class MobileController extends Controller
 
         $response = Http::withHeaders(['x-internal-key' => $key])
             ->timeout(15)
-            ->post($base . '/api/integration/siswa-absen-batch', [
+            ->post($base.'/api/integration/siswa-absen-batch', [
                 'unit' => $unit,
                 'tingkat' => $tingkat,
                 'kelas' => $kelas,
@@ -184,8 +186,9 @@ class MobileController extends Controller
                 'absens' => $absens,
             ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $msg = $response->json('message') ?? 'Gagal menyimpan absen.';
+
             return response()->json(['success' => false, 'message' => $msg], $response->status());
         }
 
@@ -239,18 +242,24 @@ class MobileController extends Controller
         } elseif ($isLembur) {
             $primaryUnit = $pegawai->units()->first();
             if (! $primaryUnit) {
-                return response()->json(['success' => false, 'message' => 'Pegawai tidak memiliki unit sekolah.', 'errors' => ['geofence' => 'Pegawai tidak memiliki unit sekolah.']], 422);
+                $message = PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT;
+
+                return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
             }
             $unit = $primaryUnit;
             $jadwal = null;
         } else {
-            return response()->json(['success' => false, 'message' => 'Pilih jadwal terlebih dahulu.', 'errors' => ['jadwal_id' => 'Pilih jadwal terlebih dahulu.']], 422);
+            $message = PresensiMessages::PEMILIH_JADWAL_DULU;
+
+            return response()->json(['success' => false, 'message' => $message, 'errors' => ['jadwal_id' => $message]], 422);
         }
 
         $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);
 
         if ($distance > $unit->radius_meter) {
-            return response()->json(['success' => false, 'message' => "Anda berada di luar jangkauan Unit Sekolah. Jarak Anda: {$distance} meter (Batas: {$unit->radius_meter}m)", 'errors' => ['geofence' => "Anda berada di luar jangkauan Unit Sekolah. Jarak Anda: {$distance} meter (Batas: {$unit->radius_meter}m)"]], 422);
+            $message = sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $distance, $unit->radius_meter);
+
+            return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
         }
 
         $accuracy = $request->filled('accuracy') ? (float) $request->accuracy : null;
@@ -258,10 +267,14 @@ class MobileController extends Controller
         $mockSuspect = (bool) $request->input('mock_suspect', false);
 
         if ($accuracy !== null && $accuracy <= 0) {
-            return response()->json(['success' => false, 'message' => 'Akurasi lokasi 0 meter (dicurigai lokasi palsu / mock GPS). Gunakan GPS asli.', 'errors' => ['geofence' => 'Akurasi lokasi 0 meter (dicurigai lokasi palsu / mock GPS). Gunakan GPS asli.']], 422);
+            $message = PresensiMessages::GEOFENCE_ACCURACY_ZERO;
+
+            return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
         }
         if ($accuracy !== null && $accuracy > $unit->radius_meter) {
-            return response()->json(['success' => false, 'message' => "Akurasi GPS buruk ({$accuracy}m > batas {$unit->radius_meter}m). Coba dari tempat terbuka.", 'errors' => ['geofence' => "Akurasi GPS buruk ({$accuracy}m > batas {$unit->radius_meter}m). Coba dari tempat terbuka."]], 422);
+            $message = sprintf(PresensiMessages::GEOFENCE_ACCURACY_POOR, $accuracy, $unit->radius_meter);
+
+            return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
         }
 
         $lokasiPerluReview = $mockSuspect || ($accuracy !== null && $accuracy < 10);
@@ -298,7 +311,7 @@ class MobileController extends Controller
 
             if ($request->tipe === 'masuk') {
                 if ($presensi->jam_masuk) {
-                    throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen masuk.']);
+                    throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_MASUK]);
                 }
                 $presensi->jam_masuk = Carbon::now()->format('H:i:s');
                 $presensi->latitude_masuk = $request->latitude;
@@ -318,10 +331,10 @@ class MobileController extends Controller
                 }
             } else {
                 if (! $presensi->exists || ! $presensi->jam_masuk) {
-                    throw ValidationException::withMessages(['conflict' => 'Anda belum absen masuk.']);
+                    throw ValidationException::withMessages(['conflict' => PresensiMessages::BELUM_ABSEN_MASUK]);
                 }
                 if ($presensi->jam_keluar) {
-                    throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen keluar.']);
+                    throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_KELUAR]);
                 }
                 $presensi->jam_keluar = Carbon::now()->format('H:i:s');
                 $presensi->latitude_keluar = $request->latitude;
@@ -336,11 +349,14 @@ class MobileController extends Controller
             $presensi->save();
         });
 
-        $label = $isLembur ? 'Lembur' : 'Absen';
+        $label = $isLembur ? PresensiMessages::LABEL_LEMBUR : PresensiMessages::LABEL_ABSEN;
+        $successMessage = $request->tipe === 'masuk'
+            ? sprintf($isLembur ? PresensiMessages::LEMBUR_MASUK_SUCCESS : PresensiMessages::ABSEN_MASUK_SUCCESS, $distance)
+            : sprintf($isLembur ? PresensiMessages::LEMBUR_KELUAR_SUCCESS : PresensiMessages::ABSEN_KELUAR_SUCCESS, $distance);
 
         return response()->json([
             'success' => true,
-            'message' => "{$label} {$request->tipe} berhasil dicatat! Jarak: {$distance}m",
+            'message' => $successMessage,
         ]);
     }
 }

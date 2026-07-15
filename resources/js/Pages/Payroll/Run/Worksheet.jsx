@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import axios from 'axios';
@@ -77,15 +77,18 @@ export default function RunPayrollWorksheet({ auth, month, year, periode }) {
         });
     };
 
-    // Extract all unique column names to build the dynamic table header
-    const allDetailNames = [];
-    data.forEach(p => {
-        p.details.forEach(d => {
-            if (!allDetailNames.find(n => n.nama === d.nama_komponen && n.tipe === d.tipe)) {
-                allDetailNames.push({ nama: d.nama_komponen, tipe: d.tipe });
-            }
+    // Extract all unique column names to build the dynamic table header (memoized)
+    const allDetailNames = useMemo(() => {
+        const names = [];
+        data.forEach(p => {
+            p.details.forEach(d => {
+                if (!names.find(n => n.nama === d.nama_komponen && n.tipe === d.tipe)) {
+                    names.push({ nama: d.nama_komponen, tipe: d.tipe });
+                }
+            });
         });
-    });
+        return names;
+    }, [data]);
 
     const finalize = () => {
         if(confirm('Kunci Penggajian? Setelah dikunci, data tidak bisa diubah dan slip gaji siap didownload.')) {

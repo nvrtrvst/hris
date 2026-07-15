@@ -1,15 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-
-const haversine = (lat1, lon1, lat2, lon2) => {
-    const R = 6371000;
-    const toRad = (d) => (d * Math.PI) / 180;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-};
+import { calculateDistance, checkGeofence } from '@/Utils/geo';
+import { OSM_TILE_URL } from '@/Constants/AppConstants';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Toggle, Badge } from '@/Components/MobileUI';
@@ -38,8 +29,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
     const streamRef = useRef(null);
     const fileInputRef = useRef(null);
     const photoInputRef = useRef(null);
+    const geoControllerRef = useRef(null);
 
-    const { flash } = usePage().props;
+    const { flash = {} } = usePage().props;
 
     useEffect(() => {
         startCamera();
@@ -54,6 +46,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                 streamRef.current.getTracks().forEach((t) => t.stop());
             }
             if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (geoControllerRef.current) {
+                geoControllerRef.current.abort();
+            }
         };
     }, []);
 
@@ -162,10 +157,17 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                 setGeoStatus('ready');
                 setLoadingLocation(false);
                 setGeoInfoLoading(true);
+
+                geoControllerRef.current = new AbortController();
+
                 fetch(
-                    `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&localityLanguage=id`
+                    `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&localityLanguage=id`,
+                    { signal: geoControllerRef.current.signal }
                 )
-                    .then((r) => r.json())
+                    .then((r) => {
+                        if (!r.ok) throw new Error('Geocoding failed');
+                        return r.json();
+                    })
                     .then((d) =>
                         setGeoInfo({
                             locality: d.locality,
@@ -177,7 +179,11 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
                             streetNumber: d.streetNumber,
                         })
                     )
-                    .catch(() => setGeoInfo(null))
+                    .catch((err) => {
+                        if (err.name !== 'AbortError') {
+                            setGeoInfo(null);
+                        }
+                    })
                     .finally(() => setGeoInfoLoading(false));
             },
             (err) => {
@@ -214,18 +220,19 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         const lat = parseFloat(targetUnit.latitude);
         const lon = parseFloat(targetUnit.longitude);
         if (isNaN(lat) || isNaN(lon)) return null;
-        const distance = haversine(
+        const radius = targetUnit.radius_meter ?? 50;
+        const { inside, distance } = checkGeofence(
             currentPosition.latitude,
             currentPosition.longitude,
             lat,
-            lon
+            lon,
+            radius
         );
-        const radius = targetUnit.radius_meter ?? 50;
         return {
             name: targetUnit.nama_unit || targetUnit.nama || 'Unit Sekolah',
             distance,
             radius,
-            inside: distance <= radius,
+            inside,
         };
     }, [currentPosition, targetUnit]);
 
@@ -307,7 +314,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         const xt = Math.floor(((currentPosition.longitude + 180) / 360) * n);
         const latRad = (currentPosition.latitude * Math.PI) / 180;
         const yt = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n);
-        tileUrl = `https://tile.openstreetmap.org/${z}/${xt}/${yt}.png`;
+        tileUrl = OSM_TILE_URL.replace('{z}', z).replace('{x}', xt).replace('{y}', yt);
     }
 
     const now = new Date();

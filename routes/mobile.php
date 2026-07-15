@@ -32,7 +32,9 @@ Route::middleware('auth:web_mobile')->group(function () {
     Route::post('/izin', [MobileIzinController::class, 'store'])->name('presensi.izin.store');
 
     Route::get('/absen', [MobileController::class, 'absen'])->name('presensi.absen');
-    Route::post('/absen', [MobileController::class, 'storeAbsen'])->name('presensi.absen.store');
+    Route::post('/absen', [MobileController::class, 'storeAbsen'])
+        ->middleware('throttle:10,1') // 10 requests per minute per user
+        ->name('presensi.absen.store');
     Route::get('/profile', function (Request $request) {
         $request->user()->pegawai?->load('units', 'jabatans');
 

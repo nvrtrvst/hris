@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\LaporanLemburanExport;
 use App\Exports\LaporanPenggajianExport;
 use App\Exports\LaporanPresensiExport;
+use App\Http\Requests\LaporanGenerateRequest;
 use App\Models\UnitSekolah;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -31,27 +32,17 @@ class LaporanController extends Controller
         ]);
     }
 
-    public function preview(Request $request)
+    public function preview(LaporanGenerateRequest $request)
     {
-        $user = $request->user();
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
-        }
-
-        $request->validate([
-            'type' => 'required|in:presensi,penggajian,lemburan',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
-        ]);
+        $validated = $request->validated();
 
         $export = null;
-        if ($request->type === 'presensi') {
-            $export = new LaporanPresensiExport($request->start_date, $request->end_date, $request->unit_sekolah_id);
-        } elseif ($request->type === 'penggajian') {
-            $export = new LaporanPenggajianExport($request->start_date, $request->end_date, $request->unit_sekolah_id);
-        } elseif ($request->type === 'lemburan') {
-            $export = new LaporanLemburanExport($request->start_date, $request->end_date, $request->unit_sekolah_id);
+        if ($validated['type'] === 'presensi') {
+            $export = new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id']);
+        } elseif ($validated['type'] === 'penggajian') {
+            $export = new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id']);
+        } elseif ($validated['type'] === 'lemburan') {
+            $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id']);
         }
 
         if (! $export) {
@@ -71,57 +62,33 @@ class LaporanController extends Controller
         ]);
     }
 
-    public function exportPresensi(Request $request)
+    public function exportPresensi(LaporanGenerateRequest $request)
     {
-        $user = $request->user();
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
-        }
-        $request->validate([
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
-        ]);
+        $validated = $request->validated();
 
         return Excel::download(
-            new LaporanPresensiExport($request->start_date, $request->end_date, $request->unit_sekolah_id),
-            'Laporan_Presensi_'.$request->start_date.'_to_'.$request->end_date.'.xlsx'
+            new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null),
+            'Laporan_Presensi_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
 
-    public function exportPenggajian(Request $request)
+    public function exportPenggajian(LaporanGenerateRequest $request)
     {
-        $user = $request->user();
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
-        }
-        $request->validate([
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
-        ]);
+        $validated = $request->validated();
 
         return Excel::download(
-            new LaporanPenggajianExport($request->start_date, $request->end_date, $request->unit_sekolah_id),
-            'Laporan_Rekap_Gaji_'.$request->start_date.'_to_'.$request->end_date.'.xlsx'
+            new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null),
+            'Laporan_Rekap_Gaji_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
 
-    public function exportLemburan(Request $request)
+    public function exportLemburan(LaporanGenerateRequest $request)
     {
-        $user = $request->user();
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
-        }
-        $request->validate([
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
-        ]);
+        $validated = $request->validated();
 
         return Excel::download(
-            new LaporanLemburanExport($request->start_date, $request->end_date, $request->unit_sekolah_id),
-            'Laporan_Lemburan_Potongan_'.$request->start_date.'_to_'.$request->end_date.'.xlsx'
+            new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null),
+            'Laporan_Lemburan_Potongan_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
 }

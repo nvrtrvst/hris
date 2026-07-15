@@ -3,14 +3,191 @@
 @tailwind utilities;
 
 @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in-up {
-    animation: fadeInUp 0.4s ease-out forwards;
+    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
 .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Floating label input */
+.input-group {
+    @apply relative;
+}
+
+.input-group input {
+    @apply w-full px-4 pt-6 pb-2 text-sm border-2 rounded-xl outline-none transition-all duration-200 bg-transparent;
+}
+
+.input-group label {
+    @apply absolute left-4 top-1/2 -translate-y-1/2 text-sm pointer-events-none transition-all duration-200;
+}
+
+.input-group input:focus + label,
+.input-group input.filled + label,
+.input-group input:not(:placeholder-shown) + label {
+    @apply text-xs -translate-y-5;
+}
+
+.input-group.light input {
+    @apply border-gray-200 text-gray-900;
+}
+
+.input-group.light input:focus {
+    @apply border-primary;
+    box-shadow: 0 0 0 4px rgba(15, 61, 62, 0.06);
+}
+
+.input-group.light label {
+    @apply text-gray-400;
+}
+
+.input-group.light input:focus + label,
+.input-group.light input:not(:placeholder-shown) + label {
+    @apply text-primary;
+}
+
+.input-group.dark input {
+    @apply border-slate-600 text-gray-100;
+}
+
+.input-group.dark input:focus {
+    @apply border-accent;
+    box-shadow: 0 0 0 4px rgba(201, 162, 39, 0.08);
+}
+
+.input-group.dark label {
+    @apply text-gray-500;
+}
+
+.input-group.dark input:focus + label,
+.input-group.dark input:not(:placeholder-shown) + label {
+    @apply text-accent;
+}
+
+.input-group.light input.error {
+    @apply border-danger/50;
+}
+
+.input-group.dark input.error {
+    @apply border-danger/50;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+    @apply p-2 rounded-xl transition-all duration-200 cursor-pointer;
+}
+
+.theme-toggle:hover {
+    @apply scale-110;
+}
+
+.theme-toggle-light {
+    @apply theme-toggle bg-white/60 text-gray-500 hover:bg-white hover:text-primary shadow-sm;
+}
+
+.theme-toggle-dark {
+    @apply theme-toggle bg-slate-800/60 text-gray-400 hover:bg-slate-800 hover:text-accent;
+}
+
+/* Glass Card */
+.glass-card {
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+}
+
+/* Clean button */
+.btn-primary {
+    @apply relative w-full py-3.5 rounded-xl font-semibold text-white overflow-hidden transition-all duration-300;
+}
+
+.btn-primary::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent;
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.btn-primary:hover::before {
+    transform: translateX(100%);
+}
+
+.btn-primary-light {
+    @apply btn-primary bg-primary hover:bg-primary-light;
+    box-shadow: 0 4px 16px rgba(15, 61, 62, 0.25);
+}
+
+.btn-primary-light:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(15, 61, 62, 0.3);
+}
+
+.btn-primary-dark {
+    @apply btn-primary bg-accent text-slate-900 hover:bg-accent-light;
+    box-shadow: 0 4px 16px rgba(201, 162, 39, 0.3);
+}
+
+.btn-primary-dark:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(201, 162, 39, 0.35);
+}
+
+/* Orbs */
+.orb {
+    @apply absolute rounded-full opacity-20 blur-2xl pointer-events-none;
+    animation: orbFloat 10s ease-in-out infinite;
+}
+
+@keyframes orbFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -20px) scale(1.05); }
+    66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+/* Particles */
+.particle {
+    @apply absolute w-1 h-1 rounded-full opacity-30 pointer-events-none;
+    animation: particleDrift 12s ease-in-out infinite;
+}
+
+@keyframes particleDrift {
+    0%, 100% { transform: translateY(0) translateX(0); }
+    25% { transform: translateY(-10px) translateX(5px); }
+    50% { transform: translateY(5px) translateX(-5px); }
+    75% { transform: translateY(-8px) translateX(3px); }
+}
+
+@keyframes float-slow {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-8px) rotate(2deg); }
+    50% { transform: translateY(4px) rotate(-1deg); }
+    75% { transform: translateY(-6px) rotate(1deg); }
+}
+
+.animate-float-slow {
+    animation: float-slow 8s ease-in-out infinite;
+}
+
+/* Shake on error */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+/* Ripple effect */
+@keyframes ripple {
+    from { transform: scale(0); opacity: 0.4; }
+    to { transform: scale(4); opacity: 0; }
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+    .orb { display: none; }
 }
 
 /* Cetak PDF — Jadwal Pegawai */
@@ -26,7 +203,6 @@
         background: white !important;
     }
 
-    /* Sembunyikan semua yg gak perlu */
     nav, .sidebar,
     header, footer:not(.print-footer),
     button, input, select, textarea,
@@ -36,7 +212,6 @@
         display: none !important;
     }
 
-    /* Reset layout */
     .py-12, .min-h-screen, .bg-gray-50 {
         padding: 0 !important;
         margin: 0 !important;
@@ -57,7 +232,6 @@
         border-color: #d1d5db !important;
     }
 
-    /* Table styles */
     table {
         width: 100% !important;
         border-collapse: collapse !important;
@@ -90,12 +264,10 @@
         vertical-align: top !important;
     }
 
-    /* Sticky column */
     .sticky {
         position: static !important;
     }
 
-    /* Card di dalam cell */
     .bg-white.p-2.rounded.shadow-sm {
         background: #f9fafb !important;
         border: 1px solid #e5e7eb !important;
@@ -104,18 +276,15 @@
         box-shadow: none !important;
     }
 
-    /* Action overlays & hover states di table */
     td .absolute {
         display: none !important;
     }
 
-    /* Badge jenis jadwal */
     .bg-blue-50 { background: #eff6ff !important; }
     .bg-amber-50 { background: #fffbeb !important; }
     .text-blue-700 { color: #1d4ed8 !important; }
     .text-amber-700 { color: #d97706 !important; }
 
-    /* Print footer */
     .print-footer {
         display: block !important;
         position: fixed;
@@ -136,7 +305,6 @@
         border-top: 1px solid #374151;
     }
 
-    /* Print header */
     .print-header {
         display: block !important;
         text-align: center;
@@ -158,7 +326,6 @@
         margin-top: 2px;
     }
 
-    /* Info box — hilang di print */
     div.mt-6.bg-blue-50 {
         display: none !important;
     }

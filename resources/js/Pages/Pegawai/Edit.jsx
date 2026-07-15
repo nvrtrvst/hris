@@ -1,6 +1,7 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) {
     const { data, setData, post, processing, errors } = useForm({
@@ -64,9 +65,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
                     <div className="mb-4">
                         <Link href={route('pegawai.index')} className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
+                            <ArrowLeft className="mr-1.5 h-5 w-5" />
                             Kembali ke Daftar Pegawai
                         </Link>
                     </div>
