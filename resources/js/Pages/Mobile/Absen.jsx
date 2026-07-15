@@ -115,19 +115,23 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni }) {
         if (geoInfo?.principalSubdivision) pp.push(geoInfo.principalSubdivision);
         const loc = pp.length ? pp.join(', ') : 'Lokasi belum tersedia';
 
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillStyle = 'rgba(0,0,0,0.85)';
         ctx.fillRect(0, h - 90, w, 90);
         ctx.textBaseline = 'bottom';
-        ctx.fillStyle = '#fff';
-        ctx.shadowColor = '#000';
-        ctx.shadowBlur = 2;
         ctx.font = `bold ${Math.max(16, Math.round(w * 0.045))}px sans-serif`;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.miterLimit = 2;
+        ctx.strokeText(ts, 12, h - 48);
+        ctx.fillStyle = '#fff';
         ctx.fillText(ts, 12, h - 48);
         ctx.font = `bold ${Math.max(12, Math.round(w * 0.032))}px sans-serif`;
+        ctx.strokeText(ds, 12, h - 28);
         ctx.fillText(ds, 12, h - 28);
         ctx.font = `bold ${Math.max(10, Math.round(w * 0.028))}px sans-serif`;
+        ctx.strokeText(loc.length > 50 ? loc.substring(0, 47) + '...' : loc, 12, h - 10);
         ctx.fillText(loc.length > 50 ? loc.substring(0, 47) + '...' : loc, 12, h - 10);
-        ctx.shadowBlur = 0;
+        ctx.lineWidth = 1;
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         setCapturedPhoto(dataUrl);
