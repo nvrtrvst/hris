@@ -26,7 +26,8 @@ class UnitSekolahController extends Controller
             'singkatan' => 'required|string|max:255',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'radius_meter' => 'required|integer|min:10',
+            'radius_meter' => 'required|integer|min:10|max:1000',
+            'jam_masuk_kantor' => 'required|date_format:H:i',
         ]);
 
         UnitSekolah::create($validated);
@@ -46,7 +47,8 @@ class UnitSekolahController extends Controller
             'singkatan' => 'required|string|max:255',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'radius_meter' => 'required|integer|min:10',
+            'radius_meter' => 'required|integer|min:10|max:1000',
+            'jam_masuk_kantor' => 'required|date_format:H:i',
         ]);
 
         $unit_sekolah->update($validated);

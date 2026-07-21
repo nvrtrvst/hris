@@ -98,10 +98,7 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
 
             <div className="space-y-4">
                 {/* COVER */}
-                <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-500 via-primary to-primary p-6 text-white shadow-[0_12px_30px_-10px_rgba(79,70,229,0.55)]">
-                    <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-                    <div className="absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-primary/20 blur-2xl" />
-
+                <div className="relative overflow-hidden rounded-2xl bg-primary p-6 text-white shadow-[0_10px_28px_-18px_rgba(15,61,62,0.75)]">
                     <div className="relative flex flex-col items-center text-center">
                         <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-white/30 bg-white/10 shadow-xl">
                             {photo ? (
@@ -196,7 +193,7 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
                         <button
                             type="submit"
                             disabled={editForm.processing}
-                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 to-primary py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_-6px_rgba(79,70,229,0.6)] transition active:scale-[0.98] disabled:opacity-60"
+                            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-60"
                         >
                             {editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan'}
                         </button>
@@ -242,7 +239,7 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
                         <button
                             type="submit"
                             disabled={passForm.processing}
-                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 to-primary py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_-6px_rgba(79,70,229,0.6)] transition active:scale-[0.98] disabled:opacity-60"
+                            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-60"
                         >
                             {passForm.processing ? 'Memperbarui...' : 'Perbarui Kata Sandi'}
                         </button>

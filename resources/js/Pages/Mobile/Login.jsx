@@ -1,248 +1,190 @@
-import InputError from '@/Components/InputError';
 import ApplicationLogo from '@/Components/ApplicationLogo';
-import { Head, useForm, Link } from '@inertiajs/react';
-import { useState, useEffect, useMemo } from 'react';
-import { Eye, EyeOff, Mail, Users, ArrowRight } from 'lucide-react';
+import InputError from '@/Components/InputError';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { ArrowRight, Camera, Eye, EyeOff, LockKeyhole, MapPin, ShieldCheck, UserRound } from 'lucide-react';
+import { useState } from 'react';
 
-// ── Particles ────────────────────────────────────────────────
-function Particles() {
-    const dots = useMemo(() =>
-        Array.from({ length: 20 }, (_, i) => ({
-            id: i,
-            x: Math.random() * 100,
-            y: Math.random() * 100,
-            s: Math.random() * 2 + 1,
-            d: Math.random() * 5,
-            o: Math.random() * 0.3 + 0.08,
-        })),
-    []);
-
-    return (
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            {dots.map((dot) => (
-                <div
-                    key={dot.id}
-                    className="absolute rounded-full bg-white"
-                    style={{
-                        left: `${dot.x}%`,
-                        top: `${dot.y}%`,
-                        width: dot.s,
-                        height: dot.s,
-                        opacity: dot.o,
-                        animation: `float ${dot.d + 5}s ease-in-out infinite`,
-                        animationDelay: `${dot.d}s`,
-                    }}
-                />
-            ))}
-        </div>
-    );
-}
-
-// ── Ripple ────────────────────────────────────────────────────
-function createRipple(e) {
-    const btn = e.currentTarget;
-    const rect = btn.getBoundingClientRect();
-    const size = Math.max(rect.width, rect.height);
-    const x = e.clientX - rect.left - size / 2;
-    const y = e.clientY - rect.top - size / 2;
-    const el = document.createElement('span');
-    el.className = 'absolute rounded-full bg-white/30 animate-ripple';
-    el.style.width = el.style.height = `${size}px`;
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-    el.style.pointerEvents = 'none';
-    btn.appendChild(el);
-    setTimeout(() => el.remove(), 600);
-}
-
-// ── Floating Input ───────────────────────────────────────────
-function FloatingInput({
-    id, label, icon: Icon, value, onChange, error,
-    type = 'text', autoComplete, autoFocus,
-}) {
-    const [focused, setFocused] = useState(false);
-    const active = focused || value;
+function LoginField({ id, label, icon: Icon, error, suffix, ...props }) {
+    const errorId = error ? `${id}-error` : undefined;
 
     return (
         <div>
+            <label htmlFor={id} className="mb-2 block text-sm font-bold text-slate-800">
+                {label}
+            </label>
             <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                    <Icon className="h-5 w-5 text-gray-400 transition-colors" style={{ color: active && !error ? '#0F3D3E' : undefined }} />
-                </span>
+                <Icon className={`pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${error ? 'text-rose-500' : 'text-slate-400'}`} />
                 <input
                     id={id}
-                    type={type}
-                    value={value}
-                    autoComplete={autoComplete}
-                    autoFocus={autoFocus}
-                    placeholder=" "
-                    onFocus={() => setFocused(true)}
-                    onBlur={() => setFocused(false)}
-                    onChange={(e) => onChange(e.target.value)}
-                    className={`peer w-full rounded-xl border bg-white pt-6 pb-2.5 pl-11 pr-4 font-medium text-text-primary shadow-sm outline-none transition-all ${
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={errorId}
+                    className={`min-h-14 w-full rounded-xl border bg-slate-50 py-3.5 pl-12 text-[15px] font-medium text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:bg-white focus:ring-4 ${
+                        suffix ? 'pr-14' : 'pr-4'
+                    } ${
                         error
-                            ? '!border-danger ring-4 ring-danger/10'
-                            : focused
-                                ? 'border-primary ring-4 ring-primary/10'
-                                : 'border-border hover:border-gray-300'
+                            ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-100'
+                            : 'border-slate-200 focus:border-primary focus:ring-primary/10'
                     }`}
+                    {...props}
                 />
-                <label
-                    htmlFor={id}
-                    className={`pointer-events-none absolute left-11 transition-all ${
-                        active
-                            ? 'top-1.5 text-xs font-bold text-primary'
-                            : 'top-1/2 -translate-y-1/2 text-sm text-gray-400'
-                    } ${error ? '!text-danger' : ''}`}
-                >
-                    {label}
-                </label>
+                {suffix}
             </div>
-            <div className="overflow-hidden transition-all" style={{ maxHeight: error ? 40 : 0 }}>
-                <InputError message={error} className="mt-2" />
-            </div>
+            {error && <InputError id={errorId} message={error} className="mt-2" />}
         </div>
     );
 }
 
-// ── MAIN ──────────────────────────────────────────────────────
 export default function MobileLogin({ status }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         login: '',
         password: '',
         remember: true,
     });
-
     const [showPassword, setShowPassword] = useState(false);
-    const [shakeKey, setShakeKey] = useState(0);
 
-    useEffect(() => {
-        if (errors.login || errors.password) setShakeKey((k) => k + 1);
-    }, [errors]);
-
-    const submit = (e) => {
-        e.preventDefault();
-        post(route('presensi.login.store'), { onFinish: () => reset('password') });
+    const submit = (event) => {
+        event.preventDefault();
+        post(route('presensi.login.store'), {
+            preserveScroll: true,
+            onFinish: () => reset('password'),
+        });
     };
 
     return (
-        <div className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-primary px-6 font-sans">
-            {/* background */}
-            <div className="pointer-events-none absolute inset-0">
-                <div className="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-accent/20 blur-3xl animate-blob" />
-                <div className="absolute -bottom-20 -left-16 h-80 w-80 rounded-full bg-primary-light/70 blur-3xl animate-blob" style={{ animationDelay: '2s' }} />
-                <div className="absolute left-1/2 top-1/3 h-48 w-48 -translate-x-1/2 rounded-full bg-white/5 blur-2xl animate-float" />
-            </div>
-            <Particles />
-
+        <main className="min-h-[100dvh] bg-[#f4f7f5] font-sans text-slate-950">
             <Head title="Login Pegawai" />
 
-            <div className="relative z-10 mx-auto w-full max-w-sm animate-fade-in-up">
-                <div className="mb-6 text-center">
-                    <div className="relative mx-auto mb-4 inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-white/10 ring-1 ring-white/20 backdrop-blur">
-                        <span className="absolute inset-0 rounded-3xl bg-accent/30 animate-pulse-ring" />
-                        <ApplicationLogo className="h-9 w-9 text-accent" />
+            <section className="bg-primary px-5 pb-20 pt-[max(2rem,env(safe-area-inset-top))] text-white">
+                <div className="mx-auto max-w-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
+                            <ApplicationLogo className="h-7 w-7 text-white" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">Yayasan Nuurul Muttaqiin</p>
+                            <p className="mt-0.5 text-base font-bold">Portal Pegawai</p>
+                        </div>
                     </div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-white">
-                        HRIS<span className="text-accent"> Mobile</span>
-                    </h1>
-                    <p className="mt-2 font-medium text-white/70">Portal Absensi & Pegawai</p>
-                </div>
 
+                    <div className="mt-8">
+                        <p className="text-sm font-semibold text-emerald-100">Selamat datang kembali</p>
+                        <h1 className="mt-1 max-w-xs text-3xl font-bold leading-tight tracking-tight">Presensi lebih cepat, data tetap aman.</h1>
+                        <p className="mt-3 max-w-sm text-sm leading-relaxed text-emerald-50/80">Akses presensi, jadwal kerja, riwayat kehadiran, dan pengajuan izin dari satu tempat.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section className="relative z-10 mx-auto -mt-12 w-full max-w-sm px-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
                 {status && (
-                    <div className="mb-5 rounded-xl border border-success/30 bg-success/15 p-3 text-center text-sm font-semibold text-white animate-fade-in">
-                        {status}
+                    <div role="status" className="mb-3 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-sm">
+                        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span>{status}</span>
                     </div>
                 )}
 
-                <form
-                    onSubmit={submit}
-                    autoComplete="off"
-                    className="rounded-3xl bg-white/95 p-6 shadow-2xl ring-1 ring-white/20 backdrop-blur"
-                    key={shakeKey}
-                    style={shakeKey > 0 ? { animation: 'shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both' } : undefined}
-                >
-                    <div className="space-y-5">
-                        <FloatingInput
+                <form onSubmit={submit} autoComplete="on" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.45)] sm:p-6">
+                    <div className="mb-5">
+                        <h2 className="text-xl font-bold tracking-tight text-slate-950">Masuk ke akun</h2>
+                        <p className="mt-1 text-sm text-slate-500">Gunakan email atau nomor induk pegawai.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                        <LoginField
                             id="login"
-                            label="Email / No Induk (NIP)"
-                            icon={Mail}
-                            value={data.login}
-                            autoComplete="off"
+                            name="login"
+                            label="Email atau No. Induk"
+                            icon={UserRound}
+                            type="text"
+                            inputMode="email"
+                            autoComplete="username"
+                            autoCapitalize="none"
+                            spellCheck="false"
                             autoFocus
+                            placeholder="nama@yayasan.sch.id"
+                            value={data.login}
                             error={errors.login}
-                            onChange={(v) => setData('login', v)}
+                            onChange={(event) => setData('login', event.target.value)}
                         />
 
-                        <div>
-                            <FloatingInput
-                                id="password"
-                                label="Kata Sandi"
-                                icon={Users}
-                                type={showPassword ? 'text' : 'password'}
-                                value={data.password}
-                                autoComplete="new-password"
-                                error={errors.password}
-                                onChange={(v) => setData('password', v)}
-                            />
-                        </div>
+                        <LoginField
+                            id="password"
+                            name="password"
+                            label="Kata sandi"
+                            icon={LockKeyhole}
+                            type={showPassword ? 'text' : 'password'}
+                            autoComplete="current-password"
+                            placeholder="Masukkan kata sandi"
+                            value={data.password}
+                            error={errors.password}
+                            onChange={(event) => setData('password', event.target.value)}
+                            suffix={
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((value) => !value)}
+                                    className="absolute right-1.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition-colors active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                                    aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                                    aria-pressed={showPassword}
+                                >
+                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                </button>
+                            }
+                        />
 
-                        <div className="flex items-center justify-between">
-                            <label className="group flex cursor-pointer select-none items-center space-x-2.5">
+                        <div className="flex min-h-11 items-center justify-between gap-4">
+                            <label className="flex cursor-pointer select-none items-center gap-2.5 text-sm font-medium text-slate-600">
                                 <input
                                     type="checkbox"
                                     name="remember"
                                     checked={data.remember}
-                                    onChange={(e) => setData('remember', e.target.checked)}
-                                    className="h-5 w-5 rounded border-border text-primary shadow-sm transition-all focus:ring-primary/30 checked:border-primary checked:bg-primary"
+                                    onChange={(event) => setData('remember', event.target.checked)}
+                                    className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary/25"
                                 />
-                                <span className="text-sm font-medium text-text-secondary transition-colors group-hover:text-text-primary">
-                                    Ingat saya
-                                </span>
+                                Ingat saya
                             </label>
-                            <Link
-                                href={route('password.request')}
-                                className="text-xs font-bold text-primary transition-all hover:text-accent hover:underline underline-offset-2"
-                            >
-                                Lupa Kata Sandi?
+                            <Link href={route('password.request')} className="flex min-h-11 items-center text-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
+                                Lupa sandi?
                             </Link>
                         </div>
 
                         <button
                             type="submit"
-                            disabled={processing}
-                            onClick={!processing ? createRipple : undefined}
-                            className={`group relative flex w-full items-center justify-center overflow-hidden rounded-xl py-4 text-sm font-bold text-white shadow-lg transition-all duration-300 active:scale-[0.98] ${
-                                processing
-                                    ? 'cursor-not-allowed bg-primary/70'
-                                    : 'bg-primary hover:bg-primary-light hover:shadow-xl hover:shadow-primary/30'
-                            }`}
+                            disabled={processing || !data.login || !data.password}
+                            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
                         >
-                            {!processing && (
-                                <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-                            )}
                             {processing ? (
                                 <>
-                                    <svg className="mr-3 h-5 w-5 animate-spin text-white" viewBox="0 0 24 24" fill="none">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                    </svg>
-                                    Memproses...
+                                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />
+                                    <span>Memverifikasi...</span>
                                 </>
                             ) : (
                                 <>
-                                    <span>Masuk Sekarang</span>
-                                    <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1.5" />
+                                    <span>Masuk ke portal</span>
+                                    <ArrowRight className="h-5 w-5" />
                                 </>
                             )}
                         </button>
                     </div>
                 </form>
 
-                <p className="mt-8 text-center text-xs text-white/40 animate-fade-in">
-                    &copy; {new Date().getFullYear()} Yayasan Pendidikan.
+                <div className="mt-4 rounded-xl border border-slate-200 bg-white/70 px-4 py-3.5">
+                    <div className="flex items-start gap-3">
+                        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                        <div>
+                            <p className="text-xs font-bold text-slate-800">Privasi perangkat terjaga</p>
+                            <p className="mt-1 text-xs leading-relaxed text-slate-500">Kamera dan lokasi hanya diminta saat Anda membuka proses presensi.</p>
+                        </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-4 border-t border-slate-100 pt-3 text-[11px] font-semibold text-slate-500">
+                        <span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-primary" /> Geofence</span>
+                        <span className="inline-flex items-center gap-1.5"><Camera className="h-3.5 w-3.5 text-primary" /> Foto real-time</span>
+                        <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> Aman</span>
+                    </div>
+                </div>
+
+                <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-500">
+                    &copy; {new Date().getFullYear()} Yayasan Nuurul Muttaqiin
                 </p>
-            </div>
-        </div>
+            </section>
+        </main>
     );
 }

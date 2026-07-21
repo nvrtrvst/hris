@@ -1,23 +1,14 @@
-import { useState } from 'react';
-
-// Ambient background with floating 3D orbs — gives depth to the whole app
 export function AmbientBg() {
     return (
-        <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-indigo-50/80 via-slate-50 to-white" />
-            <div className="absolute -left-16 -top-16 h-64 w-64 rounded-full bg-indigo-300/30 blur-3xl animate-float" />
-            <div className="absolute -right-10 top-1/3 h-72 w-72 rounded-full bg-violet-300/25 blur-3xl animate-float-slow" />
-            <div className="absolute bottom-10 left-1/4 h-56 w-56 rounded-full bg-sky-200/20 blur-3xl animate-float" />
-        </div>
+        <div className="pointer-events-none fixed inset-0 -z-10 bg-[#f4f7f5]" />
     );
 }
 
-// Glassy elevated card
 export function Card({ children, className = '', press = true }) {
     return (
         <div
-            className={`rounded-3xl bg-white/90 p-5 shadow-[0_8px_30px_-12px_rgba(15,61,62,0.25)] ring-1 ring-black/5 backdrop-blur-xl transition-all ${
-                press ? 'active:scale-[0.985] active:shadow-[0_4px_16px_-10px_rgba(15,61,62,0.3)]' : ''
+            className={`rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${
+                press ? 'transition-transform active:scale-[0.99]' : ''
             } ${className}`}
         >
             {children}
@@ -25,24 +16,22 @@ export function Card({ children, className = '', press = true }) {
     );
 }
 
-// Section title with small leading dot / icon
 export function SectionTitle({ children, icon: Icon, action, className = '' }) {
     return (
         <div className={`mb-3 mt-1 flex items-center justify-between px-1 ${className}`}>
-            <h3 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider text-slate-500">
+            <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
                 {Icon && (
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-primary">
                         <Icon className="h-3.5 w-3.5" />
                     </span>
                 )}
                 {children}
-            </h3>
+            </h2>
             {action}
         </div>
     );
 }
 
-// Status / category pill
 export function Badge({ children, tone = 'slate', icon: Icon, className = '' }) {
     const tones = {
         slate: 'bg-slate-100 text-slate-600',
@@ -54,17 +43,16 @@ export function Badge({ children, tone = 'slate', icon: Icon, className = '' }) 
         red: 'bg-red-100 text-red-700',
     };
     return (
-        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${tones[tone] || tones.slate} ${className}`}>
+        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold leading-none ${tones[tone] || tones.slate} ${className}`}>
             {Icon && <Icon className="h-3.5 w-3.5" />}
             {children}
         </span>
     );
 }
 
-// Floating action button (round, lifted)
 export function FAB({ onClick, href, icon: Icon, label }) {
     const inner = (
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-primary text-white shadow-[0_10px_24px_-6px_rgba(15,61,62,0.6)] transition-transform active:scale-90">
+        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_8px_18px_-8px_rgba(15,61,62,0.65)] transition-transform active:scale-95">
             <Icon className="h-6 w-6" />
         </span>
     );
@@ -82,41 +70,40 @@ export function FAB({ onClick, href, icon: Icon, label }) {
     );
 }
 
-// 3D toggle switch
 export function Toggle({ checked, onChange, tone = 'indigo' }) {
     const on = tone === 'amber' ? 'bg-amber-500' : 'bg-emerald-500';
     return (
         <button
             type="button"
             onClick={onChange}
-            className={`relative h-7 rounded-full transition-colors duration-300 ${checked ? on : 'bg-slate-300'}`}
+            role="switch"
+            aria-checked={checked}
+            className={`relative h-8 min-w-[52px] rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${checked ? on : 'bg-slate-300'}`}
             style={{ width: '52px' }}
         >
             <span
-                className={`absolute top-1 left-1 h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-300 ${checked ? 'translate-x-6' : ''}`}
+                className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? 'translate-x-5' : ''}`}
             />
         </button>
     );
 }
 
-// Segmented control (single selection display)
 export function Seg({ children, active }) {
     return (
-        <div className={`flex-1 rounded-2xl px-3 py-2.5 text-center text-sm font-bold shadow-sm transition-all ${active ? 'bg-white text-primary shadow-md' : 'text-slate-400'}`}>
+        <div className={`flex-1 rounded-xl px-3 py-2.5 text-center text-sm font-bold transition-colors ${active ? 'bg-white text-primary shadow-sm' : 'text-slate-500'}`}>
             {children}
         </div>
     );
 }
 
-// Empty state
 export function Empty({ icon: Icon, title, subtitle }) {
     return (
-        <Card className="flex flex-col items-center py-10 text-center">
-            <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-300">
-                <Icon className="h-8 w-8" />
+        <div className="flex flex-col items-center px-4 py-8 text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                <Icon className="h-6 w-6" />
             </div>
             <h3 className="font-bold text-slate-700">{title}</h3>
             {subtitle && <p className="mt-1 text-sm text-slate-400">{subtitle}</p>}
-        </Card>
+        </div>
     );
 }

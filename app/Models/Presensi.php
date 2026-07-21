@@ -14,6 +14,7 @@ class Presensi extends Model
         'pegawai_id',
         'jadwal_id',
         'unit_sekolah_id',
+        'tipe_presensi',
         'tanggal',
         'jam_masuk',
         'jam_keluar',
@@ -43,6 +44,11 @@ class Presensi extends Model
         'captured_at' => 'datetime',
         'is_lembur' => 'boolean',
     ];
+
+    public static function statusAt(string $actualTime, string $requiredTime): string
+    {
+        return $actualTime > $requiredTime ? 'telat' : 'hadir';
+    }
 
     protected $appends = ['foto_masuk_url', 'foto_keluar_url'];
 

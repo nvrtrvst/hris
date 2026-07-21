@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
+body {
+    background: #f4f7f5;
+    overscroll-behavior-y: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }

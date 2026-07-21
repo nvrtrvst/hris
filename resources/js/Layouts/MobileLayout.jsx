@@ -1,5 +1,4 @@
 import { Link, usePage } from '@inertiajs/react';
-import { useEffect } from 'react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
@@ -15,47 +14,25 @@ const navItems = [
 export default function MobileLayout({ user, header, children }) {
     const { url } = usePage();
 
-    useEffect(() => {
-        const block = (e) => {
-            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase()))) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        };
-        document.addEventListener('keydown', block);
-        return () => document.removeEventListener('keydown', block);
-    }, []);
-
     return (
-        <>
-        <style>{`html,body{overscroll-behavior-y:contain}`}</style>
-        <div className="min-h-screen pb-24 font-sans font-antialiased text-gray-900 max-w-md mx-auto relative overflow-hidden bg-transparent" onContextMenu={(e) => e.preventDefault()}>
-            {/* Ambient 3D background */}
-            <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-b from-emerald-50/90 via-slate-50 to-white" />
-                <div className="absolute -left-16 -top-16 h-64 w-64 rounded-full bg-emerald-300/30 blur-3xl animate-float" />
-                <div className="absolute -right-10 top-1/3 h-72 w-72 rounded-full bg-teal-300/25 blur-3xl animate-float-slow" />
-                <div className="absolute bottom-10 left-1/4 h-56 w-56 rounded-full bg-accent/20 blur-3xl animate-float" />
-            </div>
-
-            {/* Top Bar — gradient, rounded, elevated */}
-            <div className="relative z-10 bg-gradient-to-br from-emerald-500 to-primary text-white px-4 pt-4 pb-7 rounded-b-[2.2rem] shadow-[0_12px_30px_-10px_rgba(15,61,62,0.55)]">
-                <div className="flex items-center justify-between">
+        <div className="mx-auto min-h-[100dvh] max-w-md bg-[#f4f7f5] pb-24 font-sans font-antialiased text-slate-900 shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
+            <header className="sticky top-0 z-20 border-b border-emerald-950/10 bg-primary px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
+                <div className="flex min-h-11 items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <div className="bg-white/20 p-1.5 rounded-2xl shadow-inner backdrop-blur">
-                            <ApplicationLogo className="w-6 h-6 text-white" />
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
+                            <ApplicationLogo className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                            <h1 className="font-extrabold text-lg leading-tight tracking-tight">HRIS Mobile</h1>
-                            <p className="text-indigo-100/90 text-[11px] font-medium">Portal Pegawai</p>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100">Portal Pegawai</p>
+                            <p className="text-sm font-bold leading-tight">Presensi Yayasan</p>
                         </div>
                     </div>
                     <Dropdown>
                         <Dropdown.Trigger>
-                            <button className="flex items-center focus:outline-none">
-                                <div className="w-10 h-10 rounded-2xl bg-white/25 border border-white/40 flex items-center justify-center font-extrabold text-sm shadow-lg text-white backdrop-blur hover:bg-white/30 transition-colors overflow-hidden">
+                            <button className="flex min-h-11 min-w-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Buka menu akun">
+                                <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-white/20 bg-white/10 text-sm font-bold text-white">
                                     {user?.pegawai?.foto_url ? (
-                                        <img src={user.pegawai.foto_url} alt="Profile" className="w-full h-full object-cover" />
+                                        <img src={user.pegawai.foto_url} alt="" width="36" height="36" className="h-full w-full object-cover" />
                                     ) : (
                                         user?.name ? user.name.charAt(0).toUpperCase() : 'P'
                                     )}
@@ -65,55 +42,53 @@ export default function MobileLayout({ user, header, children }) {
                         <Dropdown.Content align="right" width="48">
                             <Dropdown.Link href={route('presensi.logout')} method="post" as="button" className="text-red-600 font-bold flex items-center">
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                                Log Out
+                                Keluar
                             </Dropdown.Link>
                         </Dropdown.Content>
                     </Dropdown>
                 </div>
-            </div>
+            </header>
 
             {/* Page Header (Optional) */}
             {header && (
-                <div className="px-4 pt-4">
-                    <h2 className="font-extrabold text-xl text-gray-800">{header}</h2>
+                <div className="px-4 pt-5">
+                    <h2 className="text-xl font-bold tracking-tight text-slate-900">{header}</h2>
                 </div>
             )}
 
-            {/* Main Content Area */}
-            <main className="px-4 pb-6 pt-4 animate-fade-in-up">
+            <main className="px-4 pb-8 pt-5">
                 {children}
             </main>
 
-            {/* Floating Glass Bottom Navigation */}
-            <div className="fixed bottom-5 left-1/2 z-30 w-[calc(100%-2rem)] max-w-[22rem] -translate-x-1/2">
-                <div className="flex items-center justify-between rounded-[1.8rem] bg-white/80 px-2 py-2 shadow-[0_12px_30px_-8px_rgba(15,61,62,0.35)] ring-1 ring-white/60 backdrop-blur-xl">
+            <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md" aria-label="Navigasi utama">
+                <div className="flex h-16 items-stretch justify-between px-1">
                     {navItems.map((item) => {
                         const active = item.match(url);
                         return (
                             <Link
                                 key={item.route}
                                 href={route(item.route)}
-                                className={`relative flex flex-1 flex-col items-center justify-center space-y-1 rounded-2xl py-2 transition-all ${
-                                    active ? 'text-primary' : 'text-slate-400 hover:text-emerald-500'
+                                className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                                    active ? 'text-primary' : 'text-slate-500'
                                 }`}
+                                aria-current={active ? 'page' : undefined}
                             >
                                 {active && (
-                                    <span className="absolute inset-x-1.5 inset-y-0.5 -z-0 rounded-2xl bg-emerald-100/80 shadow-[inset_0_2px_6px_-2px_rgba(15,61,62,0.4)]" />
+                                    <span className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-primary" />
                                 )}
-                                <span className={`relative z-10 transition-transform duration-300 ${active ? '-translate-y-0.5' : ''}`}>
-                                    <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <span>
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                         {item.icon({ strokeLinecap: 'round', strokeLinejoin: 'round' })}
                                     </svg>
                                 </span>
-                                <span className={`relative z-10 text-[10px] font-bold transition-all ${active ? 'opacity-100' : 'opacity-80'}`}>{item.label}</span>
+                                <span className="truncate text-[10px] font-semibold">{item.label}</span>
                             </Link>
                         );
                     })}
                 </div>
-            </div>
+            </nav>
 
             <FlashToast />
         </div>
-        </>
     );
 }

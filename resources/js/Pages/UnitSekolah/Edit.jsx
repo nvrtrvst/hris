@@ -10,6 +10,7 @@ export default function Edit({ auth, unit }) {
         latitude: String(unit.latitude),
         longitude: String(unit.longitude),
         radius_meter: unit.radius_meter,
+        jam_masuk_kantor: unit.jam_masuk_kantor?.slice(0, 5) || '07:30',
     });
 
     const handleSubmit = (e) => {

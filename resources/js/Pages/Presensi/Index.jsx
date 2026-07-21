@@ -9,9 +9,10 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
     const [endDate, setEndDate] = React.useState(filters?.end_date || '');
     const [unitId, setUnitId] = React.useState(filters?.unit_id || '');
     const [lemburFilter, setLemburFilter] = React.useState(filters?.lembur_filter || '');
+    const [lokasiFilter, setLokasiFilter] = React.useState(filters?.lokasi_filter || '');
 
     const applyFilter = () => {
-        router.get(route('presensi.index'), { start_date: startDate, end_date: endDate, unit_id: unitId, lembur_filter: lemburFilter }, { preserveState: true });
+        router.get(route('presensi.index'), { start_date: startDate, end_date: endDate, unit_id: unitId, lembur_filter: lemburFilter, lokasi_filter: lokasiFilter }, { preserveState: true });
     };
 
     return (
@@ -49,6 +50,10 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                             <option value="lembur_pending">Lembur Pending</option>
                                             <option value="lembur_disetujui">Lembur Disetujui</option>
                                             <option value="lembur_ditolak">Lembur Ditolak</option>
+                                        </select>
+                                        <select className="border-gray-300 rounded-md shadow-sm text-xs h-8 pr-8" value={lokasiFilter} onChange={e => setLokasiFilter(e.target.value)}>
+                                            <option value="">Semua Lokasi</option>
+                                            <option value="perlu_review">Perlu Review GPS</option>
                                         </select>
                                         <input type="date" className="border-gray-300 rounded-md shadow-sm text-xs h-8" value={startDate} onChange={e => setStartDate(e.target.value)} />
                                         <span className="text-gray-500">-</span>
@@ -98,7 +103,7 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                                             <div className="flex items-center space-x-2">
                                                                 <span className="text-sm font-medium text-gray-900">{presensi.jam_masuk.substring(0,5)}</span>
                                                                 {presensi.foto_masuk_url && (
-                                                                    <a href={presensi.foto_masuk_url} target="_blank" className="text-indigo-500 hover:text-indigo-700">
+                                                                    <a href={presensi.foto_masuk_url} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:text-indigo-700">
                                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                                     </a>
                                                                 )}
@@ -112,7 +117,7 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                                             <div className="flex items-center space-x-2">
                                                                 <span className="text-sm font-medium text-gray-900">{presensi.jam_keluar.substring(0,5)}</span>
                                                                 {presensi.foto_keluar_url && (
-                                                                    <a href={presensi.foto_keluar_url} target="_blank" className="text-indigo-500 hover:text-indigo-700">
+                                                                    <a href={presensi.foto_keluar_url} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:text-indigo-700">
                                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                                     </a>
                                                                 )}
@@ -149,7 +154,12 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                                                 )}
                                                             </div>
                                                         ) : (
-                                                            <span className="text-sm text-gray-400">Reguler</span>
+                                                            <div>
+                                                                <span className="text-sm text-gray-400">{presensi.tipe_presensi === 'kantor' ? 'Kehadiran Kantor' : 'Reguler'}</span>
+                                                                {presensi.tipe_presensi === 'kantor' && (
+                                                                    <span className="mt-1 block text-[10px] font-semibold text-slate-500">Tanpa jadwal mengajar</span>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -187,8 +197,8 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                                         <div className="text-sm text-gray-900">{presensi.jarak_masuk_meter ? `${presensi.jarak_masuk_meter}m` : '-'} (Masuk)</div>
                                                         <div className="text-sm text-gray-500">{presensi.jarak_keluar_meter ? `${presensi.jarak_keluar_meter}m` : '-'} (Keluar)</div>
                                                         {presensi.lokasi_perlu_review && (
-                                                            <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">
-                                                                ⚠ Lokasi curiga
+                                                            <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
+                                                                Perlu review GPS
                                                             </span>
                                                         )}
                                                     </td>

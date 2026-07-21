@@ -115,6 +115,20 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                     </p>
                     {errors.radius_meter && <p className="mt-1 text-xs text-red-600">{errors.radius_meter}</p>}
                 </div>
+
+                <div className="mt-4 max-w-xs">
+                    <label className="block text-xs font-semibold text-gray-600">
+                        Jam Masuk Kantor <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="time"
+                        value={data.jam_masuk_kantor}
+                        onChange={(e) => setData('jam_masuk_kantor', e.target.value)}
+                        className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Dipakai untuk status hadir/telat pegawai tetap tanpa jadwal mengajar.</p>
+                    {errors.jam_masuk_kantor && <p className="mt-1 text-xs text-red-600">{errors.jam_masuk_kantor}</p>}
+                </div>
             </div>
 
             <div className="flex items-center justify-end mt-8 border-t pt-6">

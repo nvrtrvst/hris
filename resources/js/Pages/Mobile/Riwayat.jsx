@@ -99,7 +99,7 @@ export default function Riwayat({ auth, presensi, filters }) {
                             value={m}
                             onClick={() => handleFilter({ target: { value: m } })}
                             className={`flex-shrink-0 rounded-2xl px-4 py-2.5 text-sm font-bold transition-all active:scale-95 ${
-                                isActive ? 'bg-emerald-500 text-white shadow-[0_8px_20px_-6px_rgba(79,70,229,0.6)]' : 'bg-white text-slate-500 ring-1 ring-slate-200'
+                                isActive ? 'bg-primary text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'
                             }`}
                         >
                             {format(parseISO(m + '-01'), 'MMM yyyy', { locale: id })}

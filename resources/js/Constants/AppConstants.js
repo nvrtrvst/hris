@@ -4,8 +4,8 @@
  */
 
 // Map Tile Configuration
-export const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-export const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+export const MAP_TILE_URL = 'https://mt1.google.com/vt/lyrs=y&hl=id&x={x}&y={y}&z={z}';
+export const MAP_ATTRIBUTION = '&copy; Google Maps';
 
 // Geocoding Configuration
 export const BDC_API_BASE = 'https://api.bigdatacloud.net/data';

@@ -65,7 +65,7 @@ export default function Create({ pegawai }) {
                                 type="button"
                                 onClick={() => setData('jenis_izin', o.value)}
                                 className={`rounded-2xl py-3 text-sm font-bold transition-all active:scale-95 ${
-                                    active ? 'bg-emerald-500 text-white shadow-[0_8px_20px_-6px_rgba(79,70,229,0.6)]' : 'bg-white text-slate-500 ring-1 ring-slate-200'
+                                    active ? 'bg-primary text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'
                                 }`}
                             >
                                 {o.label}
@@ -153,7 +153,7 @@ export default function Create({ pegawai }) {
                 <button
                     type="submit"
                     disabled={processing}
-                    className="mt-2 w-full rounded-2xl bg-gradient-to-br from-emerald-500 to-primary py-4 font-extrabold text-white shadow-[0_10px_24px_-6px_rgba(79,70,229,0.6)] transition-transform active:scale-[0.98] disabled:opacity-60"
+                    className="mt-2 min-h-14 w-full rounded-xl bg-primary px-4 py-4 font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-60"
                 >
                     {processing ? 'Mengirim…' : 'Kirim Pengajuan'}
                 </button>
