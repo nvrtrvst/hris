@@ -54,6 +54,7 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                         <select className="border-gray-300 rounded-md shadow-sm text-xs h-8 pr-8" value={lokasiFilter} onChange={e => setLokasiFilter(e.target.value)}>
                                             <option value="">Semua Lokasi</option>
                                             <option value="perlu_review">Perlu Review GPS</option>
+                                            <option value="pulang_awal">Pulang Awal</option>
                                         </select>
                                         <input type="date" className="border-gray-300 rounded-md shadow-sm text-xs h-8" value={startDate} onChange={e => setStartDate(e.target.value)} />
                                         <span className="text-gray-500">-</span>
@@ -198,7 +199,7 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                                         <div className="text-sm text-gray-500">{presensi.jarak_keluar_meter ? `${presensi.jarak_keluar_meter}m` : '-'} (Keluar)</div>
                                                         {presensi.lokasi_perlu_review && (
                                                             <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
-                                                                Perlu review GPS
+                                                                Perlu review
                                                             </span>
                                                         )}
                                                     </td>

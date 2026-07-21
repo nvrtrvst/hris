@@ -17,20 +17,18 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Super Admin Yayasan',
                 'password' => Hash::make('password'),
-                'role' => 'superadmin',
             ]
         );
         $superadmin->assignRole('superadmin');
 
         // Admin Unit (SMP as example)
-        $smp = UnitSekolah::where('nama', 'SMP Yayasan')->first();
+        $smp = UnitSekolah::where('singkatan', 'SMP')->first();
         if ($smp) {
             $adminUnit = User::firstOrCreate(
                 ['email' => 'admin_smp@yayasan.com'],
                 [
                     'name' => 'Admin SMP Yayasan',
                     'password' => Hash::make('password'),
-                    'role' => 'admin_unit',
                     'unit_sekolah_id' => $smp->id,
                 ]
             );

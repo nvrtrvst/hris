@@ -52,6 +52,11 @@ export default function Show({ auth, pegawai }) {
                                             <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${pegawai.status_aktif === 'aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} uppercase`}>
                                                 {pegawai.status_aktif}
                                             </span>
+                                            {pegawai.wajib_kantor && (
+                                                <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
+                                                    Wajib Kantor
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -101,6 +106,18 @@ export default function Show({ auth, pegawai }) {
                                         <div>
                                             <p className="text-sm text-gray-500">Kontak</p>
                                             <p className="font-medium text-gray-900">{pegawai.no_hp} / {pegawai.email || '-'}</p>
+                                        </div>
+                                        <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+                                            <p className="text-sm font-semibold text-emerald-800">Akun Login Mobile</p>
+                                            {pegawai.user ? (
+                                                <div className="mt-1 space-y-1 text-sm text-emerald-950">
+                                                    <p><span className="text-emerald-700">Email:</span> {pegawai.user.email}</p>
+                                                    <p><span className="text-emerald-700">Username:</span> {pegawai.user.username || '-'}</p>
+                                                    <p className="text-xs text-emerald-700">Login: email atau username di portal mobile.</p>
+                                                </div>
+                                            ) : (
+                                                <p className="mt-1 text-sm text-amber-700">Belum terhubung dengan akun login.</p>
+                                            )}
                                         </div>
                                         <div>
                                             <p className="text-sm text-gray-500">Alamat</p>

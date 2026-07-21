@@ -44,16 +44,6 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
     const records = Array.isArray(presensiSeminggu) ? presensiSeminggu : Object.values(presensiSeminggu || {}).flat();
     const currentStatus = presensi?.status;
 
-    const summary = records.reduce(
-        (totals, item) => {
-            if (item?.status === 'hadir' || item?.status === 'telat') totals.hadir += 1;
-            if (item?.status === 'telat') totals.telat += 1;
-            if (item?.status === 'izin' || item?.status === 'sakit') totals.izin += 1;
-            return totals;
-        },
-        { hadir: 0, telat: 0, izin: 0 },
-    );
-
     return (
         <MobileLayout user={auth.user}>
             <Head title="Beranda" />
@@ -75,12 +65,12 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
             {flash.message && <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
             {flash.error && <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
 
-            <Card press={false} className="overflow-hidden border-0 bg-primary p-0 text-white shadow-[0_10px_28px_-18px_rgba(15,61,62,0.75)]">
+            <section aria-labelledby="today-status" className="overflow-hidden rounded-2xl bg-primary text-white shadow-[0_10px_28px_-18px_rgba(15,61,62,0.75)]">
                 <div className="border-b border-white/10 px-5 py-4">
                     <div className="flex items-center justify-between gap-3">
                         <div>
                             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-100">Status hari ini</p>
-                            <h2 className="mt-1 text-xl font-bold">{currentStatus ? statusLabel[currentStatus] || currentStatus : 'Belum presensi'}</h2>
+                            <h2 id="today-status" className="mt-1 text-xl font-bold text-white">{currentStatus ? statusLabel[currentStatus] || currentStatus : 'Belum presensi'}</h2>
                         </div>
                         <Badge tone={statusTone[currentStatus] || 'slate'} icon={currentStatus ? CheckCircle2 : Clock3} className={!currentStatus ? 'bg-white/10 text-white' : ''}>
                             {presensi?.jam_keluar ? 'Selesai' : presensi?.jam_masuk ? 'Sedang bekerja' : 'Belum masuk'}
@@ -91,11 +81,11 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                 <div className="grid grid-cols-2 divide-x divide-white/10">
                     <div className="px-5 py-4">
                         <p className="flex items-center gap-1.5 text-xs text-emerald-100"><LogIn className="h-4 w-4" /> Masuk</p>
-                        <p className="mt-1 font-mono text-2xl font-bold tabular-nums">{time(presensi?.jam_masuk)}</p>
+                        <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(presensi?.jam_masuk)}</p>
                     </div>
                     <div className="px-5 py-4">
                         <p className="flex items-center gap-1.5 text-xs text-emerald-100"><LogOut className="h-4 w-4" /> Keluar</p>
-                        <p className="mt-1 font-mono text-2xl font-bold tabular-nums">{time(presensi?.jam_keluar)}</p>
+                        <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(presensi?.jam_keluar)}</p>
                     </div>
                 </div>
 
@@ -109,23 +99,15 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                     {presensi?.jam_masuk && !presensi?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi'}
                     <ArrowRight className="h-5 w-5" />
                 </Link>
-            </Card>
+            </section>
 
-            <SectionTitle icon={CalendarDays} className="mt-6">Aktivitas 3 Hari Terakhir</SectionTitle>
-            <div className="grid grid-cols-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <div className="px-3 py-4 text-center">
-                    <p className="font-mono text-2xl font-bold tabular-nums text-primary">{summary.hadir}</p>
-                    <p className="mt-1 text-xs font-medium text-slate-500">Hadir</p>
-                </div>
-                <div className="border-x border-slate-100 px-3 py-4 text-center">
-                    <p className="font-mono text-2xl font-bold tabular-nums text-amber-600">{summary.telat}</p>
-                    <p className="mt-1 text-xs font-medium text-slate-500">Telat</p>
-                </div>
-                <div className="px-3 py-4 text-center">
-                    <p className="font-mono text-2xl font-bold tabular-nums text-sky-700">{summary.izin}</p>
-                    <p className="mt-1 text-xs font-medium text-slate-500">Izin</p>
-                </div>
-            </div>
+            <Link href={route('presensi.riwayat')} className="mt-5 flex min-h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
+                <span>
+                    <span className="block text-sm font-bold text-slate-900">Riwayat & statistik</span>
+                    <span className="mt-0.5 block text-xs text-slate-500">Lihat kalender kehadiran bulanan</span>
+                </span>
+                <ArrowRight className="h-5 w-5 text-primary" />
+            </Link>
 
             <SectionTitle icon={Clock3} className="mt-6">Riwayat Terbaru</SectionTitle>
             <Card press={false} className="divide-y divide-slate-100 p-0">

@@ -7,15 +7,17 @@ export default function Create({ auth }) {
     const { data, setData, post, processing, errors } = useForm({
         nama: '',
         singkatan: '',
+        logo: null,
         latitude: '-6.200000',
         longitude: '106.800000',
         radius_meter: 50,
         jam_masuk_kantor: '07:30',
+        jam_pulang_kantor: '15:00',
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('unit-sekolah.store'));
+        post(route('unit-sekolah.store'), { forceFormData: true });
     };
 
     return (

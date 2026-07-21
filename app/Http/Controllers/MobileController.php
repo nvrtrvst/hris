@@ -9,6 +9,7 @@ use App\Services\ImageUploadService;
 use App\Traits\CalculatesDistance;
 use App\Traits\ResolvesPegawai;
 use Carbon\Carbon;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -43,10 +44,14 @@ class MobileController extends Controller
 
     public function riwayat(Request $request)
     {
+        $validated = $request->validate([
+            'bulan' => 'nullable|integer|between:1,12',
+            'tahun' => 'nullable|integer|between:2020,2100',
+        ]);
         $pegawai = $this->getPegawai();
 
-        $bulan = $request->input('bulan', Carbon::now()->format('m'));
-        $tahun = $request->input('tahun', Carbon::now()->format('Y'));
+        $bulan = (int) ($validated['bulan'] ?? Carbon::now()->month);
+        $tahun = (int) ($validated['tahun'] ?? Carbon::now()->year);
 
         $presensi = Presensi::with('unitSekolah')
             ->where('pegawai_id', $pegawai->id)
@@ -81,33 +86,47 @@ class MobileController extends Controller
         ]);
     }
 
+    public function kelasUnit(Request $request)
+    {
+        $validated = $request->validate([
+            'jadwal_id' => 'required|integer|min:1',
+        ]);
+        [$jadwal, $unit] = $this->resolveOwnedJadwal((int) $validated['jadwal_id']);
+
+        if ($jadwal->kelas_id) {
+            return response()->json(['success' => true, 'kelas' => []])->header('Cache-Control', 'no-store');
+        }
+
+        $response = $this->keuanganRequest('kelas-by-unit', [
+            'unit' => $unit->nama ?: $unit->singkatan,
+        ]);
+
+        if (! $response?->successful()) {
+            return response()->json(['success' => false, 'kelas' => [], 'message' => 'Data kelas belum tersedia.'], 502)->header('Cache-Control', 'no-store');
+        }
+
+        return response()->json([
+            'success' => true,
+            'school_name' => $response->json('data.schoolName'),
+            'kelas' => $response->json('data.classes') ?? [],
+        ])->header('Cache-Control', 'no-store');
+    }
+
     // Proxy ke API internal app keuangan untuk mengambil daftar siswa per kelas.
     // Kunci API disimpan server-side (tidak dikirim ke browser).
     public function siswaKelas(Request $request)
     {
-        $unit = $request->query('unit');
-        $tingkat = $request->query('tingkat');
-        $kelas = $request->query('kelas');
-        $jurusan = $request->query('jurusan');
+        $validated = $request->validate($this->studentClassRules());
+        [$jadwal, $unit] = $this->resolveOwnedJadwal((int) $validated['jadwal_id']);
+        $class = $this->resolveClassPayload($jadwal, $validated);
 
-        if (! $unit || ! $tingkat) {
-            return response()->json(['success' => false, 'siswa' => []]);
-        }
+        $response = $this->keuanganRequest('siswa-by-class', [
+            'unit' => $unit->nama ?: $unit->singkatan,
+            ...$class,
+        ]);
 
-        $base = config('keuangan.url');
-        $key = config('keuangan.key');
-
-        $response = Http::withHeaders(['x-internal-key' => $key])
-            ->timeout(8)
-            ->get($base.'/api/integration/siswa-by-class', [
-                'unit' => $unit,
-                'tingkat' => $tingkat,
-                'kelas' => $kelas,
-                'jurusan' => $jurusan,
-            ]);
-
-        if (! $response->successful()) {
-            return response()->json(['success' => false, 'siswa' => []]);
+        if (! $response?->successful()) {
+            return response()->json(['success' => false, 'siswa' => [], 'message' => 'Data siswa belum tersedia.'], 502)->header('Cache-Control', 'no-store');
         }
 
         $data = $response->json('data') ?? [];
@@ -117,83 +136,108 @@ class MobileController extends Controller
             'school_name' => $data['schoolName'] ?? null,
             'class_labels' => $data['classLabels'] ?? [],
             'siswa' => $data['students'] ?? [],
-        ]);
-    }
-
-    // Proxy ke API internal app keuangan untuk menyimpan absen siswa.
-    public function siswaAbsen(Request $request)
-    {
-        $unit = $request->input('unit');
-        $tingkat = $request->input('tingkat');
-        $kelas = $request->input('kelas');
-        $jurusan = $request->input('jurusan');
-        $nis = $request->input('nis');
-        $status = $request->input('status');
-        $tanggal = $request->input('tanggal');
-
-        if (! $unit || ! $tingkat || ! $nis || ! $status) {
-            return response()->json(['success' => false, 'message' => 'Data kurang lengkap.'], 400);
-        }
-
-        $base = config('keuangan.url');
-        $key = config('keuangan.key');
-
-        $response = Http::withHeaders(['x-internal-key' => $key])
-            ->timeout(8)
-            ->post($base.'/api/integration/siswa-absen', [
-                'unit' => $unit,
-                'tingkat' => $tingkat,
-                'kelas' => $kelas,
-                'jurusan' => $jurusan,
-                'nis' => $nis,
-                'status' => $status,
-                'tanggal' => $tanggal,
-            ]);
-
-        if (! $response->successful()) {
-            $msg = $response->json('message') ?? 'Gagal menyimpan absen.';
-
-            return response()->json(['success' => false, 'message' => $msg], $response->status());
-        }
-
-        return response()->json(['success' => true, 'status' => $response->json('status')]);
+        ])->header('Cache-Control', 'no-store');
     }
 
     // Proxy batch: kirim semua absen siswa sekaligus ke app keuangan.
     public function siswaAbsenBatch(Request $request)
     {
-        $unit = $request->input('unit');
-        $tingkat = $request->input('tingkat');
-        $kelas = $request->input('kelas');
-        $jurusan = $request->input('jurusan');
-        $tanggal = $request->input('tanggal');
-        $absens = $request->input('absens', []);
+        $validated = $request->validate([
+            ...$this->studentClassRules(),
+            'tanggal' => 'required|date_format:Y-m-d',
+            'absens' => 'required|array|min:1|max:200',
+            'absens.*.nis' => 'required|string|max:50|distinct',
+            'absens.*.status' => 'required|in:hadir,izin,sakit,alpa',
+        ]);
+        [$jadwal, $unit] = $this->resolveOwnedJadwal((int) $validated['jadwal_id']);
+        $class = $this->resolveClassPayload($jadwal, $validated);
 
-        if (! $unit || ! $tingkat || ! is_array($absens) || count($absens) === 0) {
-            return response()->json(['success' => false, 'message' => 'Data kurang lengkap.'], 400);
-        }
+        $response = $this->keuanganRequest('siswa-absen-batch', [
+            'unit' => $unit->nama ?: $unit->singkatan,
+            ...$class,
+            'tanggal' => $validated['tanggal'],
+            'absens' => $validated['absens'],
+        ], true);
 
-        $base = config('keuangan.url');
-        $key = config('keuangan.key');
+        if (! $response?->successful()) {
+            $msg = $response?->json('message') ?? 'Gagal menyimpan absen.';
 
-        $response = Http::withHeaders(['x-internal-key' => $key])
-            ->timeout(15)
-            ->post($base.'/api/integration/siswa-absen-batch', [
-                'unit' => $unit,
-                'tingkat' => $tingkat,
-                'kelas' => $kelas,
-                'jurusan' => $jurusan,
-                'tanggal' => $tanggal,
-                'absens' => $absens,
-            ]);
-
-        if (! $response->successful()) {
-            $msg = $response->json('message') ?? 'Gagal menyimpan absen.';
-
-            return response()->json(['success' => false, 'message' => $msg], $response->status());
+            return response()->json(['success' => false, 'message' => $msg], $response?->status() ?? 502);
         }
 
         return response()->json(['success' => true, 'saved' => $response->json('saved')]);
+    }
+
+    private function resolveOwnedJadwal(int $jadwalId): array
+    {
+        $pegawai = $this->getPegawai();
+        $jadwal = Jadwal::with(['unitSekolah', 'kelas.jurusan'])
+            ->whereKey($jadwalId)
+            ->where('pegawai_id', $pegawai->id)
+            ->firstOrFail();
+
+        abort_unless($jadwal->unitSekolah, 422, 'Unit jadwal tidak tersedia.');
+
+        return [$jadwal, $jadwal->unitSekolah];
+    }
+
+    private function studentClassRules(): array
+    {
+        return [
+            'jadwal_id' => 'required|integer|min:1',
+            'tingkat' => 'nullable|string|max:20',
+            'kelas' => 'nullable|string|max:100',
+            'jurusan' => 'nullable|string|max:100',
+            'class_id' => 'nullable|string|max:50',
+        ];
+    }
+
+    private function resolveClassPayload(Jadwal $jadwal, array $validated): array
+    {
+        if ($jadwal->kelas) {
+            return [
+                'tingkat' => (string) $jadwal->kelas->tingkat,
+                'kelas' => (string) $jadwal->kelas->nama,
+                'jurusan' => (string) ($jadwal->kelas->jurusan?->nama ?? ''),
+            ];
+        }
+
+        if (empty($validated['class_id']) || empty($validated['tingkat']) || empty($validated['kelas'])) {
+            throw ValidationException::withMessages(['kelas' => 'Pilih kelas terlebih dahulu.']);
+        }
+
+        return [
+            'tingkat' => trim($validated['tingkat']),
+            'kelas' => trim($validated['kelas']),
+            'jurusan' => trim($validated['jurusan'] ?? ''),
+            'class_id' => trim($validated['class_id'] ?? ''),
+        ];
+    }
+
+    private function keuanganRequest(string $endpoint, array $payload, bool $post = false)
+    {
+        $base = rtrim((string) config('keuangan.url'), '/');
+        $key = (string) config('keuangan.key');
+        if ($base === '' || $key === '' || $key === 'change-me-in-production') {
+            Log::error('Integrasi keuangan belum dikonfigurasi.');
+
+            return null;
+        }
+
+        $request = Http::acceptJson()
+            ->withHeaders(['x-internal-key' => $key])
+            ->connectTimeout(2)
+            ->timeout($post ? 15 : 8);
+
+        try {
+            return $post
+                ? $request->post($base.'/api/integration/'.$endpoint, $payload)
+                : $request->get($base.'/api/integration/'.$endpoint, $payload);
+        } catch (ConnectionException) {
+            Log::warning('Aplikasi keuangan tidak dapat dihubungi.', ['endpoint' => $endpoint]);
+
+            return null;
+        }
     }
 
     public function absen()
@@ -216,7 +260,7 @@ class MobileController extends Controller
             'pegawai' => $pegawai,
             'jadwals' => $jadwalHariIni,
             'presensiHariIni' => $presensiHariIni,
-            'officeAttendance' => $pegawai->status_kepegawaian === 'tetap' && $jadwalHariIni->isEmpty(),
+            'officeAttendance' => $pegawai->wajib_kantor && $jadwalHariIni->isEmpty(),
         ]);
     }
 
@@ -263,7 +307,7 @@ class MobileController extends Controller
             }
             $unit = $primaryUnit;
             $jadwal = null;
-        } elseif ($pegawai->status_kepegawaian === 'tetap' && ! Jadwal::where('pegawai_id', $pegawai->id)->where('hari', $hariIni)->exists()) {
+        } elseif ($pegawai->wajib_kantor && ! Jadwal::where('pegawai_id', $pegawai->id)->where('hari', $hariIni)->exists()) {
             $unit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
             if (! $unit) {
                 $message = PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT;
@@ -311,7 +355,7 @@ class MobileController extends Controller
 
         $imageName = app(ImageUploadService::class)->storeBase64($request->foto, $isLembur ? 'presensi/lembur' : 'presensi');
 
-        DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $imageName, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $tipePresensi) {
+        DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $imageName, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $tipePresensi, $hariIni) {
             // Cari presensi existing
             if ($isLembur) {
                 $presensi = Presensi::where('pegawai_id', $pegawai->id)
@@ -380,6 +424,25 @@ class MobileController extends Controller
                 $presensi->jarak_keluar_meter = $distance;
                 $presensi->akurasi_keluar = $accuracy;
                 $presensi->kecepatan_keluar = $speed;
+
+                if (! $isLembur && $tipePresensi === 'mengajar') {
+                    $latestSelesai = Jadwal::where('pegawai_id', $pegawai->id)
+                        ->where('hari', $hariIni)
+                        ->where('jenis_jadwal', '!=', 'lembur')
+                        ->max('jam_selesai');
+                    if ($latestSelesai) {
+                        $batasPulang = Carbon::parse($latestSelesai)->subMinutes(30)->format('H:i:s');
+                        if ($presensi->jam_keluar < $batasPulang) {
+                            $lokasiPerluReview = true;
+                        }
+                    }
+                } elseif (! $isLembur && $tipePresensi === 'kantor' && $unit->jam_pulang_kantor) {
+                    $batasPulang = Carbon::parse($unit->jam_pulang_kantor)->subMinutes(30)->format('H:i:s');
+                    if ($presensi->jam_keluar < $batasPulang) {
+                        $lokasiPerluReview = true;
+                    }
+                }
+
                 $presensi->lokasi_perlu_review = $presensi->lokasi_perlu_review || $lokasiPerluReview;
             }
 

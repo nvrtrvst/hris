@@ -13,18 +13,19 @@ const navItems = [
 
 export default function MobileLayout({ user, header, children }) {
     const { url } = usePage();
+    const primaryUnit = user?.pegawai?.units?.find((unit) => unit.pivot?.is_primary) ?? user?.pegawai?.units?.[0];
+    const unitLabel = primaryUnit?.singkatan || primaryUnit?.nama || 'Yayasan';
+    const unitInitial = unitLabel.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || 'YYS';
 
     return (
         <div className="mx-auto min-h-[100dvh] max-w-md bg-[#f4f7f5] pb-24 font-sans font-antialiased text-slate-900 shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
             <header className="sticky top-0 z-20 border-b border-emerald-950/10 bg-primary px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
                 <div className="flex min-h-11 items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
-                            <ApplicationLogo className="h-5 w-5 text-white" />
-                        </div>
+                        <ApplicationLogo src={primaryUnit?.logo_url} fallback={unitInitial} alt={`Logo ${primaryUnit?.nama || 'Yayasan'}`} width="44" height="44" className="h-11 w-11 text-sm text-white" />
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100">Portal Pegawai</p>
-                            <p className="text-sm font-bold leading-tight">Presensi Yayasan</p>
+                            <p className="max-w-52 truncate text-sm font-bold leading-tight">Presensi {unitLabel}</p>
                         </div>
                     </div>
                     <Dropdown>

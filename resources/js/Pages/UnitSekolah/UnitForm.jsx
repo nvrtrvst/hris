@@ -1,7 +1,7 @@
 import React from 'react';
 import LeafletPicker from '@/Components/LeafletPicker';
 
-export default function UnitForm({ data, setData, errors, processing, onSubmit, isEdit, unitName }) {
+export default function UnitForm({ data, setData, errors, processing, onSubmit, isEdit, unitName, unitLogoUrl }) {
     const validLat = !isNaN(parseFloat(data.latitude));
     const validLng = !isNaN(parseFloat(data.longitude));
     const mapsUrl = validLat && validLng
@@ -37,6 +37,29 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                         className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                     />
                     {errors.singkatan && <p className="mt-1 text-sm text-red-600">{errors.singkatan}</p>}
+                </div>
+
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">Logo Unit</label>
+                    <div className="mt-2 flex items-center gap-4">
+                        {isEdit && data.logo === null && (
+                            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white">
+                                {unitLogoUrl ? (
+                                    <img src={unitLogoUrl} alt={`Logo ${unitName}`} width="64" height="64" className="h-full w-full object-contain p-1" />
+                                ) : unitName ? (
+                                    <span className="text-sm font-bold text-primary">{unitName.slice(0, 3).toUpperCase()}</span>
+                                ) : null}
+                            </div>
+                        )}
+                        <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(e) => setData('logo', e.target.files[0] || null)}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-emerald-100"
+                        />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">JPEG, PNG, atau WebP. Maksimum 1 MB. Rasio persegi disarankan.</p>
+                    {errors.logo && <p className="mt-1 text-xs text-red-600">{errors.logo}</p>}
                 </div>
             </div>
 
@@ -97,7 +120,7 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                         <input
                             type="range"
                             min="10"
-                            max="500"
+                            max="10000"
                             value={data.radius_meter}
                             onChange={(e) => setData('radius_meter', e.target.value)}
                             className="flex-1 accent-[#0F3D3E]"
@@ -107,7 +130,8 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                             min="10"
                             value={data.radius_meter}
                             onChange={(e) => setData('radius_meter', e.target.value)}
-                            className="w-24 rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                            max="100000"
+                            className="w-28 rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                         />
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
@@ -128,6 +152,20 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                     />
                     <p className="mt-1 text-xs text-gray-500">Dipakai untuk status hadir/telat pegawai tetap tanpa jadwal mengajar.</p>
                     {errors.jam_masuk_kantor && <p className="mt-1 text-xs text-red-600">{errors.jam_masuk_kantor}</p>}
+                </div>
+
+                <div className="mt-4 max-w-xs">
+                    <label className="block text-xs font-semibold text-gray-600">
+                        Jam Pulang Kantor
+                    </label>
+                    <input
+                        type="time"
+                        value={data.jam_pulang_kantor}
+                        onChange={(e) => setData('jam_pulang_kantor', e.target.value)}
+                        className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Dipakai deteksi pulang awal pegawai mode kantor. Kosongkan jika tidak berlaku.</p>
+                    {errors.jam_pulang_kantor && <p className="mt-1 text-xs text-red-600">{errors.jam_pulang_kantor}</p>}
                 </div>
             </div>
 

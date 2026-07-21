@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -136,6 +137,7 @@ class PegawaiController extends Controller
             'no_hp' => 'required|string|max:20',
             'status_kepegawaian' => 'required|in:tetap,kontrak,honorer,gtt',
             'jatah_cuti_tahunan' => 'nullable|integer|min:0',
+            'wajib_kantor' => 'boolean',
             'tanggal_mulai_kerja' => 'required|date',
             'pendidikan_terakhir' => 'required|string|max:255',
             'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
@@ -168,7 +170,7 @@ class PegawaiController extends Controller
 
     public function show(string $id)
     {
-        $pegawai = Pegawai::with(['units', 'jabatans', 'mapels', 'dokumen', 'riwayat', 'atasanLangsung'])->findOrFail($id);
+        $pegawai = Pegawai::with(['user', 'units', 'jabatans', 'mapels', 'dokumen', 'riwayat', 'atasanLangsung'])->findOrFail($id);
 
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
@@ -182,7 +184,7 @@ class PegawaiController extends Controller
 
     public function edit(string $id)
     {
-        $pegawai = Pegawai::with(['units', 'jabatans', 'mapels'])->findOrFail($id);
+        $pegawai = Pegawai::with(['user', 'units', 'jabatans', 'mapels'])->findOrFail($id);
 
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
@@ -209,6 +211,10 @@ class PegawaiController extends Controller
     {
         $pegawai = Pegawai::findOrFail($id);
 
+        if (! $pegawai->user_id) {
+            throw ValidationException::withMessages(['email' => 'Pegawai belum memiliki akun login. Buat akun melalui menu Manajemen User.']);
+        }
+
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
@@ -218,6 +224,7 @@ class PegawaiController extends Controller
             'nik' => 'required|string|size:16|unique:pegawai,nik,'.$pegawai->id,
             'nip' => 'nullable|string|max:50|unique:pegawai,nip,'.$pegawai->id,
             'nama_lengkap' => 'required|string|max:255',
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($pegawai->user_id)],
             'tempat_lahir' => 'required|string|max:255',
             'tanggal_lahir' => 'required|date',
             'jenis_kelamin' => 'required|in:L,P',
@@ -227,6 +234,7 @@ class PegawaiController extends Controller
             'no_hp' => 'required|string|max:20',
             'status_kepegawaian' => 'required|in:tetap,kontrak,honorer,gtt',
             'jatah_cuti_tahunan' => 'nullable|integer|min:0',
+            'wajib_kantor' => 'boolean',
             'status_aktif' => 'required|in:aktif,cuti,nonaktif,resign',
             'tanggal_mulai_kerja' => 'required|date',
             'pendidikan_terakhir' => 'required|string|max:255',
@@ -240,7 +248,7 @@ class PegawaiController extends Controller
             'mapels.*.unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
         ]);
 
-        $dataToUpdate = collect($validated)->except(['foto'])->toArray();
+        $dataToUpdate = collect($validated)->except(['email', 'foto'])->toArray();
 
         if ($request->hasFile('foto')) {
             if ($pegawai->foto) {
@@ -260,7 +268,7 @@ class PegawaiController extends Controller
             }
             $syncUnits[$u['unit_sekolah_id']] = [
                 'jabatan_id' => $u['jabatan_id'],
-                'is_primary' => !empty($u['is_primary']),
+                'is_primary' => ! empty($u['is_primary']),
             ];
         }
         $pegawai->units()->sync($syncUnits);
@@ -282,6 +290,7 @@ class PegawaiController extends Controller
             if ($userAcc) {
                 $userAcc->update([
                     'name' => $pegawai->nama_lengkap,
+                    'email' => $validated['email'],
                     'username' => $pegawai->nip ?: $pegawai->nik,
                 ]);
             }

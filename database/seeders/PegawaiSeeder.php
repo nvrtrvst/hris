@@ -15,7 +15,7 @@ class PegawaiSeeder extends Seeder
     public function run(): void
     {
         $guruJabatan = Jabatan::where('nama', 'Guru')->first();
-        $smpUnit = UnitSekolah::where('nama', 'SMP Yayasan')->first();
+        $smpUnit = UnitSekolah::where('singkatan', 'SMP')->first();
         $mapelMtk = MataPelajaran::where('nama', 'Matematika')->first();
 
         if ($guruJabatan && $smpUnit && $mapelMtk) {
@@ -24,7 +24,6 @@ class PegawaiSeeder extends Seeder
                 [
                     'name' => 'Budi Santoso',
                     'password' => Hash::make('password'),
-                    'role' => 'pegawai',
                     'unit_sekolah_id' => $smpUnit->id,
                 ]
             );

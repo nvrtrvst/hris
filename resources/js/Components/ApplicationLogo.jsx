@@ -1,5 +1,7 @@
-export default function ApplicationLogo(props) {
-    return (
-        <img {...props} src="/logo.png" alt="Logo Perusahaan" className={`object-contain ${props.className || ''}`} />
-    );
+export default function ApplicationLogo({ src, alt = 'Logo Yayasan', fallback, className = '', ...props }) {
+    if (!src && fallback) {
+        return <span {...props} className={`flex items-center justify-center font-bold ${className}`}>{fallback}</span>;
+    }
+
+    return <img {...props} src={src || '/logo.png'} alt={alt} className={`object-contain ${className}`} />;
 }

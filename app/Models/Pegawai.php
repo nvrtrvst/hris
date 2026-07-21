@@ -51,6 +51,7 @@ class Pegawai extends Model
         'no_bpjs_kesehatan',
         'no_bpjs_ketenagakerjaan',
         'jatah_cuti_tahunan',
+        'wajib_kantor',
     ];
 
     protected $appends = ['sisa_cuti', 'cuti_terpakai', 'foto_url'];
@@ -64,6 +65,7 @@ class Pegawai extends Model
         'npwp' => 'encrypted',
         'no_bpjs_kesehatan' => 'encrypted',
         'no_bpjs_ketenagakerjaan' => 'encrypted',
+        'wajib_kantor' => 'boolean',
     ];
 
     public function user(): BelongsTo

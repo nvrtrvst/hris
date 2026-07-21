@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JadwalController;
@@ -17,11 +16,7 @@ use App\Http\Controllers\RoleManagementController;
 use App\Http\Controllers\SkalaMasaBaktiController;
 use App\Http\Controllers\UnitSekolahController;
 use App\Http\Controllers\UserManagementController;
-use Illuminate\Auth\SessionGuard;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -118,13 +113,17 @@ Route::middleware('auth:web_admin')->group(function () {
     // Rute slip gaji ditempatkan setelah rute admin agar tidak tabrakan dengan /penggajian/run
     Route::get('penggajian/{id}', [PenggajianController::class, 'show'])->name('penggajian.show');
 
-    Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
-    Route::get('/users/create', [UserManagementController::class, 'create'])->name('users.create');
-    Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
-    Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
-    Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+    Route::middleware('can:manage_users')->group(function () {
+        Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
+        Route::get('/users/create', [UserManagementController::class, 'create'])->name('users.create');
+        Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
+        Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
+        Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+    });
 
-    Route::resource('roles', RoleManagementController::class)->except(['show']);
+    Route::resource('roles', RoleManagementController::class)
+        ->except(['show'])
+        ->middleware('can:manage_roles');
 
     // Pengaturan Master (Superadmin)
     Route::middleware('can:manage_master_data')->group(function () {
@@ -132,28 +131,6 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::get('backup/download', [BackupController::class, 'download'])->name('backup.download');
         Route::resource('mata-pelajaran', MataPelajaranController::class)->only(['index', 'store', 'destroy']);
     });
-});
-
-// Debug: cek semua cookies yg dikirim browser
-Route::get('/debug/cookies', function (Request $req) {
-    $adminRemember = 'remember_web_admin_'.sha1(SessionGuard::class);
-    $mobileRemember = 'remember_web_mobile_'.sha1(SessionGuard::class);
-
-    return response()->json([
-        'uri' => $req->getRequestUri(),
-        'all_cookies' => collect($req->cookies->all())->keys()->values(),
-        'cookie_details' => collect($req->cookies->all())->map(fn ($v, $k) => [
-            'name' => $k,
-            'truncated' => strlen($v) > 40 ? substr($v, 0, 40).'...' : $v,
-            'is_admin_remember' => $k === $adminRemember,
-            'is_mobile_remember' => $k === $mobileRemember,
-        ])->values(),
-        'auth_web_admin' => auth('web_admin')->check(),
-        'auth_web_mobile' => auth('web_mobile')->check(),
-        'guard_config' => config('auth.defaults.guard'),
-        'session_cookie' => config('session.cookie'),
-        'session_id' => session()->getId(),
-    ]);
 });
 
 require __DIR__.'/auth.php';

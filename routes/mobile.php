@@ -1,9 +1,9 @@
 <?php
 
+use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileIzinController;
-use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
@@ -21,9 +21,12 @@ Route::post('/logout', [MobileAuthController::class, 'destroy'])
 Route::middleware('auth:web_mobile')->group(function () {
     Route::get('/', [MobileController::class, 'dashboard'])->name('presensi.dashboard');
     Route::get('/jadwal', [MobileController::class, 'jadwal'])->name('presensi.jadwal');
-    Route::get('/jadwal/siswa', [MobileController::class, 'siswaKelas'])->name('presensi.jadwal.siswa');
-    Route::post('/jadwal/siswa/absen', [MobileController::class, 'siswaAbsen'])->name('presensi.jadwal.siswa.absen');
-    Route::post('/jadwal/siswa/absen-batch', [MobileController::class, 'siswaAbsenBatch'])->name('presensi.jadwal.siswa.absen-batch');
+    Route::get('/jadwal/kelas', [MobileController::class, 'kelasUnit'])
+        ->middleware('throttle:30,1')->name('presensi.jadwal.kelas');
+    Route::get('/jadwal/siswa', [MobileController::class, 'siswaKelas'])
+        ->middleware('throttle:30,1')->name('presensi.jadwal.siswa');
+    Route::post('/jadwal/siswa/absen-batch', [MobileController::class, 'siswaAbsenBatch'])
+        ->middleware('throttle:10,1')->name('presensi.jadwal.siswa.absen-batch');
     Route::get('/riwayat', [MobileController::class, 'riwayat'])->name('presensi.riwayat');
 
     // Rute Izin Mobile

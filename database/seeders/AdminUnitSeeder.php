@@ -14,10 +14,10 @@ class AdminUnitSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Update existing admin to superadmin
+        // 1. Assign existing admin as superadmin
         $admin = User::where('email', 'admin@yayasan.com')->first();
         if ($admin) {
-            $admin->update(['role' => 'superadmin']);
+            $admin->syncRoles('superadmin');
         }
 
         // 2. Create admin accounts for existing units
@@ -25,15 +25,15 @@ class AdminUnitSeeder extends Seeder
         foreach ($units as $unit) {
             $email = 'admin_'.strtolower(str_replace(' ', '', $unit->nama)).'@yayasan.com';
 
-            User::firstOrCreate(
+            $user = User::firstOrCreate(
                 ['email' => $email],
                 [
                     'name' => 'Admin '.$unit->nama,
                     'password' => Hash::make('password'),
-                    'role' => 'admin_unit',
                     'unit_sekolah_id' => $unit->id,
                 ]
             );
+            $user->syncRoles('admin_unit');
         }
     }
 }

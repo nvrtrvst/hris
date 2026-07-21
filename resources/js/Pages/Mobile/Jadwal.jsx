@@ -27,6 +27,10 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
     const [search, setSearch] = useState('');
     const [savingBatch, setSavingBatch] = useState(false);
     const [savedBatch, setSavedBatch] = useState(false);
+    const [classOptions, setClassOptions] = useState([]);
+    const [selectedClass, setSelectedClass] = useState(null);
+    const [loadingClasses, setLoadingClasses] = useState(false);
+    const [integrationError, setIntegrationError] = useState('');
 
     const setStatus = (s, status) => {
         setSavedBatch(false);
@@ -56,15 +60,18 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
     };
 
     const submitBatch = () => {
-        if (!selected?.kelas || savingBatch) return;
-        const unit = selected.unit_sekolah?.nama || selected.unit_sekolah?.singkatan || '';
-        const jurusan = selected.kelas?.jurusan?.nama || '';
-        const tanggal = new Date().toISOString().slice(0, 10);
+        if ((!selected?.kelas && !selectedClass) || savingBatch) return;
+        const classData = selected.kelas
+            ? { tingkat: String(selected.kelas.tingkat ?? ''), kelas: selected.kelas.nama ?? '', jurusan: selected.kelas.jurusan?.nama || '' }
+            : selectedClass;
+        const jurusan = classData.jurusan || '';
+        const tanggal = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
         const absens = siswa
             .filter((s) => absenState[s.nis])
             .map((s) => ({ nis: s.nis, status: absenState[s.nis] }));
         if (absens.length === 0) return;
         setSavingBatch(true);
+        setIntegrationError('');
         fetch(route('presensi.jadwal.siswa.absen-batch'), {
             method: 'POST',
             headers: {
@@ -73,47 +80,91 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
                 'X-Requested-With': 'XMLHttpRequest',
             },
             body: JSON.stringify({
-                unit,
-                tingkat: String(selected.kelas.tingkat ?? ''),
-                kelas: selected.kelas.nama ?? '',
+                jadwal_id: selected.id,
+                tingkat: classData.tingkat,
+                kelas: classData.kelas,
                 jurusan,
+                class_id: classData.class_id || '',
                 tanggal,
                 absens,
             }),
         })
-            .then((r) => r.json())
+            .then(async (r) => {
+                const data = await r.json();
+                if (!r.ok || !data.success) throw new Error(data.message || 'Gagal menyimpan presensi murid.');
+                return data;
+            })
             .then((d) => {
                 if (d.success) setSavedBatch(true);
             })
-            .catch(() => {})
+            .catch((error) => setIntegrationError(error.message || 'Gagal menyimpan presensi murid.'))
             .finally(() => setSavingBatch(false));
+    };
+
+    const loadStudents = (j, classData) => {
+        setLoadingSiswa(true);
+        setIntegrationError('');
+        const params = new URLSearchParams({
+            jadwal_id: String(j.id),
+            tingkat: String(classData.tingkat ?? ''),
+            kelas: classData.kelas ?? '',
+            jurusan: classData.jurusan ?? '',
+            class_id: classData.class_id ?? '',
+        });
+        fetch(`${route('presensi.jadwal.siswa')}?${params.toString()}`)
+            .then(async (r) => {
+                const data = await r.json();
+                if (!r.ok || !data.success) throw new Error(data.message || 'Gagal memuat data murid.');
+                return data;
+            })
+            .then((d) => setSiswa(d.siswa || []))
+            .catch((error) => {
+                setSiswa([]);
+                setIntegrationError(error.message || 'Gagal memuat data murid.');
+            })
+            .finally(() => setLoadingSiswa(false));
     };
 
     const openDetail = (j) => {
         setSelected(j);
         setSiswa([]);
+        setClassOptions([]);
+        setSelectedClass(null);
         setAbsenState({});
         setSearch('');
         setSavedBatch(false);
+        setIntegrationError('');
         const kelas = j.kelas;
         if (!kelas) {
-            setLoadingSiswa(false);
+            setLoadingClasses(true);
+            fetch(`${route('presensi.jadwal.kelas')}?jadwal_id=${encodeURIComponent(j.id)}`)
+                .then(async (r) => {
+                    const data = await r.json();
+                    if (!r.ok || !data.success) throw new Error(data.message || 'Gagal memuat daftar kelas.');
+                    return data;
+                })
+                .then((d) => setClassOptions(d.kelas || []))
+                .catch((error) => {
+                    setClassOptions([]);
+                    setIntegrationError(error.message || 'Gagal memuat daftar kelas.');
+                })
+                .finally(() => setLoadingClasses(false));
             return;
         }
-        setLoadingSiswa(true);
-        const unit = j.unit_sekolah?.nama || j.unit_sekolah?.singkatan || '';
-        const jurusan = kelas.jurusan?.nama || '';
-        const params = new URLSearchParams({
-            unit,
-            tingkat: String(kelas.tingkat ?? ''),
-            kelas: kelas.nama ?? '',
-            jurusan,
-        });
-        fetch(`${route('presensi.jadwal.siswa')}?${params.toString()}`)
-            .then((r) => r.json())
-            .then((d) => setSiswa(d.siswa || []))
-            .catch(() => setSiswa([]))
-            .finally(() => setLoadingSiswa(false));
+        loadStudents(j, { tingkat: kelas.tingkat, kelas: kelas.nama, jurusan: kelas.jurusan?.nama || '' });
+    };
+
+    const chooseClass = (classData) => {
+        setSelectedClass(classData);
+        setAbsenState({});
+        loadStudents(selected, classData);
+    };
+
+    const changeClass = () => {
+        setSelectedClass(null);
+        setSiswa([]);
+        setAbsenState({});
+        setIntegrationError('');
     };
 
     return (
@@ -135,11 +186,11 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
             </div>
 
             {featuredSchedule && (
-                <Card press={false} className="mb-4 border-0 bg-primary p-4 text-white">
+                <Card press={false} className="mb-4 border-0 bg-[#0F3D3E] p-4 text-white shadow-[0_8px_20px_-12px_rgba(15,61,62,0.7)]">
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100">{featuredDay === todayName ? 'Sesi pertama hari ini' : `Sesi berikutnya, ${featuredDay}`}</p>
-                            <p className="mt-1 text-base font-bold">{featuredSchedule.mata_pelajaran?.nama || 'Jadwal mengajar'}</p>
+                            <p className="mt-1 text-base font-bold text-white">{featuredSchedule.mata_pelajaran?.nama || 'Jadwal mengajar'}</p>
                             <p className="mt-1 text-xs text-emerald-100">{featuredSchedule.kelas ? `Kelas ${featuredSchedule.kelas.tingkat} ${featuredSchedule.kelas.nama}` : 'Tanpa kelas'}</p>
                         </div>
                         <div className="rounded-xl bg-white/10 px-3 py-2 text-right">
@@ -261,10 +312,41 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
                             </button>
                         </div>
 
-                        {!selected.kelas ? (
-                            <p className="py-6 text-center text-sm text-slate-400">
-                                Jadwal ini tidak terikat kelas.
+                        {integrationError && (
+                            <p role="alert" className="mb-3 rounded-xl bg-rose-50 px-3 py-2.5 text-sm font-semibold text-rose-700">
+                                {integrationError}
                             </p>
+                        )}
+
+                        {!selected.kelas && selectedClass && (
+                            <button type="button" onClick={changeClass} className="mb-3 text-sm font-bold text-primary">
+                                Ganti kelas
+                            </button>
+                        )}
+
+                        {!selected.kelas && !selectedClass ? (
+                            loadingClasses ? (
+                                <p className="py-6 text-center text-sm text-slate-400">Memuat daftar kelas…</p>
+                            ) : classOptions.length === 0 ? (
+                                <p className="py-6 text-center text-sm text-slate-400">Tidak ada kelas aktif di aplikasi keuangan.</p>
+                            ) : (
+                                <div>
+                                    <p className="mb-3 text-sm font-bold text-slate-700">Pilih kelas mengajar</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {classOptions.map((item) => (
+                                            <button
+                                                key={`${item.grade}-${item.name}-${item.section || ''}-${item.major_name || ''}`}
+                                                type="button"
+                                                onClick={() => chooseClass({ class_id: item.id, tingkat: item.grade, kelas: item.name, jurusan: item.major_name || '' })}
+                                                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-left text-sm font-bold text-slate-700 transition active:scale-95"
+                                            >
+                                                {item.grade} {item.name}{item.section ? ` ${item.section}` : ''}
+                                                {item.major_name && <span className="mt-1 block text-xs font-normal text-slate-500">{item.major_name}</span>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )
                         ) : loadingSiswa ? (
                             <p className="py-6 text-center text-sm text-slate-400">Memuat…</p>
                         ) : siswa.length === 0 ? (

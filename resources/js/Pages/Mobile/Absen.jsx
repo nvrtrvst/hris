@@ -563,7 +563,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 setCapturedPhoto(null);
                 setJadwalId(null);
                 setTimeout(() => {
-                    if (typeof window !== 'undefined') window.location.reload();
+                    if (typeof window !== 'undefined') window.location.assign(route('presensi.dashboard'));
                 }, 1500);
             } else {
                 setError(data.message || 'Gagal mengirim presensi.');

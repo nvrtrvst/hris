@@ -1,37 +1,19 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, SectionTitle, Badge, Empty } from '@/Components/MobileUI';
-import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { History, CalendarDays, Clock, MapPin, CheckCircle2, AlertTriangle, FileText, XCircle, Ban } from 'lucide-react';
 
 export default function Riwayat({ auth, presensi, filters }) {
-    const [monthFilter, setMonthFilter] = useState(filters?.bulan || '');
-
-    useEffect(() => {
-        setMonthFilter(filters?.bulan || '');
-    }, [filters]);
-
-    const months = useMemo(() => {
-        const set = new Set();
-        (presensi || []).forEach((p) => {
-            if (p.tanggal) set.add(p.tanggal.substring(0, 7));
-        });
-        const arr = Array.from(set).sort().reverse();
-        if (arr.length === 0) arr.push(format(new Date(), 'yyyy-MM'));
-        return arr;
-    }, [presensi]);
-
-    const firstMonth = months[0] || format(new Date(), 'yyyy-MM');
-    const activeMonth = monthFilter || firstMonth;
+    const activeMonth = `${filters?.tahun || new Date().getFullYear()}-${String(filters?.bulan || new Date().getMonth() + 1).padStart(2, '0')}`;
 
     const handleFilter = (e) => {
-        const val = e.target.value;
-        setMonthFilter(val);
+        const [tahun, bulan] = e.target.value.split('-').map(Number);
         router.get(
             route('presensi.riwayat'),
-            { bulan: val },
+            { bulan, tahun },
             { preserveState: true, replace: true }
         );
     };
@@ -63,22 +45,43 @@ export default function Riwayat({ auth, presensi, filters }) {
             .map((t) => ({ tanggal: t, items: g[t] }));
     }, [presensi]);
 
-    const stats = useMemo(() => {
-        const s = { hadir: 0, telat: 0, sakit: 0, izin: 0, cuti: 0, alpa: 0 };
-        (presensi || []).forEach((p) => {
-            if (s[p.status] !== undefined) s[p.status]++;
-        });
-        return s;
+    const dailyStatus = useMemo(() => {
+        const priority = { hadir: 1, cuti: 2, izin: 2, sakit: 2, telat: 3, alpa: 4 };
+        return (presensi || []).filter((p) => !p.is_lembur).reduce((days, p) => {
+            const current = days[p.tanggal];
+            if (!current || (priority[p.status] || 0) > (priority[current] || 0)) days[p.tanggal] = p.status;
+            return days;
+        }, {});
     }, [presensi]);
+
+    const stats = useMemo(() => Object.values(dailyStatus).reduce((result, status) => {
+        if (status === 'hadir') result.hadir++;
+        else if (status === 'telat') result.telat++;
+        else if (['sakit', 'izin', 'cuti'].includes(status)) result.izin++;
+        else if (status === 'alpa') result.alpa++;
+        return result;
+    }, { hadir: 0, telat: 0, izin: 0, alpa: 0 }), [dailyStatus]);
 
     const statList = [
         { key: 'hadir', label: 'Hadir', tone: 'emerald', icon: CheckCircle2 },
         { key: 'telat', label: 'Telat', tone: 'amber', icon: AlertTriangle },
-        { key: 'sakit', label: 'Sakit', tone: 'sky', icon: FileText },
         { key: 'izin', label: 'Izin', tone: 'sky', icon: FileText },
-        { key: 'cuti', label: 'Cuti', tone: 'sky', icon: FileText },
         { key: 'alpa', label: 'Alpa', tone: 'rose', icon: XCircle },
     ];
+
+    const calendarDays = useMemo(() => {
+        const start = parseISO(`${activeMonth}-01`);
+        return eachDayOfInterval({ start: startOfMonth(start), end: endOfMonth(start) });
+    }, [activeMonth]);
+    const leadingDays = getDay(calendarDays[0]);
+    const calendarTone = {
+        hadir: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
+        telat: 'bg-amber-100 text-amber-800 ring-amber-200',
+        sakit: 'bg-sky-100 text-sky-800 ring-sky-200',
+        izin: 'bg-sky-100 text-sky-800 ring-sky-200',
+        cuti: 'bg-sky-100 text-sky-800 ring-sky-200',
+        alpa: 'bg-rose-100 text-rose-800 ring-rose-200',
+    };
 
     return (
         <MobileLayout user={auth.user}>
@@ -89,29 +92,15 @@ export default function Riwayat({ auth, presensi, filters }) {
                 <p className="mt-0.5 text-sm text-slate-500">Rekap kehadiran Anda</p>
             </div>
 
-            {/* Month filter */}
-            <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-                {months.map((m) => {
-                    const isActive = m === activeMonth;
-                    return (
-                        <button
-                            key={m}
-                            value={m}
-                            onClick={() => handleFilter({ target: { value: m } })}
-                            className={`flex-shrink-0 rounded-2xl px-4 py-2.5 text-sm font-bold transition-all active:scale-95 ${
-                                isActive ? 'bg-primary text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'
-                            }`}
-                        >
-                            {format(parseISO(m + '-01'), 'MMM yyyy', { locale: id })}
-                        </button>
-                    );
-                })}
-            </div>
+            <label className="mb-5 block">
+                <span className="sr-only">Pilih bulan riwayat</span>
+                <input type="month" value={activeMonth} onChange={handleFilter} className="min-h-11 w-full rounded-xl border-slate-200 bg-white text-sm font-bold text-slate-700 shadow-sm focus:border-primary focus:ring-primary" />
+            </label>
 
             {/* Stats */}
-            <div className="mb-5 grid grid-cols-3 gap-2.5">
+            <div className="mb-5 grid grid-cols-4 gap-2">
                 {statList.map((s) => (
-                    <Card key={s.key} className="flex flex-col items-center py-3.5">
+                    <Card key={s.key} press={false} className="flex flex-col items-center px-1 py-3.5">
                         <s.icon className={`mb-1 h-5 w-5 ${
                             s.tone === 'emerald' ? 'text-emerald-500' : s.tone === 'amber' ? 'text-amber-500' : s.tone === 'sky' ? 'text-emerald-500' : 'text-rose-500'
                         }`} />
@@ -120,6 +109,36 @@ export default function Riwayat({ auth, presensi, filters }) {
                     </Card>
                 ))}
             </div>
+
+            <Card press={false} className="mb-6 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Kalender Kehadiran</p>
+                        <p className="mt-1 text-base font-extrabold text-slate-900">{format(parseISO(`${activeMonth}-01`), 'MMMM yyyy', { locale: id })}</p>
+                    </div>
+                    <CalendarDays className="h-5 w-5 text-primary" />
+                </div>
+                <div className="grid grid-cols-7 text-center text-[10px] font-bold uppercase text-slate-400" aria-hidden="true">
+                    {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((day) => <span key={day} className="py-1">{day}</span>)}
+                </div>
+                <div className="mt-1 grid grid-cols-7 gap-1" aria-label={`Kalender kehadiran ${activeMonth}`}>
+                    {Array.from({ length: leadingDays }).map((_, index) => <span key={`empty-${index}`} />)}
+                    {calendarDays.map((day) => {
+                        const key = format(day, 'yyyy-MM-dd');
+                        const status = dailyStatus[key];
+                        return (
+                            <div key={key} aria-label={`${format(day, 'd MMMM', { locale: id })}: ${status ? getStatusBadge(status).label : 'Tidak ada catatan'}`} className={`flex aspect-square items-center justify-center rounded-lg text-xs font-bold tabular-nums ring-1 ${status ? calendarTone[status] : 'bg-slate-50 text-slate-400 ring-slate-100'}`}>
+                                {format(day, 'd')}
+                            </div>
+                        );
+                    })}
+                </div>
+                <div className="mt-4 flex flex-wrap gap-x-3 gap-y-2 border-t border-slate-100 pt-3 text-[10px] font-semibold text-slate-600">
+                    {[['bg-emerald-400', 'Hadir'], ['bg-amber-400', 'Telat'], ['bg-sky-400', 'Izin/Sakit'], ['bg-rose-400', 'Alpa']].map(([color, label]) => (
+                        <span key={label} className="inline-flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${color}`} />{label}</span>
+                    ))}
+                </div>
+            </Card>
 
             {/* List */}
             {grouped.length === 0 ? (

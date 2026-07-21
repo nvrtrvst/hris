@@ -20,7 +20,7 @@ class PresensiController extends Controller
     public function index(Request $request)
     {
         $request->validate([
-            'lokasi_filter' => 'nullable|in:perlu_review',
+            'lokasi_filter' => 'nullable|in:perlu_review,pulang_awal',
         ]);
 
         $user = auth()->user();
@@ -64,7 +64,7 @@ class PresensiController extends Controller
             $query->where('is_lembur', true);
         }
 
-        if ($request->lokasi_filter === 'perlu_review') {
+        if (in_array($request->lokasi_filter, ['perlu_review', 'pulang_awal'])) {
             $query->where('lokasi_perlu_review', true);
         }
 

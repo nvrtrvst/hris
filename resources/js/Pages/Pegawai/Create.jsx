@@ -22,6 +22,7 @@ export default function Create({ auth, unitSekolahs, jabatans }) {
         jabatan_id: '',
         email: '',
         password: '',
+        wajib_kantor: false,
         foto: null,
     });
 
@@ -164,6 +165,19 @@ export default function Create({ auth, unitSekolahs, jabatans }) {
                                                 <option value="gtt">GTT (Guru Tidak Tetap)</option>
                                             </select>
                                             {errors.status_kepegawaian && <p className="mt-1 text-sm text-red-600">{errors.status_kepegawaian}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="inline-flex items-center gap-2 mt-6 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={data.wajib_kantor}
+                                                    onChange={(e) => setData('wajib_kantor', e.target.checked)}
+                                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                                <span className="text-sm font-medium text-gray-700">Wajib masuk kantor</span>
+                                            </label>
+                                            <p className="text-xs text-gray-500 mt-0.5">Jika tidak ada jadwal mengajar, tetap harus absen kantor.</p>
+                                            {errors.wajib_kantor && <p className="mt-1 text-sm text-red-600">{errors.wajib_kantor}</p>}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Jatah Cuti Tahunan (Hari) <span className="text-red-500">*</span></label>

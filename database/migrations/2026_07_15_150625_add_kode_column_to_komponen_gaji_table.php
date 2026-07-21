@@ -1,9 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -12,10 +10,6 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('komponen_gaji', function (Blueprint $table) {
-            $table->string('kode', 50)->nullable()->unique()->after('id');
-        });
-
         // Populate existing komponen_gaji dengan kode defaults berdasarkan nama pattern
         // Ini backward compatibility agar stripos pattern tetap bekerja
         DB::table('komponen_gaji')->whereNull('kode')->update([
@@ -37,8 +31,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('komponen_gaji', function (Blueprint $table) {
-            $table->dropColumn('kode');
-        });
+        // Kolom kode dibuat oleh migration 2026_07_02_100000.
     }
 };

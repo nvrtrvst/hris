@@ -9,6 +9,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
         nik: pegawai.nik,
         nip: pegawai.nip || '',
         nama_lengkap: pegawai.nama_lengkap,
+        email: pegawai.user?.email || '',
         tempat_lahir: pegawai.tempat_lahir,
         tanggal_lahir: pegawai.tanggal_lahir,
         jenis_kelamin: pegawai.jenis_kelamin,
@@ -17,6 +18,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
         alamat_ktp: pegawai.alamat_ktp,
         no_hp: pegawai.no_hp,
         status_kepegawaian: pegawai.status_kepegawaian,
+        wajib_kantor: pegawai.wajib_kantor ?? false,
         jatah_cuti_tahunan: pegawai.jatah_cuti_tahunan ?? 12,
         status_aktif: pegawai.status_aktif,
         tanggal_mulai_kerja: pegawai.tanggal_mulai_kerja,
@@ -109,6 +111,12 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                             <input type="text" value={data.nama_lengkap} onChange={e => setData('nama_lengkap', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
                                             {errors.nama_lengkap && <p className="mt-1 text-sm text-red-600">{errors.nama_lengkap}</p>}
                                         </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Email Login Mobile <span className="text-red-500">*</span></label>
+                                            <input type="email" value={data.email} onChange={e => setData('email', e.target.value)} autoComplete="email" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                                            <p className="mt-1 text-xs text-gray-500">Email ini dipakai untuk login ke portal mobile.</p>
+                                            {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                         <div>
@@ -186,6 +194,19 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                                 <option value="gtt">GTT (Guru Tidak Tetap)</option>
                                             </select>
                                             {errors.status_kepegawaian && <p className="mt-1 text-sm text-red-600">{errors.status_kepegawaian}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="inline-flex items-center gap-2 mt-6 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={data.wajib_kantor}
+                                                    onChange={(e) => setData('wajib_kantor', e.target.checked)}
+                                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                                <span className="text-sm font-medium text-gray-700">Wajib masuk kantor</span>
+                                            </label>
+                                            <p className="text-xs text-gray-500 mt-0.5">Jika tidak ada jadwal mengajar, tetap harus absen kantor.</p>
+                                            {errors.wajib_kantor && <p className="mt-1 text-sm text-red-600">{errors.wajib_kantor}</p>}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Jatah Cuti Tahunan (Hari)</label>

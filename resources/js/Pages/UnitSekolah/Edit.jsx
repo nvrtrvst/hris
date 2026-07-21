@@ -4,18 +4,21 @@ import { Head, useForm } from '@inertiajs/react';
 import UnitForm from './UnitForm';
 
 export default function Edit({ auth, unit }) {
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
+        _method: 'put',
         nama: unit.nama,
         singkatan: unit.singkatan,
+        logo: null,
         latitude: String(unit.latitude),
         longitude: String(unit.longitude),
         radius_meter: unit.radius_meter,
         jam_masuk_kantor: unit.jam_masuk_kantor?.slice(0, 5) || '07:30',
+        jam_pulang_kantor: unit.jam_pulang_kantor?.slice(0, 5) || '15:00',
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(route('unit-sekolah.update', unit.id));
+        post(route('unit-sekolah.update', unit.id), { forceFormData: true });
     };
 
     return (
@@ -35,6 +38,7 @@ export default function Edit({ auth, unit }) {
                             onSubmit={handleSubmit}
                             isEdit={true}
                             unitName={unit.nama}
+                            unitLogoUrl={unit.logo_url}
                         />
                     </div>
                 </div>
