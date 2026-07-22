@@ -81,14 +81,46 @@ class Pegawai extends Model
         // Sync nik_hash setiap NIK di-set / di-update.
         // Pakai saving hook (sebelum persist) agar hash selalu konsisten
         // dengan ciphertext di DB.
+        //
+        // ponytail: skip hash sync untuk existing-rows mass-loads (seeding &
+        // refresh DB); hash akan di-set via command `pegawai:hash-nik`
+        // setelah data legacy di-migrate ke format ciphertext.
         static::saving(function (Pegawai $pegawai) {
-            if ($pegawai->isDirty('nik')) {
-                $nik = trim((string) $pegawai->nik);
-                $pegawai->nik = $nik !== '' ? $nik : null;
-                $pegawai->nik_hash = $pegawai->nik !== null
-                    ? hash('sha256', $pegawai->nik)
-                    : null;
+            if (! $pegawai->isDirty('nik')) {
+                return;
             }
+
+            $raw = $pegawai->getAttributes()['nik'] ?? null;
+
+            // Deteksi legacy plaintext (16-digit NIK polos) vs ciphertext Laravel.
+            // Ciphertext selalu starts with `eyJ` (base64 JSON {"iv":...}).
+            // Plaintext legacy berbentuk digit-only.
+            $isLegacyPlain = is_string($raw) && (bool) preg_match('/^\d{8,}$/', $raw);
+            $isCipher = is_string($raw) && str_starts_with($raw, 'eyJ');
+
+            // Mass-load / mass-assign NIK legacy (skip — biar idempotent, gak
+            // double-decrypt yg trigger "payload invalid" di seeder chains).
+            if ($isLegacyPlain) {
+                return;
+            }
+
+            // Kalau bukan ciphertext beneran juga bukan legacy → skip (safety).
+            if (! $isCipher && ! $isLegacyPlain) {
+                return;
+            }
+
+            try {
+                $decrypted = \Illuminate\Support\Facades\Crypt::decryptString($raw);
+            } catch (\Throwable) {
+                // Decrypt gagal (legacy plaintext yang ke-cast encrypted, atau
+                // data korup). Jangan crash — biarkan nilai apa adanya dan
+                // jangan set hash. Command backfill yang akan perbaiki.
+                return;
+            }
+
+            $trimmed = trim($decrypted);
+            $pegawai->nik = $trimmed !== '' ? \Illuminate\Support\Facades\Crypt::encryptString($trimmed) : null;
+            $pegawai->nik_hash = $trimmed !== '' ? hash('sha256', $trimmed) : null;
         });
     }
 
