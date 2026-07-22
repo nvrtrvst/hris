@@ -18,9 +18,9 @@ git pull origin main
 php artisan optimize:clear
 php artisan migrate:fresh --seed --force
 php artisan nik:check
-# expect: total=500 cipher=500 plain=0 hash_null=0
-php artisan pegawai:hash-nik
-php artisan nik:check
+# expect: total=N cipher=N plain=0 hash_null=0
+# (pegawai:hash-nik backfill command has been retired post-migration;
+#  use nik:check for ad-hoc verification.)
 ```
 
 ## What was skipped
@@ -31,7 +31,6 @@ php artisan nik:check
 
 ## Verified
 ```
-pegawai:hash-nik        → Updated: 0, Skipped: 1, Errored: 0
 nik:check               → total=1 cipher=1 plain=0 null_nik=0 hash_null=0
 nik_masked              → 3201********0001
 nik_hash                → 982c7efdc21f3417

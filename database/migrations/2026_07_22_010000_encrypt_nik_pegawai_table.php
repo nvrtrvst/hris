@@ -11,7 +11,7 @@ return new class extends Migration
      *
      * - `nik` jadi TEXT nullable (ciphertext panjang acak, encrypted cast).
      * - `nik_hash` VARCHAR(64) SHA-256 hex, unique (lookup equality tanpa decrypt).
-     * - Backfill: jalanin `php artisan pegawai:hash-nik` SETELAH migrate.
+     * - Backfill dilakukan pada migration data + oleh seeder pre-compute.
      * - Drop unique index `pegawai_nik_unique` lama dulu (kolom jadi TEXT).
      */
     public function up(): void

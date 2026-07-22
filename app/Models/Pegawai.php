@@ -83,8 +83,8 @@ class Pegawai extends Model
         // dengan ciphertext di DB.
         //
         // ponytail: skip hash sync untuk existing-rows mass-loads (seeding &
-        // refresh DB); hash akan di-set via command `pegawai:hash-nik`
-        // setelah data legacy di-migrate ke format ciphertext.
+        // refresh DB); Seeder pre-compute nik_hash + cipher via firstOrCreate
+        // untuk bypass double-cast hook miss.
         static::saving(function (Pegawai $pegawai) {
             if (! $pegawai->isDirty('nik')) {
                 return;
