@@ -204,14 +204,14 @@ class PegawaiController extends Controller
         // Default model $hidden = ['nik'] agar tidak bocor via Index/Show. Edit butuh plaintext
         // agar field tidak kosong dan user tidak dipaksa retype.
         if ($user && $user->can('view_sensitive_data')) {
-            $pegawai->makeVisible('nik');
-            // Pre-decrypt NIK. setRawAttribute menulis plaintext langsung ke attributes[]
-            // tanpa lewat cast 'encrypted' (yang akan re-encrypt saat serialize).
+            // Expose plaintext NIK as a separate field 'nik_plain' (no cast) so the
+            // serializer returns it as-is. Cast pada 'nik' tetap menghasilkan
+            // ciphertext/auto-decrypt di sisi PHP; kita tidak pakai 'nik' di view.
             $raw = $pegawai->getRawOriginal('nik');
             try {
-                $pegawai->setRawAttribute('nik', \Crypt::decryptString($raw));
+                $pegawai->nik_plain = \Crypt::decryptString($raw);
             } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
-                $pegawai->setRawAttribute('nik', null);
+                $pegawai->nik_plain = null;
             }
         }
 

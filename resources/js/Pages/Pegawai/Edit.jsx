@@ -7,6 +7,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
     const { data, setData, post, processing, errors } = useForm({
         _method: 'put',
         nik: pegawai.nik,
+        nik_plain: pegawai.nik_plain,
         nip: pegawai.nip || '',
         nama_lengkap: pegawai.nama_lengkap,
         email: pegawai.user?.email || '',
@@ -97,9 +98,9 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                     <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4 mt-8">Informasi Dasar</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">NIK <span className="text-red-500">*</span></label>
-                                            <input type="text" value={data.nik} onChange={e => setData('nik', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-                                            {errors.nik && <p className="mt-1 text-sm text-red-600">{errors.nik}</p>}
+                                        <label className="block text-sm font-medium text-gray-700">NIK <span className="text-red-500">*</span></label>
+                                        <input type="text" value={data.nik_plain ?? data.nik ?? ''} onChange={e => setData('nik', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                                        {errors.nik && <p className="mt-1 text-sm text-red-600">{errors.nik}</p>}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">NIP / No Induk Guru</label>
