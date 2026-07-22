@@ -23,6 +23,8 @@ class MobileController extends Controller
     public function dashboard()
     {
         $pegawai = $this->getPegawai();
+        $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
+        $hariIniIndo = $hariMap[Carbon::now()->format('l')];
 
         $presensiHariIni = Presensi::with('unitSekolah')->where('pegawai_id', $pegawai->id)
             ->where('tanggal', Carbon::today())
@@ -35,10 +37,17 @@ class MobileController extends Controller
             ->orderBy('tanggal', 'desc')
             ->get();
 
+        $jadwalsHariIni = Jadwal::with(['unitSekolah', 'mataPelajaran', 'kelas'])
+            ->where('pegawai_id', $pegawai->id)
+            ->where('hari', $hariIniIndo)
+            ->orderBy('jam_mulai', 'asc')
+            ->get();
+
         return inertia('Mobile/Dashboard', [
             'pegawai' => $pegawai,
             'presensi' => $presensiHariIni,
             'presensiSeminggu' => $presensiTerbaru,
+            'jadwalsHariIni' => $jadwalsHariIni,
         ]);
     }
 

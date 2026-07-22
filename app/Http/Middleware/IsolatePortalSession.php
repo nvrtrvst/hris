@@ -23,6 +23,16 @@ class IsolatePortalSession
             $isMobile = true;
         }
 
+        // /sanctum/csrf-cookie (Sanctum, root path) tidak punya prefix mobile.
+        // Di dev (host sama), pakai Referer/Origin untuk menentukan portal agar
+        // token CSRF dienkripsi di session portal yang benar (bukan admin).
+        if (! $isMobile && $request->is('sanctum/csrf-cookie')) {
+            $referer = $request->header('Referer') ?: $request->header('Origin');
+            if ($referer && (str_contains($referer, '/mobile') || str_contains($referer, (string) $mobileDomain))) {
+                $isMobile = true;
+            }
+        }
+
         if ($isMobile) {
             Config::set('session.cookie', 'hris_mobile_session');
             Config::set('session.path', '/');

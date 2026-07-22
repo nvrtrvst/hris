@@ -186,16 +186,16 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
             </div>
 
             {featuredSchedule && (
-                <Card press={false} className="mb-4 border-0 bg-[#0F3D3E] p-4 text-white shadow-[0_8px_20px_-12px_rgba(15,61,62,0.7)]">
+                <Card press={false} className="!bg-[#0F3D3E] mb-4 border-0 p-4 text-white shadow-[0_8px_20px_-12px_rgba(15,61,62,0.7)]">
                     <div className="flex items-start justify-between gap-3">
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100">{featuredDay === todayName ? 'Sesi pertama hari ini' : `Sesi berikutnya, ${featuredDay}`}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">{featuredDay === todayName ? 'Sesi pertama hari ini' : `Sesi berikutnya, ${featuredDay}`}</p>
                             <p className="mt-1 text-base font-bold text-white">{featuredSchedule.mata_pelajaran?.nama || 'Jadwal mengajar'}</p>
-                            <p className="mt-1 text-xs text-emerald-100">{featuredSchedule.kelas ? `Kelas ${featuredSchedule.kelas.tingkat} ${featuredSchedule.kelas.nama}` : 'Tanpa kelas'}</p>
+                            <p className="mt-1 text-xs text-white/80">{featuredSchedule.kelas ? `Kelas ${featuredSchedule.kelas.tingkat} ${featuredSchedule.kelas.nama}` : 'Tanpa kelas'}</p>
                         </div>
                         <div className="rounded-xl bg-white/10 px-3 py-2 text-right">
-                            <Clock3 className="ml-auto h-4 w-4 text-emerald-100" />
-                            <p className="mt-1 font-mono text-sm font-bold tabular-nums">{featuredSchedule.jam_mulai}</p>
+                            <Clock3 className="ml-auto h-4 w-4 text-white/80" />
+                            <p className="mt-1 font-mono text-sm font-bold tabular-nums text-white">{featuredSchedule.jam_mulai}</p>
                         </div>
                     </div>
                 </Card>

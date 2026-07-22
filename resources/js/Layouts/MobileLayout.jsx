@@ -57,7 +57,7 @@ export default function MobileLayout({ user, header, children }) {
                 </div>
             )}
 
-            <main className="px-4 pb-8 pt-5">
+            <main className="px-4 pb-8 pt-5" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {children}
             </main>
 
@@ -69,7 +69,7 @@ export default function MobileLayout({ user, header, children }) {
                             <Link
                                 key={item.route}
                                 href={route(item.route)}
-                                className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                                className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                                     active ? 'text-primary' : 'text-slate-500'
                                 }`}
                                 aria-current={active ? 'page' : undefined}

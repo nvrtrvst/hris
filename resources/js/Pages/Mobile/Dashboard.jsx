@@ -34,7 +34,7 @@ function time(value) {
     return value ? String(value).slice(0, 5) : '--:--';
 }
 
-export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = [] }) {
+export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = [], jadwalsHariIni = [] }) {
     const { flash = {} } = usePage().props;
     const today = format(new Date(), 'EEEE, d MMMM yyyy', { locale: id });
     const primaryUnit = pegawai?.units?.find((unit) => unit.pivot?.is_primary) ?? pegawai?.units?.[0];
@@ -99,6 +99,51 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                     {presensi?.jam_masuk && !presensi?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi'}
                     <ArrowRight className="h-5 w-5" />
                 </Link>
+            </section>
+
+            <section aria-labelledby="today-jadwal" className="mt-5 overflow-hidden rounded-2xl bg-primary text-white shadow-[0_10px_28px_-18px_rgba(15,61,62,0.75)]">
+                <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+                    <div className="flex items-center gap-2">
+                        <CalendarDays className="h-5 w-5 text-emerald-200" />
+                        <h2 id="today-jadwal" className="text-base font-bold text-white">Jadwal Hari Ini</h2>
+                    </div>
+                    <Link href={route('presensi.jadwal')} className="text-xs font-semibold text-white/80 underline-offset-2 hover:underline">
+                        Lihat semua
+                    </Link>
+                </div>
+                {jadwalsHariIni.length === 0 ? (
+                    <div className="px-5 py-6 text-center">
+                        <p className="text-sm font-semibold text-white/90">Tidak ada jadwal hari ini</p>
+                        <p className="mt-1 text-xs text-white/70">Nikmati waktu luangmu, {firstName}.</p>
+                    </div>
+                ) : (
+                    <ol className="divide-y divide-white/10">
+                        {jadwalsHariIni.map((jadwal) => {
+                            const lokasi = jadwal.unit_sekolah?.nama || jadwal.unit_sekolah?.nama_unit || unitName;
+                            return (
+                                <li key={jadwal.id} className="flex items-start gap-3 px-5 py-3.5">
+                                    <div className="flex shrink-0 flex-col items-center justify-center rounded-xl bg-white/10 px-2 py-1.5 min-w-[52px]">
+                                        <Clock3 className="h-3.5 w-3.5 text-emerald-200" />
+                                        <span className="mt-0.5 font-mono text-xs font-bold tabular-nums text-white">{time(jadwal.jam_mulai)}</span>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-bold text-white">
+                                            {jadwal.mata_pelajaran?.nama || 'Pelajaran'}
+                                        </p>
+                                        <p className="mt-0.5 text-xs text-white/80">
+                                            {time(jadwal.jam_mulai)} - {time(jadwal.jam_selesai)}
+                                            {jadwal.kelas?.nama ? ` • ${jadwal.kelas.nama}` : ''}
+                                        </p>
+                                        <p className="mt-1 flex items-center gap-1 truncate text-xs text-white/70">
+                                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                            {lokasi}
+                                        </p>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ol>
+                )}
             </section>
 
             <Link href={route('presensi.riwayat')} className="mt-5 flex min-h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">

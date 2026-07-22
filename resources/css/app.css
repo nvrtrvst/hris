@@ -5,7 +5,11 @@
 html,
 body {
     background: #f4f7f5;
+    height: 100dvh;
+    min-height: -webkit-fill-available;
     overscroll-behavior-y: contain;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {
