@@ -199,6 +199,15 @@ class PegawaiController extends Controller
         $jabatans = Jabatan::all();
         $mapels = MataPelajaran::orderBy('nama')->get();
 
+
+        // Opsi 2: expose decrypted NIK hanya untuk user dengan permission view_sensitive_data
+        // Default model $hidden = ['nik'] agar tidak bocor via Index/Show. Edit butuh plaintext
+        // agar field tidak kosong dan user tidak dipaksa retype.
+        if ($user && $user->can('view_sensitive_data')) {
+            $pegawai->makeVisible('nik');
+        }
+
+
         return inertia('Pegawai/Edit', [
             'pegawai' => $pegawai,
             'unitSekolahs' => $unitSekolahs,
