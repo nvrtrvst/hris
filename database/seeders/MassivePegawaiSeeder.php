@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Crypt;
 use RuntimeException;
 
 class MassivePegawaiSeeder extends Seeder
@@ -56,9 +57,11 @@ class MassivePegawaiSeeder extends Seeder
                 $firstName = $firstNames[($index - 1) % count($firstNames)];
                 $lastName = $lastNames[intdiv($index - 1, count($firstNames))];
                 $name = $firstName.' '.$lastName;
-                $email = sprintf('pegawai%03d@demo.yayasan.com', $index);
-                $nik = '3273'.str_pad((string) $index, 12, '0', STR_PAD_LEFT);
-                $unit = $units[($index - 1) % $units->count()];
+               $email = sprintf('pegawai%03d@demo.yayasan.com', $index);
+               $nik = '3273'.str_pad((string) $index, 12, '0', STR_PAD_LEFT);
+                $nikHash = hash('sha256', $nik);
+                $nikCipher = Crypt::encryptString($nik);
+               $unit = $units[($index - 1) % $units->count()];
 
                 $user = User::firstOrCreate(
                     ['email' => $email],
@@ -70,10 +73,11 @@ class MassivePegawaiSeeder extends Seeder
                 );
                 $user->syncRoles('pegawai');
 
-                $pegawai = Pegawai::firstOrCreate(
-                    ['nik' => $nik],
-                    [
-                        'user_id' => $user->id,
+               $pegawai = Pegawai::firstOrCreate(
+                   ['nik' => $nikCipher],
+                   [
+                      'nik_hash' => $nikHash,
+                      'user_id' => $user->id,
                         'nama_lengkap' => $name,
                         'tempat_lahir' => 'Jakarta',
                         'tanggal_lahir' => now()->subYears(25 + ($index % 25))->subDays($index)->toDateString(),
