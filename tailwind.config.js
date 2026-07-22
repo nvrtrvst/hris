@@ -76,6 +76,10 @@ export default {
                     '0%, 100%': { backgroundPosition: '0% 0%' },
                     '50%': { backgroundPosition: '100% 100%' },
                 },
+                'slide-in-left': {
+                    '0%': { transform: 'translateX(-100%)' },
+                    '100%': { transform: 'translateX(0)' },
+                },
             },
             animation: {
                 'fade-in-up': 'fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both',
@@ -89,6 +93,7 @@ export default {
                 shake: 'shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both',
                 'float-up': 'float-up 0.8s ease-out forwards',
                 'gradientShift': 'gradientShift 8s ease-in-out infinite',
+                'slide-in-left': 'slide-in-left 0.3s ease-out both',
             },
         },
     },

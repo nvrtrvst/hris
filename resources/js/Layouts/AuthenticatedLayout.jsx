@@ -87,7 +87,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
         <div className="min-h-screen bg-surface flex flex-col md:flex-row font-sans print:bg-white">
             
             {/* Sidebar Desktop */}
-            <aside className={`hidden md:flex flex-col bg-primary text-white shadow-2xl fixed h-full z-30 transition-all duration-300 border-r border-primary print:hidden ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
+            <aside className={`hidden md:flex flex-col bg-primary text-white shadow-2xl fixed left-0 top-0 h-full z-30 transition-[width] duration-300 ease-in-out border-r border-primary print:hidden flex-shrink-0 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
                 <div className="flex items-center justify-center h-20 border-b border-white/10 bg-primary/95 px-4 flex-shrink-0">
                     <Link href={route('dashboard')} className={`flex items-center group w-full ${isSidebarOpen ? 'space-x-3' : 'justify-center'}`}>
                         <div className="bg-white p-1.5 rounded-lg shadow-sm group-hover:scale-105 transition-transform flex-shrink-0">
@@ -181,8 +181,11 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
             </div>
 
             {/* Mobile Dropdown Menu */}
-            <div className={`md:hidden fixed inset-0 bg-primary z-30 pt-16 transform transition-transform duration-300 print:hidden ${showingNavigationDropdown ? 'translate-x-0' : '-translate-x-full'}`}>
-                <div className="p-4 space-y-1 h-full overflow-y-auto">
+            <div className={`md:hidden fixed inset-0 bg-primary z-30 pt-16 transform transition-transform duration-300 ease-in-out print:hidden overflow-y-auto ${showingNavigationDropdown ? 'translate-x-0' : '-translate-x-full'}`} onClick={(e) => e.stopPropagation()}>
+                <button type="button" aria-label="Tutup menu" onClick={() => setShowingNavigationDropdown(false)} className={`absolute top-3 right-3 z-10 p-2 rounded-md text-white hover:bg-white/10 focus:outline-none transition-opacity ${showingNavigationDropdown ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+                <div className="p-4 space-y-1">
                     {menuGroups.map((group, groupIndex) => {
                         const isExpanded = expandedGroups[group.title];
                         return (
@@ -214,9 +217,9 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
             </div>
 
             {/* Main Content Area */}
-            <div className={`flex-1 transition-all duration-300 min-h-screen flex flex-col print:!pl-0 ${isSidebarOpen ? 'md:pl-64' : 'md:pl-20'} pt-16 md:pt-0`}>
+            <div className={`flex-1 transition-[padding] duration-300 ease-in-out min-h-screen flex flex-col print:!pl-0 md:pt-0 pt-16 ${isSidebarOpen ? 'md:pl-64' : 'md:pl-20'}`}>
                 {/* Header (Top bar content area) */}
-                <header className="bg-white shadow-sm border-b border-border sticky top-0 z-20 flex items-center h-16 md:h-20 print:hidden">
+                <header className="bg-white shadow-sm border-b border-border sticky top-0 z-30 flex items-center h-16 md:h-20 print:hidden backdrop-blur supports-[backdrop-filter]:bg-white/80">
                     <button 
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                         className="hidden md:flex ml-4 p-2 text-gray-500 hover:bg-gray-100 rounded-lg focus:outline-none transition-colors items-center justify-center"
