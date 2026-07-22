@@ -90,37 +90,42 @@ class Pegawai extends Model
                 return;
             }
 
+            // Baca raw attribute (sebelum cast). Di saving hook:
+            //   - setter Eloquent menyimpan plaintext asli di sini (bukan ciphertext)
+            //   - cast `encrypted` baru jalan saat persist ke DB
+            // jadi raw = input user, bisa digit-only legacy atau ciphertext Laravel.
             $raw = $pegawai->getAttributes()['nik'] ?? null;
 
-            // Deteksi legacy plaintext (16-digit NIK polos) vs ciphertext Laravel.
-            // Ciphertext selalu starts with `eyJ` (base64 JSON {"iv":...}).
-            // Plaintext legacy berbentuk digit-only.
-            $isLegacyPlain = is_string($raw) && (bool) preg_match('/^\d{8,}$/', $raw);
-            $isCipher = is_string($raw) && str_starts_with($raw, 'eyJ');
+            if (! is_string($raw) || $raw === '') {
+                $pegawai->nik_hash = null;
 
-            // Mass-load / mass-assign NIK legacy (skip — biar idempotent, gak
-            // double-decrypt yg trigger "payload invalid" di seeder chains).
-            if ($isLegacyPlain) {
                 return;
             }
 
-            // Kalau bukan ciphertext beneran juga bukan legacy → skip (safety).
-            if (! $isCipher && ! $isLegacyPlain) {
+            $plaintext = null;
+
+            // Branch A: plaintext digit-only (legacy seeders / mass-assign dari controller).
+            if (preg_match('/^\d{8,}$/', $raw) === 1) {
+                $plaintext = trim($raw);
+            } elseif (str_starts_with($raw, 'eyJ')) {
+                // Branch B: ciphertext Laravel (`{"iv":"..."}` base64). Decrypt normal.
+                try {
+                    $plaintext = trim(\Illuminate\Support\Facades\Crypt::decryptString($raw));
+                } catch (\Throwable) {
+                    // Gagal decrypt (data korup). Skip — backfill command akan perbaiki.
+                    return;
+                }
+            } else {
+                // Bukan digit-only, bukan ciphertext — bentuk tak dikenal. Skip aman.
                 return;
             }
 
-            try {
-                $decrypted = \Illuminate\Support\Facades\Crypt::decryptString($raw);
-            } catch (\Throwable) {
-                // Decrypt gagal (legacy plaintext yang ke-cast encrypted, atau
-                // data korup). Jangan crash — biarkan nilai apa adanya dan
-                // jangan set hash. Command backfill yang akan perbaiki.
-                return;
-            }
-
-            $trimmed = trim($decrypted);
-            $pegawai->nik = $trimmed !== '' ? \Illuminate\Support\Facades\Crypt::encryptString($trimmed) : null;
-            $pegawai->nik_hash = $trimmed !== '' ? hash('sha256', $trimmed) : null;
+            // Tetapkan hash + ciphertext dari plaintext hasil normalisasi.
+            // Re-assign ciphertext agar konsisten walau cast sudah handle.
+            $pegawai->nik = $plaintext !== ''
+                ? \Illuminate\Support\Facades\Crypt::encryptString($plaintext)
+                : null;
+            $pegawai->nik_hash = $plaintext !== '' ? hash('sha256', $plaintext) : null;
         });
     }
 
