@@ -209,7 +209,15 @@ class PegawaiController extends Controller
             // ciphertext/auto-decrypt di sisi PHP; kita tidak pakai 'nik' di view.
             $raw = $pegawai->getRawOriginal('nik');
             try {
-                $pegawai->nik_plain = \Crypt::decryptString($raw);
+                $plain = \Crypt::decryptString($raw);
+                // ponytail: legacy double-encrypt from earlier patch. Detect ciphertext
+                // by JWT-shaped prefix and peel one extra layer. Read-only, never writes
+                // back, so DB stays as-is until a separate normalize pass runs.
+                if (is_string($plain) && preg_match('/^eyJ[A-Za-z0-9+\/=]+$/', $plain)) {
+                    try { $plain = \Crypt::decryptString($plain); }
+                    catch (\Throwable) { $plain = null; }
+                }
+                $pegawai->nik_plain = $plain;
             } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
                 $pegawai->nik_plain = null;
             }
