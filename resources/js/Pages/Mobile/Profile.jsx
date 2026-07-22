@@ -112,8 +112,17 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
                         <h2 className="mt-3 text-xl font-bold text-white">{displayName}</h2>
                         <p className="text-sm text-emerald-100">{primaryJabatan?.nama || 'Pegawai'}</p>
                         <div className="mt-1 flex items-center gap-1.5 text-xs text-emerald-200">
-                            <MapPin className="h-3.5 w-3.5" />
-                            <span>{primaryUnit?.nama || 'Yayasan'}</span>
+                            {primaryUnit ? (
+                                <>
+                                    <MapPin className="h-3.5 w-3.5" />
+                                    <span>{primaryUnit.nama || primaryUnit.nama_unit}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Building2 className="h-3.5 w-3.5" />
+                                    <span>Belum ada unit ditugaskan</span>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

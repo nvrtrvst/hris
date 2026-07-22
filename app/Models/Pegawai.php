@@ -54,12 +54,20 @@ class Pegawai extends Model
         'wajib_kantor',
     ];
 
-    protected $appends = ['sisa_cuti', 'cuti_terpakai', 'foto_url'];
+    protected $appends = ['sisa_cuti', 'cuti_terpakai', 'foto_url', 'nik_masked'];
+
+    /**
+     * Field sensitif yang TIDAK boleh diserialize ke FE / API.
+     * NIK plaintext diakses via endpoint khusus `pegawai.nik-asli`
+     * dengan Gate `view_sensitive_data`.
+     */
+    protected $hidden = ['nik', 'nik_hash'];
 
     protected $casts = [
         'tanggal_lahir' => 'date',
         'tanggal_mulai_kerja' => 'date',
         'tanggal_akhir_kontrak' => 'date',
+        'nik' => 'encrypted',
         'no_rekening' => 'encrypted',
         'nama_bank' => 'encrypted',
         'npwp' => 'encrypted',
@@ -67,6 +75,22 @@ class Pegawai extends Model
         'no_bpjs_ketenagakerjaan' => 'encrypted',
         'wajib_kantor' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        // Sync nik_hash setiap NIK di-set / di-update.
+        // Pakai saving hook (sebelum persist) agar hash selalu konsisten
+        // dengan ciphertext di DB.
+        static::saving(function (Pegawai $pegawai) {
+            if ($pegawai->isDirty('nik')) {
+                $nik = trim((string) $pegawai->nik);
+                $pegawai->nik = $nik !== '' ? $nik : null;
+                $pegawai->nik_hash = $pegawai->nik !== null
+                    ? hash('sha256', $pegawai->nik)
+                    : null;
+            }
+        });
+    }
 
     public function user(): BelongsTo
     {
@@ -154,6 +178,30 @@ class Pegawai extends Model
     public function getFotoUrlAttribute(): ?string
     {
         return FileHelper::fotoUrl($this->foto);
+    }
+
+    /**
+     * NIK tersensor: 4 awal + 8 bintang + 4 akhir.
+     * Aman di-share ke FE (tidak bocor plaintext).
+     * Jika NIK kosong atau < 8 char → tampilkan 16 bintang.
+     */
+    public function getNikMaskedAttribute(): string
+    {
+        $plain = (string) ($this->nik ?? '');
+
+        if ($plain === '') {
+            return str_repeat('*', 16);
+        }
+
+        $len = mb_strlen($plain);
+        if ($len < 8) {
+            return str_repeat('*', max(8, $len));
+        }
+
+        $prefix = mb_substr($plain, 0, 4);
+        $suffix = mb_substr($plain, -4);
+
+        return $prefix . str_repeat('*', 8) . $suffix;
     }
 
     public function jadwals(): HasMany

@@ -34,6 +34,10 @@ class RolePermissionSeeder extends Seeder
             'manage_users',
             'manage_roles',
             'manage_payroll',
+
+            // Sensitive data (NIK plaintext, no_rekening, NPWP, dll)
+            // Akses terbatas — superadmin only. admin_unit & pegawai melihat masked.
+            'view_sensitive_data',
         ];
 
         foreach ($permissions as $permission) {

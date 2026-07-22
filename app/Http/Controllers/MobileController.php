@@ -23,6 +23,7 @@ class MobileController extends Controller
     public function dashboard()
     {
         $pegawai = $this->getPegawai();
+        $pegawai->load('units');
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIniIndo = $hariMap[Carbon::now()->format('l')];
 

@@ -40,7 +40,7 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
     const primaryUnit = pegawai?.units?.find((unit) => unit.pivot?.is_primary) ?? pegawai?.units?.[0];
     const displayName = pegawai?.nama_lengkap || auth?.user?.name || 'Pegawai';
     const firstName = displayName.split(' ')[0];
-    const unitName = primaryUnit?.nama || primaryUnit?.nama_unit || 'Yayasan';
+    const unitName = primaryUnit?.nama || primaryUnit?.nama_unit || null;
     const records = Array.isArray(presensiSeminggu) ? presensiSeminggu : Object.values(presensiSeminggu || {}).flat();
     const currentStatus = presensi?.status;
 
@@ -55,7 +55,7 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                         <h1 className="truncate text-2xl font-bold tracking-tight text-slate-950">Selamat datang, {firstName}</h1>
                         <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-slate-600">
                             <MapPin className="h-4 w-4 shrink-0 text-primary" />
-                            {unitName}
+                            {unitName || 'Belum ada unit ditugaskan'}
                         </p>
                     </div>
                     <span className="mb-1 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 ring-4 ring-emerald-100" aria-label="Sistem aktif" />

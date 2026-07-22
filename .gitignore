@@ -25,3 +25,8 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Backup secrets (APP_KEY, .env backups)
+app-key.backup.env
+.env.backup
+*.backup.b64

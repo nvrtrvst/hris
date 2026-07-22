@@ -371,4 +371,28 @@ class PegawaiController extends Controller
 
         return redirect()->back()->with('message', 'Profil Keuangan Pegawai berhasil diperbarui.');
     }
+
+    /**
+     * Tampilkan NIK plaintext (khusus HR/admin).
+     * Gate `view_sensitive_data` ensures only role dengan permission ini yang bisa akses.
+     * ponytail: pakai Log::warning untuk audit trail sederhana,
+     * upgrade ke dedicated AuditLog model kalau compliance butuh.
+     */
+    public function nikAsli(Pegawai $pegawai)
+    {
+        \Illuminate\Support\Facades\Gate::authorize('view_sensitive_data');
+
+        $user = auth()->user();
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        Log::warning('Sensitive data access', [
+            'user_id' => $user?->id,
+            'pegawai_id' => $pegawai->id,
+            'field' => 'nik',
+        ]);
+
+        return response()->json(['nik' => $pegawai->nik]);
+    }
 }
