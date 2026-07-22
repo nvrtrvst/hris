@@ -205,11 +205,13 @@ class PegawaiController extends Controller
         // agar field tidak kosong dan user tidak dipaksa retype.
         if ($user && $user->can('view_sensitive_data')) {
             $pegawai->makeVisible('nik');
-            // Pre-decrypt NIK karena cast 'encrypted' double-encrypt saat serialize
+            // Pre-decrypt NIK. setRawAttribute menulis plaintext langsung ke attributes[]
+            // tanpa lewat cast 'encrypted' (yang akan re-encrypt saat serialize).
+            $raw = $pegawai->getRawOriginal('nik');
             try {
-                $pegawai->nik = \Crypt::decryptString($pegawai->getRawOriginal('nik'));
+                $pegawai->setRawAttribute('nik', \Crypt::decryptString($raw));
             } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
-                $pegawai->nik = null;
+                $pegawai->setRawAttribute('nik', null);
             }
         }
 
