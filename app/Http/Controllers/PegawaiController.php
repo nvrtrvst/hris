@@ -292,6 +292,9 @@ class PegawaiController extends Controller
             }
             $path = $request->file('foto')->store('pegawai_fotos', 'presensi');
             $dataToUpdate['foto'] = $path;
+        } elseif ($request->boolean('hapus_foto') && $pegawai->foto) {
+            Storage::disk('presensi')->delete($pegawai->foto);
+            $dataToUpdate['foto'] = null;
         }
 
         $pegawai->update($dataToUpdate);
