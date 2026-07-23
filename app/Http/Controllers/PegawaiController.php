@@ -277,7 +277,7 @@ class PegawaiController extends Controller
             'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'units' => 'nullable|array',
             'units.*.unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
-            'units.*.jabatan_id' => 'nullable|exists:jabatans,id',
+            'units.*.jabatan_id' => 'nullable|exists:jabatan,id',
             'units.*.is_primary' => 'nullable|boolean',
             'mapels' => 'nullable|array',
             'mapels.*.mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
