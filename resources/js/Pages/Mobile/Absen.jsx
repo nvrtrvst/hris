@@ -30,6 +30,13 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const geoControllerRef = useRef(null);
     const watchIdRef = useRef(null);
     const geocodedRef = useRef(false);
+    const errorRef = useRef(null);
+
+    useEffect(() => {
+        if (error) {
+            errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [error]);
 
     const { flash = {} } = usePage().props;
 
@@ -305,8 +312,22 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 },
                 body: JSON.stringify(payload),
             });
+            if (!res.ok) {
+                if (res.status === 419) {
+                    throw { type: 'session_expired' };
+                }
+                const data = await res.json().catch(() => ({}));
+                const errMap = {
+                    413: 'Foto terlalu besar. Perkecil ukuran foto atau gunakan koneksi WiFi.',
+                    422: data.message || 'Data tidak valid. Periksa kembali input Anda.',
+                    429: 'Terlalu banyak permintaan. Tunggu beberapa saat, lalu coba lagi.',
+                    500: 'Server error. Coba lagi nanti.',
+                };
+                setError(errMap[res.status] || data.message || 'Gagal mengirim presensi.');
+                return;
+            }
             const data = await res.json();
-            if (res.ok && data.success) {
+            if (data.success) {
                 setSuccessMessage(data.message || 'Presensi berhasil dikirim.');
                 setCapturedPhoto(null);
                 setJadwalId(null);
@@ -317,7 +338,15 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 setError(data.message || 'Gagal mengirim presensi.');
             }
         } catch (err) {
-            setError('Terjadi kesalahan jaringan. Coba lagi.');
+            if (err.type === 'session_expired') {
+                setError('Sesi habis. Silakan refresh halaman dan login ulang.');
+            } else if (err.name === 'AbortError') {
+                setError('Permintaan dibatalkan. Coba lagi.');
+            } else if (err instanceof TypeError && err.message === 'Failed to fetch') {
+                setError('Koneksi terputus. Periksa jaringan Anda dan coba lagi.');
+            } else {
+                setError('Tidak dapat terhubung ke server. Periksa jaringan atau coba lagi nanti.');
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -375,7 +404,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </div>
             )}
             {error && (
-                <div role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
+                <div ref={errorRef} role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
                     <AlertCircle className="h-5 w-5" /> {error}
                 </div>
             )}
