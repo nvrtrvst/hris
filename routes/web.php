@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PresensiPhotoController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -10,6 +11,12 @@ use Illuminate\Support\Facades\Route;
  *   simsdm.nuurulmuttaqiin.or.id → portal Admin (routes/admin.php)
  *   presensi.nuurulmuttaqiin   → portal Mobile PWA (routes/mobile.php)
  */
+
+// Global protected photo serve — satu route untuk kedua portal
+Route::get('presensi/photo/{path}', [PresensiPhotoController::class, 'show'])
+    ->where('path', '.*')
+    ->middleware('auth:web_admin,web_mobile')
+    ->name('presensi.photo');
 
 $adminDomain = config('domains.admin');
 $mobileDomain = config('domains.mobile');

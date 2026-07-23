@@ -4,7 +4,6 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileIzinController;
-use App\Http\Controllers\PresensiPhotoController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
@@ -28,21 +27,12 @@ Route::middleware('auth:web_mobile')->group(function () {
         ->middleware('throttle:30,1')->name('presensi.jadwal.siswa');
     Route::post('/jadwal/siswa/absen-batch', [MobileController::class, 'siswaAbsenBatch'])
         ->middleware('throttle:10,1')->name('presensi.jadwal.siswa.absen-batch');
-    Route::get('presensi/photo/{path}', [PresensiPhotoController::class, 'show'])
-        ->where('path', '.*')
-        ->name('presensi.photo');
-
     Route::get('/riwayat', [MobileController::class, 'riwayat'])->name('presensi.riwayat');
 
     // Rute Izin Mobile
     Route::get('/izin', [MobileIzinController::class, 'index'])->name('presensi.izin.index');
     Route::get('/izin/create', [MobileIzinController::class, 'create'])->name('presensi.izin.create');
     Route::post('/izin', [MobileIzinController::class, 'store'])->name('presensi.izin.store');
-
-    // Photo serve (protected)
-    Route::get('presensi/photo/{path}', [PresensiPhotoController::class, 'show'])
-        ->where('path', '.*')
-        ->name('presensi.photo');
 
     Route::get('/absen', [MobileController::class, 'absen'])->name('presensi.absen');
     Route::post('/absen', [MobileController::class, 'storeAbsen'])

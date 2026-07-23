@@ -88,18 +88,26 @@ class PegawaiController extends Controller
             });
         }
 
+        if ($request->filled('jabatan_id')) {
+            $query->whereHas('jabatans', function ($q) use ($request) {
+                $q->where('jabatan.id', $request->jabatan_id);
+            });
+        }
+
         $pegawais = $query->paginate(10)->withQueryString();
 
         $unitSekolahs = UnitSekolah::all();
         $mataPelajarans = MataPelajaran::all();
+        $jabatans = Jabatan::orderBy('nama')->get();
 
         return inertia('Pegawai/Index', [
             'pegawais' => $pegawais,
-            'filters' => $request->only(['search', 'unit_sekolah_id', 'mata_pelajaran_id']),
+            'filters' => $request->only(['search', 'unit_sekolah_id', 'mata_pelajaran_id', 'jabatan_id']),
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'userUnitId' => $user->unit_sekolah_id,
             'unitSekolahs' => $unitSekolahs,
             'mataPelajarans' => $mataPelajarans,
+            'jabatans' => $jabatans,
         ]);
     }
 
@@ -160,7 +168,7 @@ class PegawaiController extends Controller
         $pegawaiData['user_id'] = $user->id;
 
         if ($request->hasFile('foto')) {
-            $path = $request->file('foto')->store('pegawai_fotos', 'public');
+            $path = $request->file('foto')->store('pegawai_fotos', 'presensi');
             $pegawaiData['foto'] = $path;
         }
 
@@ -280,9 +288,9 @@ class PegawaiController extends Controller
 
         if ($request->hasFile('foto')) {
             if ($pegawai->foto) {
-                Storage::disk('public')->delete(str_replace('/storage/', '', $pegawai->foto));
+                Storage::disk('presensi')->delete($pegawai->foto);
             }
-            $path = $request->file('foto')->store('pegawai_fotos', 'public');
+            $path = $request->file('foto')->store('pegawai_fotos', 'presensi');
             $dataToUpdate['foto'] = $path;
         }
 
@@ -339,6 +347,10 @@ class PegawaiController extends Controller
         $request->validate([
             'alasan_nonaktif' => 'required|string|max:255',
         ]);
+
+        if ($pegawai->foto) {
+            Storage::disk('presensi')->delete($pegawai->foto);
+        }
 
         $pegawai->update([
             'status_aktif' => 'nonaktif',

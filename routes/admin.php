@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\JabatanController;
 use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\KomponenGajiController;
 use App\Http\Controllers\LaporanController;
@@ -11,7 +12,6 @@ use App\Http\Controllers\PegawaiKomponenController;
 use App\Http\Controllers\PengajuanIzinController;
 use App\Http\Controllers\PenggajianController;
 use App\Http\Controllers\PresensiController;
-use App\Http\Controllers\PresensiPhotoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleManagementController;
 use App\Http\Controllers\SkalaMasaBaktiController;
@@ -151,11 +151,6 @@ Route::middleware('auth:web_admin')->group(function () {
         ->middleware('throttle:60,1')
         ->name('pengajuan-izin.reject');
 
-    // Photo serve (protected)
-    Route::get('presensi/photo/{path}', [PresensiPhotoController::class, 'show'])
-        ->where('path', '.*')
-        ->name('presensi.photo');
-
     // Laporan
     Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
     Route::get('laporan/preview', [LaporanController::class, 'preview'])->name('laporan.preview');
@@ -189,6 +184,7 @@ Route::middleware('auth:web_admin')->group(function () {
             ->middleware('throttle:10,1')
             ->name('backup.download');
         Route::resource('mata-pelajaran', MataPelajaranController::class)->only(['index', 'store', 'destroy'])->middleware('throttle:60,1');
+        Route::resource('jabatan', JabatanController::class)->except(['show', 'create', 'edit'])->middleware('throttle:60,1');
     });
 });
 

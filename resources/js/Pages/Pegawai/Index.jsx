@@ -4,10 +4,11 @@ import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 
-export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelajarans }) {
+export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelajarans, jabatans }) {
     const [search, setSearch] = useState(filters.search || '');
     const [unitSekolahId, setUnitSekolahId] = useState(filters.unit_sekolah_id || '');
     const [mataPelajaranId, setMataPelajaranId] = useState(filters.mata_pelajaran_id || '');
+    const [jabatanId, setJabatanId] = useState(filters.jabatan_id || '');
     const [showImportModal, setShowImportModal] = useState(false);
 
     const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
@@ -27,7 +28,7 @@ export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelaj
 
     const handleSearch = (e) => {
         e.preventDefault();
-        router.get(route('pegawai.index'), { search, unit_sekolah_id: unitSekolahId, mata_pelajaran_id: mataPelajaranId }, { preserveState: true });
+        router.get(route('pegawai.index'), { search, unit_sekolah_id: unitSekolahId, mata_pelajaran_id: mataPelajaranId, jabatan_id: jabatanId }, { preserveState: true });
     };
 
     return (
@@ -72,7 +73,7 @@ export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelaj
                             </div>
 
                             <form onSubmit={handleSearch} className="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200 shadow-sm">
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                     <div className="md:col-span-1">
                                         <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">Cari Nama / NIK</label>
                                         <div className="relative">
@@ -113,6 +114,19 @@ export default function Index({ auth, pegawais, filters, unitSekolahs, mataPelaj
                                             <option value="">Semua Mata Pelajaran</option>
                                             {mataPelajarans && mataPelajarans.map(mapel => (
                                                 <option key={mapel.id} value={mapel.id}>{mapel.nama}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-1">
+                                        <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">Jabatan</label>
+                                        <select
+                                            value={jabatanId}
+                                            onChange={(e) => setJabatanId(e.target.value)}
+                                            className="w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg shadow-sm sm:text-sm"
+                                        >
+                                            <option value="">Semua Jabatan</option>
+                                            {jabatans && jabatans.map(j => (
+                                                <option key={j.id} value={j.id}>{j.nama}</option>
                                             ))}
                                         </select>
                                     </div>
