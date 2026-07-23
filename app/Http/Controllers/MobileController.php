@@ -390,6 +390,8 @@ class MobileController extends Controller
             'unit' => $unit->nama,
             'time' => $now->format('H:i:s').' WIB',
             'date' => $now->locale('id')->isoFormat('dddd, D MMMM YYYY'),
+            'coordinates' => number_format((float) $request->latitude, 6).', '.number_format((float) $request->longitude, 6),
+            'accuracy' => number_format($accuracy, 0).'m',
         ];
 
         $imageName = app(ImageUploadService::class)->storeBase64($request->foto, $isLembur ? 'presensi/lembur' : 'presensi', $overlayData);

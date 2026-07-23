@@ -58,8 +58,17 @@ class PhotoOverlayService
         $width = imagesx($img);
         $height = imagesy($img);
 
-        $panelH = (int) round($height * 0.12);
-        $pad = max(10, (int) round($width * 0.025));
+        $pad = max(12, (int) round($width * 0.030));
+        $lineH = max(12, (int) round($width * 0.028));
+
+        $titleSz = max(14, (int) round($width * 0.030));
+        $bodySz = max(11, (int) round($width * 0.024));
+        $smallSz = max(9, (int) round($width * 0.020));
+
+        $lines = 3;
+        if (! empty($data['coordinates'])) $lines++;
+        $panelH = min($lines * ($titleSz + 8) + $pad * 2, (int) round($height * 0.20));
+        $panelTop = $height - $panelH;
 
         $panel = imagecolorallocatealpha($img, 0, 0, 0, 75);
         $white = imagecolorallocate($img, 255, 255, 255);
@@ -67,22 +76,18 @@ class PhotoOverlayService
         $emerald = imagecolorallocate($img, 110, 231, 183);
         $amber = imagecolorallocate($img, 252, 211, 77);
 
-        imagefilledrectangle($img, 0, 0, $width, $panelH, $panel);
+        imagefilledrectangle($img, 0, $panelTop, $width, $height, $panel);
 
         $isLembur = ! empty($data['is_lembur']);
         $labelColor = $isLembur ? $amber : $emerald;
 
-        $titleSz = max(13, (int) round($width * 0.028));
-        $bodySz = max(10, (int) round($width * 0.022));
-        $smallSz = max(9, (int) round($width * 0.018));
-
-        $y = $pad;
+        $y = $panelTop + $pad;
 
         $labelText = $data['label'] ?? 'BUKTI PRESENSI';
         $timeText = $data['time'] ?? '';
         $line = $labelText.($timeText ? '  |  '.$timeText : '');
         $this->text($img, $titleSz, $pad, $y, $labelColor, $this->fontBold, $line);
-        $y += $titleSz + 5;
+        $y += $titleSz + 6;
 
         $nameUnit = '';
         if (! empty($data['pegawai'])) {
@@ -93,12 +98,24 @@ class PhotoOverlayService
         }
         if ($nameUnit) {
             $this->text($img, $bodySz, $pad, $y, $white, $this->fontBold, $nameUnit);
-            $y += $bodySz + 3;
+            $y += $bodySz + 4;
         }
 
         $dateText = $data['date'] ?? '';
         if ($dateText) {
             $this->text($img, $smallSz, $pad, $y, $gray, $this->fontRegular, $dateText);
+            $y += $smallSz + 4;
+        }
+
+        $coordLine = '';
+        if (! empty($data['coordinates'])) {
+            $coordLine .= $data['coordinates'];
+        }
+        if (! empty($data['accuracy'])) {
+            $coordLine .= ($coordLine ? ' | ' : '').'Akurasi: '.$data['accuracy'];
+        }
+        if ($coordLine) {
+            $this->text($img, $smallSz, $pad, $y, $white, $this->fontRegular, $coordLine);
         }
     }
 
