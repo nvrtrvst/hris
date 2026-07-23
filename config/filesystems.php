@@ -17,6 +17,8 @@ return [
 
     'image_disk' => env('FILESYSTEM_IMAGE_DISK', 'public'),
 
+    'presensi_disk' => env('FILESYSTEM_PRESENSI_DISK', 'presensi'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
@@ -45,6 +47,13 @@ return [
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'presensi' => [
+            'driver' => 'local',
+            'root' => storage_path('app/presensi'),
             'throw' => false,
             'report' => false,
         ],

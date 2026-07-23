@@ -18,7 +18,7 @@ class FileHelper
         }
 
         if (! Route::has('presensi.photo')) {
-            $disk = config('filesystems.image_disk', 'public');
+            $disk = config('filesystems.presensi_disk', 'presensi');
 
             return Storage::disk($disk)->url($path);
         }

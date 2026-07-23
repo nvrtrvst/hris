@@ -10,7 +10,7 @@ class PresensiPhotoController extends Controller
 {
     public function show(Request $request, string $path)
     {
-        $disk = config('filesystems.image_disk', 'public');
+        $disk = config('filesystems.presensi_disk', 'presensi');
         $fullPath = ltrim($path, '/');
 
         if (! Storage::disk($disk)->exists($fullPath)) {

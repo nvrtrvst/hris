@@ -57,7 +57,7 @@ class ImageUploadService
             }
         }
 
-        $disk = config('filesystems.image_disk', 'public');
+        $disk = config('filesystems.presensi_disk', 'presensi');
 
         if ($pegawai) {
             $sub = $pegawai['id'].'_'.Str::slug($pegawai['nama'], '_');
