@@ -11,6 +11,7 @@ use App\Http\Controllers\PegawaiKomponenController;
 use App\Http\Controllers\PengajuanIzinController;
 use App\Http\Controllers\PenggajianController;
 use App\Http\Controllers\PresensiController;
+use App\Http\Controllers\PresensiPhotoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleManagementController;
 use App\Http\Controllers\SkalaMasaBaktiController;
@@ -149,6 +150,11 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::post('/pengajuan-izin/{id}/reject', [PengajuanIzinController::class, 'reject'])
         ->middleware('throttle:60,1')
         ->name('pengajuan-izin.reject');
+
+    // Photo serve (protected)
+    Route::get('presensi/photo/{path}', [PresensiPhotoController::class, 'show'])
+        ->where('path', '.*')
+        ->name('presensi.photo');
 
     // Laporan
     Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');

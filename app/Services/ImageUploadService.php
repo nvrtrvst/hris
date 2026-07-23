@@ -8,18 +8,16 @@ use Illuminate\Support\Str;
 class ImageUploadService
 {
     /**
-     * Simpan base64 image ke disk sebagai WebP dengan nama UUID.
-     * Otomatis resize ke max 640px + kompresi quality 60.
+     * Simpan base64 image ke disk sebagai WebP.
+     * Kalo $pegawai disediakan: folder/{id}_{slug_nama}/{timestamp}.webp
+     * Kalo null: folder/{uuid}.webp
      *
-     * @param  string  $base64  String base64 (format: data:image/jpeg;base64,....)
-     * @param  string  $folder  Subfolder di dalam storage/app/public (mis. 'presensi')
-     * @param  array|null  $overlayData  Data untuk server-side photo burn-in (null = skip overlay)
-     * @param  int  $maxBytes  Batas ukuran decode (default 5 MB)
-     * @return string Path relatif (mis. 'presensi/uuid.webp')
-     *
-     * @throws \InvalidArgumentException jika format/mime tidak valid atau terlalu besar
+     * @param  string  $folder  Subfolder (mis. 'presensi', 'presensi/lembur', 'izin')
+     * @param  array|null  $overlayData  Server-side photo burn-in
+     * @param  array|null  $pegawai  ['id' => int, 'nama' => string] untuk folder per-pegawai
+     * @return string Path relatif
      */
-    public function storeBase64(string $base64, string $folder = 'presensi', ?array $overlayData = null, int $maxBytes = 5 * 1024 * 1024): string
+    public function storeBase64(string $base64, string $folder = 'presensi', ?array $overlayData = null, int $maxBytes = 5 * 1024 * 1024, ?array $pegawai = null): string
     {
         if (! preg_match('/^data:image\/(\w+);base64,/', $base64, $matches)) {
             throw new \InvalidArgumentException('Format gambar base64 tidak valid.');
@@ -60,7 +58,15 @@ class ImageUploadService
         }
 
         $disk = config('filesystems.image_disk', 'public');
-        $fileName = $folder.'/'.Str::uuid().'.webp';
+
+        if ($pegawai) {
+            $sub = $pegawai['id'].'_'.Str::slug($pegawai['nama'], '_');
+            $actualFolder = $folder.'/'.$sub;
+            $fileName = $actualFolder.'/'.now()->format('Y-m-d_H-i-s').'.webp';
+        } else {
+            $fileName = $folder.'/'.Str::uuid().'.webp';
+        }
+
         Storage::disk($disk)->put($fileName, $decoded);
 
         return $fileName;

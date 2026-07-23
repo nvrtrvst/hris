@@ -143,9 +143,14 @@ class PresensiController extends Controller
             return back()->withErrors(['geofence' => "Anda berada di luar jangkauan Unit Sekolah. Jarak Anda: {$distance} meter (Batas: {$unit->radius_meter}m)"]);
         }
 
-        // Simpan Foto (UUID, hindari path traversal via nama pegawai)
         $pegawai = Pegawai::findOrFail($request->pegawai_id);
-        $imageName = app(ImageUploadService::class)->storeBase64($request->foto, 'presensi');
+        $imageName = app(ImageUploadService::class)->storeBase64(
+            $request->foto,
+            'presensi',
+            null,
+            5 * 1024 * 1024,
+            ['id' => $pegawai->id, 'nama' => $pegawai->nama_lengkap]
+        );
 
         DB::transaction(function () use ($request, $unit, $distance, $imageName) {
             $presensi = Presensi::where('pegawai_id', $request->pegawai_id)

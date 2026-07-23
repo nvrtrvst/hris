@@ -394,7 +394,13 @@ class MobileController extends Controller
             'accuracy' => number_format($accuracy, 0).'m',
         ];
 
-        $imageName = app(ImageUploadService::class)->storeBase64($request->foto, $isLembur ? 'presensi/lembur' : 'presensi', $overlayData);
+        $imageName = app(ImageUploadService::class)->storeBase64(
+            $request->foto,
+            $isLembur ? 'presensi/lembur' : 'presensi',
+            $overlayData,
+            5 * 1024 * 1024,
+            ['id' => $pegawai->id, 'nama' => $pegawai->nama_lengkap]
+        );
 
         DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $imageName, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan, $tipePresensi, $hariIni) {
             // Cari presensi existing

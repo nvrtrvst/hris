@@ -66,7 +66,9 @@ class PhotoOverlayService
         $smallSz = max(9, (int) round($width * 0.020));
 
         $lines = 3;
-        if (! empty($data['coordinates'])) $lines++;
+        if (! empty($data['coordinates'])) {
+            $lines++;
+        }
         $panelH = min($lines * ($titleSz + 8) + $pad * 2, (int) round($height * 0.20));
         $panelTop = $height - $panelH;
 
