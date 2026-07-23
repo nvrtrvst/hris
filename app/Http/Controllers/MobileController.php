@@ -363,7 +363,20 @@ class MobileController extends Controller
         $lokasiPerluReview = $mockSuspect || ($accuracy !== null && $accuracy < 10);
         $capturedAt = $request->filled('captured_at') ? Carbon::parse($request->captured_at) : null;
 
-        $imageName = app(ImageUploadService::class)->storeBase64($request->foto, $isLembur ? 'presensi/lembur' : 'presensi');
+        $now = Carbon::now();
+        $overlayData = [
+            'label' => $isLembur ? 'BUKTI LEMBUR' : 'BUKTI PRESENSI',
+            'is_lembur' => $isLembur,
+            'pegawai' => $pegawai->nama_lengkap,
+            'unit' => $unit->nama,
+            'time' => $now->format('H:i:s').' WIB',
+            'date' => $now->locale('id')->isoFormat('dddd, D MMMM YYYY'),
+            'coordinates' => number_format((float) $request->latitude, 6).', '.number_format((float) $request->longitude, 6),
+            'distance' => number_format($distance, 0).' meter',
+            'accuracy' => number_format($accuracy, 0).' meter',
+        ];
+
+        $imageName = app(ImageUploadService::class)->storeBase64($request->foto, $isLembur ? 'presensi/lembur' : 'presensi', $overlayData);
 
         DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $imageName, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $tipePresensi, $hariIni) {
             // Cari presensi existing

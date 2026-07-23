@@ -13,12 +13,13 @@ class ImageUploadService
      *
      * @param  string  $base64  String base64 (format: data:image/jpeg;base64,....)
      * @param  string  $folder  Subfolder di dalam storage/app/public (mis. 'presensi')
+     * @param  array|null  $overlayData  Data untuk server-side photo burn-in (null = skip overlay)
      * @param  int  $maxBytes  Batas ukuran decode (default 5 MB)
      * @return string Path relatif terhadap storage/app/public (mis. 'presensi/uuid.jpg')
      *
      * @throws \InvalidArgumentException jika format/mime tidak valid atau terlalu besar
      */
-    public function storeBase64(string $base64, string $folder = 'presensi', int $maxBytes = 5 * 1024 * 1024): string
+    public function storeBase64(string $base64, string $folder = 'presensi', ?array $overlayData = null, int $maxBytes = 5 * 1024 * 1024): string
     {
         if (! preg_match('/^data:image\/(\w+);base64,/', $base64, $matches)) {
             throw new \InvalidArgumentException('Format gambar base64 tidak valid.');
@@ -43,6 +44,11 @@ class ImageUploadService
         $mime = $finfo->buffer($decoded);
         if (! in_array($mime, ['image/jpeg', 'image/png', 'image/webp'])) {
             throw new \InvalidArgumentException('Konten bukan gambar yang valid.');
+        }
+
+        // Server-side photo burn-in jika data overlay disediakan
+        if ($overlayData !== null) {
+            $decoded = app(PhotoOverlayService::class)->applyToImage($decoded, $overlayData);
         }
 
         $disk = config('filesystems.image_disk', 'public');
