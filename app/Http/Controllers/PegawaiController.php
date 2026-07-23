@@ -10,8 +10,10 @@ use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\UnitSekolah;
 use App\Models\User;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -199,7 +201,6 @@ class PegawaiController extends Controller
         $jabatans = Jabatan::all();
         $mapels = MataPelajaran::orderBy('nama')->get();
 
-
         // Opsi 2: expose decrypted NIK hanya untuk user dengan permission view_sensitive_data
         // Default model $hidden = ['nik'] agar tidak bocor via Index/Show. Edit butuh plaintext
         // agar field tidak kosong dan user tidak dipaksa retype.
@@ -214,15 +215,17 @@ class PegawaiController extends Controller
                 // by JWT-shaped prefix and peel one extra layer. Read-only, never writes
                 // back, so DB stays as-is until a separate normalize pass runs.
                 if (is_string($plain) && preg_match('/^eyJ[A-Za-z0-9+\/=]+$/', $plain)) {
-                    try { $plain = \Crypt::decryptString($plain); }
-                    catch (\Throwable) { $plain = null; }
+                    try {
+                        $plain = \Crypt::decryptString($plain);
+                    } catch (\Throwable) {
+                        $plain = null;
+                    }
                 }
                 $pegawai->nik_plain = $plain;
-            } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+            } catch (DecryptException $e) {
                 $pegawai->nik_plain = null;
             }
         }
-
 
         return inertia('Pegawai/Edit', [
             'pegawai' => $pegawai,
@@ -405,7 +408,7 @@ class PegawaiController extends Controller
      */
     public function nikAsli(Pegawai $pegawai)
     {
-        \Illuminate\Support\Facades\Gate::authorize('view_sensitive_data');
+        Gate::authorize('view_sensitive_data');
 
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {

@@ -15,7 +15,7 @@ class PhotoOverlayService
         $this->fontBold = $fontBold ?? $base.'/Figtree-Bold.ttf';
     }
 
-    public function applyToImage(string $imageContent, array $data): string
+    public function applyToImage(string $imageContent, array $data, int $maxDim = 640, int $quality = 60): string
     {
         $img = @imagecreatefromstring($imageContent);
         if ($img === false) {
@@ -24,8 +24,9 @@ class PhotoOverlayService
 
         try {
             $this->renderOverlay($img, $data);
+            $img = $this->resize($img, $maxDim);
             ob_start();
-            imagejpeg($img, null, 85);
+            imagewebp($img, null, $quality);
 
             return ob_get_clean();
         } finally {
@@ -33,70 +34,71 @@ class PhotoOverlayService
         }
     }
 
+    private function resize($img, int $maxDim)
+    {
+        $w = imagesx($img);
+        $h = imagesy($img);
+        if ($w <= $maxDim && $h <= $maxDim) {
+            return $img;
+        }
+
+        $ratio = min($maxDim / $w, $maxDim / $h);
+        $nw = (int) round($w * $ratio);
+        $nh = (int) round($h * $ratio);
+
+        $resized = imagecreatetruecolor($nw, $nh);
+        imagecopyresampled($resized, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        imagedestroy($img);
+
+        return $resized;
+    }
+
     private function renderOverlay($img, array $data): void
     {
         $width = imagesx($img);
         $height = imagesy($img);
 
-        $panelH = (int) round($height * 0.35);
-        $panelTop = $height - $panelH;
-        $pad = max(14, (int) round($width * 0.035));
+        $panelH = (int) round($height * 0.12);
+        $pad = max(10, (int) round($width * 0.025));
 
-        $panel = imagecolorallocatealpha($img, 0, 0, 0, 80);
+        $panel = imagecolorallocatealpha($img, 0, 0, 0, 75);
         $white = imagecolorallocate($img, 255, 255, 255);
         $gray = imagecolorallocate($img, 200, 212, 220);
         $emerald = imagecolorallocate($img, 110, 231, 183);
         $amber = imagecolorallocate($img, 252, 211, 77);
 
-        imagefilledrectangle($img, 0, $panelTop, $width, $height, $panel);
+        imagefilledrectangle($img, 0, 0, $width, $panelH, $panel);
 
         $isLembur = ! empty($data['is_lembur']);
         $labelColor = $isLembur ? $amber : $emerald;
 
-        $labelSz = max(14, (int) round($width * 0.032));
-        $timeSz = max(22, (int) round($width * 0.052));
-        $bodySz = max(11, (int) round($width * 0.025));
-        $smallSz = max(9, (int) round($width * 0.020));
+        $titleSz = max(13, (int) round($width * 0.028));
+        $bodySz = max(10, (int) round($width * 0.022));
+        $smallSz = max(9, (int) round($width * 0.018));
 
-        $y = $panelTop + $pad;
+        $y = $pad;
 
-        $this->text($img, $labelSz, $pad, $y, $labelColor, $this->fontBold, $data['label'] ?? 'BUKTI PRESENSI');
-        $y += $labelSz + 6;
+        $labelText = $data['label'] ?? 'BUKTI PRESENSI';
+        $timeText = $data['time'] ?? '';
+        $line = $labelText.($timeText ? '  |  '.$timeText : '');
+        $this->text($img, $titleSz, $pad, $y, $labelColor, $this->fontBold, $line);
+        $y += $titleSz + 5;
 
-        if (! empty($data['time'])) {
-            $this->text($img, $timeSz, $pad, $y, $white, $this->fontBold, $data['time']);
-            $y += $timeSz + 5;
-        }
-
+        $nameUnit = '';
         if (! empty($data['pegawai'])) {
-            $this->text($img, $bodySz, $pad, $y, $white, $this->fontBold, $data['pegawai']);
-            $y += $bodySz + 4;
+            $nameUnit .= $data['pegawai'];
         }
-
         if (! empty($data['unit'])) {
-            $this->text($img, $bodySz, $pad, $y, $gray, $this->fontRegular, $data['unit']);
-            $y += $bodySz + 4;
+            $nameUnit .= ' - '.$data['unit'];
+        }
+        if ($nameUnit) {
+            $this->text($img, $bodySz, $pad, $y, $white, $this->fontBold, $nameUnit);
+            $y += $bodySz + 3;
         }
 
-        if (! empty($data['date'])) {
-            $this->text($img, $smallSz, $pad, $y, $gray, $this->fontRegular, $data['date']);
-            $y += $smallSz + 4;
-        }
-
-        $coordLine = '';
-        if (! empty($data['coordinates'])) {
-            $coordLine .= $data['coordinates'];
-        }
-        if (! empty($data['distance'])) {
-            $coordLine .= ' | Jarak: '.$data['distance'];
-        }
-        if ($coordLine) {
-            $this->text($img, $smallSz, $pad, $y, $white, $this->fontRegular, $coordLine);
-            $y += $smallSz + 3;
-        }
-
-        if (! empty($data['accuracy'])) {
-            $this->text($img, $smallSz, $pad, $y, $gray, $this->fontRegular, $data['accuracy']);
+        $dateText = $data['date'] ?? '';
+        if ($dateText) {
+            $this->text($img, $smallSz, $pad, $y, $gray, $this->fontRegular, $dateText);
         }
     }
 

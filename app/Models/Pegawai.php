@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Crypt;
 
 #[ObservedBy([PegawaiObserver::class])]
 class Pegawai extends Model
@@ -110,7 +111,7 @@ class Pegawai extends Model
             } elseif (str_starts_with($raw, 'eyJ')) {
                 // Branch B: ciphertext Laravel (`{"iv":"..."}` base64). Decrypt normal.
                 try {
-                    $plaintext = trim(\Illuminate\Support\Facades\Crypt::decryptString($raw));
+                    $plaintext = trim(Crypt::decryptString($raw));
                 } catch (\Throwable) {
                     // Gagal decrypt (data korup). Skip — backfill command akan perbaiki.
                     return;
@@ -123,7 +124,7 @@ class Pegawai extends Model
             // Tetapkan hash + ciphertext dari plaintext hasil normalisasi.
             // Re-assign ciphertext agar konsisten walau cast sudah handle.
             $pegawai->nik = $plaintext !== ''
-                ? \Illuminate\Support\Facades\Crypt::encryptString($plaintext)
+                ? Crypt::encryptString($plaintext)
                 : null;
             $pegawai->nik_hash = $plaintext !== '' ? hash('sha256', $plaintext) : null;
         });
@@ -238,7 +239,7 @@ class Pegawai extends Model
         $prefix = mb_substr($plain, 0, 4);
         $suffix = mb_substr($plain, -4);
 
-        return $prefix . str_repeat('*', 8) . $suffix;
+        return $prefix.str_repeat('*', 8).$suffix;
     }
 
     public function jadwals(): HasMany

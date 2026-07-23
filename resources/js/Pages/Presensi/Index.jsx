@@ -10,9 +10,10 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
     const [unitId, setUnitId] = React.useState(filters?.unit_id || '');
     const [lemburFilter, setLemburFilter] = React.useState(filters?.lembur_filter || '');
     const [lokasiFilter, setLokasiFilter] = React.useState(filters?.lokasi_filter || '');
+    const [suspiciousFilter, setSuspiciousFilter] = React.useState(filters?.suspicious_filter || '');
 
     const applyFilter = () => {
-        router.get(route('presensi.index'), { start_date: startDate, end_date: endDate, unit_id: unitId, lembur_filter: lemburFilter, lokasi_filter: lokasiFilter }, { preserveState: true });
+        router.get(route('presensi.index'), { start_date: startDate, end_date: endDate, unit_id: unitId, lembur_filter: lemburFilter, lokasi_filter: lokasiFilter, suspicious_filter: suspiciousFilter }, { preserveState: true });
     };
 
     return (
@@ -55,6 +56,10 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                             <option value="">Semua Lokasi</option>
                                             <option value="perlu_review">Perlu Review GPS</option>
                                             <option value="pulang_awal">Pulang Awal</option>
+                                        </select>
+                                        <select className="border-gray-300 rounded-md shadow-sm text-xs h-8 pr-8" value={suspiciousFilter} onChange={e => setSuspiciousFilter(e.target.value)}>
+                                            <option value="">Semua GPS</option>
+                                            <option value="1">Posisi Mencurigakan</option>
                                         </select>
                                         <input type="date" className="border-gray-300 rounded-md shadow-sm text-xs h-8" value={startDate} onChange={e => setStartDate(e.target.value)} />
                                         <span className="text-gray-500">-</span>
@@ -200,6 +205,11 @@ export default function Index({ auth, presensis, pegawai, filters, units, userRo
                                                         {presensi.lokasi_perlu_review && (
                                                             <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
                                                                 Perlu review
+                                                            </span>
+                                                        )}
+                                                        {presensi.posisi_mencurigakan && (
+                                                            <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                                                Posisi mencurigakan
                                                             </span>
                                                         )}
                                                     </td>

@@ -21,6 +21,7 @@ class PresensiController extends Controller
     {
         $request->validate([
             'lokasi_filter' => 'nullable|in:perlu_review,pulang_awal',
+            'suspicious_filter' => 'nullable|boolean',
         ]);
 
         $user = auth()->user();
@@ -68,8 +69,12 @@ class PresensiController extends Controller
             $query->where('lokasi_perlu_review', true);
         }
 
+        if ($request->suspicious_filter) {
+            $query->where('posisi_mencurigakan', true);
+        }
+
         $presensis = $query->orderBy('tanggal', 'desc')->paginate(10);
-        $presensis->appends($request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter']));
+        $presensis->appends($request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter']));
 
         $units = [];
         if ($user->can('view_all_units')) {
@@ -79,7 +84,7 @@ class PresensiController extends Controller
         return inertia('Presensi/Index', [
             'presensis' => $presensis,
             'pegawai' => $isAdmin ? null : ($pegawai ?? null),
-            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter']),
+            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter']),
             'units' => $units,
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
         ]);

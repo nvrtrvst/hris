@@ -31,20 +31,23 @@ return new class extends Migration
                     // Skip kalau sudah ciphertext Laravel (base64 JSON: {"iv":...}).
                     if (str_starts_with($raw, 'eyJ')) {
                         $skipped++;
+
                         continue;
                     }
 
                     // Skip kalau bukan digit polos (data korup atau format lain).
                     if (! preg_match('/^\d{8,}$/', $raw)) {
                         $errored++;
+
                         continue;
                     }
 
                     try {
                         $cipher = Crypt::encryptString($raw);
                         $hash = hash('sha256', $raw);
-                    } catch (\Throwable) {
+                    } catch (Throwable) {
                         $errored++;
+
                         continue;
                     }
 

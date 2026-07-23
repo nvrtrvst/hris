@@ -33,6 +33,11 @@ class Presensi extends Model
         'kecepatan_keluar',
         'lokasi_perlu_review',
         'captured_at',
+        'pos_a_lat',
+        'pos_a_lng',
+        'pos_a_accuracy',
+        'pos_a_captured_at',
+        'posisi_mencurigakan',
         'keterangan',
         'is_lembur',
         'lembur_status',
@@ -42,6 +47,8 @@ class Presensi extends Model
         'tanggal' => 'date',
         'lokasi_perlu_review' => 'boolean',
         'captured_at' => 'datetime',
+        'pos_a_captured_at' => 'datetime',
+        'posisi_mencurigakan' => 'boolean',
         'is_lembur' => 'boolean',
     ];
 

@@ -6,7 +6,6 @@ use App\Helpers\FileHelper;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
@@ -15,12 +14,15 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     protected $start_date;
+
     protected $end_date;
+
     protected $unit_id;
 
     public function __construct($start_date, $end_date, $unit_id = null)
@@ -123,7 +125,7 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
 
                 $sheet->mergeCells('A4:H4');
                 $sheet->setCellValue('A4', '*Hanya menampilkan lembur yang sudah DISETUJUI');
-                $sheet->getStyle('A4')->getFont()->setItalic(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF6B7280'));
+                $sheet->getStyle('A4')->getFont()->setItalic(true)->setColor(new Color('FF6B7280'));
 
                 // Styling for Headings
                 $sheet->getStyle('A7:H7')->applyFromArray([

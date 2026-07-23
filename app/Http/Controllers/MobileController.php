@@ -286,6 +286,10 @@ class MobileController extends Controller
             'speed' => 'nullable|numeric|min:0',
             'captured_at' => 'nullable|date',
             'mock_suspect' => 'nullable|boolean',
+            'pos_a_lat' => 'nullable|numeric|between:-90,90',
+            'pos_a_lng' => 'nullable|numeric|between:-180,180',
+            'pos_a_accuracy' => 'nullable|numeric|min:0',
+            'pos_a_captured_at' => 'nullable|date',
             'foto' => ['required', 'string', 'max:7000000', 'regex:/^data:image\/\w+;base64,/'],
         ]);
 
@@ -360,6 +364,21 @@ class MobileController extends Controller
             return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
         }
 
+        $posisiMencurigakan = false;
+        if ($request->filled('pos_a_lat') && $request->filled('pos_a_lng')) {
+            $jarakAB = $this->calculateDistance($request->pos_a_lat, $request->pos_a_lng, $request->latitude, $request->longitude);
+            $waktuAB = null;
+            if ($request->filled('pos_a_captured_at') && $request->filled('captured_at')) {
+                $waktuAB = Carbon::parse($request->pos_a_captured_at)->diffInSeconds(Carbon::parse($request->captured_at));
+            }
+            if ($jarakAB < 3 && $waktuAB !== null && $waktuAB > 10) {
+                $posisiMencurigakan = true;
+            }
+            if ($request->filled('pos_a_accuracy') && (string) $request->pos_a_accuracy === (string) $request->accuracy) {
+                $posisiMencurigakan = true;
+            }
+        }
+
         $lokasiPerluReview = $mockSuspect || ($accuracy !== null && $accuracy < 10);
         $capturedAt = $request->filled('captured_at') ? Carbon::parse($request->captured_at) : null;
 
@@ -371,14 +390,11 @@ class MobileController extends Controller
             'unit' => $unit->nama,
             'time' => $now->format('H:i:s').' WIB',
             'date' => $now->locale('id')->isoFormat('dddd, D MMMM YYYY'),
-            'coordinates' => number_format((float) $request->latitude, 6).', '.number_format((float) $request->longitude, 6),
-            'distance' => number_format($distance, 0).' meter',
-            'accuracy' => number_format($accuracy, 0).' meter',
         ];
 
         $imageName = app(ImageUploadService::class)->storeBase64($request->foto, $isLembur ? 'presensi/lembur' : 'presensi', $overlayData);
 
-        DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $imageName, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $tipePresensi, $hariIni) {
+        DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $imageName, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan, $tipePresensi, $hariIni) {
             // Cari presensi existing
             if ($isLembur) {
                 $presensi = Presensi::where('pegawai_id', $pegawai->id)
@@ -425,6 +441,11 @@ class MobileController extends Controller
                 $presensi->kecepatan_masuk = $speed;
                 $presensi->captured_at = $capturedAt;
                 $presensi->lokasi_perlu_review = $lokasiPerluReview;
+                $presensi->pos_a_lat = $request->filled('pos_a_lat') ? $request->pos_a_lat : null;
+                $presensi->pos_a_lng = $request->filled('pos_a_lng') ? $request->pos_a_lng : null;
+                $presensi->pos_a_accuracy = $request->filled('pos_a_accuracy') ? $request->pos_a_accuracy : null;
+                $presensi->pos_a_captured_at = $request->filled('pos_a_captured_at') ? $request->pos_a_captured_at : null;
+                $presensi->posisi_mencurigakan = $posisiMencurigakan;
 
                 if ($isLembur) {
                     $presensi->status = 'hadir';
@@ -447,6 +468,11 @@ class MobileController extends Controller
                 $presensi->jarak_keluar_meter = $distance;
                 $presensi->akurasi_keluar = $accuracy;
                 $presensi->kecepatan_keluar = $speed;
+                $presensi->pos_a_lat = $request->filled('pos_a_lat') ? $request->pos_a_lat : null;
+                $presensi->pos_a_lng = $request->filled('pos_a_lng') ? $request->pos_a_lng : null;
+                $presensi->pos_a_accuracy = $request->filled('pos_a_accuracy') ? $request->pos_a_accuracy : null;
+                $presensi->pos_a_captured_at = $request->filled('pos_a_captured_at') ? $request->pos_a_captured_at : null;
+                $presensi->posisi_mencurigakan = $posisiMencurigakan;
 
                 if (! $isLembur && $tipePresensi === 'mengajar') {
                     $latestSelesai = Jadwal::where('pegawai_id', $pegawai->id)

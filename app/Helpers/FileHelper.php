@@ -19,6 +19,7 @@ class FileHelper
 
         // New: relative path — resolve via storage disk
         $disk = config('filesystems.image_disk', 'public');
+
         return Storage::disk($disk)->url($path);
     }
 }

@@ -21,6 +21,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const [currentPosition, setCurrentPosition] = useState(null);
     const [geoInfo, setGeoInfo] = useState(null);
     const [geoInfoLoading, setGeoInfoLoading] = useState(false);
+    const [posA, setPosA] = useState(null);
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
@@ -119,7 +120,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         if (!videoRef.current || !canvasRef.current) return;
         const video = videoRef.current;
         if (!video.videoWidth || !video.videoHeight) return;
-        
+
+        setPosA({ ...currentPosition, captured_at: new Date().toISOString() });
+
         setIsSubmitting(true);
         const dataUrl = await createEvidencePhoto(video, video.videoWidth, video.videoHeight);
         setCapturedPhoto(dataUrl);
@@ -274,6 +277,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         setIsSubmitting(true);
         const openPresensi = presensiHariIni?.find((p) => p.jam_masuk && !p.jam_keluar);
         const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const now = new Date().toISOString();
         const payload = {
             _token: token,
             foto: capturedPhoto,
@@ -284,7 +288,11 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             longitude: currentPosition?.longitude ?? null,
             accuracy: currentPosition?.accuracy ?? null,
             mock_suspect: currentPosition?.accuracy === 0,
-            captured_at: new Date().toISOString(),
+            captured_at: now,
+            pos_a_lat: posA?.latitude ?? null,
+            pos_a_lng: posA?.longitude ?? null,
+            pos_a_accuracy: posA?.accuracy ?? null,
+            pos_a_captured_at: posA?.captured_at ?? null,
         };
         try {
             const res = await fetch(route('presensi.absen.store'), {
@@ -432,7 +440,14 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                             <div className="pointer-events-none absolute inset-8 rounded-[42%] border border-white/35" />
                         </>
                     ) : capturedPhoto ? (
-                        <img src={capturedPhoto} alt="Pratinjau foto presensi" className="block w-full" />
+                        <>
+                            <img src={capturedPhoto} alt="Pratinjau foto presensi" className="block w-full" />
+                            {currentPosition && (
+                                <span className="absolute right-2 top-2 rounded-lg bg-black/65 px-2.5 py-1.5 font-mono text-[10px] font-bold tabular-nums text-white">
+                                    {currentPosition.latitude.toFixed(5)}, {currentPosition.longitude.toFixed(5)}
+                                </span>
+                            )}
+                        </>
                     ) : (
                                 <button
                                     type="button"
@@ -524,6 +539,57 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     </div>
                 )}
             </Card>
+
+            {capturedPhoto && currentPosition && (
+                <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                    <div className="relative h-48">
+                        {mapTileUrl && (
+                            <img
+                                src={mapTileUrl}
+                                alt="Peta lokasi presensi"
+                                width="512"
+                                height="256"
+                                loading="lazy"
+                                onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                                className="absolute inset-0 h-full w-full object-cover opacity-60"
+                            />
+                        )}
+                        <div className="absolute inset-0 bg-white/20" />
+                        <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center">
+                            <span className="absolute h-14 w-14 rounded-full bg-emerald-400/25" />
+                            <MapPin className="relative h-8 w-8 fill-primary text-white drop-shadow-lg" />
+                        </div>
+                        <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-3">
+                            <div className="rounded-lg bg-white/90 px-3 py-2 text-slate-900 shadow-sm backdrop-blur-sm">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">Lokasi presensi</p>
+                                <p className="mt-1 text-xs font-semibold">{targetUnit?.nama || targetUnit?.nama_unit || 'Unit sekolah'}</p>
+                                <p className="mt-1 font-mono text-[10px] tabular-nums text-slate-500">{currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}</p>
+                            </div>
+                            <div className={`rounded-lg px-2.5 py-2 text-[10px] font-bold ${geoReady && geofence.inside ? 'bg-emerald-400 text-emerald-950' : 'bg-rose-400 text-rose-950'}`}>
+                                {geoReady && geofence.inside ? 'Dalam radius' : 'Di luar radius'}
+                            </div>
+                        </div>
+                        <span className="absolute right-2 top-2 rounded bg-white/70 px-1.5 py-1 text-[8px] font-semibold text-slate-500" dangerouslySetInnerHTML={{ __html: MAP_ATTRIBUTION }}></span>
+                    </div>
+
+                    {posA && (
+                        <div className="border-t border-slate-200 bg-slate-50 px-4 py-3">
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Posisi A (saat foto)</p>
+                                    <p className="mt-0.5 font-mono text-xs tabular-nums text-slate-700">{posA.latitude.toFixed(6)}, {posA.longitude.toFixed(6)}</p>
+                                    <p className="text-[10px] text-slate-400">Akurasi {posA.accuracy?.toFixed(0)}m</p>
+                                </div>
+                                <div className="shrink-0 text-right">
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Posisi B (submit)</p>
+                                    <p className="mt-0.5 font-mono text-xs tabular-nums text-slate-700">{currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}</p>
+                                    <p className="text-[10px] text-slate-400">Akurasi {currentPosition.accuracy?.toFixed(0)}m</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {capturedPhoto && (
                 <div className="mt-3 flex justify-center">
