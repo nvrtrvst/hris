@@ -328,9 +328,9 @@ class PegawaiController extends Controller
             $userAcc = User::find($pegawai->user_id);
             if ($userAcc) {
                 $userAcc->update([
-                    'name' => $pegawai->nama_lengkap,
+                    'name' => $validated['nama_lengkap'],
                     'email' => $validated['email'],
-                    'username' => $pegawai->nip ?: $pegawai->nik,
+                    'username' => $validated['nip'] ?: $validated['nik'],
                 ]);
             }
         }
