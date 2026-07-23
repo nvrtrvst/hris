@@ -25,8 +25,7 @@ function SectionCard({ title, description, children }) {
 export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) {
     const { data, setData, post, processing, errors } = useForm({
         _method: 'put',
-        nik: pegawai.nik,
-        nik_plain: pegawai.nik_plain,
+        nik: pegawai.nik_plain ?? pegawai.nik,
         nip: pegawai.nip || '',
         nama_lengkap: pegawai.nama_lengkap,
         email: pegawai.user?.email || '',
@@ -167,7 +166,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                         <SectionCard title="Informasi Dasar">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">NIK <span className="text-red-500">*</span></label>
-                                <input type="text" value={data.nik_plain ?? data.nik ?? ''}
+                                <input type="text" value={data.nik}
                                     onChange={e => setData('nik', e.target.value)} className={inputClass} />
                                 {errors.nik && <p className="mt-1 text-sm text-red-600">{errors.nik}</p>}
                             </div>
