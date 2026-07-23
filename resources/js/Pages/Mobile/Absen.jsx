@@ -326,6 +326,13 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 setError(errMap[res.status] || data.message || 'Gagal mengirim presensi.');
                 return;
             }
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+                const body = await res.text().catch(() => '');
+                console.error('[Presensi] Response bukan JSON (200 OK), isi:', body.substring(0, 300));
+                setError('Server merespon dengan halaman HTML. Coba refresh halaman. Jika masih error, hubungi admin.');
+                return;
+            }
             const data = await res.json();
             if (data.success) {
                 setSuccessMessage(data.message || 'Presensi berhasil dikirim.');
@@ -345,6 +352,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             } else if (err instanceof TypeError && err.message === 'Failed to fetch') {
                 setError('Koneksi terputus. Periksa jaringan Anda dan coba lagi.');
             } else {
+                console.error('[Presensi] Error tak terduga:', err);
                 setError('Tidak dapat terhubung ke server. Periksa jaringan atau coba lagi nanti.');
             }
         } finally {
