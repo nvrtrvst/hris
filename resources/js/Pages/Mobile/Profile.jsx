@@ -1,12 +1,11 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { usePasskeyRegister } from '@laravel/passkeys/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import { Card } from '@/Components/MobileUI';
 import {
     Pencil, ChevronDown, User, Mail, Phone, Building2, BadgeCheck,
     CalendarDays, GraduationCap, KeyRound, ShieldAlert, LogOut, Check,
-    Smartphone, Fingerprint, MapPin, IdCard, Trash2,
+    MapPin, IdCard,
 } from 'lucide-react';
 
 function Field({ icon: Icon, label, value }) {
@@ -255,9 +254,6 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
                     </form>
                 </Section>
 
-                {/* PASSKEY */}
-                <PasskeySection />
-
                 {/* LOGOUT */}
                 <Link
                     href={route('presensi.logout')}
@@ -269,58 +265,8 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
                     Keluar
                 </Link>
 
-                {/* PASSKEY */}
-                <PasskeySection />
-
                 <div className="h-2" />
             </div>
         </MobileLayout>
-    );
-}
-
-function PasskeySection() {
-    const { register, isLoading, error, isSupported } = usePasskeyRegister({
-        onSuccess() {
-            router.reload({ only: ['auth'] });
-        },
-    });
-    const [passkeyOpen, setPasskeyOpen] = useState(false);
-
-    if (!isSupported) return null;
-
-    return (
-        <Section title="Sidik Jari / Wajah (Passkey)" icon={Fingerprint} accent="text-indigo-500" open={passkeyOpen} onToggle={() => setPasskeyOpen((v) => !v)}>
-            <div className="space-y-3 pt-2">
-                <p className="text-xs leading-relaxed text-slate-500">
-                    Gunakan sidik jari, wajah, atau PIN perangkat untuk masuk lebih cepat tanpa kata sandi.
-                </p>
-                <p className="text-[11px] text-slate-400">
-                    Data biometrik <strong className="text-slate-600">tidak</strong> dikirim ke server. Hanya kunci kriptografi yang disimpan.
-                </p>
-                <button
-                    type="button"
-                    onClick={() => register('Perangkat ' + new Date().toLocaleDateString('id-ID'))}
-                    disabled={isLoading}
-                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-60"
-                >
-                    {isLoading ? (
-                        <>
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                            <span>Memproses...</span>
-                        </>
-                    ) : (
-                        <>
-                            <Smartphone className="h-4 w-4" />
-                            <span>Daftarkan Perangkat Ini</span>
-                        </>
-                    )}
-                </button>
-                {error && (
-                    <p role="alert" className="text-xs font-medium text-rose-600">
-                        {error}
-                    </p>
-                )}
-            </div>
-        </Section>
     );
 }

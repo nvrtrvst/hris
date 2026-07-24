@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
-use Laravel\Passkeys\PasskeyAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'email', 'username', 'password', 'role', 'unit_sekolah_id'])]
@@ -18,7 +17,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable;
+    use HasFactory, HasRoles, Notifiable;
 
     // Guard Spatie HARUS cocok dengan guard_name di tabel permissions & roles.
     // Permissions di-seed dengan guard 'web', bukan 'web_admin'/'web_mobile'.

@@ -1,6 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DeleteUserForm from './Partials/DeleteUserForm';
-import MobileLayout from '@/Layouts/MobileLayout';
 import ProfileHero from './Partials/ProfileHero';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
@@ -8,8 +7,7 @@ import { Head, usePage } from '@inertiajs/react';
 
 export default function Edit({ mustVerifyEmail, status }) {
     const user = usePage().props.auth.user;
-    const isMobileUser = user && user.email !== 'admin@yayasan.com';
-    const Layout = isMobileUser ? MobileLayout : AuthenticatedLayout;
+    const Layout = AuthenticatedLayout;
 
     return (
         <Layout
