@@ -23,17 +23,17 @@ class PenggajianController extends Controller
         $isAdmin = $user && $user->can('view_payroll');
         $query = Penggajian::with('pegawai');
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $query->whereHas('pegawai', function ($q) use ($user) {
-                $q->forUnit($user->unit_sekolah_id);
-            });
-        } elseif (! $isAdmin) {
+        if (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
             if ($pegawai) {
                 $query->where('pegawai_id', $pegawai->id);
             } else {
-                $query->where('id', -1); // Tidak ada data
+                $query->where('id', -1);
             }
+        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $query->whereHas('pegawai', function ($q) use ($user) {
+                $q->forUnit($user->unit_sekolah_id);
+            });
         }
 
         if ($request->filled('periode_bulan')) {
@@ -239,8 +239,6 @@ class PenggajianController extends Controller
             'details' => 'required|array',
         ]);
 
-        $komponenMap = KomponenGaji::all()->keyBy('id');
-
         DB::beginTransaction();
         try {
             $penggajian = Penggajian::findOrFail($request->penggajian_id);
@@ -267,8 +265,9 @@ class PenggajianController extends Controller
                     }
 
                     $isTaxable = false;
-                    if (! empty($d['komponen_gaji_id']) && isset($komponenMap[$d['komponen_gaji_id']])) {
-                        $isTaxable = (bool) $komponenMap[$d['komponen_gaji_id']]->is_taxable;
+                    if (! empty($d['komponen_gaji_id'])) {
+                        $komponen = KomponenGaji::find($d['komponen_gaji_id']);
+                        $isTaxable = $komponen ? (bool) $komponen->is_taxable : false;
                     }
                     if ($isTaxable && $tipe === 'pendapatan') {
                         $totalTaxable = bcadd($totalTaxable, (string) $nominal, 2);
@@ -305,6 +304,8 @@ class PenggajianController extends Controller
 
     public function finalizeWorksheet(Request $request, $month, $year)
     {
+        $this->authorizePayrollModification();
+
         $periode = $month.'-'.$year;
 
         DB::beginTransaction();

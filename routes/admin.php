@@ -34,6 +34,9 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    Route::get('/lengkapi-data', [ProfileController::class, 'editPegawai'])->name('lengkapi-data');
+    Route::post('/lengkapi-data', [ProfileController::class, 'updatePegawai'])->name('lengkapi-data.store');
+
     // Pegawai — index/show bisa diakses staff, tapi create/edit/delete dikontrol di controller
     Route::resource('pegawai', PegawaiController::class)->middleware('throttle:60,1');
 

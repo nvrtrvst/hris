@@ -11,24 +11,25 @@ export default function Show({ auth, penggajian }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-2xl text-gray-800 leading-tight">Slip Gaji</h2>}
+            header={<h2 className="font-semibold text-2xl text-primary leading-tight">Slip Gaji</h2>}
         >
             <Head title={`Slip Gaji - ${penggajian.pegawai.nama_lengkap}`} />
 
-            <div className="py-12 bg-gray-50 min-h-screen">
+            <div className="py-8 bg-surface min-h-screen">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
                     
-                    <div className="mb-6 flex justify-between items-center">
-                        <Link href={route('penggajian.index')} className="text-indigo-600 hover:text-indigo-900 font-medium flex items-center">
+                    <div className="mb-6 flex flex-wrap items-center gap-3">
+                        <Link href={route('penggajian.index')} className="text-primary hover:text-primary-light font-medium flex items-center">
                             <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                             Kembali ke Daftar
                         </Link>
-                        <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium shadow-md hover:bg-indigo-700 print:hidden" onClick={() => window.print()}>
+                        <div className="flex-1"></div>
+                        <button className="bg-primary text-white px-4 py-2 rounded-lg font-medium shadow-md hover:bg-primary-light print:hidden" onClick={() => window.print()}>
                             Cetak Slip
                         </button>
                         {penggajian.status === PAYROLL_STATUS.FINALIZED && (
                             <button
-                                className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium shadow-md hover:bg-green-700 print:hidden"
+                                className="bg-success text-white px-4 py-2 rounded-lg font-medium shadow-md hover:bg-green-700 print:hidden"
                                 onClick={() => {
                                     if (confirm('Tandai slip gaji ini sudah DIBAYAR?')) {
                                         router.post(route('penggajian.mark_paid', penggajian.id));
@@ -40,7 +41,7 @@ export default function Show({ auth, penggajian }) {
                         )}
                     </div>
 
-                    <div className="bg-white overflow-hidden shadow-2xl sm:rounded-2xl border border-gray-100 print:shadow-none print:border-none p-10">
+                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-xl border border-border print:shadow-none print:border-none p-6 sm:p-10">
                         {/* Header Slip */}
                         <div className="border-b-2 border-gray-800 pb-6 mb-8 flex justify-between items-end">
                             <div>
@@ -54,21 +55,21 @@ export default function Show({ auth, penggajian }) {
                         </div>
 
                         {/* Info Pegawai */}
-                        <div className="grid grid-cols-2 gap-8 mb-10 bg-gray-50 p-6 rounded-xl border border-gray-100">
+                        <div className="grid grid-cols-2 gap-8 mb-10 bg-surface p-6 rounded-xl border border-border">
                             <div>
                                 <table className="w-full text-sm">
                                     <tbody>
                                         <tr>
-                                            <td className="py-1 text-gray-500 w-32">Nama Lengkap</td>
-                                            <td className="py-1 font-bold text-gray-900">: {penggajian.pegawai.nama_lengkap}</td>
+                                            <td className="py-1 text-text-secondary w-32">Nama Lengkap</td>
+                                            <td className="py-1 font-bold text-primary">: {penggajian.pegawai.nama_lengkap}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-1 text-gray-500">NIK</td>
-                                            <td className="py-1 font-bold text-gray-900">: {penggajian.pegawai.nik}</td>
+                                            <td className="py-1 text-text-secondary">NIK</td>
+                                            <td className="py-1 font-bold text-primary">: {penggajian.pegawai.nik}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-1 text-gray-500">Status</td>
-                                            <td className="py-1 font-bold text-gray-900 uppercase">: {penggajian.pegawai.status_kepegawaian}</td>
+                                            <td className="py-1 text-text-secondary">Status</td>
+                                            <td className="py-1 font-bold text-primary uppercase">: {penggajian.pegawai.status_kepegawaian}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -77,16 +78,16 @@ export default function Show({ auth, penggajian }) {
                                 <table className="w-full text-sm">
                                     <tbody>
                                         <tr>
-                                            <td className="py-1 text-gray-500 w-32">Unit Utama</td>
-                                            <td className="py-1 font-bold text-gray-900">: {penggajian.pegawai.units?.find(u => u.pivot.is_primary)?.nama || '-'}</td>
+                                            <td className="py-1 text-text-secondary w-32">Unit Utama</td>
+                                            <td className="py-1 font-bold text-primary">: {penggajian.pegawai.units?.find(u => u.pivot.is_primary)?.nama || '-'}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-1 text-gray-500">Jabatan</td>
-                                            <td className="py-1 font-bold text-gray-900">: {penggajian.pegawai.jabatans.find(j => j.pivot.is_primary)?.nama || '-'}</td>
+                                            <td className="py-1 text-text-secondary">Jabatan</td>
+                                            <td className="py-1 font-bold text-primary">: {penggajian.pegawai.jabatans.find(j => j.pivot.is_primary)?.nama || '-'}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-1 text-gray-500">Tanggal Cetak</td>
-                                            <td className="py-1 font-bold text-gray-900">: {new Date(penggajian.tanggal_generate).toLocaleDateString('id-ID')}</td>
+                                            <td className="py-1 text-text-secondary">Tanggal Cetak</td>
+                                            <td className="py-1 font-bold text-primary">: {new Date(penggajian.tanggal_generate).toLocaleDateString('id-ID')}</td>
                                         </tr>
                                     </tbody>
                                 </table>

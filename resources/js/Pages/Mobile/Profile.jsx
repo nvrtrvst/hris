@@ -153,7 +153,6 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
                 {/* INFO CARD */}
                 <Card className="divide-y divide-slate-50 p-0">
                     <Field icon={IdCard} label="NIP" value={pegawai?.nip} />
-                    <Field icon={BadgeCheck} label="NUPTK" value={pegawai?.nuptk} />
                     <Field icon={Building2} label="Unit Sekolah" value={primaryUnit?.nama} />
                     <Field icon={User} label="Jabatan" value={primaryJabatan?.nama} />
                     <Field icon={Phone} label="No. HP" value={pegawai?.no_hp} />

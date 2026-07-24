@@ -18,15 +18,15 @@ class JadwalController extends Controller
         $isAdmin = $user && $user->can('view_jadwal');
         $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'kelas:id,nama', 'mataPelajaran:id,nama']);
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $query->where('unit_sekolah_id', $user->unit_sekolah_id);
-        } elseif (! $isAdmin) {
+        if (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
             if ($pegawai) {
                 $query->where('pegawai_id', $pegawai->id);
             } else {
                 $query->where('id', -1);
             }
+        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $query->where('unit_sekolah_id', $user->unit_sekolah_id);
         } elseif ($request->filled('unit_sekolah_id')) {
             $query->where('unit_sekolah_id', $request->unit_sekolah_id);
         }
@@ -39,7 +39,14 @@ class JadwalController extends Controller
             ->select(['id', 'nama_lengkap'])
             ->where('status_aktif', 'aktif');
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+        if (! $isAdmin) {
+            $pegawai = Pegawai::where('user_id', auth()->id())->first();
+            if ($pegawai) {
+                $pegawaiQuery->where('id', $pegawai->id);
+            } else {
+                $pegawaiQuery->where('id', -1);
+            }
+        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $pegawaiQuery->whereHas('units', function ($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
             });
@@ -210,6 +217,8 @@ class JadwalController extends Controller
             'tahun_ajaran' => 'required|string|max:10',
             'semester' => 'required|integer|in:1,2',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'kelas_id' => 'nullable|exists:kelas,id',
+            'mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
             'waktu_mulai' => 'nullable|date_format:H:i',
             'waktu_selesai' => 'nullable|date_format:H:i',
         ]);
@@ -249,8 +258,8 @@ class JadwalController extends Controller
             return back()->withErrors(['waktu' => 'Tidak ada blok waktu yang tersedia dalam rentang waktu yang dipilih.']);
         }
 
-        $kelas = Kelas::first();
-        $mapel = MataPelajaran::first();
+        $kelas = $request->kelas_id ? Kelas::find($request->kelas_id) : null;
+        $mapel = $request->mata_pelajaran_id ? MataPelajaran::find($request->mata_pelajaran_id) : null;
 
         // [FIX] Bungkus dalam transaction untuk mencegah data partial
         $generatedCount = DB::transaction(function () use ($pegawais, $days, $timeBlocks, $kelas, $mapel, $unitId, $request) {

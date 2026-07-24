@@ -45,7 +45,8 @@ class PegawaiSeeder extends Seeder
                     'status_kepegawaian' => 'tetap',
                     'status_aktif' => 'aktif',
                     'tanggal_mulai_kerja' => '2020-01-01',
-                    'pendidikan_terakhir' => 'S1 Pendidikan Matematika',
+                    'pendidikan_terakhir' => 'S1',
+                    'pendidikan_jurusan' => 'Pendidikan Matematika',
                     'jumlah_tanggungan' => 2,
                 ]
             );

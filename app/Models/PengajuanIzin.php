@@ -19,6 +19,17 @@ class PengajuanIzin extends Model
         'bukti_foto',
         'status',
         'alasan_penolakan',
+        'approval_stage',
+        'approver_l1_id',
+        'approver_l2_id',
+        'approved_at_l1',
+        'approved_at_l2',
+        'rejected_by',
+    ];
+
+    protected $casts = [
+        'approved_at_l1' => 'datetime',
+        'approved_at_l2' => 'datetime',
     ];
 
     protected $appends = ['bukti_foto_url'];

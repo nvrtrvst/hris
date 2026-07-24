@@ -1,21 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
-import { Search, Filter, CheckCircle, XCircle, Clock, Info, User, FileText, Calendar, AlertCircle } from 'lucide-react';
+import { Search, Filter, CheckCircle, XCircle, Clock, Info, User, FileText, Calendar, AlertCircle, ChevronRight } from 'lucide-react';
+
+const TABS = [
+    { key: 'l1', label: 'Approval L1' },
+    { key: 'l2', label: 'Approval L2' },
+    { key: 'semua', label: 'Semua' },
+];
 
 export default function Index({ auth, pengajuans, filters }) {
     const { flash } = usePage().props;
     const [selectedItem, setSelectedItem] = useState(null);
-    const [modalType, setModalType] = useState(null); // 'approve', 'reject', 'detail'
-    
-    // Filter states
+    const [modalType, setModalType] = useState(null);
+
     const [search, setSearch] = useState(filters?.search || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || 'semua');
     const [dateFilter, setDateFilter] = useState(filters?.tanggal || '');
+    const [activeTab, setActiveTab] = useState(filters?.tab || 'l1');
 
     const { data, setData, post, processing, errors, reset } = useForm({
         alasan_penolakan: ''
@@ -29,7 +35,7 @@ export default function Index({ auth, pengajuans, filters }) {
 
     const closeModal = () => {
         setSelectedItem(null);
-        setTimeout(() => setModalType(null), 300); // give time for transition
+        setTimeout(() => setModalType(null), 300);
         reset();
     };
 
@@ -46,21 +52,30 @@ export default function Index({ auth, pengajuans, filters }) {
         }
     };
 
-    const handleFilter = () => {
+    const handleFilter = (tab) => {
         router.get(route('pengajuan-izin.index'), {
             search,
             status: statusFilter,
-            tanggal: dateFilter
+            tanggal: dateFilter,
+            tab: tab || activeTab,
         }, {
             preserveState: true,
-            replace: true
+            replace: true,
         });
     };
 
+    const switchTab = (tab) => {
+        setActiveTab(tab);
+        handleFilter(tab);
+    };
+
+    const isFirstRender = useRef(true);
     useEffect(() => {
-        const timer = setTimeout(() => {
-            handleFilter();
-        }, 300);
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        const timer = setTimeout(() => handleFilter(), 300);
         return () => clearTimeout(timer);
     }, [search, statusFilter, dateFilter]);
 
@@ -90,6 +105,46 @@ export default function Index({ auth, pengajuans, filters }) {
         }
     };
 
+    const getStageBadge = (stage) => {
+        switch (stage) {
+            case 'pending_l1':
+                return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200 ml-1">
+                        L1
+                    </span>
+                );
+            case 'pending_l2':
+                return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200 ml-1">
+                        L2
+                    </span>
+                );
+            case 'approved':
+                return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 ml-1">
+                        Final
+                    </span>
+                );
+            case 'rejected':
+                return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-red-100 text-red-800 border border-red-200 ml-1">
+                        Ditolak
+                    </span>
+                );
+            default:
+                return null;
+        }
+    };
+
+    const isSuperadmin = auth.permissions?.includes('manage_users');
+    const canActOn = (item) => {
+        if (!['pending_l1', 'pending_l2'].includes(item.approval_stage)) return false;
+        if (isSuperadmin) return true;
+        if (item.approval_stage === 'pending_l1') return item.approver_l1_id === auth.user.id;
+        if (item.approval_stage === 'pending_l2') return item.approver_l2_id === auth.user.id;
+        return false;
+    };
+
     return (
         <AuthenticatedLayout
             user={auth.user}
@@ -111,6 +166,23 @@ export default function Index({ auth, pengajuans, filters }) {
                             <span className="font-medium">{flash.error}</span>
                         </div>
                     )}
+
+                    {/* Tabs */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-1 mb-6 inline-flex">
+                        {TABS.map((t) => (
+                            <button
+                                key={t.key}
+                                onClick={() => switchTab(t.key)}
+                                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                                    activeTab === t.key
+                                        ? 'bg-indigo-600 text-white shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
+                            >
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
 
                     {/* Filter Section */}
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -187,8 +259,8 @@ export default function Index({ auth, pengajuans, filters }) {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center">
                                                     <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden border border-indigo-200">
-{item.pegawai?.foto_url ? (
-                                                             <img src={item.pegawai.foto_url} className="h-full w-full object-cover" alt="" />
+                                                        {item.pegawai?.foto_url ? (
+                                                            <img src={item.pegawai.foto_url} className="h-full w-full object-cover" alt="" />
                                                         ) : (
                                                             <span className="text-indigo-600 font-bold text-sm">
                                                                 {item.pegawai?.nama_lengkap?.charAt(0) || 'P'}
@@ -212,20 +284,23 @@ export default function Index({ auth, pengajuans, filters }) {
                                                 </div>
                                                 {item.tanggal_mulai !== item.tanggal_selesai && (
                                                     <div className="text-xs text-gray-500 flex items-center mt-0.5">
-                                                        <span className="text-gray-300 mx-1">s.d</span> 
+                                                        <span className="text-gray-300 mx-1">s.d</span>
                                                         {format(new Date(item.tanggal_selesai), 'd MMM yyyy', { locale: idLocale })}
                                                     </div>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                {getStatusBadge(item.status)}
+                                                <div className="flex items-center">
+                                                    {getStatusBadge(item.status)}
+                                                    {getStageBadge(item.approval_stage)}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <div className="flex justify-end space-x-2 opacity-80 group-hover:opacity-100 transition-opacity">
                                                     <button onClick={() => openModal(item, 'detail')} className="inline-flex items-center text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors border border-transparent hover:border-blue-200" title="Detail">
                                                         <Info className="w-4 h-4 mr-1" /> Detail
                                                     </button>
-                                                    {item.status === 'pending' && (
+                                                    {(item.status === 'pending' && canActOn(item)) && (
                                                         <>
                                                             <button onClick={() => openModal(item, 'approve')} className="inline-flex items-center text-emerald-600 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition-colors border border-transparent hover:border-emerald-200" title="Setujui">
                                                                 <CheckCircle className="w-4 h-4" />
@@ -242,8 +317,7 @@ export default function Index({ auth, pengajuans, filters }) {
                                 </tbody>
                             </table>
                         </div>
-                        
-                        {/* Pagination Component if needed */}
+
                         {pengajuans.links && pengajuans.data.length > 0 && (
                             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
                                 <div className="text-sm text-gray-500">
@@ -251,7 +325,7 @@ export default function Index({ auth, pengajuans, filters }) {
                                 </div>
                                 <Pagination
                                     links={pengajuans.links}
-                                    data={{ search, status: statusFilter, tanggal: dateFilter }}
+                                    data={{ search, status: statusFilter, tanggal: dateFilter, tab: activeTab }}
                                 />
                             </div>
                         )}
@@ -277,18 +351,17 @@ export default function Index({ auth, pengajuans, filters }) {
                                 {modalType === 'approve' && <CheckCircle className="w-5 h-5 mr-2" />}
                                 {modalType === 'reject' && <XCircle className="w-5 h-5 mr-2" />}
                                 {modalType === 'detail' && <Info className="w-5 h-5 mr-2 text-indigo-500" />}
-                                
-                                {modalType === 'approve' ? 'Setujui Pengajuan' : 
-                                 modalType === 'reject' ? 'Tolak Pengajuan' : 
+
+                                {modalType === 'approve' ? 'Setujui Pengajuan' :
+                                 modalType === 'reject' ? 'Tolak Pengajuan' :
                                  'Detail Pengajuan Izin'}
                             </h2>
                             <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition-colors">
                                 <XCircle className="w-6 h-6" />
                             </button>
                         </div>
-                        
+
                         <div className="p-6">
-                            {/* Modal Content - Detail Card */}
                             <div className="bg-gray-50/50 rounded-xl border border-gray-100 p-5 mb-6">
                                 <div className="flex flex-col md:flex-row gap-6">
                                     <div className="flex-1 space-y-4">
@@ -313,6 +386,28 @@ export default function Index({ auth, pengajuans, filters }) {
                                                 {selectedItem.tanggal_mulai !== selectedItem.tanggal_selesai && ` - ${format(new Date(selectedItem.tanggal_selesai), 'd MMMM yyyy', { locale: idLocale })}`}
                                             </div>
                                         </div>
+                                        <div>
+                                            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Tahap Persetujuan</span>
+                                            <div className="flex items-center gap-1 text-sm">
+                                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedItem.approval_stage === 'pending_l1' ? 'bg-amber-200 text-amber-900' : selectedItem.approval_stage === 'approved' || selectedItem.approval_stage === 'rejected' ? 'bg-gray-100 text-gray-400' : 'bg-emerald-100 text-emerald-800'}`}>
+                                                    L1
+                                                </span>
+                                                {(selectedItem.approver_l2_id || selectedItem.approval_stage === 'pending_l2') && (
+                                                    <>
+                                                        <ChevronRight className="w-4 h-4 text-gray-300" />
+                                                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedItem.approval_stage === 'pending_l2' ? 'bg-orange-200 text-orange-900' : selectedItem.approval_stage === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-400'}`}>
+                                                            L2
+                                                        </span>
+                                                    </>
+                                                )}
+                                                {selectedItem.approval_stage === 'approved' && (
+                                                    <>
+                                                        <ChevronRight className="w-4 h-4 text-gray-300" />
+                                                        <span className="px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">Final</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="flex-1 space-y-4">
                                         <div>
@@ -331,12 +426,12 @@ export default function Index({ auth, pengajuans, filters }) {
                                         )}
                                     </div>
                                 </div>
-                                
-{selectedItem.bukti_foto_url && (
-                                     <div className="mt-5 pt-5 border-t border-gray-200">
-                                         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-3">Bukti Lampiran</span>
-                                         <div className="bg-gray-200 rounded-lg overflow-hidden border border-gray-300">
-                                             <img src={selectedItem.bukti_foto_url} alt="Bukti Lampiran" className="w-full h-auto max-h-80 object-contain" />
+
+                                {selectedItem.bukti_foto_url && (
+                                    <div className="mt-5 pt-5 border-t border-gray-200">
+                                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-3">Bukti Lampiran</span>
+                                        <div className="bg-gray-200 rounded-lg overflow-hidden border border-gray-300">
+                                            <img src={selectedItem.bukti_foto_url} alt="Bukti Lampiran" className="w-full h-auto max-h-80 object-contain" />
                                         </div>
                                     </div>
                                 )}
@@ -344,9 +439,19 @@ export default function Index({ auth, pengajuans, filters }) {
 
                             <form onSubmit={submitAction}>
                                 {modalType === 'approve' && (
-                                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
-                                        <p className="text-sm text-emerald-800">
-                                            Anda yakin ingin <strong>menyetujui</strong> pengajuan izin ini? Sistem akan secara otomatis meng-generate data absensi sebagai "{selectedItem.jenis_izin}" untuk tanggal yang diajukan.
+                                    <div className={`rounded-lg p-4 mb-6 ${
+                                        selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
+                                            ? 'bg-amber-50 border border-amber-200'
+                                            : 'bg-emerald-50 border border-emerald-200'
+                                    }`}>
+                                        <p className={`text-sm ${
+                                            selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
+                                                ? 'text-amber-800' : 'text-emerald-800'
+                                        }`}>
+                                            {selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
+                                                ? 'Anda akan menyetujui sebagai atasan L1. Pengajuan akan diteruskan ke atasan L2 untuk persetujuan akhir.'
+                                                : 'Anda yakin ingin menyetujui pengajuan ini? Sistem akan meng-generate data absensi secara otomatis.'
+                                            }
                                         </p>
                                     </div>
                                 )}
@@ -368,29 +473,29 @@ export default function Index({ auth, pengajuans, filters }) {
                                 )}
 
                                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                                    <button 
-                                        type="button" 
-                                        onClick={closeModal} 
+                                    <button
+                                        type="button"
+                                        onClick={closeModal}
                                         className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
                                     >
                                         {modalType === 'detail' ? 'Tutup' : 'Batal'}
                                     </button>
-                                    
+
                                     {modalType === 'approve' && (
-                                        <button 
-                                            type="submit" 
-                                            disabled={processing} 
+                                        <button
+                                            type="submit"
+                                            disabled={processing}
                                             className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 flex items-center"
                                         >
                                             <CheckCircle className="w-4 h-4 mr-2" />
                                             Ya, Setujui
                                         </button>
                                     )}
-                                    
+
                                     {modalType === 'reject' && (
-                                        <button 
-                                            type="submit" 
-                                            disabled={processing} 
+                                        <button
+                                            type="submit"
+                                            disabled={processing}
                                             className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 flex items-center"
                                         >
                                             <XCircle className="w-4 h-4 mr-2" />

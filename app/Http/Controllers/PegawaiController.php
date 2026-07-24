@@ -76,9 +76,10 @@ class PegawaiController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('nama_lengkap', 'like', '%'.$request->search.'%')
-                    ->orWhere('nik', 'like', '%'.$request->search.'%');
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_lengkap', 'like', '%'.$search.'%')
+                    ->orWhere('nik_hash', hash('sha256', $search));
             });
         }
 
@@ -135,44 +136,32 @@ class PegawaiController extends Controller
         }
 
         $validated = $request->validate([
-            'nik' => 'required|string|size:16|unique:pegawai,nik',
-            'nip' => 'nullable|string|max:50|unique:pegawai,nip',
             'nama_lengkap' => 'required|string|max:255',
-            'tempat_lahir' => 'required|string|max:255',
-            'tanggal_lahir' => 'required|date',
-            'jenis_kelamin' => 'required|in:L,P',
-            'agama' => 'required|string|max:255',
-            'status_pernikahan' => 'required|string|max:255',
-            'alamat_ktp' => 'required|string',
-            'no_hp' => 'required|string|max:20',
-            'status_kepegawaian' => 'required|in:tetap,kontrak,honorer,gtt',
-            'jatah_cuti_tahunan' => 'nullable|integer|min:0',
-            'wajib_kantor' => 'boolean',
-            'tanggal_mulai_kerja' => 'required|date',
-            'pendidikan_terakhir' => 'required|string|max:255',
-            'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
-            'jabatan_id' => 'required|exists:jabatan,id',
             'email' => 'required|email|unique:users,email',
             'password' => 'nullable|string|min:8',
-            'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'no_hp' => 'required|string|max:20',
+            'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
+            'jabatan_id' => 'required|exists:jabatan,id',
+            'status_kepegawaian' => 'required|in:tetap,kontrak,honorer,gtt',
         ]);
+
+        $password = $request->password ?: $request->email;
 
         $user = User::create([
             'name' => $request->nama_lengkap,
             'email' => $request->email,
-            'username' => $request->nip ?: $request->nik,
-            'password' => Hash::make($request->password ?: $request->nik),
+            'username' => $request->email,
+            'password' => Hash::make($password),
         ]);
 
-        $pegawaiData = collect($validated)->except(['email', 'password', 'foto'])->toArray();
-        $pegawaiData['user_id'] = $user->id;
+        $user->syncRoles('pegawai');
 
-        if ($request->hasFile('foto')) {
-            $path = $request->file('foto')->store('pegawai_fotos', 'presensi');
-            $pegawaiData['foto'] = $path;
-        }
-
-        $pegawai = Pegawai::create($pegawaiData);
+        $pegawai = Pegawai::create([
+            'user_id' => $user->id,
+            'nama_lengkap' => $request->nama_lengkap,
+            'no_hp' => $request->no_hp,
+            'status_kepegawaian' => $request->status_kepegawaian,
+        ]);
         $pegawai->units()->attach($request->unit_sekolah_id, ['jabatan_id' => $request->jabatan_id, 'is_primary' => true]);
 
         return redirect()->route('pegawai.index')->with('message', 'Data Pegawai berhasil ditambahkan.');
@@ -256,8 +245,12 @@ class PegawaiController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
+        $canViewSensitive = $user && $user->can('view_sensitive_data');
+
         $validated = $request->validate([
-            'nik' => 'required|string|size:16|unique:pegawai,nik,'.$pegawai->id,
+            'nik' => $canViewSensitive
+                ? 'required|string|size:16|unique:pegawai,nik,'.$pegawai->id
+                : 'nullable|string|size:16|unique:pegawai,nik,'.$pegawai->id,
             'nip' => 'nullable|string|max:50|unique:pegawai,nip,'.$pegawai->id,
             'nama_lengkap' => 'required|string|max:255',
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($pegawai->user_id)],
@@ -283,6 +276,10 @@ class PegawaiController extends Controller
             'mapels.*.mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
             'mapels.*.unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
         ]);
+
+        if (! $canViewSensitive || empty($validated['nik'])) {
+            $validated['nik'] = $pegawai->nik;
+        }
 
         $dataToUpdate = collect($validated)->except(['email', 'foto'])->toArray();
 

@@ -10,6 +10,8 @@ export default function Index({ auth, jabatans }) {
     const { data, setData, post, put, processing, errors, reset } = useForm({
         nama: '',
         is_guru: false,
+        approver_l1_jabatan_id: '',
+        approver_l2_jabatan_id: '',
     });
 
     const openCreate = () => {
@@ -20,7 +22,12 @@ export default function Index({ auth, jabatans }) {
 
     const openEdit = (j) => {
         setEditing(j);
-        setData({ nama: j.nama, is_guru: j.is_guru });
+        setData({
+            nama: j.nama,
+            is_guru: j.is_guru,
+            approver_l1_jabatan_id: j.approver_l1_jabatan_id ?? '',
+            approver_l2_jabatan_id: j.approver_l2_jabatan_id ?? '',
+        });
         setShowModal(true);
     };
 
@@ -42,6 +49,8 @@ export default function Index({ auth, jabatans }) {
         router.delete(route('jabatan.destroy', j.id));
     };
 
+    const otherJabatans = jabatans.filter((j) => j.id !== editing?.id);
+
     return (
         <AuthenticatedLayout
             user={auth.user}
@@ -49,7 +58,7 @@ export default function Index({ auth, jabatans }) {
         >
             <Head title="Jabatan" />
             <div className="py-12 bg-gray-50 min-h-screen">
-                <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
+                <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl border border-gray-100">
                         <div className="p-8">
                             <div className="flex justify-between items-center mb-6">
@@ -70,6 +79,8 @@ export default function Index({ auth, jabatans }) {
                                         <tr>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Jabatan</th>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipe</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Approval L1</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Approval L2</th>
                                             <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                                         </tr>
                                     </thead>
@@ -84,6 +95,12 @@ export default function Index({ auth, jabatans }) {
                                                         {j.is_guru ? 'Guru' : 'Non-Guru'}
                                                     </span>
                                                 </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {j.approver_l1?.nama || '-'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {j.approver_l2?.nama || '-'}
+                                                </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                                                     <button onClick={() => openEdit(j)}
                                                         className="text-amber-600 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors font-semibold"
@@ -96,7 +113,7 @@ export default function Index({ auth, jabatans }) {
                                         ))}
                                         {jabatans.length === 0 && (
                                             <tr>
-                                                <td colSpan="3" className="px-6 py-12 text-center text-gray-500">Belum ada data jabatan.</td>
+                                                <td colSpan="5" className="px-6 py-12 text-center text-gray-500">Belum ada data jabatan.</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -106,7 +123,7 @@ export default function Index({ auth, jabatans }) {
                     </div>
                 </div>
             </div>
-            <Modal show={showModal} onClose={() => { setShowModal(false); reset(); }} maxWidth="sm">
+            <Modal show={showModal} onClose={() => { setShowModal(false); reset(); }} maxWidth="md">
                 <form onSubmit={handleSubmit} className="p-6">
                     <h3 className="text-lg font-bold text-gray-900 mb-4">
                         {editing ? 'Edit Jabatan' : 'Tambah Jabatan'}
@@ -131,6 +148,36 @@ export default function Index({ auth, jabatans }) {
                                 <p className="text-xs text-gray-500">Centang jika jabatan ini termasuk tenaga pendidik (guru).</p>
                             </div>
                         </label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Approval L1 (Atasan)</label>
+                                <select value={data.approver_l1_jabatan_id}
+                                    onChange={e => setData('approver_l1_jabatan_id', e.target.value)}
+                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                >
+                                    <option value="">Tidak Ada (Superadmin)</option>
+                                    {otherJabatans.map((j) => (
+                                        <option key={j.id} value={j.id}>{j.nama}</option>
+                                    ))}
+                                </select>
+                                <p className="mt-1 text-xs text-gray-400">Jabatan yg berhak approve L1.</p>
+                                {errors.approver_l1_jabatan_id && <p className="mt-1 text-sm text-red-600">{errors.approver_l1_jabatan_id}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Approval L2 (Final)</label>
+                                <select value={data.approver_l2_jabatan_id}
+                                    onChange={e => setData('approver_l2_jabatan_id', e.target.value)}
+                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                >
+                                    <option value="">Tidak Ada (Final di L1)</option>
+                                    {otherJabatans.map((j) => (
+                                        <option key={j.id} value={j.id}>{j.nama}</option>
+                                    ))}
+                                </select>
+                                <p className="mt-1 text-xs text-gray-400">Jabatan yg berhak approve L2 (final).</p>
+                                {errors.approver_l2_jabatan_id && <p className="mt-1 text-sm text-red-600">{errors.approver_l2_jabatan_id}</p>}
+                            </div>
+                        </div>
                     </div>
                     <div className="flex items-center justify-end gap-3 mt-6 border-t pt-4">
                         <button type="button" onClick={() => { setShowModal(false); reset(); }}

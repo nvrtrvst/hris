@@ -105,7 +105,7 @@ export default function Show({ auth, pegawai }) {
                                         </div>
                                         <div>
                                             <p className="text-sm text-gray-500">Kontak</p>
-                                            <p className="font-medium text-gray-900">{pegawai.no_hp} / {pegawai.email || '-'}</p>
+                                            <p className="font-medium text-gray-900">{pegawai.no_hp} / {pegawai.user?.email || '-'}</p>
                                         </div>
                                         <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3">
                                             <p className="text-sm font-semibold text-emerald-800">Akun Login Mobile</p>

@@ -24,6 +24,8 @@ class PegawaiObserver
             'status_aktif',
             'atasan_langsung_id',
             'tanggal_akhir_kontrak',
+            'nama_bank',
+            'no_rekening',
         ];
 
         foreach ($trackedFields as $field) {

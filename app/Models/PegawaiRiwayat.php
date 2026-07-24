@@ -11,10 +11,10 @@ class PegawaiRiwayat extends Model
 
     protected $fillable = [
         'pegawai_id',
-        'jenis',
-        'judul',
-        'deskripsi',
-        'tanggal',
+        'jenis_perubahan',
+        'nilai_lama',
+        'nilai_baru',
+        'changed_by',
     ];
 
     public function pegawai(): BelongsTo

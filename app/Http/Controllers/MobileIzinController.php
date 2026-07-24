@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ApprovalHelper;
 use App\Models\PengajuanIzin;
 use App\Services\ImageUploadService;
 use App\Traits\ResolvesPegawai;
@@ -88,6 +89,12 @@ class MobileIzinController extends Controller
         }
 
         $pengajuan->save();
+
+        $approvers = ApprovalHelper::determineApprovers($pegawai);
+        $pengajuan->update([
+            'approver_l1_id' => $approvers['l1_id'],
+            'approver_l2_id' => $approvers['l2_id'],
+        ]);
 
         return redirect()->route('presensi.izin.index')->with('message', 'Pengajuan berhasil dikirim dan menunggu persetujuan.');
     }

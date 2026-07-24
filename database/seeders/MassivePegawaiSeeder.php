@@ -7,7 +7,6 @@ use App\Models\Pegawai;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use RuntimeException;
@@ -60,7 +59,6 @@ class MassivePegawaiSeeder extends Seeder
                 $email = sprintf('pegawai%03d@demo.yayasan.com', $index);
                 $nik = '3273'.str_pad((string) $index, 12, '0', STR_PAD_LEFT);
                 $nikHash = hash('sha256', $nik);
-                $nikCipher = Crypt::encryptString($nik);
                 $unit = $units[($index - 1) % $units->count()];
 
                 $user = User::firstOrCreate(
@@ -73,11 +71,12 @@ class MassivePegawaiSeeder extends Seeder
                 );
                 $user->syncRoles('pegawai');
 
-                $pegawai = Pegawai::firstOrCreate(
-                    ['nik' => $nikCipher],
-                    [
-                        'nik_hash' => $nikHash,
+                $pegawai = Pegawai::where('nik_hash', $nikHash)->first();
+
+                if (! $pegawai) {
+                    $pegawai = Pegawai::create([
                         'user_id' => $user->id,
+                        'nik' => $nik,
                         'nama_lengkap' => $name,
                         'tempat_lahir' => 'Jakarta',
                         'tanggal_lahir' => now()->subYears(25 + ($index % 25))->subDays($index)->toDateString(),
@@ -93,13 +92,14 @@ class MassivePegawaiSeeder extends Seeder
                         'status_aktif' => 'aktif',
                         'tanggal_mulai_kerja' => now()->subYears(1 + ($index % 8))->toDateString(),
                         'pendidikan_terakhir' => 'S1',
-                    ]
-                );
-
-                if ($pegawai->user_id !== $user->id) {
-                    $pegawai->update(['user_id' => $user->id]);
+                        'pendidikan_jurusan' => $index % 2 === 0 ? 'Pendidikan Matematika' : 'Pendidikan Bahasa Indonesia',
+                        'nip' => '19'.str_pad((string) (1980 + $index), 7, '0', STR_PAD_LEFT),
+                    ]);
                 }
-                $pegawai->update(['wajib_kantor' => $index % 3 !== 0]);
+
+                $pegawai->update([
+                    'pendidikan_jurusan' => $index % 2 === 0 ? 'Pendidikan Matematika' : 'Pendidikan Bahasa Indonesia',
+                ]);
 
                 if (! $pegawai->units()->where('unit_sekolah.id', $unit->id)->exists()) {
                     $pegawai->units()->attach($unit->id, [

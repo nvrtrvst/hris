@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'email', 'username', 'password', 'role', 'unit_sekolah_id'])]
@@ -44,5 +45,22 @@ class User extends Authenticatable
     public function pegawai()
     {
         return $this->hasOne(Pegawai::class);
+    }
+
+    public function isApprover(): bool
+    {
+        if (! $this->pegawai) {
+            return false;
+        }
+
+        $jabatanIds = $this->pegawai->jabatans()->pluck('jabatan.id');
+        if ($jabatanIds->isEmpty()) {
+            return false;
+        }
+
+        return DB::table('jabatan')
+            ->where(fn ($q) => $q->whereIn('approver_l1_jabatan_id', $jabatanIds)
+                ->orWhereIn('approver_l2_jabatan_id', $jabatanIds))
+            ->exists();
     }
 }

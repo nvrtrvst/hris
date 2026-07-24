@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 
     export default function Index({ auth, jadwals, pegawais, units, filters }) {
+        const isAdmin = auth.permissions?.includes('view_jadwal');
         const [unitFilter, setUnitFilter] = useState(filters.unit_sekolah_id || '');
         const [searchName, setSearchName] = useState('');
         
@@ -81,18 +82,19 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
         return (
             <AuthenticatedLayout
                 user={auth.user}
-                header={<h2 className="font-semibold text-2xl text-gray-800 leading-tight">Jadwal Pegawai</h2>}
+                header={<h2 className="font-semibold text-2xl text-primary leading-tight">{isAdmin ? 'Jadwal Pegawai' : 'Jadwal Pribadi'}</h2>}
             >
                 <Head title="Jadwal Pegawai" />
     
-                <div className="py-12 bg-gray-50 min-h-screen">
-                    <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                        <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl border border-gray-100">
-                            <div className="p-8">
+                <div className="py-8 bg-surface min-h-screen">
+                    <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-xl border border-border">
+                            <div className="p-6">
+                                {isAdmin ? <>
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                                     <div>
-                                        <h3 className="text-xl font-bold text-gray-900">Jadwal Mingguan (Matriks)</h3>
-                                        <p className="text-sm text-gray-500 mt-1">Tampilan matrik untuk memantau ratusan pegawai sekaligus tanpa lelah scroll ke bawah.</p>
+                                        <h3 className="text-lg font-bold text-primary">Jadwal Mingguan (Matriks)</h3>
+                                        <p className="text-sm text-text-secondary mt-1">Tampilan matrik untuk memantau ratusan pegawai sekaligus tanpa lelah scroll ke bawah.</p>
                                     </div>
                                     <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full md:w-auto">
                                         <div className="relative">
@@ -202,15 +204,15 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                                                                     >
                                                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                                                                     </button>
-                                                                                    <div className="w-px h-4 bg-white/30"></div>
-                                                                                    <button
-                                                                                         onClick={() => {
-                                                                                              setSwapData({...swapData, jadwal_asal_id: jadwal.id});
-                                                                                              setShowSwapModal(true);
-                                                                                          }}
-                                                                                          className="text-blue-300 hover:text-blue-100 transform hover:scale-110 transition-all cursor-pointer"
-                                                                                          title="Tukar Jadwal"
-                                                                                    >
+                                                                                <div className="w-px h-4 bg-white/30"></div>
+                                                                                <button
+                                                                                     onClick={() => {
+                                                                                          setSwapData({...swapData, jadwal_asal_id: jadwal.id});
+                                                                                          setShowSwapModal(true);
+                                                                                      }}
+                                                                                      className="text-blue-300 hover:text-blue-100 transform hover:scale-110 transition-all cursor-pointer"
+                                                                                      title="Tukar Jadwal"
+                                                                                >
                                                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
                                                                                 </button>
                                                                                 <div className="w-px h-4 bg-white/30"></div>
@@ -268,13 +270,38 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                     </div>
                                 </div>
                             </div>
+                            </> : <>
+                                <div className="space-y-3">
+                                {jadwals.length === 0 ? (
+                                    <div className="text-center py-12 text-text-secondary">
+                                        <svg className="w-12 h-12 mx-auto mb-3 text-border" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        <p className="text-base">Belum ada jadwal untuk Anda.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {jadwals.map(j => (
+                                            <div key={j.id} className="bg-white p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                                                    {j.hari.substring(0, 3)}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="font-bold text-primary">{j.jenis_jadwal}</div>
+                                                    <div className="text-sm text-text-secondary">{j.jam_mulai?.substring(0, 5)} - {j.jam_selesai?.substring(0, 5)}</div>
+                                                    {j.mata_pelajaran?.nama && <div className="text-xs text-text-secondary">{j.mata_pelajaran.nama}</div>}
+                                                </div>
+                                                <div className="text-xs text-text-secondary">{j.unit_sekolah?.singkatan}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                </div>
+            </>}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Generate Modal */}
-            <Modal show={showGenerateModal} onClose={() => setShowGenerateModal(false)} maxWidth="md">
+            {isAdmin && <Modal show={showGenerateModal} onClose={() => setShowGenerateModal(false)} maxWidth="md">
                 <div className="px-6 py-5">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
@@ -393,10 +420,9 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                         </div>
                     </form>
                 </div>
-            </Modal>
+            </Modal>}
 
-            {/* Swap Modal */}
-            <Modal show={showSwapModal} onClose={() => setShowSwapModal(false)} maxWidth="md">
+            {isAdmin && <Modal show={showSwapModal} onClose={() => setShowSwapModal(false)} maxWidth="md">
                             <h3 className="text-xl font-bold leading-6 text-gray-900 flex items-center gap-2">
                                 <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
                                 Tukar Jadwal
@@ -479,7 +505,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                     </button>
                                 </div>
                             </form>
-            </Modal>
+            </Modal>}
+
         </AuthenticatedLayout>
     );
 }

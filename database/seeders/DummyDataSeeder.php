@@ -71,7 +71,6 @@ class DummyDataSeeder extends Seeder
                 'nama_bank' => $faker->randomElement(['BCA', 'Mandiri', 'BRI', 'BNI']),
                 'no_rekening' => $faker->numerify('##########'),
                 'pendidikan_terakhir' => $faker->randomElement(['S1', 'S2', 'D3', 'SMA']),
-                'nuptk' => $faker->numerify('################'),
             ]);
 
             // Assign Unit & Jabatan

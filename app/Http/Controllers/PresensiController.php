@@ -28,17 +28,17 @@ class PresensiController extends Controller
         $isAdmin = $user && $user->can('view_presensi');
         $query = Presensi::with(['unitSekolah', 'pegawai', 'jadwal']);
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $query->whereHas('pegawai', function ($q) use ($user) {
-                $q->forUnit($user->unit_sekolah_id);
-            });
-        } elseif (! $isAdmin) {
+        if (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
             if ($pegawai) {
                 $query->where('pegawai_id', $pegawai->id);
             } else {
-                $query->where('id', -1); // Tidak ada data
+                $query->where('id', -1);
             }
+        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $query->whereHas('pegawai', function ($q) use ($user) {
+                $q->forUnit($user->unit_sekolah_id);
+            });
         }
 
         if ($request->start_date) {
@@ -50,7 +50,7 @@ class PresensiController extends Controller
 
         if ($request->unit_id && $user->can('view_all_units')) {
             $query->whereHas('pegawai', function ($q) use ($request) {
-                $q->where('unit_sekolah_id', $request->unit_id);
+                $q->whereHas('units', fn ($q2) => $q2->where('unit_sekolah.id', $request->unit_id));
             });
         }
 

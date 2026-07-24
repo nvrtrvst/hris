@@ -15,11 +15,24 @@ class PengajuanIzinController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        if (! $user || ! $user->can('view_izin')) {
+        if (! $user || (! $user->can('view_izin') && ! $user->isApprover())) {
             abort(403, 'Akses ditolak.');
         }
 
         $query = PengajuanIzin::with('pegawai');
+        $tab = $request->input('tab', 'semua');
+
+        if ($tab === 'l1') {
+            $query->where(function ($q) use ($user) {
+                $q->where('approver_l1_id', $user->id);
+                if ($user->hasRole('superadmin')) {
+                    $q->orWhereNull('approver_l1_id');
+                }
+            })->where('approval_stage', 'pending_l1');
+        } elseif ($tab === 'l2') {
+            $query->where('approver_l2_id', $user->id)
+                ->where('approval_stage', 'pending_l2');
+        }
 
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $query->whereHas('pegawai', function ($q) use ($user) {
@@ -48,63 +61,75 @@ class PengajuanIzinController extends Controller
 
         return Inertia::render('PengajuanIzin/Index', [
             'pengajuans' => $pengajuans,
-            'filters' => $request->only(['search', 'status', 'tanggal']),
+            'filters' => $request->only(['search', 'status', 'tanggal', 'tab']),
         ]);
     }
 
     public function approve($id)
     {
         $user = auth()->user();
-        if (! $user || ! $user->can('view_izin')) {
+        if (! $user || (! $user->can('view_izin') && ! $user->isApprover())) {
             abort(403, 'Akses ditolak.');
         }
 
         $pengajuan = DB::transaction(function () use ($id, $user) {
             $pengajuan = PengajuanIzin::with('pegawai')->lockForUpdate()->findOrFail($id);
 
-            // [FIX] IDOR: Pastikan admin_unit hanya bisa approve izin dari unitnya sendiri
             if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 if (! $pengajuan->pegawai->belongsToUnit($user->unit_sekolah_id)) {
-                    abort(403, 'Akses ditolak. Anda tidak berhak menyetujui izin pegawai dari unit lain.');
+                    abort(403, 'Akses ditolak.');
                 }
             }
 
-            if ($pengajuan->status !== 'pending') {
-                throw ValidationException::withMessages(['error' => 'Hanya pengajuan berstatus pending yang dapat disetujui.']);
+            if (in_array($pengajuan->approval_stage, ['approved', 'rejected'])) {
+                throw ValidationException::withMessages(['error' => 'Pengajuan sudah final.']);
             }
 
-            $pengajuan->update(['status' => 'disetujui']);
+            $isSuperadmin = $user->hasRole('superadmin');
+            $isL1 = $pengajuan->approver_l1_id === $user->id || $isSuperadmin;
+            $isL2 = $pengajuan->approver_l2_id === $user->id || $isSuperadmin;
 
-            // Generate Presensi
-            $period = CarbonPeriod::create($pengajuan->tanggal_mulai, $pengajuan->tanggal_selesai);
-            foreach ($period as $date) {
-                // Skip weekend if needed (assuming Saturday & Sunday are off, adjust if necessary)
-                if ($date->isWeekend()) {
-                    continue;
+            if ($pengajuan->approval_stage === 'pending_l1') {
+                if (! $isL1) {
+                    abort(403, 'Anda bukan atasan L1 untuk pengajuan ini.');
+                }
+                $updates = ['approved_at_l1' => now()];
+
+                if ($pengajuan->approver_l2_id && $pengajuan->approver_l2_id !== $pengajuan->approver_l1_id) {
+                    $updates['approval_stage'] = 'pending_l2';
+                } else {
+                    $updates['approval_stage'] = 'approved';
+                    $updates['status'] = 'disetujui';
+                    $this->generatePresensi($pengajuan);
                 }
 
-                Presensi::updateOrCreate(
-                    [
-                        'pegawai_id' => $pengajuan->pegawai_id,
-                        'tanggal' => $date->format('Y-m-d'),
-                    ],
-                    [
-                        'status' => $pengajuan->jenis_izin, // sakit, izin, cuti
-                        'keterangan' => 'Dari Pengajuan Izin/Cuti',
-                    ]
-                );
+                $pengajuan->update($updates);
+            } elseif ($pengajuan->approval_stage === 'pending_l2') {
+                if (! $isL2) {
+                    abort(403, 'Anda bukan atasan L2 untuk pengajuan ini.');
+                }
+                $pengajuan->update([
+                    'approval_stage' => 'approved',
+                    'status' => 'disetujui',
+                    'approved_at_l2' => now(),
+                ]);
+                $this->generatePresensi($pengajuan);
             }
 
             return $pengajuan;
         });
 
-        return back()->with('message', 'Pengajuan berhasil disetujui dan data absensi telah di-generate.');
+        $msg = $pengajuan->approval_stage === 'pending_l2'
+            ? 'Pengajuan telah disetujui L1 dan diteruskan ke atasan L2.'
+            : 'Pengajuan berhasil disetujui dan data absensi telah di-generate.';
+
+        return back()->with('message', $msg);
     }
 
     public function reject(Request $request, $id)
     {
         $user = auth()->user();
-        if (! $user || ! $user->can('view_izin')) {
+        if (! $user || (! $user->can('view_izin') && ! $user->isApprover())) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -115,23 +140,52 @@ class PengajuanIzinController extends Controller
         DB::transaction(function () use ($id, $user, $request) {
             $pengajuan = PengajuanIzin::with('pegawai')->lockForUpdate()->findOrFail($id);
 
-            // [FIX] IDOR: Pastikan admin_unit hanya bisa reject izin dari unitnya sendiri
             if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 if (! $pengajuan->pegawai->belongsToUnit($user->unit_sekolah_id)) {
-                    abort(403, 'Akses ditolak. Anda tidak berhak menolak izin pegawai dari unit lain.');
+                    abort(403, 'Akses ditolak.');
                 }
             }
 
-            if ($pengajuan->status !== 'pending') {
-                throw ValidationException::withMessages(['error' => 'Hanya pengajuan berstatus pending yang dapat ditolak.']);
+            if (in_array($pengajuan->approval_stage, ['approved', 'rejected'])) {
+                throw ValidationException::withMessages(['error' => 'Pengajuan sudah final.']);
+            }
+
+            $isSuperadmin = $user->hasRole('superadmin');
+            $isL1 = $pengajuan->approver_l1_id === $user->id || $isSuperadmin;
+            $isL2 = $pengajuan->approver_l2_id === $user->id || $isSuperadmin;
+
+            if (! $isL1 && ! $isL2) {
+                abort(403, 'Anda tidak berhak menolak pengajuan ini.');
             }
 
             $pengajuan->update([
                 'status' => 'ditolak',
+                'approval_stage' => 'rejected',
                 'alasan_penolakan' => $request->alasan_penolakan,
+                'rejected_by' => $user->id,
             ]);
         });
 
         return back()->with('message', 'Pengajuan berhasil ditolak.');
+    }
+
+    private function generatePresensi(PengajuanIzin $pengajuan): void
+    {
+        $period = CarbonPeriod::create($pengajuan->tanggal_mulai, $pengajuan->tanggal_selesai);
+        foreach ($period as $date) {
+            if ($date->isWeekend()) {
+                continue;
+            }
+            Presensi::updateOrCreate(
+                [
+                    'pegawai_id' => $pengajuan->pegawai_id,
+                    'tanggal' => $date->format('Y-m-d'),
+                ],
+                [
+                    'status' => $pengajuan->jenis_izin,
+                    'keterangan' => 'Dari Pengajuan Izin/Cuti',
+                ]
+            );
+        }
     }
 }

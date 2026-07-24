@@ -43,23 +43,10 @@ export default function RunPayrollWorksheet({ auth, month, year, periode }) {
         setData(newData);
     };
 
-    // Handle Cell Edit
+    // Handle Cell Edit — server recalculates totals on save
     const handleCellChange = (penggajianIdx, detailIdx, newNominal) => {
         const newData = [...data];
         newData[penggajianIdx].details[detailIdx].nominal = newNominal === '' ? 0 : parseFloat(newNominal);
-        
-        // Recalculate local totals
-        let totalPen = 0;
-        let totalPot = 0;
-        newData[penggajianIdx].details.forEach(d => {
-            if (d.tipe === 'pendapatan') totalPen += parseFloat(d.nominal || 0);
-            else totalPot += parseFloat(d.nominal || 0);
-        });
-        
-        newData[penggajianIdx].total_pendapatan = totalPen;
-        newData[penggajianIdx].total_potongan = totalPot;
-        newData[penggajianIdx].gaji_bersih = totalPen - totalPot;
-        
         setData(newData);
     };
 

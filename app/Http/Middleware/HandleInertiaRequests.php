@@ -31,12 +31,14 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         if ($user) {
-            $relations = ['pegawai.pengajuanIzins'];
+            $relations = ['pegawai'];
             if ($request->getHost() === config('domains.mobile') || $request->is('mobile') || $request->is('mobile/*')) {
                 $relations['pegawai.units'] = fn ($query) => $query->select('unit_sekolah.id', 'nama', 'singkatan', 'logo');
             }
             $user->load($relations);
         }
+
+        $pegawai = $user?->pegawai;
 
         return [
             ...parent::share($request),
@@ -44,6 +46,8 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
                 'permissions' => $user ? $user->getAllPermissions()->pluck('name') : [],
                 'roles' => $user ? $user->roles->pluck('name') : [],
+                'is_approver' => $user ? $user->isApprover() : false,
+                'pegawai_complete' => $pegawai ? $pegawai->isDataComplete() : true,
             ],
             'flash' => [
                 'message' => fn () => $request->session()->get('message'),

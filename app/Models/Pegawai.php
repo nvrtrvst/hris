@@ -45,7 +45,7 @@ class Pegawai extends Model
         'status_aktif',
         'alasan_nonaktif',
         'pendidikan_terakhir',
-        'nuptk',
+        'pendidikan_jurusan',
         'no_rekening',
         'nama_bank',
         'npwp',
@@ -262,5 +262,25 @@ class Pegawai extends Model
     public function belongsToUnit($unitId): bool
     {
         return $this->units()->where('unit_sekolah.id', $unitId)->exists();
+    }
+
+    public function isDataComplete(): bool
+    {
+        $required = [
+            'nik', 'nama_lengkap', 'tempat_lahir', 'tanggal_lahir',
+            'jenis_kelamin', 'agama', 'status_pernikahan', 'jumlah_tanggungan',
+            'alamat_ktp', 'no_hp', 'status_kepegawaian', 'tanggal_mulai_kerja',
+            'pendidikan_terakhir',
+            'nama_bank', 'no_rekening',
+        ];
+
+        foreach ($required as $field) {
+            $value = $this->{$field};
+            if ($value === null || $value === '' || $value === []) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

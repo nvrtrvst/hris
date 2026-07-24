@@ -25,8 +25,6 @@ Route::middleware('auth:web_mobile')->group(function () {
         ->middleware('throttle:30,1')->name('presensi.jadwal.kelas');
     Route::get('/jadwal/siswa', [MobileController::class, 'siswaKelas'])
         ->middleware('throttle:30,1')->name('presensi.jadwal.siswa');
-    Route::post('/jadwal/siswa/absen-batch', [MobileController::class, 'siswaAbsenBatch'])
-        ->middleware('throttle:10,1')->name('presensi.jadwal.siswa.absen-batch');
     Route::get('/riwayat', [MobileController::class, 'riwayat'])->name('presensi.riwayat');
 
     // Rute Izin Mobile
@@ -48,4 +46,7 @@ Route::middleware('auth:web_mobile')->group(function () {
     })->name('presensi.profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('presensi.profile.update');
     Route::put('/password', [PasswordController::class, 'update'])->name('presensi.password.update');
+
+    Route::get('/lengkapi-data', [ProfileController::class, 'editPegawai'])->name('presensi.lengkapi-data');
+    Route::post('/lengkapi-data', [ProfileController::class, 'updatePegawai'])->name('presensi.lengkapi-data.store');
 });

@@ -149,35 +149,6 @@ class MobileController extends Controller
         ])->header('Cache-Control', 'no-store');
     }
 
-    // Proxy batch: kirim semua absen siswa sekaligus ke app keuangan.
-    public function siswaAbsenBatch(Request $request)
-    {
-        $validated = $request->validate([
-            ...$this->studentClassRules(),
-            'tanggal' => 'required|date_format:Y-m-d',
-            'absens' => 'required|array|min:1|max:200',
-            'absens.*.nis' => 'required|string|max:50|distinct',
-            'absens.*.status' => 'required|in:hadir,izin,sakit,alpa',
-        ]);
-        [$jadwal, $unit] = $this->resolveOwnedJadwal((int) $validated['jadwal_id']);
-        $class = $this->resolveClassPayload($jadwal, $validated);
-
-        $response = $this->keuanganRequest('siswa-absen-batch', [
-            'unit' => $unit->nama ?: $unit->singkatan,
-            ...$class,
-            'tanggal' => $validated['tanggal'],
-            'absens' => $validated['absens'],
-        ], true);
-
-        if (! $response?->successful()) {
-            $msg = $response?->json('message') ?? 'Gagal menyimpan absen.';
-
-            return response()->json(['success' => false, 'message' => $msg], $response?->status() ?? 502);
-        }
-
-        return response()->json(['success' => true, 'saved' => $response->json('saved')]);
-    }
-
     private function resolveOwnedJadwal(int $jadwalId): array
     {
         $pegawai = $this->getPegawai();
