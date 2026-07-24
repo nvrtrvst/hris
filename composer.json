@@ -8,7 +8,9 @@
     "require": {
         "php": "^8.3",
         "inertiajs/inertia-laravel": "^2.0",
+        "laragear/webauthn": "*",
         "laravel/framework": "^13.8",
+        "laravel/passkeys": "*",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "maatwebsite/excel": "^3.1",

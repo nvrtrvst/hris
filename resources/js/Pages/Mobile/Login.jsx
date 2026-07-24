@@ -1,7 +1,8 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import InputError from '@/Components/InputError';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowRight, Camera, Eye, EyeOff, LockKeyhole, MapPin, ShieldCheck, UserRound } from 'lucide-react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { usePasskeyVerify } from '@laravel/passkeys/react';
+import { ArrowRight, Camera, Eye, EyeOff, Fingerprint, LockKeyhole, MapPin, ShieldCheck, UserRound } from 'lucide-react';
 import { useState } from 'react';
 
 function LoginField({ id, label, icon: Icon, error, suffix, ...props }) {
@@ -181,10 +182,54 @@ export default function MobileLogin({ status }) {
                     </div>
                 </div>
 
-                <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-500">
-                    &copy; {new Date().getFullYear()} Yayasan Nuurul Muttaqiin
+                <PasskeyLoginSection />
+            <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-500">
+                &copy; {new Date().getFullYear()} Yayasan Nuurul Muttaqiin
+            </p>
+        </section>
+    </main>
+);
+}
+
+function PasskeyLoginSection() {
+    const { verify, isLoading, error, isSupported } = usePasskeyVerify({
+        onSuccess(response) {
+            router.visit(response.redirect ?? '/mobile');
+        },
+    });
+
+    if (!isSupported) return null;
+
+    return (
+        <div className="mt-4">
+            <div className="relative mb-4 flex items-center gap-3">
+                <span className="h-px flex-1 bg-slate-200" />
+                <span className="text-xs font-semibold text-slate-400">atau</span>
+                <span className="h-px flex-1 bg-slate-200" />
+            </div>
+            <button
+                type="button"
+                onClick={verify}
+                disabled={isLoading}
+                className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-4 py-4 text-sm font-bold text-slate-800 transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+                {isLoading ? (
+                    <>
+                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" aria-hidden="true" />
+                        <span>Memeriksa perangkat...</span>
+                    </>
+                ) : (
+                    <>
+                        <Fingerprint className="h-5 w-5 text-primary" />
+                        <span>Masuk dengan sidik jari / wajah</span>
+                    </>
+                )}
+            </button>
+            {error && (
+                <p role="alert" className="mt-2 text-center text-xs font-medium text-rose-600">
+                    {error}
                 </p>
-            </section>
-        </main>
+            )}
+        </div>
     );
 }
