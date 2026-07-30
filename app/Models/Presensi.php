@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Helpers\FileHelper;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -18,29 +19,37 @@ class Presensi extends Model
         'tanggal',
         'jam_masuk',
         'jam_keluar',
-        'status',
         'latitude_masuk',
         'longitude_masuk',
         'foto_masuk',
+        'foto_masuk_status',
+        'foto_masuk_error',
         'jarak_masuk_meter',
         'akurasi_masuk',
         'kecepatan_masuk',
         'latitude_keluar',
         'longitude_keluar',
         'foto_keluar',
+        'foto_keluar_status',
+        'foto_keluar_error',
         'jarak_keluar_meter',
         'akurasi_keluar',
         'kecepatan_keluar',
-        'lokasi_perlu_review',
         'captured_at',
         'pos_a_lat',
         'pos_a_lng',
         'pos_a_accuracy',
         'pos_a_captured_at',
-        'posisi_mencurigakan',
         'keterangan',
+        'persentase_bayar_jam',
+    ];
+
+    protected $guarded = [
+        'status',
         'is_lembur',
         'lembur_status',
+        'lokasi_perlu_review',
+        'posisi_mencurigakan',
     ];
 
     protected $casts = [
@@ -50,11 +59,14 @@ class Presensi extends Model
         'pos_a_captured_at' => 'datetime',
         'posisi_mencurigakan' => 'boolean',
         'is_lembur' => 'boolean',
+        'persentase_bayar_jam' => 'integer',
     ];
 
-    public static function statusAt(string $actualTime, string $requiredTime): string
+    public static function statusAt(string $actualTime, string $requiredTime, int $toleransiMenit = 0): string
     {
-        return $actualTime > $requiredTime ? 'telat' : 'hadir';
+        $batasWaktu = Carbon::parse($requiredTime)->addMinutes($toleransiMenit)->format('H:i:s');
+
+        return $actualTime > $batasWaktu ? 'telat' : 'hadir';
     }
 
     protected $appends = ['foto_masuk_url', 'foto_keluar_url'];

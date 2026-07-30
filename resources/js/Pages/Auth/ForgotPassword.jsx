@@ -17,56 +17,56 @@ export default function ForgotPassword({ status }) {
             <Head title="Lupa Kata Sandi" />
 
             {/* Left Panel: Branding */}
-            <div className="hidden md:flex flex-col justify-between w-1/2 bg-indigo-900 text-white p-12 relative overflow-hidden">
-                <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-indigo-800 opacity-50 blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-80 h-80 rounded-full bg-indigo-700 opacity-40 blur-3xl"></div>
+            <div className="hidden md:flex flex-col justify-between w-1/2 bg-primary-900 text-white p-12 relative overflow-hidden">
+                <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-primary-800 opacity-50 blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-80 h-80 rounded-full bg-primary-700 opacity-40 blur-3xl"></div>
                 
                 <div className="relative z-10">
                     <div className="flex items-center space-x-3 mb-12">
-                        <div className="bg-white p-2 rounded-xl shadow-lg">
-                            <ApplicationLogo className="w-10 h-10 text-indigo-900" />
+                        <div className="bg-white p-2 rounded-card shadow-card">
+                            <ApplicationLogo className="w-10 h-10 text-primary-900" />
                         </div>
-                        <span className="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-200">
+                        <span className="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-primary-200">
                             HRIS YAYASAN
                         </span>
                     </div>
 
                     <h1 className="text-4xl lg:text-5xl font-bold leading-tight mb-6">
-                        Pemulihan <br/> <span className="text-indigo-300">Akun</span>
+                        Pemulihan <br/> <span className="text-primary-300">Akun</span>
                     </h1>
-                    <p className="text-lg text-indigo-200 max-w-md leading-relaxed">
+                    <p className="text-lg text-primary-200 max-w-md leading-relaxed">
                         Jangan khawatir, masukkan alamat email yang terdaftar dan kami akan mengirimkan tautan untuk mengatur ulang kata sandi Anda.
                     </p>
                 </div>
 
-                <div className="relative z-10 text-sm text-indigo-400">
+                <div className="relative z-10 text-sm text-primary-400">
                     &copy; {new Date().getFullYear()} Yayasan Pendidikan. Hak Cipta Dilindungi.
                 </div>
             </div>
 
             {/* Right Panel: Forgot Password Form */}
-            <div className="w-full md:w-1/2 bg-white flex flex-col justify-center items-center p-8 sm:p-12 lg:p-24 shadow-2xl z-10 rounded-t-3xl md:rounded-none -mt-6 md:mt-0 relative">
+            <div className="w-full md:w-1/2 bg-surface flex flex-col justify-center items-center p-8 sm:p-12 lg:p-24 z-10 -mt-6 md:mt-0 relative">
                 
                 {/* Mobile header (hidden on desktop) */}
                 <div className="md:hidden flex items-center space-x-3 mb-10 w-full justify-center">
-                    <div className="bg-indigo-600 p-2 rounded-xl shadow-lg">
+                    <div className="bg-primary-600 p-2 rounded-card shadow-card">
                         <ApplicationLogo className="w-8 h-8 text-white" />
                     </div>
-                    <span className="text-2xl font-extrabold tracking-wider text-indigo-900">
+                    <span className="text-2xl font-extrabold tracking-wider text-primary-900">
                         HRIS YAYASAN
                     </span>
                 </div>
 
                 <div className="w-full max-w-md">
-                    <div className="mb-10 text-center md:text-left">
-                        <h2 className="text-3xl font-extrabold text-gray-900 mb-3 tracking-tight">Lupa Kata Sandi?</h2>
-                        <p className="text-gray-500 font-medium text-sm leading-relaxed">
+                    <div className="mb-8 text-center md:text-left">
+                        <h2 className="text-3xl font-extrabold text-text-primary mb-3 tracking-tight">Lupa Kata Sandi?</h2>
+                        <p className="text-text-muted text-sm leading-relaxed">
                             Masukkan email yang terdaftar di sistem. Kami akan mengirimkan tautan reset.
                         </p>
                     </div>
 
                     {status && (
-                        <div className="mb-6 bg-green-50 text-green-700 p-4 rounded-xl text-sm font-medium border border-green-200 flex items-start">
+                        <div className="mb-6 bg-success-light text-success p-4 rounded-card text-sm font-medium border border-success/30 flex items-start">
                             <svg className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -74,32 +74,32 @@ export default function ForgotPassword({ status }) {
                         </div>
                     )}
 
-                    <form onSubmit={submit} className="space-y-6">
+                    <form onSubmit={submit} className="form-section">
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Alamat Email Terdaftar</label>
+                            <label className="form-label" htmlFor="email">Alamat Email Terdaftar</label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                    <svg className="h-5 w-5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                                 </div>
                                 <input
                                     id="email"
                                     type="email"
                                     name="email"
                                     value={data.email}
-                                    className={`w-full pl-11 pr-4 py-3 bg-gray-50 border ${errors.email ? 'border-red-300 ring-1 ring-red-100 focus:border-red-500 focus:ring-red-200' : 'border-gray-200 focus:border-indigo-500 focus:ring-indigo-100'} rounded-xl transition-colors font-medium`}
+                                    className={`input-field pl-11 ${errors.email ? 'input-error' : ''}`}
                                     placeholder="nama@yayasan.com"
                                     autoComplete="email"
                                     autoFocus={true}
                                     onChange={(e) => setData('email', e.target.value)}
                                 />
                             </div>
-                            <InputError message={errors.email} className="mt-2 text-red-500" />
+                            <InputError message={errors.email} className="mt-2" />
                         </div>
 
                         <button
                             type="submit"
                             disabled={processing}
-                            className={`w-full bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 transition-all duration-200 flex justify-center items-center ${processing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            className={`btn-primary w-full py-3.5 ${processing ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
                             {processing ? (
                                 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -110,8 +110,8 @@ export default function ForgotPassword({ status }) {
                             Kirim Tautan Reset
                         </button>
 
-                        <div className="text-center pt-4 border-t border-gray-100">
-                            <Link href={route('login')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center justify-center">
+                        <div className="text-center pt-4 border-t border-border mt-6">
+                            <Link href={route('login')} className="link text-sm inline-flex items-center">
                                 <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                                 Kembali ke Halaman Masuk
                             </Link>

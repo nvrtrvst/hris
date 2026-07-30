@@ -13,6 +13,8 @@ class KomponenGaji extends Model
         'kode',
         'tipe',
         'jenis',
+        'applies_to_status_kepegawaian',
+        'syarat_bayar_jam_mengajar',
         'nilai_default',
         'unit_sekolah_id',
         'is_taxable',

@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Jadwal;
-use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\UnitSekolah;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class JadwalController extends Controller
 {
@@ -16,7 +18,7 @@ class JadwalController extends Controller
     {
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_jadwal');
-        $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'kelas:id,nama', 'mataPelajaran:id,nama']);
+        $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'mataPelajaran:id,nama']);
 
         if (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
@@ -31,7 +33,13 @@ class JadwalController extends Controller
             $query->where('unit_sekolah_id', $request->unit_sekolah_id);
         }
 
+        if ($request->filled('kelas_label')) {
+            $query->where('kelas_label', $request->kelas_label);
+        }
+
         $jadwals = $query->orderBy('hari')->orderBy('jam_mulai')->get();
+
+        $kelasLabels = $jadwals->pluck('kelas_label')->filter()->unique()->sort()->values();
         $units = UnitSekolah::all(['id', 'nama', 'singkatan']);
 
         // Get Pegawai for Matrix Rows — HANYA kolom yang dibutuhkan frontend
@@ -62,21 +70,20 @@ class JadwalController extends Controller
             'jadwals' => $jadwals,
             'pegawais' => $pegawais,
             'units' => $units,
-            'filters' => $request->only(['unit_sekolah_id']),
+            'kelasLabels' => $kelasLabels,
+            'filters' => $request->only(['unit_sekolah_id', 'kelas_label']),
         ]);
     }
 
     public function create()
     {
         $pegawais = Pegawai::where('status_aktif', 'aktif')->get(['id', 'nama_lengkap']);
-        $units = UnitSekolah::all(['id', 'nama', 'singkatan']);
-        $kelas = Kelas::all(['id', 'nama', 'tingkat', 'unit_sekolah_id']);
+        $units = UnitSekolah::all(['id', 'nama', 'singkatan', 'durasi_jp', 'jam_masuk_kantor', 'jam_pulang_kantor']);
         $mapel = MataPelajaran::all(['id', 'nama']);
 
         return inertia('Jadwal/Create', [
             'pegawais' => $pegawais,
             'units' => $units,
-            'kelas' => $kelas,
             'mapel' => $mapel,
         ]);
     }
@@ -96,7 +103,7 @@ class JadwalController extends Controller
         $validated = $request->validate([
             'pegawai_id' => 'required|exists:pegawai,id',
             'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
-            'kelas_id' => 'nullable|exists:kelas,id',
+            'kelas_label' => 'nullable|string|max:255',
             'mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu',
             'jam_mulai' => 'required|date_format:H:i',
@@ -106,9 +113,15 @@ class JadwalController extends Controller
             'semester' => 'required|integer|in:1,2',
         ]);
 
-        // [FIX] Bungkus dalam transaction + lockForUpdate untuk mencegah race condition
+        $unit = UnitSekolah::find($validated['unit_sekolah_id']);
+        if ($unit && $unit->jam_masuk_kantor && $validated['jam_mulai'] < $unit->jam_masuk_kantor) {
+            return back()->withErrors(['jam_mulai' => "Jam mulai ({$validated['jam_mulai']}) sebelum jam masuk kantor ({$unit->jam_masuk_kantor})."])->withInput();
+        }
+        if ($unit && $unit->jam_pulang_kantor && $validated['jam_selesai'] > $unit->jam_pulang_kantor) {
+            return back()->withErrors(['jam_selesai' => "Jam selesai ({$validated['jam_selesai']}) setelah jam pulang kantor ({$unit->jam_pulang_kantor})."])->withInput();
+        }
+
         return DB::transaction(function () use ($validated) {
-            // Conflict Detection Logic (Lintas Unit) — dengan lock
             $conflict = Jadwal::where('pegawai_id', $validated['pegawai_id'])
                 ->where('hari', $validated['hari'])
                 ->where(function ($query) use ($validated) {
@@ -125,7 +138,16 @@ class JadwalController extends Controller
                 ])->withInput();
             }
 
+            if ($validated['jenis_jadwal'] === 'mengajar') {
+                $exceeded = $this->exceedsWeeklyHourLimit($validated['pegawai_id'], $validated['unit_sekolah_id'], $validated['jam_mulai'], $validated['jam_selesai']);
+                if ($exceeded) {
+                    return back()->withErrors(['jam_selesai' => $exceeded])->withInput();
+                }
+            }
+
             Jadwal::create($validated);
+
+            $this->clearJadwalCache($validated['pegawai_id']);
 
             return redirect()->route('jadwal.index')->with('message', 'Jadwal berhasil ditambahkan.');
         });
@@ -142,15 +164,13 @@ class JadwalController extends Controller
         }
 
         $pegawais = Pegawai::where('status_aktif', 'aktif')->get(['id', 'nama_lengkap']);
-        $units = UnitSekolah::all(['id', 'nama', 'singkatan']);
-        $kelas = Kelas::all(['id', 'nama', 'tingkat', 'unit_sekolah_id']);
+        $units = UnitSekolah::all(['id', 'nama', 'singkatan', 'durasi_jp', 'jam_masuk_kantor', 'jam_pulang_kantor']);
         $mapel = MataPelajaran::all(['id', 'nama']);
 
         return inertia('Jadwal/Edit', [
             'jadwal' => $jadwal,
             'pegawais' => $pegawais,
             'units' => $units,
-            'kelas' => $kelas,
             'mapel' => $mapel,
         ]);
     }
@@ -171,7 +191,7 @@ class JadwalController extends Controller
         $validated = $request->validate([
             'pegawai_id' => 'required|exists:pegawai,id',
             'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
-            'kelas_id' => 'nullable|exists:kelas,id',
+            'kelas_label' => 'nullable|string|max:255',
             'mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu',
             'jam_mulai' => 'required|date_format:H:i',
@@ -180,6 +200,14 @@ class JadwalController extends Controller
             'tahun_ajaran' => 'required|string|max:10',
             'semester' => 'required|integer|in:1,2',
         ]);
+
+        $unit = UnitSekolah::find($validated['unit_sekolah_id']);
+        if ($unit && $unit->jam_masuk_kantor && $validated['jam_mulai'] < $unit->jam_masuk_kantor) {
+            return back()->withErrors(['jam_mulai' => "Jam mulai ({$validated['jam_mulai']}) sebelum jam masuk kantor ({$unit->jam_masuk_kantor})."])->withInput();
+        }
+        if ($unit && $unit->jam_pulang_kantor && $validated['jam_selesai'] > $unit->jam_pulang_kantor) {
+            return back()->withErrors(['jam_selesai' => "Jam selesai ({$validated['jam_selesai']}) setelah jam pulang kantor ({$unit->jam_pulang_kantor})."])->withInput();
+        }
 
         return DB::transaction(function () use ($validated, $jadwal) {
             $conflict = Jadwal::where('pegawai_id', $validated['pegawai_id'])
@@ -199,7 +227,16 @@ class JadwalController extends Controller
                 ])->withInput();
             }
 
+            if ($validated['jenis_jadwal'] === 'mengajar') {
+                $exceeded = $this->exceedsWeeklyHourLimit($validated['pegawai_id'], $validated['unit_sekolah_id'], $validated['jam_mulai'], $validated['jam_selesai'], $jadwal->id);
+                if ($exceeded) {
+                    return back()->withErrors(['jam_selesai' => $exceeded])->withInput();
+                }
+            }
+
             $jadwal->update($validated);
+
+            $this->clearJadwalCache($validated['pegawai_id']);
 
             return redirect()->route('jadwal.index')->with('message', 'Jadwal berhasil diperbarui.');
         });
@@ -217,7 +254,6 @@ class JadwalController extends Controller
             'tahun_ajaran' => 'required|string|max:10',
             'semester' => 'required|integer|in:1,2',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
-            'kelas_id' => 'nullable|exists:kelas,id',
             'mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
             'waktu_mulai' => 'nullable|date_format:H:i',
             'waktu_selesai' => 'nullable|date_format:H:i',
@@ -258,50 +294,72 @@ class JadwalController extends Controller
             return back()->withErrors(['waktu' => 'Tidak ada blok waktu yang tersedia dalam rentang waktu yang dipilih.']);
         }
 
-        $kelas = $request->kelas_id ? Kelas::find($request->kelas_id) : null;
         $mapel = $request->mata_pelajaran_id ? MataPelajaran::find($request->mata_pelajaran_id) : null;
 
-        // [FIX] Bungkus dalam transaction untuk mencegah data partial
-        $generatedCount = DB::transaction(function () use ($pegawais, $days, $timeBlocks, $kelas, $mapel, $unitId, $request) {
+        $generatedCount = DB::transaction(function () use ($pegawais, $days, $timeBlocks, $mapel, $unitId, $request) {
             $count = 0;
 
             foreach ($pegawais as $pegawai) {
                 $empUnitId = $unitId ?? ($pegawai->units->first()->id ?? 1);
+                $unit = UnitSekolah::find($empUnitId);
+                $maxMinutes = ($unit && $unit->max_jam_minggu) ? $unit->max_jam_minggu * 60 : 0;
+                if ($maxMinutes === 0) continue;
 
-                // Generate 2 random shifts for this teacher
-                $assignedDays = (array) array_rand(array_flip($days), 2);
+                // Hitung existing minutes mingguan
+                $existingMinutes = Jadwal::where('pegawai_id', $pegawai->id)
+                    ->where('jenis_jadwal', 'mengajar')
+                    ->lockForUpdate()
+                    ->get()
+                    ->sum(fn($j) => max(0, (intval(substr($j->jam_selesai,0,2))*60+intval(substr($j->jam_selesai,3,2))) - (intval(substr($j->jam_mulai,0,2))*60+intval(substr($j->jam_mulai,3,2)))));
 
-                foreach ($assignedDays as $day) {
-                    $time = $timeBlocks[array_rand($timeBlocks)];
+                if ($existingMinutes >= $maxMinutes) continue;
 
-                    // Cek bentrok dengan lock
-                    $conflict = Jadwal::where('pegawai_id', $pegawai->id)
-                        ->where('hari', $day)
-                        ->where(function ($query) use ($time) {
-                            $query->where('jam_mulai', '<', $time[1])
-                                ->where('jam_selesai', '>', $time[0]);
-                        })->lockForUpdate()->exists();
+                // Shuffle days dan timeBlocks untuk variasi
+                $shuffledDays = $days;
+                shuffle($shuffledDays);
+                $shuffledBlocks = $timeBlocks;
+                shuffle($shuffledBlocks);
 
-                    if (! $conflict) {
-                        Jadwal::create([
-                            'pegawai_id' => $pegawai->id,
-                            'unit_sekolah_id' => $empUnitId,
-                            'kelas_id' => $kelas ? $kelas->id : null,
-                            'mata_pelajaran_id' => $mapel ? $mapel->id : null,
-                            'hari' => $day,
-                            'jam_mulai' => $time[0],
-                            'jam_selesai' => $time[1],
-                            'jenis_jadwal' => 'mengajar',
-                            'tahun_ajaran' => $request->tahun_ajaran,
-                            'semester' => $request->semester,
-                        ]);
-                        $count++;
+                foreach ($shuffledDays as $day) {
+                    if ($existingMinutes >= $maxMinutes) break;
+
+                    foreach ($shuffledBlocks as $time) {
+                        if ($existingMinutes >= $maxMinutes) break;
+
+                        $conflict = Jadwal::where('pegawai_id', $pegawai->id)
+                            ->where('hari', $day)
+                            ->where(function ($query) use ($time) {
+                                $query->where('jam_mulai', '<', $time[1])
+                                    ->where('jam_selesai', '>', $time[0]);
+                            })->lockForUpdate()->exists();
+
+                        if (! $conflict) {
+                            Jadwal::create([
+                                'pegawai_id' => $pegawai->id,
+                                'unit_sekolah_id' => $empUnitId,
+                                'mata_pelajaran_id' => $mapel ? $mapel->id : null,
+                                'hari' => $day,
+                                'jam_mulai' => $time[0],
+                                'jam_selesai' => $time[1],
+                                'jenis_jadwal' => 'mengajar',
+                                'tahun_ajaran' => $request->tahun_ajaran,
+                                'semester' => $request->semester,
+                            ]);
+                            $count++;
+
+                            $blockMinutes = (intval(substr($time[1],0,2))*60+intval(substr($time[1],3,2))) - (intval(substr($time[0],0,2))*60+intval(substr($time[0],3,2)));
+                            $existingMinutes += $blockMinutes;
+                        }
                     }
                 }
             }
 
             return $count;
         });
+
+        foreach ($pegawais as $p) {
+            $this->clearJadwalCache($p->id);
+        }
 
         return redirect()->route('jadwal.index')->with('message', "Berhasil me-generate $generatedCount jadwal acak untuk guru.");
     }
@@ -357,10 +415,27 @@ class JadwalController extends Controller
                 return back()->withErrors(['conflict' => 'Pertukaran gagal! Pegawai Tujuan memiliki jadwal yang bentrok dengan jadwal asal.']);
             }
 
+            // Cek batas jam mengajar
+            if ($jadwalAsal->jenis_jadwal === 'mengajar') {
+                $exceeded = $this->exceedsWeeklyHourLimit($jadwalTujuan->pegawai_id, $jadwalTujuan->unit_sekolah_id, $jadwalAsal->jam_mulai, $jadwalAsal->jam_selesai, $jadwalTujuan->id);
+                if ($exceeded) {
+                    return back()->withErrors(['conflict' => 'Pertukaran gagal! '.$exceeded]);
+                }
+            }
+            if ($jadwalTujuan->jenis_jadwal === 'mengajar') {
+                $exceeded = $this->exceedsWeeklyHourLimit($jadwalAsal->pegawai_id, $jadwalAsal->unit_sekolah_id, $jadwalTujuan->jam_mulai, $jadwalTujuan->jam_selesai, $jadwalAsal->id);
+                if ($exceeded) {
+                    return back()->withErrors(['conflict' => 'Pertukaran gagal! '.$exceeded]);
+                }
+            }
+
             // Lakukan penukaran (Hanya tukar pegawai_id) — sekarang aman dalam transaction
             $tempPegawaiId = $jadwalAsal->pegawai_id;
             $jadwalAsal->update(['pegawai_id' => $jadwalTujuan->pegawai_id]);
             $jadwalTujuan->update(['pegawai_id' => $tempPegawaiId]);
+
+            $this->clearJadwalCache($jadwalAsal->pegawai_id);
+            $this->clearJadwalCache($jadwalTujuan->pegawai_id);
 
             return redirect()->route('jadwal.index')->with('message', 'Pertukaran jadwal berhasil dilakukan!');
         });
@@ -381,7 +456,67 @@ class JadwalController extends Controller
         }
 
         $jadwal->delete();
+        $this->clearJadwalCache($jadwal->pegawai_id);
 
         return redirect()->route('jadwal.index')->with('message', 'Jadwal berhasil dihapus.');
+    }
+
+    private function exceedsWeeklyHourLimit(int $pegawaiId, int $unitId, string $jamMulai, string $jamSelesai, ?int $excludeJadwalId = null): ?string
+    {
+        $unit = UnitSekolah::find($unitId);
+        if (! $unit || ! $unit->max_jam_minggu) return null;
+
+        $query = Jadwal::where('pegawai_id', $pegawaiId)
+            ->where('jenis_jadwal', 'mengajar');
+        if ($excludeJadwalId) {
+            $query->where('id', '!=', $excludeJadwalId);
+        }
+
+        $existingMinutes = $query->get()->sum(function ($j) {
+            $h1 = explode(':', $j->jam_mulai);
+            $h2 = explode(':', $j->jam_selesai);
+            return max(0, ((int)$h2[0] * 60 + (int)$h2[1]) - ((int)$h1[0] * 60 + (int)$h1[1]));
+        });
+
+        $hm = explode(':', $jamMulai);
+        $hs = explode(':', $jamSelesai);
+        $proposedMinutes = max(0, ((int)$hs[0] * 60 + (int)$hs[1]) - ((int)$hm[0] * 60 + (int)$hm[1]));
+
+        $maxMinutes = $unit->max_jam_minggu * 60;
+
+        if (($existingMinutes + $proposedMinutes) > $maxMinutes) {
+            $sisa = $maxMinutes - $existingMinutes;
+            return 'Total jam mengajar/minggu melebihi batas '.$unit->max_jam_minggu.' jam. Sisa: '.max(0, $sisa).' menit.';
+        }
+
+        return null;
+    }
+
+    private function clearJadwalCache(int $pegawaiId): void
+    {
+        Cache::forget('mobile.jadwal.'.$pegawaiId);
+        foreach (['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as $hari) {
+            Cache::forget('mobile.jadwal.'.$pegawaiId.'.'.$hari);
+        }
+    }
+
+    public function kelasByUnit(Request $request)
+    {
+        $request->validate(['q' => 'required|string|max:255']);
+        $base = rtrim((string) config('keuangan.url'), '/');
+        $key = (string) config('keuangan.key');
+        if ($base === '' || $key === '' || $key === 'change-me-in-production') {
+            return response()->json(['success' => false, 'kelas' => []]);
+        }
+        try {
+            $response = Http::acceptJson()
+                ->withHeaders(['x-internal-key' => $key])
+                ->connectTimeout(2)
+                ->timeout(5)
+                ->get($base.'/api/integration/kelas-by-unit', ['unit' => $request->q]);
+        } catch (ConnectionException) {
+            return response()->json(['success' => false, 'kelas' => []]);
+        }
+        return response()->json($response->json() ?: ['success' => false, 'kelas' => []]);
     }
 }

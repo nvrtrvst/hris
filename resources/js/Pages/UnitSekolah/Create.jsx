@@ -11,6 +11,9 @@ export default function Create({ auth }) {
         latitude: '-6.200000',
         longitude: '106.800000',
         radius_meter: 50,
+        durasi_jp: 45,
+        toleransi_menit: 0,
+        max_jam_minggu: 30,
         jam_masuk_kantor: '07:30',
         jam_pulang_kantor: '15:00',
     });
@@ -21,11 +24,11 @@ export default function Create({ auth }) {
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="font-semibold text-xl text-gray-800">Tambah Unit Sekolah</h2>}>
+        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Tambah Unit Sekolah</h2>}>
             <Head title="Tambah Unit Sekolah" />
-            <div className="py-12">
+            <div className="py-8 bg-surface min-h-screen">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl p-6">
+                    <div className="card p-6">
                         <UnitForm
                             data={data}
                             setData={setData}

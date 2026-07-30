@@ -14,7 +14,7 @@ use Inertia\Inertia;
 Route::get('/login', [MobileAuthController::class, 'create'])
     ->middleware('guest:web_mobile')->name('presensi.login');
 Route::post('/login', [MobileAuthController::class, 'store'])
-    ->middleware('guest:web_mobile')->name('presensi.login.store');
+    ->middleware('guest:web_mobile')->middleware('throttle:5,1')->name('presensi.login.store');
 Route::post('/logout', [MobileAuthController::class, 'destroy'])
     ->middleware('auth:web_mobile')->name('presensi.logout');
 
@@ -30,12 +30,17 @@ Route::middleware('auth:web_mobile')->group(function () {
     // Rute Izin Mobile
     Route::get('/izin', [MobileIzinController::class, 'index'])->name('presensi.izin.index');
     Route::get('/izin/create', [MobileIzinController::class, 'create'])->name('presensi.izin.create');
-    Route::post('/izin', [MobileIzinController::class, 'store'])->name('presensi.izin.store');
+    Route::post('/izin', [MobileIzinController::class, 'store'])
+        ->middleware('throttle:10,1')->name('presensi.izin.store');
 
     Route::get('/absen', [MobileController::class, 'absen'])->name('presensi.absen');
     Route::post('/absen', [MobileController::class, 'storeAbsen'])
         ->middleware('throttle:10,1') // 10 requests per minute per user
         ->name('presensi.absen.store');
+    Route::post('/absen-tetap', [MobileController::class, 'storeAbsenTetap'])
+        ->middleware('throttle:10,1')->name('presensi.absen.tetap');
+    Route::post('/tap-jadwal', [MobileController::class, 'tapJadwal'])
+        ->middleware('throttle:30,1')->name('presensi.absen.tap');
     Route::get('/profile', function (Request $request) {
         $request->user()->pegawai?->load('units', 'jabatans');
 

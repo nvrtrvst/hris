@@ -12,7 +12,7 @@ class Jadwal extends Model
     protected $fillable = [
         'pegawai_id',
         'unit_sekolah_id',
-        'kelas_id',
+        'kelas_label',
         'mata_pelajaran_id',
         'hari',
         'jam_mulai',
@@ -30,11 +30,6 @@ class Jadwal extends Model
     public function unitSekolah(): BelongsTo
     {
         return $this->belongsTo(UnitSekolah::class);
-    }
-
-    public function kelas(): BelongsTo
-    {
-        return $this->belongsTo(Kelas::class);
     }
 
     public function mataPelajaran(): BelongsTo

@@ -43,7 +43,7 @@ export default function DeleteUserForm({ className = '' }) {
     return (
         <section className={`space-y-5 ${className}`}>
             <header className="border-b border-danger/30 pb-3">
-                <h3 className="flex items-center gap-2 text-base font-bold text-danger">
+                <h3 className="section-title flex items-center gap-2 text-base font-bold text-danger">
                     <Trash2 className="h-4 w-4" />
                     Hapus Akun
                 </h3>
@@ -53,7 +53,7 @@ export default function DeleteUserForm({ className = '' }) {
                 </p>
             </header>
 
-            <div className="rounded-lg border border-danger/40 bg-danger/5 p-4">
+            <div className="rounded-card border border-danger/40 bg-danger/5 p-4">
                 <div className="flex items-start gap-3">
                     <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-danger" />
                     <div className="text-sm">
@@ -71,7 +71,7 @@ export default function DeleteUserForm({ className = '' }) {
             <button
                 type="button"
                 onClick={() => setConfirming(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-danger bg-white px-5 py-2.5 text-sm font-semibold text-danger shadow-sm transition hover:bg-danger hover:text-white focus:outline-none focus:ring-2 focus:ring-danger/30"
+                className="btn-danger"
             >
                 <Trash2 className="h-4 w-4" />
                 Hapus Akun Saya
@@ -125,14 +125,14 @@ export default function DeleteUserForm({ className = '' }) {
                             type="button"
                             onClick={closeModal}
                             disabled={processing}
-                            className="inline-flex items-center justify-center rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-semibold text-text-primary shadow-sm transition hover:bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                            className="btn-secondary"
                         >
                             Batal
                         </button>
                         <button
                             type="submit"
                             disabled={processing || !data.password}
-                            className="inline-flex items-center justify-center gap-2 rounded-lg bg-danger px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-danger/90 focus:outline-none focus:ring-2 focus:ring-danger/30 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="btn-danger"
                         >
                             {processing ? 'Menghapus...' : 'Hapus Akun'}
                         </button>

@@ -12,6 +12,8 @@ export default function Komponen({ auth, komponens, units }) {
         kode: '',
         tipe: 'pendapatan',
         jenis: 'fixed',
+        applies_to_status_kepegawaian: '',
+        syarat_bayar_jam_mengajar: '',
         nilai_default: '',
         unit_sekolah_id: '',
         is_taxable: true,
@@ -28,6 +30,8 @@ export default function Komponen({ auth, komponens, units }) {
             kode: k.kode || '',
             tipe: k.tipe,
             jenis: k.jenis,
+            applies_to_status_kepegawaian: k.applies_to_status_kepegawaian || '',
+            syarat_bayar_jam_mengajar: k.syarat_bayar_jam_mengajar || '',
             nilai_default: k.nilai_default || '',
             unit_sekolah_id: k.unit_sekolah_id || '',
             is_taxable: k.is_taxable == 1,
@@ -61,102 +65,125 @@ export default function Komponen({ auth, komponens, units }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-2xl text-gray-800 leading-tight">Pengaturan Komponen Gaji</h2>}
+            header={<h2 className="font-semibold text-2xl text-primary leading-tight">Pengaturan Komponen Gaji</h2>}
         >
             <Head title="Komponen Gaji" />
 
-            <div className="py-12 bg-gray-50 min-h-screen">
+            <div className="py-8 bg-surface min-h-screen">
                 <div className="max-w-[1400px] mx-auto sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-8">
-                    
-                    {/* Form Section */}
+
                     <div className="w-full lg:w-1/3">
-                        <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl border border-gray-100 p-6 sticky top-6">
-                            <h3 className="text-lg font-bold text-gray-900 mb-6 border-b pb-2">{isEditing ? 'Edit Komponen' : 'Tambah Komponen'}</h3>
-                            
-                            <form onSubmit={submit} className="space-y-4">
+                        <div className="page-card sticky top-6">
+                            <div className="page-card-header">
+                                <h3 className="section-title mb-0 uppercase">{isEditing ? 'Edit Komponen' : 'Tambah Komponen'}</h3>
+                            </div>
+
+                            <form onSubmit={submit} className="form-section">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Nama Komponen</label>
-                                    <input type="text" value={data.nama} onChange={e => setData('nama', e.target.value)} placeholder="Contoh: Gaji Pokok / PPh21" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-                                    {errors.nama && <p className="mt-1 text-sm text-red-600">{errors.nama}</p>}
+                                    <label className="form-label">Nama Komponen</label>
+                                    <input type="text" value={data.nama} onChange={e => setData('nama', e.target.value)} placeholder="Contoh: Gaji Pokok / PPh21" className="input-field" />
+                                    {errors.nama && <p className="form-error">{errors.nama}</p>}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Kode (stabil untuk logika)</label>
-                                    <input type="text" value={data.kode} onChange={e => setData('kode', e.target.value)} placeholder="Contoh: gaji_pokok, kehadiran_telat, kehadiran_alpa, tunjangan_kehadiran" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-                                    <p className="text-xs text-gray-500 mt-1">Isi agar payroll tidak bergantung pada nama. Kosong = pakai pencocokan nama (legacy).</p>
-                                    {errors.kode && <p className="mt-1 text-sm text-red-600">{errors.kode}</p>}
+                                    <label className="form-label">Kode (stabil untuk logika)</label>
+                                    <input type="text" value={data.kode} onChange={e => setData('kode', e.target.value)} placeholder="Contoh: gaji_pokok, kehadiran_telat, kehadiran_alpa, tunjangan_kehadiran" className="input-field" />
+                                    <p className="form-hint">Isi agar payroll tidak bergantung pada nama. Kosong = pakai pencocokan nama (legacy).</p>
+                                    {errors.kode && <p className="form-error">{errors.kode}</p>}
                                 </div>
-                                
+
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Tipe</label>
-                                    <select value={data.tipe} onChange={e => setData('tipe', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    <label className="form-label">Tipe</label>
+                                    <select value={data.tipe} onChange={e => setData('tipe', e.target.value)} className="select-field">
                                         <option value="pendapatan">Pendapatan (+)</option>
                                         <option value="potongan">Potongan (-)</option>
                                     </select>
-                                    {errors.tipe && <p className="mt-1 text-sm text-red-600">{errors.tipe}</p>}
+                                    {errors.tipe && <p className="form-error">{errors.tipe}</p>}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Jenis Perhitungan</label>
-                                    <select value={data.jenis} onChange={e => setData('jenis', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    <label className="form-label">Jenis Perhitungan</label>
+                                    <select value={data.jenis} onChange={e => setData('jenis', e.target.value)} className="select-field">
                                         <option value="fixed">Fixed (Nominal Pasti)</option>
                                         <option value="persentase">Persentase (dari Gaji Pokok)</option>
                                         <option value="dinamis_kehadiran">Dinamis Kehadiran (Uang Makan / Telat)</option>
                                         <option value="dinamis_jam_mengajar">Dinamis Jam Mengajar (Honor JTM)</option>
                                         <option value="dinamis_masa_bakti">Dinamis Masa Bakti (Otomatis dari Skala)</option>
                                     </select>
-                                    {errors.jenis && <p className="mt-1 text-sm text-red-600">{errors.jenis}</p>}
+                                    {errors.jenis && <p className="form-error">{errors.jenis}</p>}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Nilai Default (Rp / %)</label>
-                                    <input type="number" step="0.01" value={data.nilai_default} onChange={e => setData('nilai_default', e.target.value)} placeholder="Contoh: 5000000 atau 5 untuk 5%" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-                                    <p className="text-xs text-gray-500 mt-1">Biarkan kosong jika nilai diatur spesifik per pegawai.</p>
-                                    {errors.nilai_default && <p className="mt-1 text-sm text-red-600">{errors.nilai_default}</p>}
+                                    <label className="form-label">Nilai Default (Rp / %)</label>
+                                    <input type="number" step="0.01" value={data.nilai_default} onChange={e => setData('nilai_default', e.target.value)} placeholder="Contoh: 5000000 atau 5 untuk 5%" className="input-field" />
+                                    <p className="form-hint">Biarkan kosong jika nilai diatur spesifik per pegawai.</p>
+                                    {errors.nilai_default && <p className="form-error">{errors.nilai_default}</p>}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Unit (khusus Honor Jam Mengajar)</label>
-                                    <select value={data.unit_sekolah_id} onChange={e => setData('unit_sekolah_id', e.target.value)} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    <label className="form-label">Status Kepegawaian</label>
+                                    <select value={data.applies_to_status_kepegawaian} onChange={e => setData('applies_to_status_kepegawaian', e.target.value)} className="select-field">
+                                        <option value="">Semua Status</option>
+                                        <option value="tetap">Tetap / GTYS</option>
+                                        <option value="honorer">Honorer</option>
+                                    </select>
+                                    {errors.applies_to_status_kepegawaian && <p className="form-error">{errors.applies_to_status_kepegawaian}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="form-label">Unit (khusus Honor Jam Mengajar)</label>
+                                    <select value={data.unit_sekolah_id} onChange={e => setData('unit_sekolah_id', e.target.value)} className="select-field">
                                         <option value="">Semua Unit</option>
                                         {units && units.map(u => (
                                             <option key={u.id} value={u.id}>{u.nama}</option>
                                         ))}
                                     </select>
-                                    <p className="text-xs text-gray-500 mt-1">Isi bila komponen hanya berlaku untuk unit tertentu (mis. Honor Mengajar unit TK).</p>
-                                    {errors.unit_sekolah_id && <p className="mt-1 text-sm text-red-600">{errors.unit_sekolah_id}</p>}
+                                    <p className="form-hint">Isi bila komponen hanya berlaku untuk unit tertentu (mis. Honor Mengajar unit TK).</p>
+                                    {errors.unit_sekolah_id && <p className="form-error">{errors.unit_sekolah_id}</p>}
                                 </div>
+
+                                {data.jenis === 'dinamis_jam_mengajar' && (
+                                    <div>
+                                        <label className="form-label">Syarat Bayar Jam Mengajar</label>
+                                        <select value={data.syarat_bayar_jam_mengajar} onChange={e => setData('syarat_bayar_jam_mengajar', e.target.value)} className="select-field">
+                                            <option value="hanya_hadir">Hanya Jadwal dengan Presensi Hadir/Telat</option>
+                                            <option value="semua_jadwal">Semua Jadwal (tanpa cek presensi)</option>
+                                        </select>
+                                        <p className="form-hint">'Hanya Hadir' = jam dihitung dari jadwal yg ada presensi hadir/telat. 'Semua Jadwal' = semua jam jadwal dibayar.</p>
+                                        {errors.syarat_bayar_jam_mengajar && <p className="form-error">{errors.syarat_bayar_jam_mengajar}</p>}
+                                    </div>
+                                )}
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Urutan Matrix</label>
-                                        <input type="number" value={data.urutan} onChange={e => setData('urutan', e.target.value)} placeholder="Contoh: 1" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-                                        <p className="text-[10px] text-gray-500 mt-1">Gaji Pokok biasanya urutan 1</p>
+                                        <label className="form-label">Urutan Matrix</label>
+                                        <input type="number" value={data.urutan} onChange={e => setData('urutan', e.target.value)} placeholder="Contoh: 1" className="input-field" />
+                                        <p className="form-hint">Gaji Pokok biasanya urutan 1</p>
                                     </div>
-                                    <div className="flex items-end">
-                                        <label className="flex items-center pb-2">
-                                            <input type="checkbox" checked={data.tampil_di_matrix} onChange={e => setData('tampil_di_matrix', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                            <span className="ml-2 text-sm text-gray-600">Tampil di Matrix</span>
+                                    <div className="flex items-end pb-3">
+                                        <label className="flex items-center cursor-pointer">
+                                            <input type="checkbox" checked={data.tampil_di_matrix} onChange={e => setData('tampil_di_matrix', e.target.checked)} className="rounded border-border text-primary shadow-card focus:ring-primary" />
+                                            <span className="ml-2 text-sm text-text-primary">Tampil di Matrix</span>
                                         </label>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center space-x-4">
-                                    <label className="flex items-center">
-                                        <input type="checkbox" checked={data.is_taxable} onChange={e => setData('is_taxable', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                        <span className="ml-2 text-sm text-gray-600">Taxable (Kena PPh21)</span>
+                                    <label className="flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={data.is_taxable} onChange={e => setData('is_taxable', e.target.checked)} className="rounded border-border text-primary shadow-card focus:ring-primary" />
+                                        <span className="ml-2 text-sm text-text-primary">Taxable (Kena PPh21)</span>
                                     </label>
-                                    <label className="flex items-center">
-                                        <input type="checkbox" checked={data.is_active} onChange={e => setData('is_active', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                        <span className="ml-2 text-sm text-gray-600">Aktif</span>
+                                    <label className="flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={data.is_active} onChange={e => setData('is_active', e.target.checked)} className="rounded border-border text-primary shadow-card focus:ring-primary" />
+                                        <span className="ml-2 text-sm text-text-primary">Aktif</span>
                                     </label>
                                 </div>
 
                                 <div className="pt-4 flex justify-end space-x-3">
                                     {isEditing && (
-                                        <button type="button" onClick={handleCancel} className="bg-white text-gray-700 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm font-medium">Batal</button>
+                                        <button type="button" onClick={handleCancel} className="btn-secondary">Batal</button>
                                     )}
-                                    <button type="submit" disabled={processing} className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium disabled:opacity-50">
+                                    <button type="submit" disabled={processing} className="btn-primary">
                                         {processing ? 'Menyimpan...' : (isEditing ? 'Update Komponen' : 'Simpan Komponen')}
                                     </button>
                                 </div>
@@ -164,86 +191,87 @@ export default function Komponen({ auth, komponens, units }) {
                         </div>
                     </div>
 
-                    {/* Table Section */}
                     <div className="w-full lg:w-2/3">
-                        <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl border border-gray-100">
-                            <div className="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                                <h3 className="text-lg font-bold text-gray-900">Daftar Komponen (Master Data)</h3>
-                                <Link 
+                        <div className="card-table">
+                            <div className="px-6 py-5 border-b border-border bg-white/50 flex justify-between items-center">
+                                <h3 className="text-lg font-bold text-text-primary">Daftar Komponen (Master Data)</h3>
+                                <Link
                                     href={route('komponen-gaji.matrix')}
-                                    className="bg-green-100 text-green-700 hover:bg-green-200 font-bold px-4 py-2 rounded-lg border border-green-300 transition-colors flex items-center text-sm shadow-sm"
+                                    className="btn-secondary btn-sm border-success text-success hover:bg-success-light"
                                 >
-                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                     Buka Matrix Gaji
                                 </Link>
                             </div>
-                            <div className="p-0 overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
+                            <div className="table-wrap">
+                                <table className="table-base">
+                                    <thead className="bg-surface/50 border-b border-border">
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai Default</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Nama</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Kategori</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Nilai Default</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">Aksi</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
+                                    <tbody className="bg-white divide-y divide-border/50">
                                         {komponens.length > 0 ? komponens.map((k) => (
-                                            <tr key={k.id} className="hover:bg-gray-50 group">
+                                            <tr key={k.id} className="hover:bg-surface/50 group">
                                                 <td className="px-6 py-4">
-                                                    <div className="text-sm font-bold text-gray-900">{k.nama}</div>
+                                                    <div className="text-sm font-bold text-text-primary">{k.nama}</div>
                                                     <div className="flex flex-wrap gap-1 mt-1">
-                                                        {k.kode && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-700">{k.kode}</span>}
-                                                        {k.unit_sekolah_id && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">Unit</span>}
-                                                        {k.is_taxable == 1 && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800">Taxable</span>}
+                                                        {k.kode && <span className="badge-neutral text-[10px]">{k.kode}</span>}
+                                                        {k.applies_to_status_kepegawaian && <span className="badge-warning text-[10px]">{k.applies_to_status_kepegawaian}</span>}
+                                                        {k.syarat_bayar_jam_mengajar && <span className="badge-info text-[10px]">{k.syarat_bayar_jam_mengajar === 'hanya_hadir' ? 'Bayar Hadir' : 'Bayar Semua'}</span>}
+                                                        {k.unit_sekolah_id && <span className="badge-info text-[10px]">Unit</span>}
+                                                        {k.is_taxable == 1 && <span className="badge-neutral text-[10px]">Taxable</span>}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${k.tipe === 'pendapatan' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                    <span className={`badge ${k.tipe === 'pendapatan' ? 'badge-success' : 'badge-danger'}`}>
                                                         {k.tipe === 'pendapatan' ? '+' : '-'} {k.tipe}
                                                     </span>
-                                                    <div className="text-xs text-gray-500 mt-1 uppercase">{k.jenis.replace('_', ' ')}</div>
+                                                    <div className="text-xs text-text-muted mt-1 uppercase">{k.jenis.replace('_', ' ')}</div>
                                                 </td>
-                                                <td className="px-6 py-4 text-sm text-gray-500 font-medium">
+                                                <td className="px-6 py-4 text-sm text-text-muted font-medium">
                                                     {k.nilai_default ? (k.jenis === 'persentase' ? `${k.nilai_default}%` : formatRupiah(k.nilai_default)) : '-'}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex flex-col gap-1">
-                                                        <span className={`px-2 w-max inline-flex text-xs leading-5 font-semibold rounded-full ${k.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                                        <span className={`badge w-max ${k.is_active ? 'badge-success' : 'badge-neutral'}`}>
                                                             {k.is_active ? 'Aktif' : 'Nonaktif'}
                                                         </span>
-                                                        <span className={`px-2 w-max inline-flex text-xs leading-5 font-semibold rounded-full ${k.tampil_di_matrix ? 'bg-indigo-100 text-indigo-800' : 'bg-orange-100 text-orange-800'}`}>
+                                                        <span className={`badge w-max ${k.tampil_di_matrix ? 'badge-info' : 'badge-warning'}`}>
                                                             {k.tampil_di_matrix ? `Matrix (Urutan ${k.urutan})` : 'Sembunyi dari Matrix'}
                                                         </span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right text-sm font-medium">
                                                     <div className="flex justify-end gap-3 flex-wrap">
-                                                    <Link 
-                                                        href={route('komponen-gaji.pegawai.index', k.id)} 
-                                                        className="text-blue-600 hover:text-blue-900 mr-3"
-                                                        title="Atur nominal khusus per pegawai"
-                                                    >
-                                                        Atur Pegawai
-                                                    </Link>
-                                                    <button onClick={() => handleEdit(k)} className="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
-                                                    <button 
-                                                        onClick={() => {
-                                                            if(confirm('Hapus komponen ini?')) {
-                                                                router.delete(route('komponen-gaji.destroy', k.id));
-                                                            }
-                                                        }} 
-                                                        className="text-red-600 hover:text-red-900"
-                                                    >
-                                                        Hapus
+                                                        <Link
+                                                            href={route('komponen-gaji.pegawai.index', k.id)}
+                                                            className="link text-sm"
+                                                            title="Atur nominal khusus per pegawai"
+                                                        >
+                                                            Atur Pegawai
+                                                        </Link>
+                                                        <button onClick={() => handleEdit(k)} className="link text-sm">Edit</button>
+                                                        <button
+                                                            onClick={() => {
+                                                                if(confirm('Hapus komponen ini?')) {
+                                                                    router.delete(route('komponen-gaji.destroy', k.id));
+                                                                }
+                                                            }}
+                                                            className="text-danger hover:text-danger/80 text-sm font-medium"
+                                                        >
+                                                            Hapus
                                                         </button>
                                                     </div>
                                                 </td>
                                             </tr>
                                         )) : (
                                             <tr>
-                                                <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">Belum ada komponen gaji yang dikonfigurasi.</td>
+                                                <td colSpan="5" className="px-6 py-4 text-center text-sm text-text-muted">Belum ada komponen gaji yang dikonfigurasi.</td>
                                             </tr>
                                         )}
                                     </tbody>

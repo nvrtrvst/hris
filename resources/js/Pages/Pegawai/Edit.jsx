@@ -3,19 +3,21 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Camera, Trash2, Plus, X as XIcon } from 'lucide-react';
 
-const inputClass = 'mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm';
-const selectClass = 'mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm';
+const inputClass = 'input-field';
+const selectClass = 'select-field';
 
 function SectionCard({ title, description, children }) {
     return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div className="page-card">
             {title && (
-                <div className="border-b border-gray-100 pb-3 mb-5">
-                    <h3 className="text-base font-bold text-gray-900">{title}</h3>
-                    {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
+                <div className="page-card-header">
+                    <div>
+                        <h3 className="text-base font-bold text-text-primary">{title}</h3>
+                        {description && <p className="text-xs text-text-muted mt-0.5">{description}</p>}
+                    </div>
                 </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="form-grid">
                 {children}
             </div>
         </div>
@@ -103,13 +105,13 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-2xl text-gray-800 leading-tight">Edit Pegawai: {pegawai.nama_lengkap}</h2>}
+            header={<h2 className="font-semibold text-2xl text-text-primary leading-tight">Edit Pegawai: {pegawai.nama_lengkap}</h2>}
         >
             <Head title={`Edit Pegawai - ${pegawai.nama_lengkap}`} />
 
-            <div className="py-12 bg-gray-50 min-h-screen">
+            <div className="py-12 bg-surface min-h-screen">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
-                    <Link href={route('pegawai.index')} className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-primary transition-colors">
+                    <Link href={route('pegawai.index')} className="inline-flex items-center text-sm font-medium text-text-muted hover:text-primary transition-colors">
                         <ArrowLeft className="mr-1.5 h-5 w-5" />
                         Kembali ke Daftar Pegawai
                     </Link>
@@ -121,16 +123,16 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                 <div className="flex flex-col sm:flex-row gap-6 items-start">
                                     {(hasFoto || fotoPreview) && (
                                         <div className="relative shrink-0">
-                                            <p className="text-xs font-medium text-gray-500 mb-2">{hasFoto ? 'Foto Saat Ini' : 'Foto Baru'}</p>
+                                            <p className="text-xs font-medium text-text-muted mb-2">{hasFoto ? 'Foto Saat Ini' : 'Foto Baru'}</p>
                                             <div className="relative">
                                                 <img
                                                     src={fotoPreview || pegawai.foto_url}
                                                     alt="Foto Pegawai"
-                                                    className="w-40 h-48 object-cover rounded-xl border border-gray-200 shadow-sm"
+                                                    className="w-40 h-48 object-cover rounded-card border border-border shadow-card"
                                                 />
                                                 {fotoPreview && (
                                                     <button type="button" onClick={clearFoto}
-                                                        className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow border border-gray-200 text-gray-400 hover:text-red-500 transition-colors"
+                                                        className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow border border-border text-text-muted hover:text-danger transition-colors"
                                                     >
                                                         <XIcon className="w-4 h-4" />
                                                     </button>
@@ -139,9 +141,9 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                         </div>
                                     )}
                                     <div className="flex-1 min-w-0">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Upload Foto Baru</label>
+                                        <label className="form-label">Upload Foto Baru</label>
                                         <div className="flex items-center gap-3">
-                                            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-colors">
+                                            <label className="cursor-pointer inline-flex items-center gap-2 btn-secondary">
                                                 <Camera className="w-4 h-4" />
                                                 Pilih File
                                                 <input ref={fileInputRef} type="file" onChange={handleFotoChange}
@@ -149,15 +151,15 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                             </label>
                                             {pegawai.foto_url && !fotoPreview && (
                                                 <button type="button" onClick={clearFoto}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium text-danger hover:text-danger bg-danger-light rounded-button transition-colors"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                     Hapus Foto
                                                 </button>
                                             )}
                                         </div>
-                                        {errors.foto && <p className="mt-1.5 text-sm text-red-600">{errors.foto}</p>}
-                                        <p className="mt-1.5 text-xs text-gray-400">JPEG/PNG, maks 2MB. Kosongkan jika tidak ingin mengubah.</p>
+                                        {errors.foto && <p className="form-error mt-1.5">{errors.foto}</p>}
+                                        <p className="form-hint mt-1.5">JPEG/PNG, maks 2MB. Kosongkan jika tidak ingin mengubah.</p>
                                     </div>
                                 </div>
                             </div>
@@ -166,56 +168,56 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                         {/* Informasi Dasar */}
                         <SectionCard title="Informasi Dasar">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    NIK {canViewSensitive && <span className="text-red-500">*</span>}
+                                <label className="form-label">
+                                    NIK {canViewSensitive && <span className="text-danger">*</span>}
                                 </label>
                                 <input type="text" value={canViewSensitive ? data.nik : '(Tersembunyi)'}
                                     onChange={e => setData('nik', e.target.value)}
                                     className={inputClass}
                                     disabled={!canViewSensitive}
                                     readOnly={!canViewSensitive} />
-                                {!canViewSensitive && <p className="mt-1 text-xs text-gray-400">NIK disembunyikan. Gunakan menu Lihat Detail &gt; NIK untuk akses.</p>}
-                                {errors.nik && <p className="mt-1 text-sm text-red-600">{errors.nik}</p>}
+                                {!canViewSensitive && <p className="form-hint">NIK disembunyikan. Gunakan menu Lihat Detail &gt; NIK untuk akses.</p>}
+                                {errors.nik && <p className="form-error">{errors.nik}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">NIP / No Induk Guru</label>
+                                <label className="form-label">NIP / No Induk Guru</label>
                                 <input type="text" value={data.nip} onChange={e => setData('nip', e.target.value)}
                                     className={inputClass} placeholder="NIP / No Induk (Opsional)" />
-                                {errors.nip && <p className="mt-1 text-sm text-red-600">{errors.nip}</p>}
+                                {errors.nip && <p className="form-error">{errors.nip}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Nama Lengkap <span className="text-red-500">*</span></label>
+                                <label className="form-label">Nama Lengkap <span className="text-danger">*</span></label>
                                 <input type="text" value={data.nama_lengkap} onChange={e => setData('nama_lengkap', e.target.value)} className={inputClass} />
-                                {errors.nama_lengkap && <p className="mt-1 text-sm text-red-600">{errors.nama_lengkap}</p>}
+                                {errors.nama_lengkap && <p className="form-error">{errors.nama_lengkap}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Email Login Mobile <span className="text-red-500">*</span></label>
+                                <label className="form-label">Email Login Mobile <span className="text-danger">*</span></label>
                                 <input type="email" value={data.email} onChange={e => setData('email', e.target.value)}
                                     autoComplete="email" className={inputClass} />
-                                {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-                                <p className="mt-1 text-xs text-gray-400">Email ini dipakai untuk login ke portal mobile.</p>
+                                {errors.email && <p className="form-error">{errors.email}</p>}
+                                <p className="form-hint">Email ini dipakai untuk login ke portal mobile.</p>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Tempat Lahir <span className="text-red-500">*</span></label>
+                                <label className="form-label">Tempat Lahir <span className="text-danger">*</span></label>
                                 <input type="text" value={data.tempat_lahir} onChange={e => setData('tempat_lahir', e.target.value)} className={inputClass} />
-                                {errors.tempat_lahir && <p className="mt-1 text-sm text-red-600">{errors.tempat_lahir}</p>}
+                                {errors.tempat_lahir && <p className="form-error">{errors.tempat_lahir}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Tanggal Lahir <span className="text-red-500">*</span></label>
+                                <label className="form-label">Tanggal Lahir <span className="text-danger">*</span></label>
                                 <input type="date" value={data.tanggal_lahir} onChange={e => setData('tanggal_lahir', e.target.value)} className={inputClass} />
-                                {errors.tanggal_lahir && <p className="mt-1 text-sm text-red-600">{errors.tanggal_lahir}</p>}
+                                {errors.tanggal_lahir && <p className="form-error">{errors.tanggal_lahir}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Jenis Kelamin <span className="text-red-500">*</span></label>
+                                <label className="form-label">Jenis Kelamin <span className="text-danger">*</span></label>
                                 <select value={data.jenis_kelamin} onChange={e => setData('jenis_kelamin', e.target.value)} className={selectClass}>
                                     <option value="">Pilih Jenis Kelamin</option>
                                     <option value="L">Laki-laki</option>
                                     <option value="P">Perempuan</option>
                                 </select>
-                                {errors.jenis_kelamin && <p className="mt-1 text-sm text-red-600">{errors.jenis_kelamin}</p>}
+                                {errors.jenis_kelamin && <p className="form-error">{errors.jenis_kelamin}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Agama <span className="text-red-500">*</span></label>
+                                <label className="form-label">Agama <span className="text-danger">*</span></label>
                                 <select value={data.agama} onChange={e => setData('agama', e.target.value)} className={selectClass}>
                                     <option value="">Pilih Agama</option>
                                     <option value="Islam">Islam</option>
@@ -225,10 +227,10 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                     <option value="Buddha">Buddha</option>
                                     <option value="Konghucu">Konghucu</option>
                                 </select>
-                                {errors.agama && <p className="mt-1 text-sm text-red-600">{errors.agama}</p>}
+                                {errors.agama && <p className="form-error">{errors.agama}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Status Pernikahan <span className="text-red-500">*</span></label>
+                                <label className="form-label">Status Pernikahan <span className="text-danger">*</span></label>
                                 <select value={data.status_pernikahan} onChange={e => setData('status_pernikahan', e.target.value)} className={selectClass}>
                                     <option value="">Pilih Status</option>
                                     <option value="Belum Menikah">Belum Menikah</option>
@@ -236,74 +238,74 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                     <option value="Cerai Hidup">Cerai Hidup</option>
                                     <option value="Cerai Mati">Cerai Mati</option>
                                 </select>
-                                {errors.status_pernikahan && <p className="mt-1 text-sm text-red-600">{errors.status_pernikahan}</p>}
+                                {errors.status_pernikahan && <p className="form-error">{errors.status_pernikahan}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">No. HP <span className="text-red-500">*</span></label>
+                                <label className="form-label">No. HP <span className="text-danger">*</span></label>
                                 <input type="text" value={data.no_hp} onChange={e => setData('no_hp', e.target.value)} className={inputClass} />
-                                {errors.no_hp && <p className="mt-1 text-sm text-red-600">{errors.no_hp}</p>}
+                                {errors.no_hp && <p className="form-error">{errors.no_hp}</p>}
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700">Alamat KTP <span className="text-red-500">*</span></label>
+                                <label className="form-label">Alamat KTP <span className="text-danger">*</span></label>
                                 <textarea value={data.alamat_ktp} onChange={e => setData('alamat_ktp', e.target.value)}
                                     rows={3} className={inputClass} />
-                                {errors.alamat_ktp && <p className="mt-1 text-sm text-red-600">{errors.alamat_ktp}</p>}
+                                {errors.alamat_ktp && <p className="form-error">{errors.alamat_ktp}</p>}
                             </div>
                         </SectionCard>
 
                         {/* Status Kepegawaian */}
                         <SectionCard title="Status Kepegawaian">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Status Kepegawaian</label>
+                                <label className="form-label">Status Kepegawaian</label>
                                 <select value={data.status_kepegawaian} onChange={e => setData('status_kepegawaian', e.target.value)} className={selectClass}>
                                     <option value="tetap">Tetap</option>
                                     <option value="kontrak">Kontrak</option>
                                     <option value="honorer">Honorer</option>
                                     <option value="gtt">GTT (Guru Tidak Tetap)</option>
                                 </select>
-                                {errors.status_kepegawaian && <p className="mt-1 text-sm text-red-600">{errors.status_kepegawaian}</p>}
+                                {errors.status_kepegawaian && <p className="form-error">{errors.status_kepegawaian}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Wajib Masuk Kantor</label>
+                                <label className="form-label">Wajib Masuk Kantor</label>
                                 <label className="mt-1.5 inline-flex items-center gap-3 cursor-pointer">
                                     <input type="checkbox" checked={data.wajib_kantor}
                                         onChange={(e) => setData('wajib_kantor', e.target.checked)}
-                                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
                                     <div>
-                                        <span className="text-sm font-medium text-gray-700">Aktifkan</span>
-                                        <p className="text-xs text-gray-400">Jika tidak ada jadwal mengajar, tetap harus absen kantor.</p>
+                                        <span className="text-sm font-medium text-text-primary">Aktifkan</span>
+                                        <p className="form-hint">Jika tidak ada jadwal mengajar, tetap harus absen kantor.</p>
                                     </div>
                                 </label>
-                                {errors.wajib_kantor && <p className="mt-1 text-sm text-red-600">{errors.wajib_kantor}</p>}
+                                {errors.wajib_kantor && <p className="form-error">{errors.wajib_kantor}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Jatah Cuti Tahunan (Hari)</label>
+                                <label className="form-label">Jatah Cuti Tahunan (Hari)</label>
                                 <input type="number" min="0" value={data.jatah_cuti_tahunan}
                                     onChange={e => setData('jatah_cuti_tahunan', e.target.value)} className={inputClass} />
-                                {errors.jatah_cuti_tahunan && <p className="mt-1 text-sm text-red-600">{errors.jatah_cuti_tahunan}</p>}
+                                {errors.jatah_cuti_tahunan && <p className="form-error">{errors.jatah_cuti_tahunan}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Status Aktif</label>
+                                <label className="form-label">Status Aktif</label>
                                 <select value={data.status_aktif} onChange={e => setData('status_aktif', e.target.value)} className={selectClass}>
                                     <option value="aktif">Aktif</option>
                                     <option value="cuti">Cuti</option>
                                     <option value="nonaktif">Nonaktif</option>
                                     <option value="resign">Resign</option>
                                 </select>
-                                {errors.status_aktif && <p className="mt-1 text-sm text-red-600">{errors.status_aktif}</p>}
+                                {errors.status_aktif && <p className="form-error">{errors.status_aktif}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Tanggal Mulai Kerja <span className="text-red-500">*</span></label>
+                                <label className="form-label">Tanggal Mulai Kerja <span className="text-danger">*</span></label>
                                 <input type="date" value={data.tanggal_mulai_kerja}
                                     onChange={e => setData('tanggal_mulai_kerja', e.target.value)} className={inputClass} />
-                                {errors.tanggal_mulai_kerja && <p className="mt-1 text-sm text-red-600">{errors.tanggal_mulai_kerja}</p>}
+                                {errors.tanggal_mulai_kerja && <p className="form-error">{errors.tanggal_mulai_kerja}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Pendidikan Terakhir <span className="text-red-500">*</span></label>
+                                <label className="form-label">Pendidikan Terakhir <span className="text-danger">*</span></label>
                                 <input type="text" value={data.pendidikan_terakhir}
                                     onChange={e => setData('pendidikan_terakhir', e.target.value)}
                                     className={inputClass} placeholder="Contoh: S1 Pendidikan Agama Islam" />
-                                {errors.pendidikan_terakhir && <p className="mt-1 text-sm text-red-600">{errors.pendidikan_terakhir}</p>}
+                                {errors.pendidikan_terakhir && <p className="form-error">{errors.pendidikan_terakhir}</p>}
                             </div>
                         </SectionCard>
 
@@ -311,12 +313,12 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                         <SectionCard title="Penugasan Unit & Jabatan" description="Tentukan unit tempat pegawai bertugas beserta jabatannya. Satu unit dapat ditandai Primary.">
                             <div className="md:col-span-2 space-y-3">
                                 {data.units.map((u, i) => (
-                                    <div key={i} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-gray-50 rounded-lg p-4 border border-gray-100">
+                                    <div key={i} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-surface rounded-card p-4 border border-border">
                                         <div className="flex-1 w-full sm:w-auto">
-                                            <label className="text-xs font-medium text-gray-500 sm:hidden mb-1 block">Unit</label>
+                                            <label className="form-label text-xs sm:hidden mb-1 block">Unit</label>
                                             <select value={u.unit_sekolah_id}
                                                 onChange={(e) => updateUnit(i, 'unit_sekolah_id', e.target.value)}
-                                                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
+                                                className="select-field">
                                                 <option value="">Pilih Unit</option>
                                                 {unitSekolahs.map((us) => (
                                                     <option key={us.id} value={us.id}>{us.nama}</option>
@@ -324,31 +326,31 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                             </select>
                                         </div>
                                         <div className="flex-1 w-full sm:w-auto">
-                                            <label className="text-xs font-medium text-gray-500 sm:hidden mb-1 block">Jabatan</label>
+                                            <label className="form-label text-xs sm:hidden mb-1 block">Jabatan</label>
                                             <select value={u.jabatan_id}
                                                 onChange={(e) => updateUnit(i, 'jabatan_id', e.target.value)}
-                                                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
+                                                className="select-field">
                                                 <option value="">Pilih Jabatan</option>
                                                 {jabatans.map((j) => (
                                                     <option key={j.id} value={j.id}>{j.nama}</option>
                                                 ))}
                                             </select>
                                         </div>
-                                        <label className="inline-flex items-center gap-2 text-sm text-gray-700 shrink-0 pt-1 sm:pt-0">
+                                        <label className="inline-flex items-center gap-2 text-sm text-text-primary shrink-0 pt-1 sm:pt-0">
                                             <input type="checkbox" checked={!!u.is_primary}
                                                 onChange={(e) => updateUnit(i, 'is_primary', e.target.checked)}
-                                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                                                className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
                                             Primary
                                         </label>
                                         <button type="button" onClick={() => removeUnit(i)}
-                                            className="text-red-500 hover:text-red-700 shrink-0 p-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                                            className="text-danger hover:text-danger shrink-0 p-1.5 rounded-button hover:bg-danger-light transition-colors">
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
                                 ))}
-                                {data.units.length === 0 && <p className="text-sm text-gray-400 text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">Belum ada penugasan unit.</p>}
+                                {data.units.length === 0 && <p className="text-sm text-text-muted text-center py-6 border-2 border-dashed border-border rounded-card">Belum ada penugasan unit.</p>}
                                 <button type="button" onClick={addUnit}
-                                    className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-dark transition-colors">
+                                    className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-600 transition-colors">
                                     <Plus className="w-4 h-4" /> Tambah Unit
                                 </button>
                             </div>
@@ -358,12 +360,12 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                         <SectionCard title="Mata Pelajaran (Guru)" description="Untuk guru: tentukan mata pelajaran yang diampu beserta unitnya. Baris yang tidak lengkap akan diabaikan.">
                             <div className="md:col-span-2 space-y-3">
                                 {data.mapels.map((m, i) => (
-                                    <div key={i} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-gray-50 rounded-lg p-4 border border-gray-100">
+                                    <div key={i} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-surface rounded-card p-4 border border-border">
                                         <div className="flex-1 w-full sm:w-auto">
-                                            <label className="text-xs font-medium text-gray-500 sm:hidden mb-1 block">Mata Pelajaran</label>
+                                            <label className="form-label text-xs sm:hidden mb-1 block">Mata Pelajaran</label>
                                             <select value={m.mata_pelajaran_id}
                                                 onChange={(e) => updateMapel(i, 'mata_pelajaran_id', e.target.value)}
-                                                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
+                                                className="select-field">
                                                 <option value="">Pilih Mata Pelajaran</option>
                                                 {mapels.map((mp) => (
                                                     <option key={mp.id} value={mp.id}>{mp.nama}</option>
@@ -371,10 +373,10 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                             </select>
                                         </div>
                                         <div className="flex-1 w-full sm:w-auto">
-                                            <label className="text-xs font-medium text-gray-500 sm:hidden mb-1 block">Unit</label>
+                                            <label className="form-label text-xs sm:hidden mb-1 block">Unit</label>
                                             <select value={m.unit_sekolah_id}
                                                 onChange={(e) => updateMapel(i, 'unit_sekolah_id', e.target.value)}
-                                                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
+                                                className="select-field">
                                                 <option value="">Pilih Unit</option>
                                                 {unitSekolahs.map((us) => (
                                                     <option key={us.id} value={us.id}>{us.nama}</option>
@@ -382,27 +384,27 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                             </select>
                                         </div>
                                         <button type="button" onClick={() => removeMapel(i)}
-                                            className="text-red-500 hover:text-red-700 shrink-0 p-1.5 rounded-lg hover:bg-red-50 transition-colors self-end sm:self-center">
+                                            className="text-danger hover:text-danger shrink-0 p-1.5 rounded-button hover:bg-danger-light transition-colors self-end sm:self-center">
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
                                 ))}
-                                {data.mapels.length === 0 && <p className="text-sm text-gray-400 text-center py-6 border-2 border-dashed border-gray-200 rounded-lg">Bukan guru / belum ada mata pelajaran.</p>}
+                                {data.mapels.length === 0 && <p className="text-sm text-text-muted text-center py-6 border-2 border-dashed border-border rounded-card">Bukan guru / belum ada mata pelajaran.</p>}
                                 <button type="button" onClick={addMapel}
-                                    className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-dark transition-colors">
+                                    className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-600 transition-colors">
                                     <Plus className="w-4 h-4" /> Tambah Mata Pelajaran
                                 </button>
                             </div>
                         </SectionCard>
 
                         {/* Actions */}
-                        <div className="flex items-center justify-end gap-4 bg-white rounded-xl border border-gray-200 shadow-sm px-6 py-4">
+                        <div className="page-card flex items-center justify-end gap-3">
                             <Link href={route('pegawai.show', pegawai.id)}
-                                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                                className="btn-secondary">
                                 Batal
                             </Link>
                             <button type="submit" disabled={processing}
-                                className="bg-primary hover:bg-primary-dark text-white font-semibold py-2.5 px-8 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50">
+                                className="btn-primary">
                                 {processing ? 'Menyimpan...' : 'Perbarui Pegawai'}
                             </button>
                         </div>

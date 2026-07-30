@@ -28,6 +28,10 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth:web_admin', 'verified'])
     ->name('dashboard');
 
+Route::get('/dashboard/perbandingan-unit', [DashboardController::class, 'perbandinganUnit'])
+    ->middleware(['auth:web_admin', 'verified', 'can:view_all_units'])
+    ->name('dashboard.perbandingan-unit');
+
 Route::middleware('auth:web_admin')->group(function () {
     // Rute yang bisa diakses SEMUA user yang login (termasuk Staff)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -88,6 +92,9 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::delete('jadwal/{jadwal}', [JadwalController::class, 'destroy'])
         ->middleware('throttle:60,1')
         ->name('jadwal.destroy');
+    Route::get('jadwal/kelas-by-unit', [JadwalController::class, 'kelasByUnit'])
+        ->middleware('throttle:30,1')
+        ->name('jadwal.kelas-by-unit');
 
     // Presensi — create/store/update hanya admin
     Route::get('presensi/create', [PresensiController::class, 'create'])->name('presensi.create');
@@ -103,6 +110,8 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::post('presensi/{presensi}/reject-lembur', [PresensiController::class, 'rejectLembur'])
         ->middleware('throttle:60,1')
         ->name('presensi.rejectLembur');
+    Route::get('presensi/{presensi}/audit', [PresensiController::class, 'audit'])
+        ->name('presensi.audit');
 
     // Komponen Gaji Matrix
     Route::get('komponen-gaji/matrix', [PegawaiKomponenController::class, 'matrix'])->name('komponen-gaji.matrix');

@@ -14,7 +14,7 @@ export default function ProfileHero({ user }) {
     const verified = !!user?.email_verified_at;
 
     return (
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary-light to-primary-dark text-white shadow-lg">
+        <section className="relative overflow-hidden rounded-card bg-gradient-to-br from-primary via-primary-light to-primary-dark text-white shadow-elevated">
             <div
                 aria-hidden
                 className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-accent/20 blur-3xl"
@@ -26,7 +26,7 @@ export default function ProfileHero({ user }) {
 
             <div className="relative px-6 py-8 sm:px-10 sm:py-10">
                 <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-2 ring-white/20 backdrop-blur">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-card bg-white/10 ring-2 ring-white/20 backdrop-blur">
                         <span className="text-2xl font-bold tracking-tight">
                             {initials(user?.name)}
                         </span>
@@ -38,7 +38,7 @@ export default function ProfileHero({ user }) {
                                 {user?.name ?? 'Pengguna'}
                             </h1>
                             {verified && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
+                                <span className="badge inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
                                     <BadgeCheck className="h-3.5 w-3.5" /> Terverifikasi
                                 </span>
                             )}

@@ -33,6 +33,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = Auth::guard('web_admin')->user();
+        if ($user && $user->needsPasswordChange()) {
+            return redirect()->route('profile.edit', absolute: false)
+                ->with('message', 'Anda harus mengganti password sebelum melanjutkan.');
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

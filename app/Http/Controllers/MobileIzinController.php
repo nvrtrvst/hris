@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ApprovalHelper;
+use App\Helpers\PayrollLockHelper;
 use App\Models\PengajuanIzin;
+use App\Models\User;
+use App\Notifications\IzinBaru;
 use App\Services\ImageUploadService;
 use App\Traits\ResolvesPegawai;
 use Carbon\Carbon;
@@ -68,6 +71,16 @@ class MobileIzinController extends Controller
             }
         }
 
+        // Cek apakah ada tanggal dalam range yang periode payroll-nya sudah dikunci
+        $checkDate = Carbon::parse($request->tanggal_mulai);
+        $endDate = Carbon::parse($request->tanggal_selesai);
+        while ($checkDate->lte($endDate)) {
+            if (PayrollLockHelper::isPeriodLocked($pegawai->id, $checkDate)) {
+                return back()->withErrors(['tanggal_mulai' => 'Periode penggajian untuk bulan '.$checkDate->format('m-Y').' sudah dikunci. Tidak bisa mengajukan izin untuk tanggal tersebut.']);
+            }
+            $checkDate->addDay();
+        }
+
         $pengajuan = new PengajuanIzin([
             'pegawai_id' => $pegawai->id,
             'jenis_izin' => $request->jenis_izin,
@@ -95,6 +108,10 @@ class MobileIzinController extends Controller
             'approver_l1_id' => $approvers['l1_id'],
             'approver_l2_id' => $approvers['l2_id'],
         ]);
+
+        if ($approvers['l1_id']) {
+            User::find($approvers['l1_id'])?->notify(new IzinBaru($pengajuan));
+        }
 
         return redirect()->route('presensi.izin.index')->with('message', 'Pengajuan berhasil dikirim dan menunggu persetujuan.');
     }

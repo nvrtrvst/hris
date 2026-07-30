@@ -5,14 +5,14 @@
 // lewat wrapper <div> sendiri.
 export default function FormSection({ title, description, children, contentClassName = '' }) {
     return (
-        <section>
+        <section className="card p-6">
             {title && (
-                <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4 mt-8 first:mt-0">
-                    {title}
-                </h3>
+                <div className="mb-4">
+                    <h3 className="text-base font-semibold text-text-primary">{title}</h3>
+                    {description && <p className="text-sm text-text-muted mt-1">{description}</p>}
+                </div>
             )}
-            {description && <p className="text-xs text-gray-500 mb-3">{description}</p>}
-            <div className={contentClassName ?? 'grid grid-cols-1 md:grid-cols-2 gap-6'}>
+            <div className={contentClassName ?? 'form-grid'}>
                 {children}
             </div>
         </section>

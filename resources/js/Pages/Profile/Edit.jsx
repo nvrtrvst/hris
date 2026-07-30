@@ -33,18 +33,18 @@ export default function Edit({ mustVerifyEmail, status }) {
                         </aside>
 
                         <main className="space-y-6 lg:col-span-2">
-                            <div className="rounded-2xl border border-border bg-white p-5 shadow-sm sm:p-7 transition hover:shadow-md">
+                            <div className="card p-5 sm:p-7">
                                 <UpdateProfileInformationForm
                                     mustVerifyEmail={mustVerifyEmail}
                                     status={status}
                                 />
                             </div>
 
-                            <div className="rounded-2xl border border-border bg-white p-5 shadow-sm sm:p-7 transition hover:shadow-md">
+                            <div className="card p-5 sm:p-7">
                                 <UpdatePasswordForm />
                             </div>
 
-                            <div className="rounded-2xl border border-danger/40 bg-white p-5 shadow-sm sm:p-7 transition hover:shadow-md">
+                            <div className="card p-5 sm:p-7 border-danger/40">
                                 <DeleteUserForm />
                             </div>
                         </main>

@@ -15,6 +15,7 @@ class ApprovalHelper
 
         $pegawai = Pegawai::whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitId))
             ->whereHas('jabatans', fn ($q) => $q->where('jabatan.id', $jabatanId))
+            ->where('status_aktif', 'aktif')
             ->whereNotNull('user_id')
             ->first();
 
@@ -46,6 +47,20 @@ class ApprovalHelper
         $l2Id = $primaryJabatan->approver_l2_jabatan_id
             ? self::findApproverInUnit($primaryUnit->id, $primaryJabatan->approver_l2_jabatan_id)?->id
             : null;
+
+        // Fallback: jika L1 tidak ditemukan (approver nonaktif/tidak ada), cari admin unit sebagai L1
+        if (! $l1Id) {
+            $adminUnit = User::where('unit_sekolah_id', $primaryUnit->id)
+                ->role('admin_unit')
+                ->first();
+            if ($adminUnit) {
+                $l1Id = $adminUnit->id;
+            }
+        }
+
+        if ($l1Id && $l2Id && $l1Id === $l2Id) {
+            $l2Id = null;
+        }
 
         return [
             'l1_id' => $l1Id,

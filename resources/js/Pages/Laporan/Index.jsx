@@ -68,15 +68,15 @@ export default function LaporanIndex({ auth, units }) {
             <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                 
                 {/* Filter Section - Standard Report Layout */}
-                <div className="bg-white overflow-hidden shadow-sm sm:rounded-xl border border-border">
-                    <div className="p-6 bg-surface">
+                <div className="card overflow-hidden">
+                    <div className="page-card p-6 bg-surface">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
                             <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div>
                                     <InputLabel htmlFor="report_type" value="Jenis Laporan" />
-                                    <select 
+                                        <select 
                                         id="report_type" 
-                                        className="mt-1 block w-full border-gray-300 focus:border-accent focus:ring-accent rounded-md shadow-sm"
+                                        className="select-field mt-1"
                                         value={filter.report_type}
                                         onChange={e => setFilter({...filter, report_type: e.target.value})}
                                     >
@@ -90,7 +90,7 @@ export default function LaporanIndex({ auth, units }) {
                                     <input 
                                         type="date"
                                         id="start_date" 
-                                        className="mt-1 block w-full border-gray-300 focus:border-accent focus:ring-accent rounded-md shadow-sm"
+                                        className="input-field mt-1"
                                         value={filter.start_date}
                                         onChange={e => setFilter({...filter, start_date: e.target.value})}
                                     />
@@ -100,7 +100,7 @@ export default function LaporanIndex({ auth, units }) {
                                     <input 
                                         type="date"
                                         id="end_date" 
-                                        className="mt-1 block w-full border-gray-300 focus:border-accent focus:ring-accent rounded-md shadow-sm"
+                                        className="input-field mt-1"
                                         value={filter.end_date}
                                         onChange={e => setFilter({...filter, end_date: e.target.value})}
                                     />
@@ -109,7 +109,7 @@ export default function LaporanIndex({ auth, units }) {
                                     <InputLabel htmlFor="unit" value="Unit Sekolah (Opsional)" />
                                     <select 
                                         id="unit" 
-                                        className="mt-1 block w-full border-gray-300 focus:border-accent focus:ring-accent rounded-md shadow-sm"
+                                        className="select-field mt-1"
                                         value={filter.unit_sekolah_id}
                                         onChange={e => setFilter({...filter, unit_sekolah_id: e.target.value})}
                                     >
@@ -122,11 +122,11 @@ export default function LaporanIndex({ auth, units }) {
                             </div>
                         </div>
 
-                        <div className="flex space-x-3 pt-4 border-t border-gray-200">
-                            <button onClick={handlePreview} className="flex-1 md:flex-none py-2 px-6 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-secondary focus:outline-none">
+                        <div className="flex space-x-3 pt-4 border-t border-border">
+                            <button onClick={handlePreview} className="btn-primary">
                                 Tampilkan Data
                             </button>
-                            <button onClick={handleDownload} className="flex-1 md:flex-none py-2 px-6 border border-primary text-primary rounded-md shadow-sm text-sm font-medium hover:bg-primary/5 focus:outline-none">
+                            <button onClick={handleDownload} className="btn-secondary">
                                 Download Excel
                             </button>
                         </div>
@@ -145,7 +145,7 @@ export default function LaporanIndex({ auth, units }) {
                 )}
 
                 {!loading && previewData && activePreview && (
-                    <div className="bg-white rounded-xl shadow-sm border border-border p-6 overflow-hidden animate-fade-in-up">
+                    <div className="card p-6 animate-fade-in-up">
                         <div className="flex justify-between items-center mb-6 border-b pb-4">
                             <div>
                                 <h3 className="text-lg font-bold text-primary uppercase">
@@ -159,15 +159,15 @@ export default function LaporanIndex({ auth, units }) {
                         <div className="overflow-x-auto">
                             <table className="w-full whitespace-nowrap">
                                 <thead>
-                                    <tr className="bg-gray-100 text-left">
+                                    <tr className="bg-surface text-left">
                                         {previewData.headings.map((head, idx) => (
-                                            <th key={idx} className="p-3 font-semibold text-sm text-gray-700">{head}</th>
+                                            <th key={idx} className="p-3 font-semibold text-sm text-text-secondary">{head}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {previewData.data.map((row, rowIdx) => (
-                                        <tr key={rowIdx} className="border-b border-gray-100 hover:bg-gray-50">
+                                        <tr key={rowIdx} className="border-b border-border hover:bg-surface">
                                             {row.map((cell, cellIdx) => {
                                                 const headerStr = previewData.headings[cellIdx] ? previewData.headings[cellIdx].toLowerCase() : '';
                                                 const isCurrency = headerStr.includes('(rp)') || headerStr.includes('nominal');
@@ -178,7 +178,7 @@ export default function LaporanIndex({ auth, units }) {
                                                 }
                                                 
                                                 return (
-                                                    <td key={cellIdx} className="p-3 text-sm text-gray-600">{displayValue}</td>
+                                                    <td key={cellIdx} className="p-3 text-sm text-text-secondary">{displayValue}</td>
                                                 );
                                             })}
                                         </tr>

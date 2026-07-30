@@ -24,39 +24,39 @@ export default function RunPayrollIndex({ auth }) {
         <AuthenticatedLayout user={auth.user}>
             <Head title="Run Payroll - Wizard" />
 
-            <div className="py-12 bg-gray-50 min-h-screen">
+            <div className="py-8 bg-surface min-h-screen">
                 <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
-                    
-                    <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl border border-gray-100 p-8">
+
+                    <div className="page-card p-8">
                         <div className="text-center mb-8">
-                            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Run Payroll</h2>
-                            <p className="mt-4 text-lg text-gray-500">Mulai proses penggajian bulan ini. Sistem akan menarik data kehadiran dan jam mengajar secara otomatis.</p>
+                            <h2 className="page-title text-3xl">Run Payroll</h2>
+                            <p className="mt-4 text-lg text-text-muted">Mulai proses penggajian bulan ini. Sistem akan menarik data kehadiran dan jam mengajar secara otomatis.</p>
                         </div>
 
                         <form onSubmit={submit} className="space-y-6">
                             <div className="flex gap-4 justify-center">
                                 <div className="w-1/2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Bulan</label>
+                                    <label className="form-label">Pilih Bulan</label>
                                     <select
                                         value={data.month}
                                         onChange={e => setData('month', e.target.value)}
-                                        className="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
+                                        className="select-field"
                                     >
                                         {months.map(m => (
                                             <option key={m.val} value={m.val}>{m.label}</option>
                                         ))}
                                     </select>
-                                    {errors.month && <p className="mt-2 text-sm text-red-600">{errors.month}</p>}
+                                    {errors.month && <p className="form-error">{errors.month}</p>}
                                 </div>
                                 <div className="w-1/2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Tahun</label>
+                                    <label className="form-label">Tahun</label>
                                     <input
                                         type="number"
                                         value={data.year}
                                         onChange={e => setData('year', e.target.value)}
-                                        className="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
+                                        className="input-field"
                                     />
-                                    {errors.year && <p className="mt-2 text-sm text-red-600">{errors.year}</p>}
+                                    {errors.year && <p className="form-error">{errors.year}</p>}
                                 </div>
                             </div>
 
@@ -64,7 +64,7 @@ export default function RunPayrollIndex({ auth }) {
                                 <button
                                     type="submit"
                                     disabled={processing}
-                                    className="w-full flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-sm text-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                                    className="btn-primary w-full py-4 text-lg"
                                 >
                                     {processing ? 'Menarik Data...' : 'Mulai Penggajian (Step 1)'}
                                 </button>
@@ -73,7 +73,7 @@ export default function RunPayrollIndex({ auth }) {
                     </div>
 
                     <div className="mt-6 text-center">
-                        <Link href={route('penggajian.index')} className="text-indigo-600 hover:text-indigo-900 font-medium">
+                        <Link href={route('penggajian.index')} className="link text-sm">
                             &larr; Kembali ke Riwayat Penggajian
                         </Link>
                     </div>

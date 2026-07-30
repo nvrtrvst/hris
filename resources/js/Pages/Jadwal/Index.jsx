@@ -3,10 +3,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 
-    export default function Index({ auth, jadwals, pegawais, units, filters }) {
+    export default function Index({ auth, jadwals, pegawais, units, kelasLabels, filters }) {
         const isAdmin = auth.permissions?.includes('view_jadwal');
         const [unitFilter, setUnitFilter] = useState(filters.unit_sekolah_id || '');
+        const [kelasFilter, setKelasFilter] = useState(filters.kelas_label || '');
         const [searchName, setSearchName] = useState('');
+        const [showRekapModal, setShowRekapModal] = useState(false);
+        const [viewMode, setViewMode] = useState('matrix');
+        const [expandedGuru, setExpandedGuru] = useState(null);
         
         // Modal State
         const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -40,10 +44,17 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
         // Error state
         const { errors } = usePage().props;
     
-        const handleFilterChange = (e) => {
+        const handleUnitFilterChange = (e) => {
             const value = e.target.value;
             setUnitFilter(value);
-            router.get(route('jadwal.index'), { unit_sekolah_id: value }, { preserveState: true });
+            setKelasFilter('');
+            router.get(route('jadwal.index'), { unit_sekolah_id: value, kelas_label: '' }, { preserveState: true });
+        };
+        
+        const handleKelasFilterChange = (e) => {
+            const value = e.target.value;
+            setKelasFilter(value);
+            router.get(route('jadwal.index'), { unit_sekolah_id: unitFilter, kelas_label: value }, { preserveState: true });
         };
         
         const handleGenerate = (e) => {
@@ -82,24 +93,34 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
         return (
             <AuthenticatedLayout
                 user={auth.user}
-                header={<h2 className="font-semibold text-2xl text-primary leading-tight">{isAdmin ? 'Jadwal Pegawai' : 'Jadwal Pribadi'}</h2>}
+                header={<h2 className="page-title">{isAdmin ? 'Jadwal Pegawai' : 'Jadwal Pribadi'}</h2>}
             >
                 <Head title="Jadwal Pegawai" />
     
                 <div className="py-8 bg-surface min-h-screen">
                     <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-xl border border-border">
+                        <div className="card">
                             <div className="p-6">
                                 {isAdmin ? <>
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                                <div className="page-header mb-6">
                                     <div>
                                         <h3 className="text-lg font-bold text-primary">Jadwal Mingguan (Matriks)</h3>
-                                        <p className="text-sm text-text-secondary mt-1">Tampilan matrik untuk memantau ratusan pegawai sekaligus tanpa lelah scroll ke bawah.</p>
+                                        <p className="page-subtitle">Tampilan matrik untuk memantau ratusan pegawai sekaligus tanpa lelah scroll ke bawah.</p>
                                     </div>
-                                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full md:w-auto">
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => setViewMode('matrix')} className={`btn-sm ${viewMode === 'matrix' ? 'btn-primary' : 'btn-secondary'}`}>
+                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                            Matriks
+                                        </button>
+                                        <button onClick={() => setViewMode('guru')} className={`btn-sm ${viewMode === 'guru' ? 'btn-primary' : 'btn-secondary'}`}>
+                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                            Per Guru
+                                        </button>
+                                    </div>
+                                    <div className="filter-bar mb-0 flex-col sm:flex-row">
                                         <div className="relative">
                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg className="input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                                 </svg>
                                             </div>
@@ -108,13 +129,13 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                                 placeholder="Cari Pegawai..." 
                                                 value={searchName}
                                                 onChange={(e) => setSearchName(e.target.value)}
-                                                className="pl-10 border-gray-300 focus:border-primary focus:ring-primary rounded-lg shadow-sm font-medium text-gray-700 w-full sm:w-48"
+                                                className="input-field pl-10 w-full sm:w-48"
                                             />
                                         </div>
                                         <select 
                                             value={unitFilter}
-                                            onChange={handleFilterChange}
-                                            className="border-gray-300 focus:border-primary focus:ring-primary rounded-lg shadow-sm font-medium text-gray-700 w-full sm:w-auto"
+                                            onChange={handleUnitFilterChange}
+                                            className="select-field w-full sm:w-auto"
                                         >
                                             <option value="">Semua Unit Sekolah</option>
                                             {units.map(unit => (
@@ -122,30 +143,133 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                             ))}
                                         </select>
                                         
+                                        <select
+                                            value={kelasFilter}
+                                            onChange={handleKelasFilterChange}
+                                            className="select-field w-full sm:w-auto"
+                                        >
+                                            <option value="">Semua Kelas</option>
+                                            {kelasLabels.map(kl => (
+                                                <option key={kl} value={kl}>{kl}</option>
+                                            ))}
+                                        </select>
+                                        
                                         <button
                                             onClick={() => window.print()}
-                                            className="inline-flex justify-center items-center px-4 py-2 bg-gray-600 border border-transparent rounded-lg font-bold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150 shadow-md print:hidden"
+                                            className="btn-secondary btn-sm print:hidden"
                                         >
-                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                             Cetak PDF
                                         </button>
                                         <button
                                             onClick={() => setShowGenerateModal(true)}
-                                            className="inline-flex justify-center items-center px-4 py-2 bg-accent border border-transparent rounded-lg font-bold text-xs text-primary uppercase tracking-widest hover:bg-yellow-500 active:bg-yellow-600 focus:outline-none focus:border-yellow-600 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150 shadow-md print:hidden"
+                                            className="btn-primary btn-sm bg-accent text-primary-800 hover:bg-yellow-500 print:hidden"
                                         >
-                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                                            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                                             Generate Otomatis
+                                        </button>
+                                        <button
+                                            onClick={() => setShowRekapModal(true)}
+                                            className="btn-secondary btn-sm"
+                                        >
+                                            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                            Rekap Kelas
                                         </button>
                                         <Link
                                             href={route('jadwal.create')}
-                                            className="inline-flex justify-center items-center px-4 py-2 bg-primary border border-transparent rounded-lg font-bold text-xs text-white uppercase tracking-widest hover:bg-primary-dark active:bg-primary-dark focus:outline-none focus:border-primary-dark focus:ring ring-primary disabled:opacity-25 transition ease-in-out duration-150 shadow-md print:hidden"
+                                            className="btn-primary btn-sm"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                                             Tambah
                                         </Link>
                                     </div>
                                 </div>
-    
+                                
+                                {/* Per Guru View */}
+                                {viewMode === 'guru' && (
+                                    <div className="space-y-3">
+                                        {filteredPegawais.length === 0 ? (
+                                            <div className="empty-state py-12">
+                                                <svg className="w-12 h-12 mx-auto mb-3 text-border" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                <p className="empty-state-desc">Tidak ada data pegawai.</p>
+                                            </div>
+                                        ) : (
+                                            filteredPegawais.map(pegawai => {
+                                                const pJadwals = jadwals.filter(j => j.pegawai_id === pegawai.id && j.jenis_jadwal === 'mengajar');
+                                                const totalMenit = pJadwals.reduce((sum, j) => {
+                                                    const [h1, m1] = (j.jam_mulai || '0:0').split(':').map(Number);
+                                                    const [h2, m2] = (j.jam_selesai || '0:0').split(':').map(Number);
+                                                    return sum + Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
+                                                }, 0);
+                                                const totalJam = totalMenit / 60;
+                                                const kelasCount = new Set(pJadwals.map(j => j.kelas_label).filter(Boolean)).size;
+                                                const selectedUnit = units.find(u => u.id == (pegawai.units?.[0]?.id || 0));
+                                                const maxJam = selectedUnit?.max_jam_minggu || 30;
+                                                const pct = Math.min(100, Math.round((totalJam / maxJam) * 100));
+                                                const isExpanded = expandedGuru === pegawai.id;
+
+                                                return (
+                                                    <div key={pegawai.id} className="card p-4">
+                                                        <button
+                                                            onClick={() => setExpandedGuru(isExpanded ? null : pegawai.id)}
+                                                            className="w-full text-left cursor-pointer"
+                                                        >
+                                                            <div className="flex items-center justify-between gap-4">
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-primary text-sm truncate">{pegawai.nama_lengkap}</span>
+                                                                        <span className="text-xs text-text-muted shrink-0">{pegawai.units?.[0]?.singkatan || '-'}</span>
+                                                                    </div>
+                                                                    <div className="mt-1 flex items-center gap-2 text-xs text-text-secondary">
+                                                                        <span>{kelasCount} kelas</span>
+                                                                        <span>•</span>
+                                                                        <span>{pJadwals.length} jadwal</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="shrink-0 text-right min-w-[120px]">
+                                                                    <div className="text-sm font-bold text-primary">{totalJam.toFixed(1)} / {maxJam} jam</div>
+                                                                    <div className="mt-1 h-1.5 w-full bg-border rounded-full overflow-hidden">
+                                                                        <div className="h-full bg-primary rounded-full transition-all" style={{width: pct + '%'}} />
+                                                                    </div>
+                                                                </div>
+                                                                <svg className={`w-4 h-4 text-text-muted transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+                                                            </div>
+                                                        </button>
+
+                                                        {isExpanded && (
+                                                            <div className="mt-3 pt-3 border-t border-border space-y-1.5">
+                                                                {pJadwals.length === 0 ? (
+                                                                    <p className="text-xs text-text-muted py-2">Belum ada jadwal mengajar.</p>
+                                                                ) : (
+                                                                    (() => {
+                                                                        const grouped = {};
+                                                                        pJadwals.forEach(j => {
+                                                                            const key = `${j.hari}-${j.jam_mulai}-${j.jam_selesai}`;
+                                                                            if (!grouped[key]) {
+                                                                                grouped[key] = { ...j, count: 1 };
+                                                                            }
+                                                                        });
+                                                                        return Object.values(grouped).sort((a, b) => {
+                                                                            const hariOrder = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+                                                                            return hariOrder.indexOf(a.hari) - hariOrder.indexOf(b.hari) || a.jam_mulai.localeCompare(b.jam_mulai);
+                                                                        }).map((j, i) => (
+                                                                            <div key={i} className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-surface text-xs">
+                                                                                <span className="font-mono font-semibold text-primary w-24 shrink-0">{j.hari?.substring(0,3)}, {j.jam_mulai?.substring(0,5)}-{j.jam_selesai?.substring(0,5)}</span>
+                                                                                <span className="font-medium text-text-primary truncate">{j.mata_pelajaran?.nama || '-'}</span>
+                                                                                <span className="text-text-muted truncate">{j.kelas_label || '-'}</span>
+                                                                            </div>
+                                                                        ));
+                                                                    })()
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* Print Header */}
                                 <div className="hidden print:block">
                                     <div className="print-header">
@@ -256,15 +380,15 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                     <div className="signature-line"></div>
                                 </div>
 
-                                <div className="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-md">
+                                <div className="mt-6 bg-info-light border-l-4 border-info p-4 rounded-r-card">
                                 <div className="flex">
                                     <div className="flex-shrink-0">
-                                        <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <svg className="h-5 w-5 text-info" viewBox="0 0 20 20" fill="currentColor">
                                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                         </svg>
                                     </div>
                                     <div className="ml-3">
-                                        <p className="text-sm text-blue-700">
+                                        <p className="text-sm text-info">
                                             Sistem otomatis menolak penambahan jadwal jika terdeteksi adanya bentrok (overlap waktu pada hari yang sama) untuk pegawai yang sama, bahkan jika berbeda unit sekolah.
                                         </p>
                                     </div>
@@ -273,14 +397,14 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                             </> : <>
                                 <div className="space-y-3">
                                 {jadwals.length === 0 ? (
-                                    <div className="text-center py-12 text-text-secondary">
+                                    <div className="empty-state py-12">
                                         <svg className="w-12 h-12 mx-auto mb-3 text-border" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                        <p className="text-base">Belum ada jadwal untuk Anda.</p>
+                                        <p className="empty-state-desc">Belum ada jadwal untuk Anda.</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
                                         {jadwals.map(j => (
-                                            <div key={j.id} className="bg-white p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
+                                            <div key={j.id} className="card-hover p-4 flex items-center gap-4">
                                                 <div className="w-12 h-12 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center text-primary font-bold text-sm">
                                                     {j.hari.substring(0, 3)}
                                                 </div>
@@ -304,16 +428,16 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
             {isAdmin && <Modal show={showGenerateModal} onClose={() => setShowGenerateModal(false)} maxWidth="md">
                 <div className="px-6 py-5">
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                            <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <div className="w-10 h-10 rounded-full bg-warning-light flex items-center justify-center">
+                            <svg className="w-5 h-5 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                         </div>
                         <div>
-                            <h3 className="text-xl font-bold text-gray-900">Generate Jadwal Otomatis</h3>
-                            <p className="text-sm text-gray-500 mt-0.5">Algoritma mengisi jadwal mengajar per pegawai secara acak tanpa bentrok</p>
+                            <h3 className="page-title">Generate Jadwal Otomatis</h3>
+                            <p className="page-subtitle">Algoritma mengisi jadwal mengajar per pegawai secara acak tanpa bentrok</p>
                         </div>
                     </div>
 
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-4 flex items-start gap-2">
+                    <div className="bg-warning-light border border-warning/30 rounded-card p-3 text-xs text-warning mb-4 flex items-start gap-2">
                         <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
                         <span>Jadwal yang <strong>sudah ada tidak akan dihapus</strong>. Generate hanya menambah jadwal baru jika tidak ada bentrok. Anda bisa generate berulang kali.</span>
                     </div>
@@ -322,11 +446,11 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                         {/* Unit + Semester baris pertama */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Unit Sekolah</label>
+                                <label className="form-label mb-1">Unit Sekolah</label>
                                 <select
                                     value={genData.unit_sekolah_id}
                                     onChange={e => setGenData({...genData, unit_sekolah_id: e.target.value})}
-                                    className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                                    className="select-field"
                                 >
                                     <option value="">Semua Unit</option>
                                     {units.map(unit => (
@@ -338,11 +462,11 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                 )}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                                <label className="form-label mb-1">Semester</label>
                                 <select 
                                     value={genData.semester} 
                                     onChange={e => setGenData({...genData, semester: e.target.value})}
-                                    className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                                    className="select-field"
                                 >
                                     <option value="1">1 (Ganjil)</option>
                                     <option value="2">2 (Genap)</option>
@@ -352,13 +476,13 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 
                         {/* Tahun Ajaran */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran</label>
-                            <select
+                                <label className="form-label mb-1">Tahun Ajaran</label>
+                                <select
                                 value={genData.tahun_ajaran}
                                 onChange={e => setGenData({...genData, tahun_ajaran: e.target.value})}
-                                className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
-                            >
-                                <option value="2024/2025">2024/2025</option>
+                                    className="select-field"
+                                >
+                                    <option value="2024/2025">2024/2025</option>
                                 <option value="2025/2026">2025/2026</option>
                                 <option value="2026/2027">2026/2027</option>
                                 <option value="2027/2028">2027/2028</option>
@@ -368,44 +492,44 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 
                         {/* Batas Waktu */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Rentang Jam</label>
+                                <label className="form-label mb-1">Rentang Jam</label>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="relative">
-                                    <span className="absolute -top-2 left-3 text-[10px] text-gray-400 bg-white px-1">Mulai</span>
+                                    <span className="absolute -top-2 left-3 text-[10px] text-text-muted bg-white px-1">Mulai</span>
                                     <input 
                                         type="time" 
                                         value={genData.waktu_mulai} 
                                         onChange={e => setGenData({...genData, waktu_mulai: e.target.value})}
-                                        className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm pt-2"
+                                        className="input-field pt-2"
                                     />
                                 </div>
                                 <div className="relative">
-                                    <span className="absolute -top-2 left-3 text-[10px] text-gray-400 bg-white px-1">Selesai</span>
+                                    <span className="absolute -top-2 left-3 text-[10px] text-text-muted bg-white px-1">Selesai</span>
                                     <input 
                                         type="time" 
                                         value={genData.waktu_selesai} 
                                         onChange={e => setGenData({...genData, waktu_selesai: e.target.value})}
-                                        className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm pt-2"
+                                        className="input-field pt-2"
                                     />
                                 </div>
                             </div>
-                            <p className="mt-1 text-xs text-gray-400">Blok waktu default: 07:00-09:00, 09:30-11:30, 13:00-15:00. Filter ini mempersempit blok yang digunakan.</p>
+                            <p className="form-hint">Blok waktu default: 07:00-09:00, 09:30-11:30, 13:00-15:00. Filter ini mempersempit blok yang digunakan.</p>
                         </div>
 
                         {/* Tombol */}
-                        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                        <div className="flex justify-end gap-3 pt-2 border-t border-border">
                             <button 
                                 type="button" 
                                 onClick={() => setShowGenerateModal(false)}
                                 disabled={generating}
-                                className="inline-flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                                className="btn-secondary"
                             >
                                 Batal
                             </button>
                             <button 
                                 type="submit" 
                                 disabled={generating}
-                                className="inline-flex items-center px-5 py-2.5 text-sm font-bold text-primary bg-accent border border-transparent rounded-lg hover:bg-yellow-500 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                                className="btn-primary bg-accent text-primary-800 hover:bg-yellow-500"
                             >
                                 {generating ? (
                                     <>
@@ -422,89 +546,241 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                 </div>
             </Modal>}
 
-            {isAdmin && <Modal show={showSwapModal} onClose={() => setShowSwapModal(false)} maxWidth="md">
-                            <h3 className="text-xl font-bold leading-6 text-gray-900 flex items-center gap-2">
-                                <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
-                                Tukar Jadwal
-                            </h3>
-                            <div className="mt-2 text-sm text-gray-500">
-                                Pilih pegawai dan jadwal target untuk ditukar kepemilikannya.
-                            </div>
-                            
-                            {errors?.conflict && (
-                                <div className="mt-3 bg-red-50 text-red-700 p-3 rounded-md text-sm border border-red-200">
-                                    {errors.conflict}
-                                </div>
-                            )}
+            {isAdmin && <Modal show={showSwapModal} onClose={() => setShowSwapModal(false)} maxWidth="lg">
+                <div className="px-6 py-5">
+                    <div className="flex items-center gap-3 mb-5">
+                        <div className="w-10 h-10 rounded-full bg-info-light flex items-center justify-center shrink-0">
+                            <svg className="w-5 h-5 text-info" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-primary">Tukar Jadwal</h3>
+                            <p className="text-sm text-text-secondary">Pilih pegawai dan jadwal target untuk ditukar kepemilikannya.</p>
+                        </div>
+                    </div>
 
-                            <form onSubmit={handleSwap} className="mt-4 space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Jadwal Asal</label>
-                                    <div className="mt-1 p-3 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-800">
-                                        {jadwals.find(j => j.id === swapData.jadwal_asal_id) ? (
-                                            (() => {
-                                                const j = jadwals.find(j => j.id === swapData.jadwal_asal_id);
-                                                return `${j.pegawai.nama_lengkap} (${j.hari}, ${j.jam_mulai.substring(0,5)}-${j.jam_selesai.substring(0,5)})`;
-                                            })()
-                                        ) : 'Memuat...'}
+                    {errors?.conflict && (
+                        <div className="mb-4 bg-danger-light text-danger p-3 rounded-card text-sm border border-danger/20">
+                            {errors.conflict}
+                        </div>
+                    )}
+
+                    {/* Asal */}
+                    <div className="mb-4">
+                        <label className="form-label font-semibold mb-2 flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">1</span>
+                            Jadwal Asal
+                        </label>
+                        {(() => {
+                            const j = jadwals.find(j => j.id === swapData.jadwal_asal_id);
+                            if (!j) return <div className="p-3 bg-surface border border-border rounded-card text-sm text-text-muted">Memuat...</div>;
+                            return (
+                                <div className="p-3 bg-surface border border-primary/20 rounded-card">
+                                    <div className="font-bold text-primary text-sm">{j.pegawai?.nama_lengkap}</div>
+                                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-secondary">
+                                        <span>{j.hari}, {j.jam_mulai?.substring(0,5)}-{j.jam_selesai?.substring(0,5)}</span>
+                                        <span className="font-medium text-primary/70 uppercase">{j.jenis_jadwal}</span>
+                                        {j.mata_pelajaran?.nama && <span>{j.mata_pelajaran.nama}</span>}
+                                        {j.kelas_label && <span>Kls: {j.kelas_label}</span>}
+                                        <span>{j.unit_sekolah?.singkatan || '-'}</span>
                                     </div>
                                 </div>
+                            );
+                        })()}
+                    </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Tukar Dengan Pegawai</label>
-                                    <select 
-                                        value={targetPegawaiId} 
-                                        onChange={e => {
-                                            setTargetPegawaiId(e.target.value);
-                                            setSwapData({...swapData, jadwal_tujuan_id: ''}); // reset target jadwal
-                                        }}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
-                                    >
-                                        <option value="">-- Pilih Pegawai --</option>
-                                        {pegawais.filter(p => jadwals.find(j => j.id === swapData.jadwal_asal_id)?.pegawai_id !== p.id).map(p => (
-                                            <option key={p.id} value={p.id}>{p.nama_lengkap}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                    {/* Target Pegawai */}
+                    <div className="mb-4">
+                        <label className="form-label font-semibold mb-2 flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-accent text-primary-800 text-xs flex items-center justify-center font-bold">2</span>
+                            Tukar Dengan Pegawai
+                        </label>
+                        <select
+                            value={targetPegawaiId}
+                            onChange={e => {
+                                setTargetPegawaiId(e.target.value);
+                                setSwapData({...swapData, jadwal_tujuan_id: ''});
+                            }}
+                            className="select-field"
+                        >
+                            <option value="">-- Pilih Pegawai --</option>
+                            {(() => {
+                                const asal = jadwals.find(j => j.id === swapData.jadwal_asal_id);
+                                const unitId = asal?.unit_sekolah_id;
+                                return pegawais.filter(p => {
+                                    if (asal && asal.pegawai_id === p.id) return false;
+                                    if (unitId) return p.units?.some(u => u.id == unitId);
+                                    return true;
+                                }).map(p => (
+                                    <option key={p.id} value={p.id}>{p.nama_lengkap}</option>
+                                ));
+                            })()}
+                        </select>
+                    </div>
 
-                                {targetPegawaiId && (
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Pilih Jadwal Target</label>
-                                        <select 
-                                            value={swapData.jadwal_tujuan_id} 
-                                            onChange={e => setSwapData({...swapData, jadwal_tujuan_id: e.target.value})}
-                                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                    {/* Target Jadwal */}
+                    {targetPegawaiId && (
+                        <div className="mb-4">
+                            <label className="form-label font-semibold mb-2 flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-xs flex items-center justify-center font-bold">3</span>
+                                Pilih Jadwal Target
+                            </label>
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                {(() => {
+                                    const asal = jadwals.find(j => j.id === swapData.jadwal_asal_id);
+                                    const unitId = asal?.unit_sekolah_id;
+                                    const targets = jadwals.filter(j => j.pegawai_id == targetPegawaiId && (!unitId || j.unit_sekolah_id == unitId));
+                                    if (targets.length === 0) {
+                                        return <p className="p-3 bg-surface border border-border rounded-card text-sm text-text-muted">Pegawai ini tidak memiliki jadwal.</p>;
+                                    }
+                                    return targets.map(j => (
+                                        <button
+                                            key={j.id}
+                                            type="button"
+                                            onClick={() => setSwapData({...swapData, jadwal_tujuan_id: j.id})}
+                                            className={`w-full text-left p-3 rounded-card border text-sm transition-colors cursor-pointer ${
+                                                swapData.jadwal_tujuan_id === j.id
+                                                    ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                                                    : 'border-border bg-surface hover:border-primary/40'
+                                            }`}
                                         >
-                                            <option value="">-- Pilih Jadwal --</option>
-                                            {jadwals.filter(j => j.pegawai_id == targetPegawaiId).map(j => (
-                                                <option key={j.id} value={j.id}>
-                                                    {j.hari}, {j.jam_mulai.substring(0,5)} - {j.jam_selesai.substring(0,5)} ({j.jenis_jadwal})
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {jadwals.filter(j => j.pegawai_id == targetPegawaiId).length === 0 && (
-                                            <p className="mt-1 text-xs text-red-500">Pegawai ini tidak memiliki jadwal untuk ditukar.</p>
-                                        )}
-                                    </div>
-                                )}
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <span className="font-bold text-text-primary">{j.hari}, {j.jam_mulai?.substring(0,5)}-{j.jam_selesai?.substring(0,5)}</span>
+                                                    <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase bg-blue-50 text-blue-700 border border-blue-100">{j.jenis_jadwal}</span>
+                                                </div>
+                                                <div className="text-xs text-text-secondary text-right">
+                                                    {j.mata_pelajaran?.nama && <div>{j.mata_pelajaran.nama}</div>}
+                                                    {j.kelas_label && <div>{j.kelas_label}</div>}
+                                                </div>
+                                            </div>
+                                            {swapData.jadwal_tujuan_id === j.id && (
+                                                <div className="mt-1 text-xs text-primary font-medium">✓ Dipilih</div>
+                                            )}
+                                        </button>
+                                    ));
+                                })()}
+                            </div>
+                        </div>
+                    )}
 
-                                <div className="mt-6 flex justify-end gap-3">
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setShowSwapModal(false)}
-                                        className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                                    >
-                                        Batal
-                                    </button>
-                                    <button 
-                                        type="submit" 
-                                        disabled={!swapData.jadwal_tujuan_id}
-                                        className={`inline-flex justify-center px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md bg-blue-600 hover:bg-blue-700 font-bold ${!swapData.jadwal_tujuan_id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    >
-                                        Eksekusi Tukar!
-                                    </button>
+                    {/* Preview hasil tukar */}
+                    {swapData.jadwal_asal_id && swapData.jadwal_tujuan_id && (() => {
+                        const asal = jadwals.find(j => j.id === swapData.jadwal_asal_id);
+                        const tujuan = jadwals.find(j => j.id === swapData.jadwal_tujuan_id);
+                        if (!asal || !tujuan) return null;
+                        return (
+                            <div className="mb-4 p-3 bg-info-light border border-info/30 rounded-card">
+                                <p className="text-xs font-bold text-info uppercase tracking-wider mb-2">Preview Hasil Tukar</p>
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div>
+                                        <p className="text-text-muted mb-0.5">← {asal.pegawai?.nama_lengkap} mendapat:</p>
+                                        <p className="font-semibold text-text-primary">{tujuan.hari}, {tujuan.jam_mulai?.substring(0,5)}-{tujuan.jam_selesai?.substring(0,5)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-text-muted mb-0.5">→ {tujuan.pegawai?.nama_lengkap} mendapat:</p>
+                                        <p className="font-semibold text-text-primary">{asal.hari}, {asal.jam_mulai?.substring(0,5)}-{asal.jam_selesai?.substring(0,5)}</p>
+                                    </div>
                                 </div>
-                            </form>
+                            </div>
+                        );
+                    })()}
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                        <button type="button" onClick={() => setShowSwapModal(false)} className="btn-secondary">
+                            Batal
+                        </button>
+                        <button
+                            onClick={handleSwap}
+                            disabled={!swapData.jadwal_tujuan_id}
+                            className="btn-primary"
+                        >
+                            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                            Eksekusi Tukar
+                        </button>
+                    </div>
+                </div>
+            </Modal>}
+
+            {isAdmin && <Modal show={showRekapModal} onClose={() => setShowRekapModal(false)} maxWidth="2xl">
+                <div className="px-6 py-5 max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center gap-3 mb-5">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-primary">Rekap Kelas</h3>
+                            <p className="text-sm text-text-secondary">Mapel, guru, dan total jam per kelas.</p>
+                        </div>
+                    </div>
+
+                    {(() => {
+                        const grouped = {};
+                        jadwals.filter(j => j.kelas_label && j.jenis_jadwal === 'mengajar').forEach(j => {
+                            if (!grouped[j.kelas_label]) grouped[j.kelas_label] = {};
+                            const mapelId = j.mata_pelajaran?.id || 0;
+                            const mapelName = j.mata_pelajaran?.nama || 'Tanpa Mapel';
+                            if (!grouped[j.kelas_label][mapelId]) {
+                                grouped[j.kelas_label][mapelId] = { nama: mapelName, guru: {} };
+                            }
+                            const pegNama = j.pegawai?.nama_lengkap || 'Tanpa Nama';
+                            const [h1, m1] = (j.jam_mulai || '0:0').split(':').map(Number);
+                            const [h2, m2] = (j.jam_selesai || '0:0').split(':').map(Number);
+                            const durasi = (h2 * 60 + m2) - (h1 * 60 + m1);
+                            if (!grouped[j.kelas_label][mapelId].guru[pegNama]) {
+                                grouped[j.kelas_label][mapelId].guru[pegNama] = 0;
+                            }
+                            grouped[j.kelas_label][mapelId].guru[pegNama] += Math.max(0, durasi);
+                        });
+
+                        const entries = Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]));
+                        if (entries.length === 0) {
+                            return <div className="p-6 text-center text-text-muted">Belum ada jadwal mengajar dengan kelas.</div>;
+                        }
+
+                        return (
+                            <div className="space-y-6">
+                                {entries.map(([kelas, mapels]) => {
+                                    const mapelEntries = Object.entries(mapels);
+                                    const totalJam = mapelEntries.reduce((sum, [, m]) => {
+                                        return sum + Object.values(m.guru).reduce((a, b) => a + b, 0);
+                                    }, 0);
+                                    return (
+                                        <div key={kelas} className="bg-surface border border-border rounded-card overflow-hidden">
+                                            <div className="px-4 py-3 bg-primary/5 border-b border-border flex items-center justify-between">
+                                                <h4 className="font-bold text-primary text-sm">{kelas}</h4>
+                                                <span className="text-xs text-text-muted">{totalJam} mnt / {mapelEntries.length} mapel</span>
+                                            </div>
+                                            <div className="divide-y divide-border">
+                                                {mapelEntries.sort((a, b) => a[1].nama.localeCompare(b[1].nama)).map(([mapelId, m]) => (
+                                                    <div key={mapelId} className="px-4 py-2.5">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="font-medium text-sm text-text-primary">{m.nama}</span>
+                                                            <span className="text-xs text-text-muted">{Object.values(m.guru).reduce((a, b) => a + b, 0)} mnt</span>
+                                                        </div>
+                                                        <div className="mt-1 flex flex-wrap gap-1.5">
+                                                            {Object.entries(m.guru).sort((a, b) => b[1] - a[1]).map(([guru, menit]) => (
+                                                                <span key={guru} className="inline-flex items-center gap-1 text-xs bg-white border border-border px-2 py-0.5 rounded-full">
+                                                                    <span className="text-text-primary">{guru}</span>
+                                                                    <span className="text-text-muted">{menit}m</span>
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
+
+                    <div className="mt-6 pt-4 border-t border-border flex justify-end">
+                        <button type="button" onClick={() => setShowRekapModal(false)} className="btn-secondary">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
             </Modal>}
 
         </AuthenticatedLayout>

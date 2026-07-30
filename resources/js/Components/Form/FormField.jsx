@@ -3,14 +3,14 @@ export default function FormField({ label, htmlFor, required = false, error, hin
     return (
         <div className={className}>
             {label && (
-                <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700">
+                <label htmlFor={htmlFor} className="form-label">
                     {label}
-                    {required && <span className="text-red-500"> *</span>}
+                    {required && <span className="text-danger"> *</span>}
                 </label>
             )}
-            <div className="mt-1">{children}</div>
-            {hint && !error && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
-            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+            <div>{children}</div>
+            {hint && !error && <p className="form-hint">{hint}</p>}
+            {error && <p className="form-error">{error}</p>}
         </div>
     );
 }

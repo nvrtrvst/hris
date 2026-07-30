@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\PayrollLockHelper;
+use App\Jobs\ProcessPresensiFoto;
+use App\Models\AuditPresensi;
 use App\Models\Jadwal;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
-use App\Services\ImageUploadService;
 use App\Traits\CalculatesDistance;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class PresensiController extends Controller
@@ -26,7 +31,7 @@ class PresensiController extends Controller
 
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_presensi');
-        $query = Presensi::with(['unitSekolah', 'pegawai', 'jadwal']);
+        $query = Presensi::with(['unitSekolah', 'pegawai', 'jadwal.mataPelajaran']);
 
         if (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
@@ -144,15 +149,18 @@ class PresensiController extends Controller
         }
 
         $pegawai = Pegawai::findOrFail($request->pegawai_id);
-        $imageName = app(ImageUploadService::class)->storeBase64(
-            $request->foto,
-            'presensi',
-            null,
-            5 * 1024 * 1024,
-            ['id' => $pegawai->id, 'nama' => $pegawai->nama_lengkap]
-        );
 
-        DB::transaction(function () use ($request, $unit, $distance, $imageName) {
+        $user = auth()->user();
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->belongsToUnit($user->unit_sekolah_id)) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $tempName = Str::uuid()->toString().'.jpg';
+        $tempPath = 'temp/'.$tempName;
+        $base64Data = $request->foto;
+        Storage::disk('local')->put($tempPath, base64_decode(explode(',', $base64Data, 2)[1] ?? ''));
+
+        $presensi = DB::transaction(function () use ($request, $unit, $distance) {
             $presensi = Presensi::where('pegawai_id', $request->pegawai_id)
                 ->where('jadwal_id', $request->jadwal_id)
                 ->where('tanggal', Carbon::today())
@@ -178,15 +186,10 @@ class PresensiController extends Controller
                 $presensi->jam_masuk = Carbon::now()->format('H:i:s');
                 $presensi->latitude_masuk = $request->latitude;
                 $presensi->longitude_masuk = $request->longitude;
-                $presensi->foto_masuk = $imageName;
+                $presensi->foto_masuk_status = 'pending';
                 $presensi->jarak_masuk_meter = $distance;
 
-                // Tentukan status telat
-                if (Carbon::now()->format('H:i:s') > $jadwal->jam_mulai) {
-                    $presensi->status = 'telat';
-                } else {
-                    $presensi->status = 'hadir';
-                }
+                $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $unit->toleransi_menit);
             } else {
                 if (! $presensi->exists || ! $presensi->jam_masuk) {
                     throw ValidationException::withMessages(['conflict' => 'Anda belum absen masuk.']);
@@ -197,12 +200,23 @@ class PresensiController extends Controller
                 $presensi->jam_keluar = Carbon::now()->format('H:i:s');
                 $presensi->latitude_keluar = $request->latitude;
                 $presensi->longitude_keluar = $request->longitude;
-                $presensi->foto_keluar = $imageName;
+                $presensi->foto_keluar_status = 'pending';
                 $presensi->jarak_keluar_meter = $distance;
             }
 
             $presensi->save();
+
+            return $presensi;
         });
+
+        Bus::dispatchSync(new ProcessPresensiFoto(
+            $presensi->id,
+            $request->tipe,
+            $tempPath,
+            'presensi',
+            null,
+            ['id' => $pegawai->id, 'nama' => $pegawai->nama_lengkap]
+        ));
 
         return redirect()->route('presensi.index')->with('message', 'Presensi berhasil dicatat.');
     }
@@ -215,17 +229,36 @@ class PresensiController extends Controller
             abort(403);
         }
 
-        $presensi = Presensi::with('pegawai')->findOrFail($id);
-
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
-            abort(403, 'Akses ditolak.');
-        }
-
         $request->validate([
-            'status' => 'required|in:hadir,telat,alpa',
+            'status' => 'required|in:hadir,telat,alpa,sakit,izin,cuti',
+            'persentase_bayar_jam' => 'nullable|integer|min:0|max:100',
         ]);
 
-        $presensi->update(['status' => $request->status]);
+        $statusLama = null;
+        $presensi = DB::transaction(function () use ($id, $request, $user, &$statusLama) {
+            $presensi = Presensi::with('pegawai')
+                ->lockForUpdate()
+                ->findOrFail($id);
+
+            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+                abort(403, 'Akses ditolak.');
+            }
+
+            if (PayrollLockHelper::isPeriodLocked($presensi->pegawai_id, $presensi->tanggal)) {
+                throw ValidationException::withMessages(['error' => 'Periode penggajian sudah dikunci. Tidak bisa mengubah status presensi.']);
+            }
+
+            $statusLama = $presensi->status;
+            $presensi->status = $request->status;
+            if ($request->filled('persentase_bayar_jam')) {
+                $presensi->persentase_bayar_jam = (int) $request->persentase_bayar_jam;
+            }
+            $presensi->save();
+
+            return $presensi;
+        });
+
+        AuditPresensi::log($presensi->id, 'ubah_status', 'status', $statusLama, $request->status);
 
         return redirect()->back()->with('message', 'Status presensi berhasil diubah menjadi '.strtoupper($request->status));
     }
@@ -246,7 +279,13 @@ class PresensiController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
+        if (PayrollLockHelper::isPeriodLocked($presensi->pegawai_id, $presensi->tanggal)) {
+            return back()->withErrors(['error' => 'Periode penggajian sudah dikunci.']);
+        }
+
         $presensi->update(['lembur_status' => 'disetujui']);
+
+        AuditPresensi::log($presensi->id, 'approve_lembur', 'lembur_status', 'pending', 'disetujui');
 
         return redirect()->back()->with('message', 'Lembur berhasil disetujui.');
     }
@@ -267,8 +306,28 @@ class PresensiController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
+        if (PayrollLockHelper::isPeriodLocked($presensi->pegawai_id, $presensi->tanggal)) {
+            return back()->withErrors(['error' => 'Periode penggajian sudah dikunci.']);
+        }
+
         $presensi->update(['lembur_status' => 'ditolak']);
 
+        AuditPresensi::log($presensi->id, 'reject_lembur', 'lembur_status', 'pending', 'ditolak');
+
         return redirect()->back()->with('message', 'Lembur ditolak.');
+    }
+
+    public function audit($id)
+    {
+        if (! auth()->user()?->can('view_presensi')) {
+            abort(403);
+        }
+
+        $audits = AuditPresensi::where('presensi_id', $id)
+            ->with('user:id,name')
+            ->latest()
+            ->get(['id', 'user_id', 'aksi', 'field', 'nilai_lama', 'nilai_baru', 'created_at']);
+
+        return response()->json(['audits' => $audits]);
     }
 }

@@ -5,11 +5,11 @@ import { Check, Eye, EyeOff, KeyRound, Lock, ShieldCheck } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 
 const basePasswordInput =
-    'block w-full rounded-lg border border-border bg-white pl-10 pr-10 py-2.5 text-sm text-text-primary shadow-sm placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
+    'block w-full rounded-input border border-border bg-white pl-10 pr-10 py-2.5 text-sm text-text-primary shadow-card placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
 
 function FieldIcon({ children }) {
     return (
-        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-text-muted">
             {children}
         </span>
     );
@@ -21,7 +21,7 @@ function ToggleVisibility({ visible, onToggle }) {
             type="button"
             onClick={onToggle}
             tabIndex={-1}
-            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-primary"
+            className="absolute inset-y-0 right-0 flex items-center pr-3 text-text-muted hover:text-primary"
             aria-label={visible ? 'Sembunyikan' : 'Tampilkan'}
         >
             {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -53,7 +53,7 @@ function StrengthMeter({ password }) {
 
     return (
         <div className="mt-2 space-y-1.5">
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-50/80">
                 <div
                     className={`h-full ${barColor} transition-all duration-300`}
                     style={{ width: `${percentage}%` }}
@@ -225,12 +225,12 @@ export default function UpdatePasswordForm({ className = '' }) {
                     <button
                         type="submit"
                         disabled={processing || !confirmMatch}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="btn-primary"
                     >
                         {processing ? 'Menyimpan...' : 'Simpan'}
                     </button>
                     {showSaved && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-xs font-medium text-success animate-fade-in">
+                        <span className="badge-success animate-fade-in">
                             <Check className="h-3.5 w-3.5" /> Tersimpan
                         </span>
                     )}

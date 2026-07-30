@@ -12,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'username', 'password', 'role', 'unit_sekolah_id'])]
+#[Fillable(['name', 'email', 'username', 'password', 'role', 'unit_sekolah_id', 'force_password_change'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -34,6 +34,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'force_password_change' => 'boolean',
         ];
     }
 
@@ -45,6 +46,11 @@ class User extends Authenticatable
     public function pegawai()
     {
         return $this->hasOne(Pegawai::class);
+    }
+
+    public function needsPasswordChange(): bool
+    {
+        return (bool) $this->force_password_change;
     }
 
     public function isApprover(): bool

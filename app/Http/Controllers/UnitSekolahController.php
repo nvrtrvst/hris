@@ -29,9 +29,14 @@ class UnitSekolahController extends Controller
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
             'radius_meter' => 'required|integer|min:10|max:100000',
+            'durasi_jp' => 'nullable|integer|min:1|max:255',
+            'max_jam_minggu' => 'nullable|integer|min:1|max:168',
+            'toleransi_menit' => 'nullable|integer|min:0|max:60',
             'jam_masuk_kantor' => 'required|date_format:H:i',
             'jam_pulang_kantor' => 'nullable|date_format:H:i',
         ]);
+
+        $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;
 
         $disk = config('filesystems.image_disk', 'public');
         $newLogo = $request->hasFile('logo') ? $request->file('logo')->store('unit_logos', $disk) : null;
@@ -65,9 +70,14 @@ class UnitSekolahController extends Controller
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
             'radius_meter' => 'required|integer|min:10|max:100000',
+            'durasi_jp' => 'nullable|integer|min:1|max:255',
+            'max_jam_minggu' => 'nullable|integer|min:1|max:168',
+            'toleransi_menit' => 'nullable|integer|min:0|max:60',
             'jam_masuk_kantor' => 'required|date_format:H:i',
             'jam_pulang_kantor' => 'nullable|date_format:H:i',
         ]);
+
+        $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;
 
         $disk = config('filesystems.image_disk', 'public');
         $oldLogo = $unit_sekolah->logo;

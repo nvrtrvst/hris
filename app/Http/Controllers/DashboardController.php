@@ -15,6 +15,97 @@ use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
+    public function perbandinganUnit(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user->can('view_all_units')) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $period = $request->input('period', 'this_month');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        if ($period === 'custom' && $startDate && $endDate) {
+            // use provided dates
+        } elseif ($period === 'last_month') {
+            $startDate = Carbon::now('Asia/Jakarta')->subMonth()->startOfMonth()->format('Y-m-d');
+            $endDate = Carbon::now('Asia/Jakarta')->subMonth()->endOfMonth()->format('Y-m-d');
+        } else {
+            $startDate = Carbon::now('Asia/Jakarta')->startOfMonth()->format('Y-m-d');
+            $endDate = Carbon::now('Asia/Jakarta')->endOfMonth()->format('Y-m-d');
+        }
+
+        $cacheKey = "dashboard:perbandingan-unit:{$startDate}:{$endDate}";
+        $data = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($startDate, $endDate) {
+            $units = UnitSekolah::pluck('nama', 'id');
+
+            $stats = Presensi::selectRaw('
+                unit_sekolah_id,
+                COUNT(*) as total,
+                SUM(CASE WHEN status = "hadir" THEN 1 ELSE 0 END) as total_hadir,
+                SUM(CASE WHEN status = "telat" THEN 1 ELSE 0 END) as total_telat,
+                SUM(CASE WHEN status = "sakit" THEN 1 ELSE 0 END) as total_sakit,
+                SUM(CASE WHEN status = "izin" THEN 1 ELSE 0 END) as total_izin,
+                SUM(CASE WHEN status = "cuti" THEN 1 ELSE 0 END) as total_cuti,
+                SUM(CASE WHEN status = "alpa" THEN 1 ELSE 0 END) as total_alpa
+            ')
+                ->whereBetween('tanggal', [$startDate, $endDate])
+                ->where('is_lembur', '!=', true)
+                ->groupBy('unit_sekolah_id')
+                ->get();
+
+            $results = [];
+            foreach ($stats as $row) {
+                $totalHadirTelat = $row->total_hadir + $row->total_telat;
+                $results[] = [
+                    'unit_id' => $row->unit_sekolah_id,
+                    'unit_nama' => $units[$row->unit_sekolah_id] ?? 'Unknown',
+                    'total' => (int) $row->total,
+                    'total_hadir' => (int) $row->total_hadir,
+                    'total_telat' => (int) $row->total_telat,
+                    'total_sakit' => (int) $row->total_sakit,
+                    'total_izin' => (int) $row->total_izin,
+                    'total_cuti' => (int) $row->total_cuti,
+                    'total_alpa' => (int) $row->total_alpa,
+                    'kehadiran_persen' => $row->total > 0 ? round(($totalHadirTelat / $row->total) * 100, 1) : 0,
+                ];
+            }
+
+            // Include units without data
+            $withData = collect($results)->pluck('unit_id')->toArray();
+            foreach ($units as $unitId => $unitNama) {
+                if (! in_array($unitId, $withData)) {
+                    $results[] = [
+                        'unit_id' => $unitId,
+                        'unit_nama' => $unitNama,
+                        'total' => 0,
+                        'total_hadir' => 0,
+                        'total_telat' => 0,
+                        'total_sakit' => 0,
+                        'total_izin' => 0,
+                        'total_cuti' => 0,
+                        'total_alpa' => 0,
+                        'kehadiran_persen' => 0,
+                    ];
+                }
+            }
+
+            usort($results, fn ($a, $b) => $a['kehadiran_persen'] <=> $b['kehadiran_persen']);
+
+            return $results;
+        });
+
+        return inertia('PerbandinganUnit', [
+            'units' => $data,
+            'filter' => [
+                'period' => $period,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ],
+        ]);
+    }
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -158,6 +249,29 @@ class DashboardController extends Controller
             // [FIX] convert to array before caching — serializable_classes=false blokir object
             $kontrakBerakhirArr = $kontrakBerakhir->toArray();
 
+            // 6. Jadwal Hari Ini
+            $jadwalHariIniQuery = Jadwal::with([
+                    'pegawai:id,nama_lengkap',
+                    'mataPelajaran:id,nama',
+                    'unitSekolah:id,nama,singkatan',
+                ])
+                ->where('hari', $hariIniIndo)
+                ->orderBy('jam_mulai');
+
+            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+                $jadwalHariIniQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
+            }
+            $jadwalHariIni = $jadwalHariIniQuery->get()->toArray();
+
+            // 7. Presensi Hari Ini
+            $presensiQuery = Presensi::with('pegawai:id,nama_lengkap')
+                ->where('tanggal', $today);
+
+            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+                $presensiQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
+            }
+            $presensiHariIni = $presensiQuery->get()->toArray();
+
             return [
                 'totalPegawai' => $totalPegawai,
                 'totalUnit' => $totalUnit,
@@ -169,6 +283,8 @@ class DashboardController extends Controller
                 'attendanceTrend' => $attendanceTrend,
                 'kontrakBerakhir' => $kontrakBerakhirArr,
                 'kontrakBerakhir_count' => $kontrakBerakhir->count(),
+                'jadwalHariIni' => $jadwalHariIni,
+                'presensiHariIni' => $presensiHariIni,
             ];
         });
 
@@ -197,6 +313,8 @@ class DashboardController extends Controller
             ],
             'trends' => $attendanceTrend,
             'kontrakBerakhir' => $kontrakBerakhir,
+            'jadwalHariIni' => $admin['jadwalHariIni'],
+            'presensiHariIni' => $admin['presensiHariIni'],
         ]);
     }
 }

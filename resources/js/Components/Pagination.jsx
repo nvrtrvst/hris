@@ -15,11 +15,11 @@ export default function Pagination({ links, data = null, preserveState = true, c
     }
 
     const baseClass = (link) =>
-        `px-4 py-2 border rounded-md text-sm font-medium transition-colors ${
+        `px-3.5 py-2 text-sm font-medium transition-all duration-150 rounded-button ${
             link.active
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'
-        } ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`;
+                ? 'bg-primary text-white shadow-card'
+                : 'bg-white text-text-secondary hover:bg-primary-50 hover:text-primary border border-border hover:border-primary/20'
+        } ${!link.url ? 'opacity-40 cursor-not-allowed' : ''}`;
 
     const renderLink = (link, index) => {
         const content = decodeEntities(link.label);

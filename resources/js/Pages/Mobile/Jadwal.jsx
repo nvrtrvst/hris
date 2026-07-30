@@ -113,7 +113,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">{featuredDay === todayName ? 'Sesi pertama hari ini' : `Sesi berikutnya, ${featuredDay}`}</p>
                             <p className="mt-1 text-base font-bold text-white">{featuredSchedule.mata_pelajaran?.nama || 'Jadwal mengajar'}</p>
-                            <p className="mt-1 text-xs text-white/80">{featuredSchedule.kelas ? `Kelas ${featuredSchedule.kelas.tingkat} ${featuredSchedule.kelas.nama}` : 'Tanpa kelas'}</p>
+                            <p className="mt-1 text-xs text-white/80">{featuredSchedule.kelas_label || 'Tanpa kelas'}</p>
                         </div>
                         <div className="rounded-xl bg-white/10 px-3 py-2 text-right">
                             <Clock3 className="ml-auto h-4 w-4 text-white/80" />
@@ -168,7 +168,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
                                     const mapel =
                                         j.mata_pelajaran?.nama ||
                                         (j.jenis_jadwal === 'lembur' ? 'Lembur' : 'Jadwal');
-                                    const kelas = j.kelas ? `Kls ${j.kelas.tingkat} ${j.kelas.nama}` : null;
+                                    const kelas = j.kelas_label || null;
                                     const unit =
                                         j.unit_sekolah?.singkatan ||
                                         j.unit_sekolah?.nama ||
@@ -219,7 +219,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
                         <div className="mb-4 flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
                             <div>
                                 <p className="text-xs font-bold uppercase tracking-wide text-primary">
-                                    {selected.kelas ? `Kelas ${selected.kelas.tingkat} ${selected.kelas.nama}` : 'Detail jadwal'}
+                                    {selected.kelas_label || 'Detail jadwal'}
                                 </p>
                                 <h2 id="schedule-detail-title" className="mt-1 text-xl font-bold text-slate-900">
                                     {selected.mata_pelajaran?.nama || 'Jadwal'}

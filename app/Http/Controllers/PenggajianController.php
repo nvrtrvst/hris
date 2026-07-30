@@ -72,7 +72,7 @@ class PenggajianController extends Controller
         $year = $request->year;
 
         // [FIX] N+1: Eager load komponenGaji dan jadwals.unitSekolah
-        $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'jadwals.unitSekolah']);
+        $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'units', 'jadwals.unitSekolah']);
 
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $query->whereHas('units', function ($q) use ($user) {
@@ -113,6 +113,15 @@ class PenggajianController extends Controller
 
         $attendanceByPegawai = $attendanceRaw->groupBy('pegawai_id');
 
+        $sakitProrata = Presensi::whereBetween('tanggal', [
+                $periodeStart->format('Y-m-d'),
+                $periodeEnd->format('Y-m-d'),
+            ])
+            ->where('status', 'sakit')
+            ->selectRaw('pegawai_id, COALESCE(SUM(persentase_bayar_jam), 0) as total_persen')
+            ->groupBy('pegawai_id')
+            ->pluck('total_persen', 'pegawai_id');
+
         // [FIX] N+1: Prefetch presensi lembur untuk semua pegawai sekaligus
         $lemburQuery = Presensi::whereIn('pegawai_id', $pegawais->pluck('id'))
             ->where('is_lembur', true)
@@ -149,9 +158,14 @@ class PenggajianController extends Controller
                 $totalTaxable = '0.00';
                 $details = [];
 
+                $pegawaiUnitIds = $pegawai->units->pluck('id')->toArray();
+
                 foreach ($globalKomponens as $komponen) {
+                    if ($komponen->unit_sekolah_id && ! in_array($komponen->unit_sekolah_id, $pegawaiUnitIds, true)) {
+                        continue;
+                    }
                     $nominal = round((float) $this->computeComponentNominal(
-                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai
+                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata
                     ), 2);
 
                     if ($nominal > 0) {
@@ -513,9 +527,15 @@ class PenggajianController extends Controller
      * @param  Collection|null  $lemburByPegawai  Data presensi lembur (prefetched)
      * @return float nominal komponen gaji
      */
-    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null): float
+    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null): float
     {
         $nominal = 0;
+
+        // Filter by status kepegawaian
+        if ($komponen->applies_to_status_kepegawaian
+            && $komponen->applies_to_status_kepegawaian !== $pegawai->status_kepegawaian) {
+            return 0;
+        }
 
         if ($komponen->jenis === 'fixed') {
             if ($pegawaiKomponens->has($komponen->id) && $pegawaiKomponens[$komponen->id]->pivot->nominal !== null) {
@@ -524,7 +544,7 @@ class PenggajianController extends Controller
                 $nominal = $komponen->nilai_default ?? 0;
             }
         } elseif ($komponen->jenis === 'persentase') {
-            $gajiPokok = $this->findKomponenByKode($globalKomponens, 'gaji_pokok', ['Gaji Pokok', 'Basic Salary']);
+            $gajiPokok = $this->findKomponenByKode($globalKomponens, 'gaji_pokok', ['Gaji Pokok', 'Basic Salary'], $pegawai);
             $gajiPokokId = $gajiPokok ? $gajiPokok->id : null;
 
             $baseSalary = 0;
@@ -544,7 +564,10 @@ class PenggajianController extends Controller
             } elseif ($this->isKehadiranType($komponen, 'kehadiran_alpa', ['alpa'])) {
                 $nominal = $rate * $counts['alpa'];
             } elseif ($this->isKehadiranType($komponen, 'kehadiran_sakit', ['sakit'])) {
-                $nominal = $rate * $counts['sakit'];
+                $multiplier = $sakitProrata && $sakitProrata->has($pegawai->id)
+                    ? min(1, (int) $sakitProrata[$pegawai->id] / ($counts['sakit'] * 100))
+                    : 1;
+                $nominal = $rate * $counts['sakit'] * $multiplier;
             } elseif ($this->isKehadiranType($komponen, 'kehadiran_izin', ['izin'])) {
                 $nominal = $rate * $counts['izin'];
             } elseif ($this->isKehadiranType($komponen, 'kehadiran_cuti', ['cuti'])) {
@@ -575,6 +598,20 @@ class PenggajianController extends Controller
                 ? $pegawaiKomponens[$komponen->id]->pivot->nominal
                 : ($komponen->nilai_default ?? 0);
 
+            $syarat = $komponen->syarat_bayar_jam_mengajar ?: 'hanya_hadir';
+
+            $attendedJadwalIds = collect();
+            if ($syarat === 'hanya_hadir' && $pegawai->jadwals->isNotEmpty()) {
+                $attendedJadwalIds = Presensi::where('pegawai_id', $pegawai->id)
+                    ->whereIn('jadwal_id', $pegawai->jadwals->pluck('id'))
+                    ->whereIn('status', ['hadir', 'telat'])
+                    ->where('is_lembur', false)
+                    ->whereBetween('tanggal', [$periodeStart, $attendanceCutoff])
+                    ->selectRaw('jadwal_id, count(*) as total')
+                    ->groupBy('jadwal_id')
+                    ->pluck('total', 'jadwal_id');
+            }
+
             $totalHoursMonthly = 0;
             foreach ($pegawai->jadwals as $jadwal) {
                 $unit = $jadwal->unitSekolah;
@@ -583,9 +620,14 @@ class PenggajianController extends Controller
                 }
                 $mulai = Carbon::parse($jadwal->jam_mulai);
                 $selesai = Carbon::parse($jadwal->jam_selesai);
-                $sessionHours = $mulai->diffInMinutes($selesai) / 60;
-                $occurrences = $this->countWeekdayInRange($jadwal->hari, $periodeStart, $attendanceCutoff);
-                $totalHoursMonthly += $sessionHours * $occurrences;
+                $durasiJp = (int) ($unit->durasi_jp ?? 45);
+                $sessionHours = $mulai->diffInMinutes($selesai) / $durasiJp;
+
+                $count = $syarat === 'hanya_hadir'
+                    ? ($attendedJadwalIds[$jadwal->id] ?? 0)
+                    : $this->countWeekdayInRange($jadwal->hari, $periodeStart, $attendanceCutoff);
+
+                $totalHoursMonthly += $sessionHours * $count;
             }
             $nominal = $rate * $totalHoursMonthly;
         } elseif ($komponen->jenis === 'dinamis_lembur') {
@@ -612,29 +654,49 @@ class PenggajianController extends Controller
      * @param  Collection  $komponens  Collection komponen yang dicari
      * @param  string  $targetKode  Kode target (primary lookup)
      * @param  array  $namePatterns  Array pattern untuk stripos fallback (opsional)
+     * @param  Pegawai|null  $pegawai  Pegawai (untuk filter unit_sekolah_id)
      * @return Komponen|null Komponen yang ditemukan atau null
      */
-    private function findKomponenByKode($komponens, string $targetKode, array $namePatterns = []): ?KomponenGaji
+    private function findKomponenByKode($komponens, string $targetKode, array $namePatterns = [], $pegawai = null): ?KomponenGaji
     {
-        // Priority 1: Exact kode match
-        $komponen = $komponens->first(function ($k) use ($targetKode) {
-            return $k->kode === $targetKode;
-        });
+        if ($pegawai && $pegawai->units->isNotEmpty()) {
+            $unitIds = $pegawai->units->sortByDesc('pivot.is_primary')->pluck('id')->toArray();
 
-        // Priority 2: Pattern matching nama (backward compatibility)
-        if (! $komponen && ! empty($namePatterns)) {
-            $komponen = $komponens->first(function ($k) use ($namePatterns) {
-                foreach ($namePatterns as $pattern) {
-                    if (stripos($k->nama, $pattern) !== false) {
-                        return true;
-                    }
+            foreach ($unitIds as $uid) {
+                $komponen = $komponens->first(fn ($k) => $k->kode === $targetKode && $k->unit_sekolah_id === $uid);
+                if ($komponen) {
+                    return $komponen;
                 }
-
-                return false;
-            });
+            }
         }
 
-        return $komponen;
+        $komponen = $komponens->first(fn ($k) => $k->kode === $targetKode && is_null($k->unit_sekolah_id));
+        if ($komponen) {
+            return $komponen;
+        }
+
+        if (! empty($namePatterns)) {
+            if ($pegawai && $pegawai->units->isNotEmpty()) {
+                $unitIds = $pegawai->units->sortByDesc('pivot.is_primary')->pluck('id')->toArray();
+                foreach ($unitIds as $uid) {
+                    foreach ($namePatterns as $pattern) {
+                        $komponen = $komponens->first(fn ($k) => $k->unit_sekolah_id === $uid && stripos($k->nama, $pattern) !== false);
+                        if ($komponen) {
+                            return $komponen;
+                        }
+                    }
+                }
+            }
+
+            foreach ($namePatterns as $pattern) {
+                $komponen = $komponens->first(fn ($k) => is_null($k->unit_sekolah_id) && stripos($k->nama, $pattern) !== false);
+                if ($komponen) {
+                    return $komponen;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

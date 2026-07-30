@@ -34,6 +34,12 @@ function time(value) {
     return value ? String(value).slice(0, 5) : '--:--';
 }
 
+function toMinutes(hms) {
+    if (!hms) return 0;
+    const p = String(hms).split(':');
+    return parseInt(p[0], 10) * 60 + parseInt(p[1] || 0, 10);
+}
+
 export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = [], jadwalsHariIni = [] }) {
     const { flash = {} } = usePage().props;
     const today = format(new Date(), 'EEEE, d MMMM yyyy', { locale: id });
@@ -41,8 +47,11 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
     const displayName = pegawai?.nama_lengkap || auth?.user?.name || 'Pegawai';
     const firstName = displayName.split(' ')[0];
     const unitName = primaryUnit?.nama || primaryUnit?.nama_unit || null;
+    const jadwals = Array.isArray(jadwalsHariIni) ? jadwalsHariIni : [];
     const records = Array.isArray(presensiSeminggu) ? presensiSeminggu : Object.values(presensiSeminggu || {}).flat();
     const currentStatus = presensi?.status;
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
     return (
         <MobileLayout user={auth.user}>
@@ -79,13 +88,39 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                 </div>
 
                 <div className="grid grid-cols-2 divide-x divide-white/10">
-                    <div className="px-5 py-4">
-                        <p className="flex items-center gap-1.5 text-xs text-emerald-100"><LogIn className="h-4 w-4" /> Masuk</p>
-                        <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(presensi?.jam_masuk)}</p>
+                    <div className="flex flex-col justify-between px-5 py-4">
+                        <div>
+                            <p className="flex items-center gap-1.5 text-xs text-emerald-100"><LogIn className="h-4 w-4" /> Masuk</p>
+                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(presensi?.jam_masuk)}</p>
+                        </div>
+                        {presensi?.jam_masuk && (
+                            <div className="mt-4 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-inner">
+                                {presensi.foto_masuk_url ? (
+                                    <img src={presensi.foto_masuk_url} alt="Foto Masuk" className="h-full w-full object-cover opacity-90" />
+                                ) : (
+                                    <span className="text-[10px] font-semibold text-white/50 text-center leading-tight px-1">
+                                        {presensi.foto_masuk_status === 'pending' ? 'Diproses' : 'Tak Ada Foto'}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
-                    <div className="px-5 py-4">
-                        <p className="flex items-center gap-1.5 text-xs text-emerald-100"><LogOut className="h-4 w-4" /> Keluar</p>
-                        <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(presensi?.jam_keluar)}</p>
+                    <div className="flex flex-col justify-between px-5 py-4">
+                        <div>
+                            <p className="flex items-center gap-1.5 text-xs text-emerald-100"><LogOut className="h-4 w-4" /> Keluar</p>
+                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(presensi?.jam_keluar)}</p>
+                        </div>
+                        {presensi?.jam_keluar && (
+                            <div className="mt-4 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-inner">
+                                {presensi.foto_keluar_url ? (
+                                    <img src={presensi.foto_keluar_url} alt="Foto Keluar" className="h-full w-full object-cover opacity-90" />
+                                ) : (
+                                    <span className="text-[10px] font-semibold text-white/50 text-center leading-tight px-1">
+                                        {presensi.foto_keluar_status === 'pending' ? 'Diproses' : 'Tak Ada Foto'}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -111,28 +146,41 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                         Lihat semua
                     </Link>
                 </div>
-                {jadwalsHariIni.length === 0 ? (
+                {jadwals.length === 0 ? (
                     <div className="px-5 py-6 text-center">
                         <p className="text-sm font-semibold text-white/90">Tidak ada jadwal hari ini</p>
                         <p className="mt-1 text-xs text-white/70">Nikmati waktu luangmu, {firstName}.</p>
                     </div>
                 ) : (
                     <ol className="divide-y divide-white/10">
-                        {jadwalsHariIni.map((jadwal) => {
+                        {jadwals.map((jadwal) => {
                             const lokasi = jadwal.unit_sekolah?.nama || jadwal.unit_sekolah?.nama_unit || unitName;
+                            const selesai = toMinutes(jadwal.jam_selesai);
+                            const sudahLewat = selesai <= nowMinutes;
+                            const todayStr = format(now, 'yyyy-MM-dd');
+                            const didHadir = records.some(r => r.jadwal_id === jadwal.id && (r.tanggal || '').startsWith(todayStr));
+                            
                             return (
-                                <li key={jadwal.id} className="flex items-start gap-3 px-5 py-3.5">
+                                <li key={jadwal.id} className={`flex items-start gap-3 px-5 py-3.5 ${sudahLewat && !didHadir ? 'opacity-80' : sudahLewat ? 'opacity-50' : ''}`}>
                                     <div className="flex shrink-0 flex-col items-center justify-center rounded-xl bg-white/10 px-2 py-1.5 min-w-[52px]">
-                                        <Clock3 className="h-3.5 w-3.5 text-emerald-200" />
+                                        <Clock3 className={`h-3.5 w-3.5 ${sudahLewat && !didHadir ? 'text-rose-200' : 'text-emerald-200'}`} />
                                         <span className="mt-0.5 font-mono text-xs font-bold tabular-nums text-white">{time(jadwal.jam_mulai)}</span>
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-bold text-white">
-                                            {jadwal.mata_pelajaran?.nama || 'Pelajaran'}
-                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <p className={`truncate text-sm font-bold text-white ${sudahLewat && !didHadir ? 'text-rose-100' : sudahLewat ? 'line-through' : ''}`}>
+                                                {jadwal.mata_pelajaran?.nama || 'Pelajaran'}
+                                            </p>
+                                            {sudahLewat && didHadir && (
+                                                <span className="shrink-0 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">Hadir</span>
+                                            )}
+                                            {sudahLewat && !didHadir && (
+                                                <span className="shrink-0 rounded-full bg-rose-500/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-100 border border-rose-500/50">Tidak Hadir</span>
+                                            )}
+                                        </div>
                                         <p className="mt-0.5 text-xs text-white/80">
                                             {time(jadwal.jam_mulai)} - {time(jadwal.jam_selesai)}
-                                            {jadwal.kelas?.nama ? ` • ${jadwal.kelas.nama}` : ''}
+                                            {jadwal.kelas_label || ''}
                                         </p>
                                         <p className="mt-1 flex items-center gap-1 truncate text-xs text-white/70">
                                             <MapPin className="h-3.5 w-3.5 shrink-0" />

@@ -4,6 +4,7 @@ import { MAP_TILE_URL, MAP_ATTRIBUTION } from '@/Constants/AppConstants';
 import { Head, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Toggle } from '@/Components/MobileUI';
+import TetapPresensi from '@/Pages/Mobile/Partials/TetapPresensi';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck } from 'lucide-react';
 
 export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false }) {
@@ -389,6 +390,24 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
           })()
         : null;
 
+    if (pegawai.status_kepegawaian === 'tetap') {
+        return (
+            <MobileLayout user={auth.user}>
+                <Head title="Presensi" />
+                <div className="mb-5">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Presensi harian</p>
+                    <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Verifikasi kehadiran</h1>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">Foto pagi & sore, tap hadir per jadwal.</p>
+                </div>
+                <TetapPresensi
+                    pegawai={pegawai}
+                    jadwals={jadwals}
+                    presensiHariIni={presensiHariIni}
+                />
+            </MobileLayout>
+        );
+    }
+
     return (
         <MobileLayout user={auth.user}>
             <Head title="Presensi" />
@@ -453,7 +472,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                                     <p className="line-clamp-1 text-sm font-bold text-slate-900">{j.mata_pelajaran?.nama || 'Jadwal'}</p>
                                     {jadwalId === j.id && <CheckCircle className="h-4 w-4 shrink-0 text-primary" />}
                                 </div>
-                                <p className="mt-1 text-xs text-slate-500">{j.kelas ? `Kelas ${j.kelas.tingkat} ${j.kelas.nama}` : (j.hari || '')}</p>
+                                <p className="mt-1 text-xs text-slate-500">{j.kelas_label || (j.hari || '')}</p>
                                 <p className="mt-1 font-mono text-xs font-bold tabular-nums text-primary">{j.jam_mulai} - {j.jam_selesai}</p>
                             </button>
                         ))}

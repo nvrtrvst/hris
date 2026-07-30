@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
-import { CheckCircle } from 'lucide-react';
+import { Camera, CheckCircle } from 'lucide-react';
 import ComboSelect from '@/Components/ComboSelect';
 
-const inputClass = 'mt-1 block w-full rounded-xl border-border bg-surface px-4 py-2.5 text-sm text-primary shadow-sm ring-1 ring-black/5 placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary';
-const labelClass = 'block text-sm font-bold text-primary/80';
+const inputClass = 'input-field';
+const labelClass = 'form-label';
 
 const agamaOptions = [
     { value: 'Islam', label: 'Islam' },
@@ -54,10 +54,10 @@ const bankOptions = [
 ];
 
 const SectionCard = ({ title, desc, children }) => (
-    <div className="rounded-xl border border-border bg-white p-5 shadow-sm">
+    <div className="page-card">
         {title && (
-            <div className="mb-5 border-b border-border pb-3">
-                <h3 className="text-base font-bold text-primary">{title}</h3>
+            <div className="page-card-header">
+                <h3 className="section-title text-base font-bold text-primary">{title}</h3>
                 {desc && <p className="mt-0.5 text-xs text-text-secondary">{desc}</p>}
             </div>
         )}
@@ -97,6 +97,16 @@ export default function LengkapiData({ auth, pegawai }) {
         no_rekening: pegawai?.no_rekening || '',
     });
 
+    const [fotoPreview, setFotoPreview] = useState(null);
+
+    const handleFoto = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setData('foto', file);
+            setFotoPreview(URL.createObjectURL(file));
+        }
+    };
+
     const submit = (e) => {
         e.preventDefault();
         post(route('lengkapi-data.store'));
@@ -110,7 +120,7 @@ export default function LengkapiData({ auth, pegawai }) {
             <Head title="Lengkapi Data" />
 
             <div className="mx-auto max-w-3xl space-y-6 py-6">
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
+                <div className="rounded-card border border-warning/30 bg-warning-light p-4 text-sm font-medium text-warning">
                     Harap lengkapi data diri Anda sebelum menggunakan sistem. Field bertanda * wajib diisi.
                 </div>
 
@@ -190,7 +200,7 @@ export default function LengkapiData({ auth, pegawai }) {
 
                     <SectionCard title="Foto Profil" desc="Upload foto diri (opsional)">
                         <div className="md:col-span-2">
-                            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border bg-surface p-6 transition hover:border-primary">
+                                <label className="flex cursor-pointer flex-col items-center gap-2 rounded-card border-2 border-dashed border-border bg-surface p-6 transition hover:border-primary">
                                 <Camera className="h-8 w-8 text-text-secondary" />
                                 <span className="text-sm font-medium text-text-secondary">Klik untuk upload foto</span>
                                 <span className="text-xs text-text-secondary/60">Format: JPG/PNG, max 2MB</span>
@@ -198,7 +208,7 @@ export default function LengkapiData({ auth, pegawai }) {
                             </label>
                             {fotoPreview && (
                                 <div className="mt-3 flex items-center gap-3">
-                                    <img src={fotoPreview} alt="Preview" className="h-16 w-16 rounded-full object-cover ring-2 ring-border" />
+                                    <img src={fotoPreview} alt="Preview" className="h-16 w-16 rounded-full object-cover ring-2 ring-border-light" />
                                     <span className="text-sm text-text-secondary">Foto siap diupload</span>
                                 </div>
                             )}
@@ -208,7 +218,7 @@ export default function LengkapiData({ auth, pegawai }) {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-transform hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+                        className="btn-primary btn-lg w-full"
                     >
                         <CheckCircle className="h-5 w-5" />
                         {processing ? 'Menyimpan…' : 'Simpan Data'}

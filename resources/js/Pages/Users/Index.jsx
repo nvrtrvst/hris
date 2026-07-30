@@ -14,45 +14,45 @@ export default function Index({ auth, users, filters }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Manajemen Hak Akses User</h2>}
+            header={<h2 className="font-semibold text-xl text-text-primary leading-tight">Manajemen Hak Akses User</h2>}
         >
             <Head title="Manajemen User" />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
+                    <div className="card-table">
+                        <div className="page-card-header">
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900">Daftar Akun & Akses</h3>
-                                <p className="text-sm text-gray-500 mt-1">Kelola modul apa saja yang bisa dilihat oleh setiap pengguna.</p>
+                                <h3 className="text-lg font-bold text-text-primary">Daftar Akun & Akses</h3>
+                                <p className="page-subtitle">Kelola modul apa saja yang bisa dilihat oleh setiap pengguna.</p>
                             </div>
-                            
+
                             <div className="flex flex-col sm:flex-row items-center gap-3">
                                 <form onSubmit={handleSearch} className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Search className="h-4 w-4 text-gray-400" />
+                                        <Search className="h-4 w-4 text-text-muted" />
                                     </div>
                                     <input
                                         type="text"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        className="input-field pl-10"
                                         placeholder="Cari nama / email..."
                                     />
                                 </form>
                                 <Link
                                     href={route('users.create')}
-                                    className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-xl font-semibold text-xs text-white hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150"
+                                    className="btn-primary"
                                 >
-                                    <Plus className="w-4 h-4 mr-2" />
+                                    <Plus className="w-4 h-4" />
                                     Tambah User
                                 </Link>
                             </div>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-100">
+                        <div className="table-wrap">
+                            <table className="table-base">
+                                <thead className="bg-surface text-text-secondary font-semibold border-b border-border">
                                     <tr>
                                         <th className="px-6 py-4">Nama / Email</th>
                                         <th className="px-6 py-4">Role Utama</th>
@@ -60,31 +60,31 @@ export default function Index({ auth, users, filters }) {
                                         <th className="px-6 py-4 text-center">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50">
+                                <tbody className="divide-y divide-border">
                                     {users.data.map((u) => (
-                                        <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={u.id} className="hover:bg-surface transition-colors">
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-gray-900">{u.name}</div>
-                                                <div className="text-xs text-gray-500">{u.email}</div>
+                                                <div className="font-bold text-text-primary">{u.name}</div>
+                                                <div className="text-xs text-text-muted">{u.email}</div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                                    u.roles.some(r => r.name === 'superadmin') ? 'bg-purple-100 text-purple-700' :
-                                                    u.roles.some(r => r.name === 'admin_unit') ? 'bg-blue-100 text-blue-700' :
-                                                    'bg-gray-100 text-gray-600'
+                                                <span className={`badge ${
+                                                    u.roles.some(r => r.name === 'superadmin') ? 'badge-warning' :
+                                                    u.roles.some(r => r.name === 'admin_unit') ? 'badge-info' :
+                                                    'badge-neutral'
                                                 }`}>
                                                     {u.roles.length > 0 ? u.roles.map(r => r.name).join(', ') : (u.role || 'pegawai')}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-gray-600">
+                                            <td className="px-6 py-4 text-text-secondary">
                                                 {u.unit_sekolah ? u.unit_sekolah.nama : '-'}
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <Link
                                                     href={route('users.edit', u.id)}
-                                                    className="inline-flex items-center text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors font-medium text-xs"
+                                                    className="btn-secondary btn-sm"
                                                 >
-                                                    <Shield className="w-3.5 h-3.5 mr-1.5" />
+                                                    <Shield className="w-3.5 h-3.5" />
                                                     Atur Akses
                                                 </Link>
                                             </td>
@@ -92,7 +92,7 @@ export default function Index({ auth, users, filters }) {
                                     ))}
                                     {users.data.length === 0 && (
                                         <tr>
-                                            <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                                            <td colSpan="4" className="px-6 py-8 text-center text-text-muted">
                                                 Tidak ada data user.
                                             </td>
                                         </tr>

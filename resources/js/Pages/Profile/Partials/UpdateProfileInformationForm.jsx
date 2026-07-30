@@ -6,14 +6,14 @@ import { useEffect, useRef, useState } from 'react';
 
 function FieldIcon({ children }) {
     return (
-        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-text-muted">
             {children}
         </span>
     );
 }
 
 const inputClass =
-    'block w-full rounded-lg border border-border bg-white pl-10 pr-3 py-2.5 text-sm text-text-primary shadow-sm placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
+    'block w-full rounded-input border border-border bg-white pl-10 pr-3 py-2.5 text-sm text-text-primary shadow-card placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
 
 export default function UpdateProfileInformation({
     mustVerifyEmail,
@@ -102,7 +102,7 @@ export default function UpdateProfileInformation({
                 </FormField>
 
                 {mustVerifyEmail && user.email_verified_at === null && (
-                    <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+                    <div className="rounded-card border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
                         <p>
                             Email belum terverifikasi.
                             <Link
@@ -126,12 +126,12 @@ export default function UpdateProfileInformation({
                     <button
                         type="submit"
                         disabled={processing}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="btn-primary"
                     >
                         {processing ? 'Menyimpan...' : 'Simpan'}
                     </button>
                     {showSaved && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-xs font-medium text-success animate-fade-in">
+                        <span className="badge-success animate-fade-in">
                             <Check className="h-3.5 w-3.5" /> Tersimpan
                         </span>
                     )}

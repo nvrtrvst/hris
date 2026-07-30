@@ -12,6 +12,9 @@ export default function Edit({ auth, unit }) {
         latitude: String(unit.latitude),
         longitude: String(unit.longitude),
         radius_meter: unit.radius_meter,
+        durasi_jp: unit.durasi_jp || 45,
+        toleransi_menit: unit.toleransi_menit ?? 0,
+        max_jam_minggu: unit.max_jam_minggu ?? 30,
         jam_masuk_kantor: unit.jam_masuk_kantor?.slice(0, 5) || '07:30',
         jam_pulang_kantor: unit.jam_pulang_kantor?.slice(0, 5) || '15:00',
     });
@@ -24,12 +27,12 @@ export default function Edit({ auth, unit }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800">Edit Unit: {unit.nama}</h2>}
+            header={<h2 className="page-title">Edit Unit: {unit.nama}</h2>}
         >
             <Head title={`Edit Unit - ${unit.nama}`} />
-            <div className="py-12">
+            <div className="py-8 bg-surface min-h-screen">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl p-6">
+                    <div className="card p-6">
                         <UnitForm
                             data={data}
                             setData={setData}

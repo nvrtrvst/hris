@@ -6,22 +6,22 @@ export default function Index({ auth, units }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-2xl text-gray-800 leading-tight">Kelola Unit Sekolah</h2>}
+            header={<h2 className="page-title">Kelola Unit Sekolah</h2>}
         >
             <Head title="Unit Sekolah" />
 
-            <div className="py-12 bg-gray-50 min-h-screen">
+            <div className="py-8 bg-surface min-h-screen">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-xl sm:rounded-2xl border border-gray-100">
+                    <div className="card">
                         <div className="p-8">
-                            <div className="flex justify-between items-center mb-6">
+                            <div className="page-header mb-6">
                                 <div>
-                                    <h3 className="text-xl font-bold text-gray-900">Daftar Unit & Lokasi GPS</h3>
-                                    <p className="text-gray-500 text-sm mt-1">Atur titik koordinat (Latitude/Longitude) dan Radius toleransi absen untuk setiap unit.</p>
+                                    <h3 className="text-xl font-bold text-text-primary">Daftar Unit & Lokasi GPS</h3>
+                                    <p className="page-subtitle">Atur titik koordinat (Latitude/Longitude) dan Radius toleransi absen untuk setiap unit.</p>
                                 </div>
                                 <a
                                     href={route('unit-sekolah.create')}
-                                    className="inline-flex items-center gap-2 bg-primary hover:bg-[#0c2f30] text-white font-bold py-2.5 px-5 rounded-lg shadow-md transition-all duration-200"
+                                    className="btn-primary"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -30,37 +30,37 @@ export default function Index({ auth, units }) {
                                 </a>
                             </div>
 
-                            <div className="overflow-x-auto rounded-xl border border-gray-200">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
+                            <div className="overflow-x-auto rounded-card border border-border">
+                                <table className="min-w-full divide-y divide-border">
+                                    <thead className="bg-surface">
                                         <tr>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Unit</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Latitude</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Longitude</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Radius (Meter)</th>
-                                            <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-text-muted uppercase tracking-wider">Nama Unit</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-text-muted uppercase tracking-wider">Latitude</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-text-muted uppercase tracking-wider">Longitude</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-text-muted uppercase tracking-wider">Radius (Meter)</th>
+                                            <th className="px-6 py-4 text-right text-xs font-bold text-text-muted uppercase tracking-wider">Aksi</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
+                                    <tbody className="bg-white divide-y divide-border">
                                         {units.map((unit) => (
-                                            <tr key={unit.id} className="hover:bg-gray-50 transition-colors">
+                                            <tr key={unit.id} className="hover:bg-surface transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm font-bold text-gray-900">{unit.nama}</div>
-                                                    <div className="text-sm text-gray-500">{unit.singkatan}</div>
+                                                    <div className="text-sm font-bold text-text-primary">{unit.nama}</div>
+                                                    <div className="text-sm text-text-muted">{unit.singkatan}</div>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary font-mono">
                                                     {unit.latitude}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary font-mono">
                                                     {unit.longitude}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-emerald-100 text-emerald-800">
+                                                    <span className="badge-success font-bold">
                                                         {unit.radius_meter} M
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <Link href={route('unit-sekolah.edit', unit.id)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors inline-block">
+                                                    <Link href={route('unit-sekolah.edit', unit.id)} className="btn-secondary btn-sm">
                                                         Edit Lokasi
                                                     </Link>
                                                 </td>

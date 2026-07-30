@@ -17,8 +17,11 @@ class PengajuanIzin extends Model
         'tanggal_selesai',
         'alasan',
         'bukti_foto',
-        'status',
         'alasan_penolakan',
+    ];
+
+    protected $guarded = [
+        'status',
         'approval_stage',
         'approver_l1_id',
         'approver_l2_id',
