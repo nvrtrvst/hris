@@ -58,24 +58,19 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
         setClassOptions([]);
         setSelectedClass(null);
         setIntegrationError('');
-        const kelas = j.kelas;
-        if (!kelas) {
-            setLoadingClasses(true);
-            fetch(`${route('presensi.jadwal.kelas')}?jadwal_id=${encodeURIComponent(j.id)}`)
-                .then(async (r) => {
-                    const data = await r.json();
-                    if (!r.ok || !data.success) throw new Error(data.message || 'Gagal memuat daftar kelas.');
-                    return data;
-                })
-                .then((d) => setClassOptions(d.kelas || []))
-                .catch((error) => {
-                    setClassOptions([]);
-                    setIntegrationError(error.message || 'Gagal memuat daftar kelas.');
-                })
-                .finally(() => setLoadingClasses(false));
-            return;
-        }
-        loadStudents(j, { tingkat: kelas.tingkat, kelas: kelas.nama, jurusan: kelas.jurusan?.nama || '' });
+        setLoadingClasses(true);
+        fetch(`${route('presensi.jadwal.kelas')}?jadwal_id=${encodeURIComponent(j.id)}`)
+            .then(async (r) => {
+                const data = await r.json();
+                if (!r.ok || !data.success) throw new Error(data.message || 'Gagal memuat daftar kelas.');
+                return data;
+            })
+            .then((d) => setClassOptions(d.kelas || []))
+            .catch((error) => {
+                setClassOptions([]);
+                setIntegrationError(error.message || 'Gagal memuat daftar kelas.');
+            })
+            .finally(() => setLoadingClasses(false));
     };
 
     const chooseClass = (classData) => {
@@ -225,7 +220,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
                                     {selected.mata_pelajaran?.nama || 'Jadwal'}
                                 </h2>
                                 <p className="mt-1 text-sm text-slate-500">
-                                    {[selected.unit_sekolah?.nama || selected.unit_sekolah?.singkatan, selected.kelas?.jurusan?.nama].filter(Boolean).join(' • ')}
+                                    {selected.unit_sekolah?.nama || selected.unit_sekolah?.singkatan || ''}
                                 </p>
                                 <p className="mt-2 font-mono text-sm font-bold tabular-nums text-primary">{selected.jam_mulai} - {selected.jam_selesai}</p>
                             </div>
@@ -240,13 +235,13 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
                             </p>
                         )}
 
-                        {!selected.kelas && selectedClass && (
+                        {selectedClass && (
                             <button type="button" onClick={changeClass} className="mb-3 text-sm font-bold text-primary">
                                 Ganti kelas
                             </button>
                         )}
 
-                        {!selected.kelas && !selectedClass ? (
+                        {!selectedClass ? (
                             loadingClasses ? (
                                 <p className="py-6 text-center text-sm text-slate-400">Memuat daftar kelas…</p>
                             ) : classOptions.length === 0 ? (

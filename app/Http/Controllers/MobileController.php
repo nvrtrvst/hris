@@ -58,7 +58,7 @@ class MobileController extends Controller
             ->get();
 
         $jadwalsHariIni = $this->rememberJadwal('mobile.jadwal.'.$pegawai->id.'.'.$hariIniIndo, 900, function () use ($pegawai, $hariIniIndo) {
-            return Jadwal::with(['unitSekolah', 'mataPelajaran', 'kelas'])
+            return Jadwal::with(['unitSekolah', 'mataPelajaran'])
                 ->where('pegawai_id', $pegawai->id)
                 ->where('hari', $hariIniIndo)
                 ->orderBy('jam_mulai', 'asc')
