@@ -114,10 +114,10 @@ class JadwalController extends Controller
         ]);
 
         $unit = UnitSekolah::find($validated['unit_sekolah_id']);
-        if ($unit && $unit->jam_masuk_kantor && $validated['jam_mulai'] < $unit->jam_masuk_kantor) {
+        if ($unit && $unit->jam_masuk_kantor && strtotime($validated['jam_mulai']) < strtotime($unit->jam_masuk_kantor)) {
             return back()->withErrors(['jam_mulai' => "Jam mulai ({$validated['jam_mulai']}) sebelum jam masuk kantor ({$unit->jam_masuk_kantor})."])->withInput();
         }
-        if ($unit && $unit->jam_pulang_kantor && $validated['jam_selesai'] > $unit->jam_pulang_kantor) {
+        if ($unit && $unit->jam_pulang_kantor && strtotime($validated['jam_selesai']) > strtotime($unit->jam_pulang_kantor)) {
             return back()->withErrors(['jam_selesai' => "Jam selesai ({$validated['jam_selesai']}) setelah jam pulang kantor ({$unit->jam_pulang_kantor})."])->withInput();
         }
 
@@ -202,10 +202,10 @@ class JadwalController extends Controller
         ]);
 
         $unit = UnitSekolah::find($validated['unit_sekolah_id']);
-        if ($unit && $unit->jam_masuk_kantor && $validated['jam_mulai'] < $unit->jam_masuk_kantor) {
+        if ($unit && $unit->jam_masuk_kantor && strtotime($validated['jam_mulai']) < strtotime($unit->jam_masuk_kantor)) {
             return back()->withErrors(['jam_mulai' => "Jam mulai ({$validated['jam_mulai']}) sebelum jam masuk kantor ({$unit->jam_masuk_kantor})."])->withInput();
         }
-        if ($unit && $unit->jam_pulang_kantor && $validated['jam_selesai'] > $unit->jam_pulang_kantor) {
+        if ($unit && $unit->jam_pulang_kantor && strtotime($validated['jam_selesai']) > strtotime($unit->jam_pulang_kantor)) {
             return back()->withErrors(['jam_selesai' => "Jam selesai ({$validated['jam_selesai']}) setelah jam pulang kantor ({$unit->jam_pulang_kantor})."])->withInput();
         }
 
@@ -303,16 +303,20 @@ class JadwalController extends Controller
                 $empUnitId = $unitId ?? ($pegawai->units->first()->id ?? 1);
                 $unit = UnitSekolah::find($empUnitId);
                 $maxMinutes = ($unit && $unit->max_jam_minggu) ? $unit->max_jam_minggu * 60 : 0;
-                if ($maxMinutes === 0) continue;
+                if ($maxMinutes === 0) {
+                    continue;
+                }
 
                 // Hitung existing minutes mingguan
                 $existingMinutes = Jadwal::where('pegawai_id', $pegawai->id)
                     ->where('jenis_jadwal', 'mengajar')
                     ->lockForUpdate()
                     ->get()
-                    ->sum(fn($j) => max(0, (intval(substr($j->jam_selesai,0,2))*60+intval(substr($j->jam_selesai,3,2))) - (intval(substr($j->jam_mulai,0,2))*60+intval(substr($j->jam_mulai,3,2)))));
+                    ->sum(fn ($j) => max(0, (intval(substr($j->jam_selesai, 0, 2)) * 60 + intval(substr($j->jam_selesai, 3, 2))) - (intval(substr($j->jam_mulai, 0, 2)) * 60 + intval(substr($j->jam_mulai, 3, 2)))));
 
-                if ($existingMinutes >= $maxMinutes) continue;
+                if ($existingMinutes >= $maxMinutes) {
+                    continue;
+                }
 
                 // Shuffle days dan timeBlocks untuk variasi
                 $shuffledDays = $days;
@@ -321,10 +325,14 @@ class JadwalController extends Controller
                 shuffle($shuffledBlocks);
 
                 foreach ($shuffledDays as $day) {
-                    if ($existingMinutes >= $maxMinutes) break;
+                    if ($existingMinutes >= $maxMinutes) {
+                        break;
+                    }
 
                     foreach ($shuffledBlocks as $time) {
-                        if ($existingMinutes >= $maxMinutes) break;
+                        if ($existingMinutes >= $maxMinutes) {
+                            break;
+                        }
 
                         $conflict = Jadwal::where('pegawai_id', $pegawai->id)
                             ->where('hari', $day)
@@ -347,7 +355,7 @@ class JadwalController extends Controller
                             ]);
                             $count++;
 
-                            $blockMinutes = (intval(substr($time[1],0,2))*60+intval(substr($time[1],3,2))) - (intval(substr($time[0],0,2))*60+intval(substr($time[0],3,2)));
+                            $blockMinutes = (intval(substr($time[1], 0, 2)) * 60 + intval(substr($time[1], 3, 2))) - (intval(substr($time[0], 0, 2)) * 60 + intval(substr($time[0], 3, 2)));
                             $existingMinutes += $blockMinutes;
                         }
                     }
@@ -464,7 +472,9 @@ class JadwalController extends Controller
     private function exceedsWeeklyHourLimit(int $pegawaiId, int $unitId, string $jamMulai, string $jamSelesai, ?int $excludeJadwalId = null): ?string
     {
         $unit = UnitSekolah::find($unitId);
-        if (! $unit || ! $unit->max_jam_minggu) return null;
+        if (! $unit || ! $unit->max_jam_minggu) {
+            return null;
+        }
 
         $query = Jadwal::where('pegawai_id', $pegawaiId)
             ->where('jenis_jadwal', 'mengajar');
@@ -475,17 +485,19 @@ class JadwalController extends Controller
         $existingMinutes = $query->get()->sum(function ($j) {
             $h1 = explode(':', $j->jam_mulai);
             $h2 = explode(':', $j->jam_selesai);
-            return max(0, ((int)$h2[0] * 60 + (int)$h2[1]) - ((int)$h1[0] * 60 + (int)$h1[1]));
+
+            return max(0, ((int) $h2[0] * 60 + (int) $h2[1]) - ((int) $h1[0] * 60 + (int) $h1[1]));
         });
 
         $hm = explode(':', $jamMulai);
         $hs = explode(':', $jamSelesai);
-        $proposedMinutes = max(0, ((int)$hs[0] * 60 + (int)$hs[1]) - ((int)$hm[0] * 60 + (int)$hm[1]));
+        $proposedMinutes = max(0, ((int) $hs[0] * 60 + (int) $hs[1]) - ((int) $hm[0] * 60 + (int) $hm[1]));
 
         $maxMinutes = $unit->max_jam_minggu * 60;
 
         if (($existingMinutes + $proposedMinutes) > $maxMinutes) {
             $sisa = $maxMinutes - $existingMinutes;
+
             return 'Total jam mengajar/minggu melebihi batas '.$unit->max_jam_minggu.' jam. Sisa: '.max(0, $sisa).' menit.';
         }
 
@@ -517,6 +529,7 @@ class JadwalController extends Controller
         } catch (ConnectionException) {
             return response()->json(['success' => false, 'kelas' => []]);
         }
+
         return response()->json($response->json() ?: ['success' => false, 'kelas' => []]);
     }
 }

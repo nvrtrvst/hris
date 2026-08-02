@@ -38,11 +38,11 @@ class LaporanController extends Controller
 
         $export = null;
         if ($validated['type'] === 'presensi') {
-            $export = new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id']);
+            $export = new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null);
         } elseif ($validated['type'] === 'penggajian') {
-            $export = new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id']);
+            $export = new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null);
         } elseif ($validated['type'] === 'lemburan') {
-            $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id']);
+            $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null);
         }
 
         if (! $export) {
