@@ -32,8 +32,16 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
 
     public function collection()
     {
-        $query = Penggajian::with(['pegawai.units'])
-            ->whereBetween('tanggal_generate', [$this->start_date, $this->end_date]);
+        $query = Penggajian::with(['pegawai.units']);
+
+        $months = [];
+        $cursor = Carbon::parse($this->start_date)->startOfMonth();
+        $end = Carbon::parse($this->end_date)->startOfMonth();
+        while ($cursor->lte($end)) {
+            $months[] = $cursor->format('m-Y');
+            $cursor->addMonth();
+        }
+        $query->whereIn('periode_bulan', $months);
 
         if ($this->unit_id) {
             $query->whereHas('pegawai.units', function ($q) {
