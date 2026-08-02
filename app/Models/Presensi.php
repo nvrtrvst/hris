@@ -53,7 +53,7 @@ class Presensi extends Model
     ];
 
     protected $casts = [
-        'tanggal' => 'date',
+        'tanggal' => 'date:Y-m-d',
         'lokasi_perlu_review' => 'boolean',
         'captured_at' => 'datetime',
         'pos_a_captured_at' => 'datetime',
