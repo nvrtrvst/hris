@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Edit2, Search, Plus, Trash2, ShieldAlert } from 'lucide-react';
 import FlashToast from '@/Components/FlashToast';
+import Pagination from '@/Components/Pagination';
 
 export default function Index({ auth, roles, filters, flash }) {
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
@@ -118,6 +119,9 @@ export default function Index({ auth, roles, filters, flash }) {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+                        <div className="border-t border-border px-4 py-3">
+                            <Pagination links={roles.links} data={filters} />
                         </div>
                     </div>
                 </div>

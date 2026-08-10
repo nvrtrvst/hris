@@ -58,7 +58,7 @@ class MassivePegawaiSeeder extends Seeder
                 $name = $firstName.' '.$lastName;
                 $email = sprintf('pegawai%03d@demo.yayasan.com', $index);
                 $nik = '3273'.str_pad((string) $index, 12, '0', STR_PAD_LEFT);
-                $nikHash = hash('sha256', $nik);
+                $nikHash = Pegawai::nikHash($nik);
                 $unit = $units[($index - 1) % $units->count()];
 
                 $user = User::firstOrCreate(

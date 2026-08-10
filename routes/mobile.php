@@ -3,8 +3,11 @@
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\MobileController;
+use App\Http\Controllers\MobileGajiController;
 use App\Http\Controllers\MobileIzinController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PushSubscriptionController;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +29,18 @@ Route::middleware('auth:web_mobile')->group(function () {
     Route::get('/jadwal/siswa', [MobileController::class, 'siswaKelas'])
         ->middleware('throttle:30,1')->name('presensi.jadwal.siswa');
     Route::get('/riwayat', [MobileController::class, 'riwayat'])->name('presensi.riwayat');
+    Route::get('/pengumuman', [MobileController::class, 'pengumuman'])->name('presensi.pengumuman');
+
+    // Gaji Mobile (F1)
+    Route::get('/gaji', [MobileGajiController::class, 'index'])->name('presensi.gaji.index');
+    Route::get('/gaji/{id}', [MobileGajiController::class, 'show'])->name('presensi.gaji.show');
+
+    // Notifikasi Mobile (F2)
+    Route::get('/notifikasi', [NotificationController::class, 'indexMobile'])->name('presensi.notifikasi.index');
+    Route::post('/notifikasi/{id}/read', [NotificationController::class, 'markRead'])->middleware('throttle:60,1')->name('presensi.notifikasi.read');
+    Route::post('/notifikasi/read-all', [NotificationController::class, 'markAllRead'])->middleware('throttle:60,1')->name('presensi.notifikasi.read-all');
+    Route::post('/notifikasi/{id}/archive', [NotificationController::class, 'archive'])->middleware('throttle:60,1')->name('presensi.notifikasi.archive');
+    Route::post('/notifikasi/{id}/restore', [NotificationController::class, 'restore'])->middleware('throttle:60,1')->name('presensi.notifikasi.restore');
 
     // Rute Izin Mobile
     Route::get('/izin', [MobileIzinController::class, 'index'])->name('presensi.izin.index');
@@ -41,8 +56,21 @@ Route::middleware('auth:web_mobile')->group(function () {
         ->middleware('throttle:10,1')->name('presensi.absen.tetap');
     Route::post('/tap-jadwal', [MobileController::class, 'tapJadwal'])
         ->middleware('throttle:30,1')->name('presensi.absen.tap');
+
+    // Web Push Subscription (notifikasi reminder presensi & status izin)
+    Route::post('/push/subscribe', [PushSubscriptionController::class, 'subscribe'])
+        ->middleware('throttle:20,1')->name('presensi.push.subscribe');
+    Route::post('/push/unsubscribe', [PushSubscriptionController::class, 'unsubscribe'])
+        ->middleware('throttle:20,1')->name('presensi.push.unsubscribe');
+    Route::get('/push/subscriptions', [PushSubscriptionController::class, 'index'])
+        ->middleware('throttle:60,1')->name('presensi.push.subscriptions');
     Route::get('/profile', function (Request $request) {
-        $request->user()->pegawai?->load('units', 'jabatans');
+        $pegawai = $request->user()->pegawai;
+        if ($pegawai) {
+            $pegawai->load('units', 'jabatans');
+            // Profile.jsx menampilkan sisa_cuti — append eksplisit (P2).
+            $pegawai->loadCutiInfo();
+        }
 
         return Inertia::render('Mobile/Profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,

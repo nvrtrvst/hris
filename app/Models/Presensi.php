@@ -40,6 +40,11 @@ class Presensi extends Model
         'pos_a_lng',
         'pos_a_accuracy',
         'pos_a_captured_at',
+        'trajectory_samples',
+        'motion_samples',
+        'ip_geo',
+        'exif_meta',
+        'motion_suspect',
         'keterangan',
         'persentase_bayar_jam',
     ];
@@ -50,6 +55,7 @@ class Presensi extends Model
         'lembur_status',
         'lokasi_perlu_review',
         'posisi_mencurigakan',
+        'motion_suspect',
     ];
 
     protected $casts = [
@@ -58,6 +64,11 @@ class Presensi extends Model
         'captured_at' => 'datetime',
         'pos_a_captured_at' => 'datetime',
         'posisi_mencurigakan' => 'boolean',
+        'motion_suspect' => 'boolean',
+        'trajectory_samples' => 'array',
+        'motion_samples' => 'array',
+        'ip_geo' => 'array',
+        'exif_meta' => 'array',
         'is_lembur' => 'boolean',
         'persentase_bayar_jam' => 'integer',
     ];

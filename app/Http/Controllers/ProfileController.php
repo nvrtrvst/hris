@@ -84,14 +84,27 @@ class ProfileController extends Controller
 
         $data = $request->validated();
 
+        $fotoLama = $pegawai->foto;
+        $fotoBaru = null;
+
         if ($request->hasFile('foto')) {
-            if ($pegawai->foto) {
-                Storage::disk('public')->delete($pegawai->foto);
-            }
-            $data['foto'] = $request->file('foto')->store('foto-pegawai', 'public');
+            // Store file baru DULU, hapus yang lama setelah update sukses.
+            $fotoBaru = $request->file('foto')->store('foto-pegawai', 'public');
+            $data['foto'] = $fotoBaru;
         }
 
-        $pegawai->update($data);
+        try {
+            $pegawai->update($data);
+        } catch (\Throwable $e) {
+            if ($fotoBaru) {
+                Storage::disk('public')->delete($fotoBaru);
+            }
+            throw $e;
+        }
+
+        if ($fotoBaru && $fotoLama) {
+            Storage::disk('public')->delete($fotoLama);
+        }
 
         $isMobile = $request->is('mobile*') || auth('web_mobile')->check();
 

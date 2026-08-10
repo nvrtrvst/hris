@@ -62,7 +62,7 @@ class PegawaiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Pegawai::with(['units', 'jabatans', 'mapels', 'pengajuanIzins']);
+        $query = Pegawai::with(['units', 'jabatans', 'mapels']);
 
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
@@ -79,7 +79,8 @@ class PegawaiController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('nama_lengkap', 'like', '%'.$search.'%')
-                    ->orWhere('nik_hash', hash('sha256', $search));
+                    // ?? '' utk hindari where('nik_hash', null) yang jadi IS NULL di Laravel
+                    ->orWhere('nik_hash', Pegawai::nikHash($search) ?? '');
             });
         }
 
@@ -181,6 +182,9 @@ class PegawaiController extends Controller
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
         }
+
+        // Show.jsx menampilkan sisa_cuti — eager-load + append eksplisit (P2).
+        $pegawai->loadCutiInfo();
 
         return inertia('Pegawai/Show', [
             'pegawai' => $pegawai,
@@ -289,18 +293,31 @@ class PegawaiController extends Controller
 
         $dataToUpdate = collect($validated)->except(['email', 'foto'])->toArray();
 
+        $fotoLama = $pegawai->foto;
+        $fotoBaru = null;
+
         if ($request->hasFile('foto')) {
-            if ($pegawai->foto) {
-                Storage::disk('presensi')->delete($pegawai->foto);
-            }
+            // Store file baru DULU, baru hapus yang lama setelah update sukses —
+            // kalau update gagal, foto lama tidak hilang & tidak ada file menggantung.
             $path = $request->file('foto')->store('pegawai_fotos', 'presensi');
+            $fotoBaru = $path;
             $dataToUpdate['foto'] = $path;
-        } elseif ($request->boolean('hapus_foto') && $pegawai->foto) {
-            Storage::disk('presensi')->delete($pegawai->foto);
+        } elseif ($request->boolean('hapus_foto')) {
             $dataToUpdate['foto'] = null;
         }
 
-        $pegawai->update($dataToUpdate);
+        try {
+            $pegawai->update($dataToUpdate);
+        } catch (\Throwable $e) {
+            if ($fotoBaru) {
+                Storage::disk('presensi')->delete($fotoBaru);
+            }
+            throw $e;
+        }
+
+        if ($fotoLama && ($fotoBaru || $request->boolean('hapus_foto'))) {
+            Storage::disk('presensi')->delete($fotoLama);
+        }
 
         // Sinkronisasi penugasan unit + jabatan
         $syncUnits = [];

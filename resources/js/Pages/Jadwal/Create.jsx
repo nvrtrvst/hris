@@ -135,13 +135,14 @@ export default function Create({ auth, pegawais, units, mapel }) {
                                                 )}
                                             </div>
                                             <div>
-                                                <label className="form-label text-primary">Mata Pelajaran</label>
-                                                <select value={data.mata_pelajaran_id} onChange={e => setData('mata_pelajaran_id', e.target.value)} className="select-field">
-                                                    <option value="">Pilih Mapel (Opsional)</option>
+                                                <label className="form-label text-primary">Mata Pelajaran <span className="text-red-500">*</span></label>
+                                                <select value={data.mata_pelajaran_id} onChange={e => setData('mata_pelajaran_id', e.target.value)} className={`select-field ${errors.mata_pelajaran_id ? 'input-error' : ''}`} required>
+                                                    <option value="">Pilih Mapel</option>
                                                     {mapel.map(m => (
                                                         <option key={m.id} value={m.id}>{m.nama}</option>
                                                     ))}
                                                 </select>
+                                                {errors.mata_pelajaran_id && <p className="form-error">{errors.mata_pelajaran_id}</p>}
                                             </div>
                                         </div>
                                     </div>

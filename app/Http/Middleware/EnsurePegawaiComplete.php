@@ -24,7 +24,8 @@ class EnsurePegawaiComplete
             ];
 
             if (! in_array($route, $allowed)) {
-                $isMobile = $request->is('mobile*') || $request->getHost() === env('MOBILE_DOMAIN');
+                // env() di luar config rusak saat config:cache — pakai config/domains.php.
+                $isMobile = $request->is('mobile*') || $request->getHost() === (string) config('domains.mobile');
 
                 return redirect()->route($isMobile ? 'presensi.lengkapi-data' : 'lengkapi-data');
             }

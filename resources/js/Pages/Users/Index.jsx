@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import Pagination from '@/Components/Pagination';
 import { Head, Link, router } from '@inertiajs/react';
 import { Edit2, Shield, Search, Plus } from 'lucide-react';
 
@@ -99,6 +100,9 @@ export default function Index({ auth, users, filters }) {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+                        <div className="border-t border-border px-4 py-3">
+                            <Pagination links={users.links} data={filters} />
                         </div>
                     </div>
 

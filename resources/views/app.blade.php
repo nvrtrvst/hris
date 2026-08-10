@@ -8,6 +8,11 @@
         <meta name="theme-color" content="#0F3D3E">
         <meta name="format-detection" content="telephone=no">
 
+        <link rel="manifest" href="/manifest.json">
+        <link rel="apple-touch-icon" href="/icons/icon-192.png">
+        <meta name="apple-mobile-web-app-title" content="Presensi">
+        <meta name="vapid-public-key" content="{{ config('webpush.vapid.public_key') }}">
+
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
         <!-- Fonts -->

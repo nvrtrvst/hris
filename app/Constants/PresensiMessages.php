@@ -37,6 +37,14 @@ class PresensiMessages
 
     public const BELUM_ABSEN_MASUK = 'Anda belum absen masuk.';
 
+    // Ukuran foto (satu sumber kebenaran agar request & service konsisten)
+    // Batas binary (decoded) — dipakai ImageUploadService & job foto.
+    public const MAX_FOTO_BYTES = 5 * 1024 * 1024;
+
+    // Batas string base64 untuk validasi request: 4*ceil(binary/3) = 6990508,
+    // sehingga base64 yang lolos request pasti ≤ MAX_FOTO_BYTES setelah decode.
+    public const MAX_FOTO_BASE64 = 6990508;
+
     // Label
     public const LABEL_ABSEN = 'Absen';
 
@@ -45,6 +53,11 @@ class PresensiMessages
     public const LABEL_MASUK = 'masuk';
 
     public const LABEL_KELUAR = 'keluar';
+
+    // Anti-spoof
+    public const ATTESTATION_EXPIRED = 'Token presensi kedaluwarsa. Silakan refresh halaman dan coba lagi.';
+
+    public const ATTESTATION_INVALID = 'Verifikasi keamanan gagal. Silakan refresh halaman.';
 
     // Unit Types
     public const UNIT_LEMBUR = 'lembur';

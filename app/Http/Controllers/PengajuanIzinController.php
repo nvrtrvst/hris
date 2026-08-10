@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\NotificationHelper;
 use App\Helpers\PayrollLockHelper;
 use App\Models\AuditPresensi;
+use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use App\Models\User;
@@ -49,7 +51,9 @@ class PengajuanIzinController extends Controller
             $search = $request->search;
             $query->whereHas('pegawai', function ($q) use ($search) {
                 $q->where('nama_lengkap', 'like', "%{$search}%")
-                    ->orWhere('nik', 'like', "%{$search}%");
+                    // NIK ter-enkripsi — LIKE tidak akan match. Lookup via nik_hash (normalisasi sama dgn model).
+                    // ?? '' utk hindari where('nik_hash', null) yang jadi IS NULL di Laravel.
+                    ->orWhere('nik_hash', Pegawai::nikHash($search) ?? '');
             });
         }
 
@@ -126,11 +130,11 @@ class PengajuanIzinController extends Controller
         });
 
         if ($pengajuan->status === 'disetujui') {
-            $pengajuan->pegawai?->user?->notify(new StatusIzin($pengajuan, 'disetujui'));
+            NotificationHelper::sendSafely($pengajuan->pegawai?->user, new StatusIzin($pengajuan, 'disetujui'));
         }
 
         if ($pengajuan->approval_stage === 'pending_l2' && $pengajuan->approver_l2_id) {
-            User::find($pengajuan->approver_l2_id)?->notify(new IzinBaru($pengajuan));
+            NotificationHelper::sendSafely(User::find($pengajuan->approver_l2_id), new IzinBaru($pengajuan));
         }
 
         $msg = $pengajuan->approval_stage === 'pending_l2'
@@ -181,7 +185,7 @@ class PengajuanIzinController extends Controller
             return $pengajuan;
         });
 
-        $pengajuan->pegawai?->user?->notify(new StatusIzin($pengajuan, 'ditolak', $request->alasan_penolakan));
+        NotificationHelper::sendSafely($pengajuan->pegawai?->user, new StatusIzin($pengajuan, 'ditolak', $request->alasan_penolakan));
 
         return back()->with('message', 'Pengajuan berhasil ditolak.');
     }

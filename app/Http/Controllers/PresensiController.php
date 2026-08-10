@@ -25,7 +25,7 @@ class PresensiController extends Controller
     public function index(Request $request)
     {
         $request->validate([
-            'lokasi_filter' => 'nullable|in:perlu_review,pulang_awal',
+            'lokasi_filter' => 'nullable|in:perlu_review,pulang_awal,review_semua',
             'suspicious_filter' => 'nullable|boolean',
         ]);
 
@@ -70,16 +70,23 @@ class PresensiController extends Controller
             $query->where('is_lembur', true);
         }
 
-        if (in_array($request->lokasi_filter, ['perlu_review', 'pulang_awal'])) {
+        if ($request->lokasi_filter === 'perlu_review') {
             $query->where('lokasi_perlu_review', true);
+        } elseif ($request->lokasi_filter === 'pulang_awal') {
+            $query->where('lokasi_perlu_review', true);
+        } elseif ($request->lokasi_filter === 'review_semua') {
+            // Gabungan: perlu review ATAU posisi mencurigakan (anti-spoof v2)
+            $query->where(function ($q) {
+                $q->where('lokasi_perlu_review', true)
+                    ->orWhere('posisi_mencurigakan', true);
+            });
         }
 
         if ($request->suspicious_filter) {
             $query->where('posisi_mencurigakan', true);
         }
 
-        $presensis = $query->orderBy('tanggal', 'desc')->paginate(10);
-        $presensis->appends($request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter']));
+        $presensis = $query->orderBy('tanggal', 'desc')->paginate(10)->withQueryString();
 
         $units = [];
         if ($user->can('view_all_units')) {
@@ -160,54 +167,63 @@ class PresensiController extends Controller
         $base64Data = $request->foto;
         Storage::disk('local')->put($tempPath, base64_decode(explode(',', $base64Data, 2)[1] ?? ''));
 
-        $presensi = DB::transaction(function () use ($request, $unit, $distance) {
-            $presensi = Presensi::where('pegawai_id', $request->pegawai_id)
-                ->where('jadwal_id', $request->jadwal_id)
-                ->where('tanggal', Carbon::today())
-                ->lockForUpdate()
-                ->first();
+        try {
+            $presensi = DB::transaction(function () use ($request, $unit, $distance) {
+                $presensi = Presensi::where('pegawai_id', $request->pegawai_id)
+                    ->where('jadwal_id', $request->jadwal_id)
+                    ->where('tanggal', Carbon::today())
+                    ->lockForUpdate()
+                    ->first();
 
-            if (! $presensi) {
-                $presensi = new Presensi([
-                    'pegawai_id' => $request->pegawai_id,
-                    'jadwal_id' => $request->jadwal_id,
-                    'tanggal' => Carbon::today(),
-                ]);
+                if (! $presensi) {
+                    $presensi = new Presensi([
+                        'pegawai_id' => $request->pegawai_id,
+                        'jadwal_id' => $request->jadwal_id,
+                        'tanggal' => Carbon::today(),
+                    ]);
+                }
+
+                $presensi->unit_sekolah_id = $unit->id;
+
+                $jadwal = Jadwal::find($request->jadwal_id);
+
+                if ($request->tipe === 'masuk') {
+                    if ($presensi->jam_masuk) {
+                        throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen masuk untuk jadwal ini.']);
+                    }
+                    $presensi->jam_masuk = Carbon::now()->format('H:i:s');
+                    $presensi->latitude_masuk = $request->latitude;
+                    $presensi->longitude_masuk = $request->longitude;
+                    $presensi->foto_masuk_status = 'pending';
+                    $presensi->jarak_masuk_meter = $distance;
+
+                    $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $unit->toleransi_menit);
+                } else {
+                    if (! $presensi->exists || ! $presensi->jam_masuk) {
+                        throw ValidationException::withMessages(['conflict' => 'Anda belum absen masuk.']);
+                    }
+                    if ($presensi->jam_keluar) {
+                        throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen keluar.']);
+                    }
+                    $presensi->jam_keluar = Carbon::now()->format('H:i:s');
+                    $presensi->latitude_keluar = $request->latitude;
+                    $presensi->longitude_keluar = $request->longitude;
+                    $presensi->foto_keluar_status = 'pending';
+                    $presensi->jarak_keluar_meter = $distance;
+                }
+
+                $presensi->save();
+
+                return $presensi;
+            });
+        } catch (\Throwable $e) {
+            // Jangan tinggalkan sampah temp foto saat transaksi/validasi gagal.
+            if (Storage::disk('local')->exists($tempPath)) {
+                Storage::disk('local')->delete($tempPath);
             }
 
-            $presensi->unit_sekolah_id = $unit->id;
-
-            $jadwal = Jadwal::find($request->jadwal_id);
-
-            if ($request->tipe === 'masuk') {
-                if ($presensi->jam_masuk) {
-                    throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen masuk untuk jadwal ini.']);
-                }
-                $presensi->jam_masuk = Carbon::now()->format('H:i:s');
-                $presensi->latitude_masuk = $request->latitude;
-                $presensi->longitude_masuk = $request->longitude;
-                $presensi->foto_masuk_status = 'pending';
-                $presensi->jarak_masuk_meter = $distance;
-
-                $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $unit->toleransi_menit);
-            } else {
-                if (! $presensi->exists || ! $presensi->jam_masuk) {
-                    throw ValidationException::withMessages(['conflict' => 'Anda belum absen masuk.']);
-                }
-                if ($presensi->jam_keluar) {
-                    throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen keluar.']);
-                }
-                $presensi->jam_keluar = Carbon::now()->format('H:i:s');
-                $presensi->latitude_keluar = $request->latitude;
-                $presensi->longitude_keluar = $request->longitude;
-                $presensi->foto_keluar_status = 'pending';
-                $presensi->jarak_keluar_meter = $distance;
-            }
-
-            $presensi->save();
-
-            return $presensi;
-        });
+            throw $e;
+        }
 
         Bus::dispatchSync(new ProcessPresensiFoto(
             $presensi->id,
@@ -270,22 +286,29 @@ class PresensiController extends Controller
             abort(403);
         }
 
-        $presensi = Presensi::with('pegawai')->findOrFail($id);
-        if (! $presensi->is_lembur || $presensi->lembur_status !== 'pending') {
-            return back()->withErrors(['error' => 'Hanya lembur dengan status pending yang bisa disetujui.']);
-        }
+        // Transaction + lockForUpdate: cegah race dua admin approve/reject bersamaan
+        // (TOCTOU antara check status dan update).
+        DB::transaction(function () use ($id, $user) {
+            $presensi = Presensi::with('pegawai')
+                ->lockForUpdate()
+                ->findOrFail($id);
 
-        if ($user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
-            abort(403, 'Akses ditolak.');
-        }
+            if (! $presensi->is_lembur || $presensi->lembur_status !== 'pending') {
+                throw ValidationException::withMessages(['error' => 'Hanya lembur dengan status pending yang bisa disetujui.']);
+            }
 
-        if (PayrollLockHelper::isPeriodLocked($presensi->pegawai_id, $presensi->tanggal)) {
-            return back()->withErrors(['error' => 'Periode penggajian sudah dikunci.']);
-        }
+            if ($user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+                abort(403, 'Akses ditolak.');
+            }
 
-        $presensi->update(['lembur_status' => 'disetujui']);
+            if (PayrollLockHelper::isPeriodLocked($presensi->pegawai_id, $presensi->tanggal)) {
+                throw ValidationException::withMessages(['error' => 'Periode penggajian sudah dikunci.']);
+            }
 
-        AuditPresensi::log($presensi->id, 'approve_lembur', 'lembur_status', 'pending', 'disetujui');
+            $presensi->update(['lembur_status' => 'disetujui']);
+
+            AuditPresensi::log($presensi->id, 'approve_lembur', 'lembur_status', 'pending', 'disetujui');
+        });
 
         return redirect()->back()->with('message', 'Lembur berhasil disetujui.');
     }
@@ -297,22 +320,27 @@ class PresensiController extends Controller
             abort(403);
         }
 
-        $presensi = Presensi::with('pegawai')->findOrFail($id);
-        if (! $presensi->is_lembur || $presensi->lembur_status !== 'pending') {
-            return back()->withErrors(['error' => 'Hanya lembur dengan status pending yang bisa ditolak.']);
-        }
+        DB::transaction(function () use ($id, $user) {
+            $presensi = Presensi::with('pegawai')
+                ->lockForUpdate()
+                ->findOrFail($id);
 
-        if ($user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
-            abort(403, 'Akses ditolak.');
-        }
+            if (! $presensi->is_lembur || $presensi->lembur_status !== 'pending') {
+                throw ValidationException::withMessages(['error' => 'Hanya lembur dengan status pending yang bisa ditolak.']);
+            }
 
-        if (PayrollLockHelper::isPeriodLocked($presensi->pegawai_id, $presensi->tanggal)) {
-            return back()->withErrors(['error' => 'Periode penggajian sudah dikunci.']);
-        }
+            if ($user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+                abort(403, 'Akses ditolak.');
+            }
 
-        $presensi->update(['lembur_status' => 'ditolak']);
+            if (PayrollLockHelper::isPeriodLocked($presensi->pegawai_id, $presensi->tanggal)) {
+                throw ValidationException::withMessages(['error' => 'Periode penggajian sudah dikunci.']);
+            }
 
-        AuditPresensi::log($presensi->id, 'reject_lembur', 'lembur_status', 'pending', 'ditolak');
+            $presensi->update(['lembur_status' => 'ditolak']);
+
+            AuditPresensi::log($presensi->id, 'reject_lembur', 'lembur_status', 'pending', 'ditolak');
+        });
 
         return redirect()->back()->with('message', 'Lembur ditolak.');
     }
@@ -323,11 +351,108 @@ class PresensiController extends Controller
             abort(403);
         }
 
+        $user = auth()->user();
+        $presensi = Presensi::with('pegawai:id,nama_lengkap')->findOrFail($id);
+
+        // Scope unit untuk admin unit (anti-IDOR), konsisten dengan reviewDetail
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            if (! $presensi->pegawai?->belongsToUnit($user->unit_sekolah_id)) {
+                abort(403, 'Akses ditolak.');
+            }
+        }
+
         $audits = AuditPresensi::where('presensi_id', $id)
             ->with('user:id,name')
             ->latest()
             ->get(['id', 'user_id', 'aksi', 'field', 'nilai_lama', 'nilai_baru', 'created_at']);
 
-        return response()->json(['audits' => $audits]);
+        return response()->json([
+            'audits' => $audits,
+            'presensi' => [
+                'pegawai_nama' => $presensi->pegawai?->nama_lengkap,
+                'tanggal' => $presensi->tanggal?->format('Y-m-d'),
+                'status' => $presensi->status,
+                'foto_masuk_url' => $presensi->foto_masuk_url,
+                'foto_keluar_url' => $presensi->foto_keluar_url,
+                'foto_masuk_status' => $presensi->foto_masuk_status,
+                'foto_keluar_status' => $presensi->foto_keluar_status,
+                'foto_masuk_error' => $presensi->foto_masuk_error,
+                'foto_keluar_error' => $presensi->foto_keluar_error,
+            ],
+        ]);
+    }
+
+    /**
+     * Detail anti-spoof untuk review admin (trajectory, motion, IP geo, EXIF).
+     * Menampilkan alasan kenapa record di-flag (fitur anti-spoof v2).
+     */
+    public function reviewDetail($id)
+    {
+        if (! auth()->user()?->can('view_presensi')) {
+            abort(403);
+        }
+
+        $user = auth()->user();
+        $presensi = Presensi::with('pegawai:id,nama_lengkap')->findOrFail($id);
+
+        // Scope unit untuk admin unit
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            if (! $presensi->pegawai?->belongsToUnit($user->unit_sekolah_id)) {
+                abort(403, 'Akses ditolak.');
+            }
+        }
+
+        $trajectory = $presensi->trajectory_samples;
+        $motion = $presensi->motion_samples;
+        $motionVariance = null;
+        if (is_array($motion) && count($motion) >= 2) {
+            $totals = array_map(function ($s) {
+                return sqrt((float) ($s['x'] ?? 0) ** 2 + (float) ($s['y'] ?? 0) ** 2 + (float) ($s['z'] ?? 0) ** 2);
+            }, array_values($motion));
+            $mean = array_sum($totals) / count($totals);
+            $motionVariance = round(array_sum(array_map(fn ($v) => ($v - $mean) ** 2, $totals)) / count($totals), 6);
+        }
+
+        // Ringkas trajectory untuk tampilan (hapus data mentah berat)
+        $trajectorySummary = null;
+        if (is_array($trajectory)) {
+            $trajectorySummary = array_map(function ($p) {
+                return [
+                    'label' => $p['label'] ?? null,
+                    'lat' => $p['lat'] ?? null,
+                    'lng' => $p['lng'] ?? null,
+                    'accuracy' => $p['accuracy'] ?? null,
+                    'captured_at' => $p['captured_at'] ?? null,
+                ];
+            }, $trajectory);
+        }
+
+        return response()->json([
+            'presensi' => [
+                'id' => $presensi->id,
+                'pegawai_nama' => $presensi->pegawai?->nama_lengkap,
+                'tanggal' => $presensi->tanggal?->format('Y-m-d'),
+                'status' => $presensi->status,
+                'latitude_masuk' => $presensi->latitude_masuk,
+                'longitude_masuk' => $presensi->longitude_masuk,
+                'akurasi_masuk' => $presensi->akurasi_masuk,
+                'kecepatan_masuk' => $presensi->kecepatan_masuk,
+                'captured_at' => $presensi->captured_at?->toIso8601String(),
+                'foto_masuk_url' => $presensi->foto_masuk_url,
+                'foto_keluar_url' => $presensi->foto_keluar_url,
+                'foto_masuk_status' => $presensi->foto_masuk_status,
+                'foto_keluar_status' => $presensi->foto_keluar_status,
+                'foto_masuk_error' => $presensi->foto_masuk_error,
+                'foto_keluar_error' => $presensi->foto_keluar_error,
+                'lokasi_perlu_review' => $presensi->lokasi_perlu_review,
+                'posisi_mencurigakan' => $presensi->posisi_mencurigakan,
+                'motion_suspect' => $presensi->motion_suspect,
+                'trajectory' => $trajectorySummary,
+                'motion_sample_count' => is_array($motion) ? count($motion) : 0,
+                'motion_variance' => $motionVariance,
+                'ip_geo' => $presensi->ip_geo,
+                'exif_meta' => $presensi->exif_meta,
+            ],
+        ]);
     }
 }

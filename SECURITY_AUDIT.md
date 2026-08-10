@@ -59,8 +59,8 @@ Both `composer audit` and `npm audit --omit=dev` returned **no security vulnerab
 
 | ID | Title | File | Recommendation |
 |---|---|---|---|
-| L1 | `LOG_LEVEL=debug` default may leak context in production | `config/logging.php` | Override to `warning` or `error` in prod. |
-| L2 | `CACHE_STORE=database` adds DB load | `config/cache.php` | Use `redis` in production. |
+| L1 | `LOG_LEVEL=debug` default may leak context in production | `config/logging.php` | ✅ Fixed 2026-08-10 — default `warning` di `.env`/`.env.example`. |
+| L2 | `CACHE_STORE=database` adds DB load | `config/cache.php` | ✅ Fixed 2026-08-10 — default `file` (tanpa infra); `redis` hanya jika ada Redis. |
 | L3 | `cuti_terpakai` accessor N+1 risk | `app/Models/Pegawai.php` | Eager-load `pengajuanIzins` in controllers; add index on `(pegawai_id, jenis_izin, status)`. |
 | L4 | Pegawai create falls back to password = NIK | `app/Http/Controllers/PegawaiController.php` | Generate random password + email it, or require admin-supplied value. |
 | L5 | Pegawai import accepts null `unit_sekolah_id` | `app/Http/Controllers/PegawaiController.php` | Validate `unit_sekolah_id` is present except for explicit global-staff flag. |
@@ -75,7 +75,7 @@ Both `composer audit` and `npm audit --omit=dev` returned **no security vulnerab
 
 | ID | Title | File | Recommendation |
 |---|---|---|---|
-| P1 | `CACHE_STORE=database` overhead per hit | `config/cache.php` | Use redis in production. |
+| P1 | `CACHE_STORE=database` overhead per hit | `config/cache.php` | ✅ Fixed 2026-08-10 — sama dengan L2 (default `file`). |
 | P2 | `HandleInertiaRequests` eager-loads `pengajuanIzins` | `app/Http/Middleware/HandleInertiaRequests.php` | Move eager-load to controllers that need it; select only required fields. |
 | P3 | `cuti_terpakai` accessor re-queries per serialization | `app/Models/Pegawai.php` | Same as L3. |
 | P4 | `PenggajianController` generation iterates Pegawai one-by-one | `app/Http/Controllers/PenggajianController.php` | Prefetch komponens, skalas, attendance counts, lembur; compute per-Pegawai from grouped arrays. |
@@ -98,14 +98,14 @@ Both `composer audit` and `npm audit --omit=dev` returned **no security vulnerab
 | `APP_URL` | `http://localhost` | real HTTPS URL | **override required** |
 | `APP_ENV` | `local` | `production` | **override required** |
 | `BCRYPT_ROUNDS` | `12` | `>= 12` | ok |
-| `CACHE_STORE` | `database` | `redis` | override recommended |
+| `CACHE_STORE` | `database` | `file` (redis opsional) | ✅ fixed |
 | `QUEUE_CONNECTION` | `database` | `redis` or external worker | override recommended |
 | `MAIL_MAILER` | `log` | `smtp` / transactional | **override required** |
 | `SESSION_DRIVER` | `database` | `database` or `redis` | ok |
 | `SESSION_LIFETIME` | `120` | per security policy | ok |
 | `SESSION_SECURE_COOKIE` | unset | `true` | **override required** |
 | `SESSION_SAME_SITE` | `lax` | `lax` | ok |
-| `LOG_LEVEL` | `debug` | `warning` or `error` | **override required** |
+| `LOG_LEVEL` | `debug` | `warning` or `error` | ✅ fixed |
 | `KEUANGAN_API_URL` | `http://localhost:3000` | real HTTPS endpoint | **override required** |
 | `KEUANGAN_API_KEY` | `change-me-in-production` | real key | **override required** |
 | `SEED_DEFAULT_PASSWORD` | `password` | n/a (seed-only) | ok |
@@ -121,14 +121,14 @@ Both `composer audit` and `npm audit --omit=dev` returned **no security vulnerab
 3. **M1** - Override `KEUANGAN_API_URL` to HTTPS in production; add startup guard in `AppServiceProvider`.
 4. **M2** - Cast `nik` / `npwp` / `no_bpjs_*` to `encrypted` in `Pegawai` model; remove or gate `*_decrypted` accessors.
 5. **M3** - `throttle:10,1` on `penggajian.run.store` / `worksheet` / `finalize`, `laporan.export`, `backup.store`, `komponen-gaji.tambah-komponen`, `users.import`.
-6. **L1** - Override `LOG_LEVEL=warning` in production env.
-7. **L2** - Override `CACHE_STORE=redis` in production env.
+6. **L1** - Override `LOG_LEVEL=warning` in production env. — ✅ done (default `.env.example`)
+7. **L2** - Override `CACHE_STORE` away from `database` in production env. — ✅ done (`file` default)
 8. **L3** - Eager-load `pengajuanIzins` or move `cuti_terpakai` to controller; add index on `(pegawai_id, jenis_izin, status)`.
 9. **L4** - Require explicit password on Pegawai create; remove NIK fallback.
 10. **L5** - Validate `unit_sekolah_id` in Pegawai import rows.
 11. **L6** - Store relative `foto_path`; replace `str_replace` with `Storage::delete($pegawai->foto_path)`.
 12. **L7** - Cap max image dimension (~1600px) in `ImageUploadService::storeBase64`.
-13. **P1** - Same as L2.
+13. **P1** - Same as L2. — ✅ done
 14. **P2** - Defer `pengajuanIzins` eager-load to controllers that need it.
 15. **P4** - Prefetch komponens / skalas / attendance counts / lembur in `PenggajianController`; compute per-Pegawai from grouped arrays.
 

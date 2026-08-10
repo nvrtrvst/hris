@@ -5,226 +5,33 @@ import { Head, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Toggle } from '@/Components/MobileUI';
 import TetapPresensi from '@/Pages/Mobile/Partials/TetapPresensi';
+import { useCamera } from '@/Hooks/useCamera';
+import { useGeolocation } from '@/Hooks/useGeolocation';
+import { useMotionSamples } from '@/Hooks/useMotionSamples';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck } from 'lucide-react';
 
 export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [loadingLocation, setLoadingLocation] = useState(false);
-    const [locationError, setLocationError] = useState(null);
-    const [showLive, setShowLive] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
-    const [capturedPhoto, setCapturedPhoto] = useState(null);
     const [isLembur, setIsLembur] = useState(false);
     const [jadwalId, setJadwalId] = useState(null);
     const [currentTime, setCurrentTime] = useState('');
-    const [geoStatus, setGeoStatus] = useState('idle');
-    const [currentPosition, setCurrentPosition] = useState(null);
-    const [geoInfo, setGeoInfo] = useState(null);
-    const [geoInfoLoading, setGeoInfoLoading] = useState(false);
     const [posA, setPosA] = useState(null);
+    const [posAwal, setPosAwal] = useState(null);
 
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-    const streamRef = useRef(null);
-    const photoInputRef = useRef(null);
-    const geoControllerRef = useRef(null);
-    const watchIdRef = useRef(null);
-    const geocodedRef = useRef(false);
     const errorRef = useRef(null);
 
-    useEffect(() => {
-        if (error) {
-            errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }, [error]);
-
-    const { flash = {} } = usePage().props;
-
-    useEffect(() => {
-        startCamera();
-        setCurrentTime(new Date().toLocaleTimeString('id-ID', { hour12: false }));
-        const clock = setInterval(() => {
-            const now = new Date();
-            setCurrentTime(now.toLocaleTimeString('id-ID', { hour12: false }));
-        }, 1000);
-        getCurrentPosition();
-        return () => {
-            clearInterval(clock);
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach((t) => t.stop());
-            }
-            if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
-            if (geoControllerRef.current) {
-                geoControllerRef.current.abort();
-            }
-        };
-    }, []);
-
-    useEffect(() => {
-        if (showLive && videoRef.current && streamRef.current) {
-            videoRef.current.srcObject = streamRef.current;
-            videoRef.current.play().catch(() => {});
-        }
-    }, [showLive]);
-
-    const startCamera = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } },
-                audio: false,
-            });
-            streamRef.current = stream;
-            setShowLive(true);
-        } catch (err) {
-            setShowLive(false);
-            if (!locationError) setLocationError('Kamera tidak dapat diakses. Gunakan tombol di bawah untuk unggah foto.');
-        }
-    };
-
-    const stopCamera = () => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach((t) => t.stop());
-            streamRef.current = null;
-        }
-    };
-
-    const pad = (n) => String(n).padStart(2, '0');
-
-    const createEvidencePhoto = (source, sourceWidth, sourceHeight) => {
-        return new Promise((resolve) => {
-            const MAX = 1024;
-            const targetRatio = 3 / 4;
-            let cropWidth = sourceWidth;
-            let cropHeight = sourceHeight;
-            let cropX = 0;
-            let cropY = 0;
-
-            if (sourceWidth / sourceHeight > targetRatio) {
-                cropWidth = sourceHeight * targetRatio;
-                cropX = (sourceWidth - cropWidth) / 2;
-            } else {
-                cropHeight = sourceWidth / targetRatio;
-                cropY = (sourceHeight - cropHeight) / 2;
-            }
-
-            const scale = Math.min(1, MAX / Math.max(cropWidth, cropHeight));
-            const width = Math.round(cropWidth * scale);
-            const height = Math.round(cropHeight * scale);
-
-            const canvas = canvasRef.current;
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-
-            ctx.drawImage(source, cropX, cropY, cropWidth, cropHeight, 0, 0, width, height);
-
-            resolve(canvas.toDataURL('image/jpeg', 0.84));
-        });
-    };
-
-    const capturePhoto = async () => {
-        if (geoBlocked || !currentPosition) return;
-        if (!videoRef.current || !canvasRef.current) return;
-        const video = videoRef.current;
-        if (!video.videoWidth || !video.videoHeight) return;
-
-        setPosA({ ...currentPosition, captured_at: new Date().toISOString() });
-
-        setIsSubmitting(true);
-        const dataUrl = await createEvidencePhoto(video, video.videoWidth, video.videoHeight);
-        setCapturedPhoto(dataUrl);
-        stopCamera();
-        setShowLive(false);
-        setIsSubmitting(false);
-    };
-
-    const retakePhoto = () => {
-        setCapturedPhoto(null);
-        startCamera();
-    };
-
-    const toggleLembur = () => setIsLembur((prev) => !prev);
-
-    const getCurrentPosition = () => {
-        setLoadingLocation(true);
-        setGeoStatus('loading');
-        if (!navigator.geolocation) {
-            setGeoStatus('error');
-            setLocationError('Geolocation tidak didukung di perangkat ini.');
-            setLoadingLocation(false);
-            return;
-        }
-        const id = navigator.geolocation.watchPosition(
-            (pos) => {
-                setCurrentPosition({
-                    latitude: pos.coords.latitude,
-                    longitude: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy,
-                });
-                setGeoStatus('ready');
-                setLoadingLocation(false);
-                if (geocodedRef.current) return;
-                geocodedRef.current = true;
-                setGeoInfoLoading(true);
-                geoControllerRef.current?.abort();
-                geoControllerRef.current = new AbortController();
-                fetch(
-                    `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&localityLanguage=id`,
-                    { signal: geoControllerRef.current.signal }
-                )
-                    .then((r) => {
-                        if (!r.ok) throw new Error('Geocoding failed');
-                        return r.json();
-                    })
-                    .then((d) =>
-                        setGeoInfo({
-                            locality: d.locality,
-                            city: d.city,
-                            principalSubdivision: d.principalSubdivision,
-                            postcode: d.postcode,
-                            countryName: d.countryName,
-                            streetName: d.streetName,
-                            streetNumber: d.streetNumber,
-                        })
-                    )
-                    .catch((err) => {
-                        if (err.name !== 'AbortError') {
-                            setGeoInfo(null);
-                        }
-                    })
-                    .finally(() => setGeoInfoLoading(false));
-            },
-            (err) => {
-                setGeoStatus('error');
-                setLocationError(err.message || 'Tidak dapat mengambil lokasi.');
-                setLoadingLocation(false);
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-        watchIdRef.current = id;
-    };
-
-    const handleFileFallback = (e) => {
-        if (geoBlocked || !currentPosition) return;
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const image = new Image();
-            image.onload = async () => {
-                setIsSubmitting(true);
-                const dataUrl = await createEvidencePhoto(image, image.naturalWidth, image.naturalHeight);
-                setCapturedPhoto(dataUrl);
-                setIsSubmitting(false);
-            };
-            image.onerror = () => setError('Foto tidak dapat diproses. Pilih file gambar lain.');
-            image.src = reader.result;
-        };
-        reader.readAsDataURL(file);
-    };
-
-    const selectJadwal = (id) => setJadwalId(id);
+    const {
+        loadingLocation,
+        geoStatus,
+        currentPosition,
+        geoInfo,
+        geoInfoLoading,
+        locationError: geoLocationError,
+        getCurrentPosition,
+        clearGeolocation,
+    } = useGeolocation();
 
     // Unit geofence target: lembur -> unit primer; reguler -> unit jadwal terpilih (atau primer).
     const lemburUnit =
@@ -233,6 +40,19 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const targetUnit = isLembur
         ? lemburUnit
         : selectedJadwal?.unit_sekolah ?? lemburUnit;
+
+    const isTeaching = !isLembur && !officeAttendance && Boolean(jadwalId);
+    const kantorRecord = officeAttendance
+        ? (presensiHariIni || []).find((p) => !p.jadwal_id && !p.is_lembur)
+        : null;
+    const teachingRecord = isTeaching
+        ? (presensiHariIni || []).find((p) => p.jadwal_id === jadwalId)
+        : null;
+    const teachingDone = Boolean(teachingRecord?.jam_masuk);
+    const kantorOpen = Boolean(kantorRecord?.jam_masuk && !kantorRecord?.jam_keluar);
+    const lemburOpen = Boolean(
+        (presensiHariIni || []).find((p) => p.is_lembur && p.jam_masuk && !p.jam_keluar)
+    );
 
     const geofence = useMemo(() => {
         if (!currentPosition || !targetUnit) return null;
@@ -258,6 +78,88 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const geoBlocked = geofence && !geofence.inside;
     const geoReady = geofence !== null;
 
+    const camera = useCamera({
+        canCapture: Boolean(currentPosition && geofence?.inside),
+        currentPosition,
+        onWillCapture: (pos) => setPosA(pos),
+    });
+
+    const {
+        videoRef,
+        canvasRef,
+        photoInputRef,
+        streamRef,
+        showLive,
+        capturedPhoto,
+        cameraError,
+        isCapturing,
+        startCamera,
+        capturePhoto,
+        retakePhoto,
+        handleFileFallback,
+        clearCamera,
+    } = camera;
+
+    // Tampilkan error gabungan (kamera / GPS) di fallback upload.
+    const locationError = cameraError || geoLocationError;
+
+    useEffect(() => {
+        if (error) {
+            errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [error]);
+
+    const { flash = {}, attestation_token } = usePage().props;
+
+    const { motionSamples, samplesReady, collectMotionSamples } = useMotionSamples();
+
+    // Capture posisi awal (first GPS fix) untuk trajectory 3-titik
+    useEffect(() => {
+        if (currentPosition && !posAwal) {
+            setPosAwal({
+                latitude: currentPosition.latitude,
+                longitude: currentPosition.longitude,
+                accuracy: currentPosition.accuracy,
+                captured_at: new Date().toISOString(),
+            });
+        }
+    }, [currentPosition, posAwal]);
+
+    useEffect(() => {
+        startCamera();
+        setCurrentTime(new Date().toLocaleTimeString('id-ID', { hour12: false }));
+        const clock = setInterval(() => {
+            const now = new Date();
+            setCurrentTime(now.toLocaleTimeString('id-ID', { hour12: false }));
+        }, 1000);
+        getCurrentPosition();
+        return () => {
+            clearInterval(clock);
+            clearCamera();
+            clearGeolocation();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        if (showLive && videoRef.current && streamRef.current) {
+            videoRef.current.srcObject = streamRef.current;
+            videoRef.current.play().catch(() => {});
+        }
+    }, [showLive]);
+
+    const pad = (n) => String(n).padStart(2, '0');
+
+    const toggleLembur = () => setIsLembur((prev) => !prev);
+
+    const selectJadwal = (id) => setJadwalId(id);
+
+    // Trigger motion sampling saat foto diambil
+    const handleCaptureWithMotion = () => {
+        collectMotionSamples();
+        capturePhoto();
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
@@ -269,6 +171,14 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         }
         if (!isLembur && !officeAttendance && jadwals.length > 0 && !jadwalId) {
             setError('Silakan pilih jadwal presensi Anda.');
+            return;
+        }
+        if (isTeaching && teachingDone) {
+            setError('Anda sudah melakukan absen masuk untuk jadwal ini.');
+            return;
+        }
+        if (!isLembur && officeAttendance && kantorRecord?.jam_keluar) {
+            setError('Anda sudah melakukan presensi keluar.');
             return;
         }
         if (!currentPosition && !isLembur) {
@@ -283,7 +193,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         }
 
         setIsSubmitting(true);
-        const openPresensi = presensiHariIni?.find((p) => p.jam_masuk && !p.jam_keluar);
         const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         const now = new Date().toISOString();
         const payload = {
@@ -291,7 +200,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             foto: capturedPhoto,
             is_lembur: isLembur,
             jadwal_id: isLembur ? null : jadwalId,
-            tipe: openPresensi ? 'keluar' : 'masuk',
+            tipe: isTeaching ? 'masuk' : isLembur ? (lemburOpen ? 'keluar' : 'masuk') : (kantorOpen ? 'keluar' : 'masuk'),
             latitude: currentPosition?.latitude ?? null,
             longitude: currentPosition?.longitude ?? null,
             accuracy: currentPosition?.accuracy ?? null,
@@ -301,6 +210,12 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             pos_a_lng: posA?.longitude ?? null,
             pos_a_accuracy: posA?.accuracy ?? null,
             pos_a_captured_at: posA?.captured_at ?? null,
+            pos_awal_lat: posAwal?.latitude ?? null,
+            pos_awal_lng: posAwal?.longitude ?? null,
+            pos_awal_accuracy: posAwal?.accuracy ?? null,
+            pos_awal_captured_at: posAwal?.captured_at ?? null,
+            motion_samples: motionSamples ? JSON.stringify(motionSamples) : null,
+            attestation_token: attestation_token || null,
         };
         try {
             const res = await fetch(route('presensi.absen.store'), {
@@ -403,6 +318,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     pegawai={pegawai}
                     jadwals={jadwals}
                     presensiHariIni={presensiHariIni}
+                    attestationToken={attestation_token}
                 />
             </MobileLayout>
         );
@@ -548,7 +464,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                             <div className="mb-4 flex justify-center">
                                 <button
                                     type="button"
-                                    onClick={capturePhoto}
+                                    onClick={handleCaptureWithMotion}
                                     disabled={geoBlocked || !currentPosition}
                                     aria-label="Ambil foto presensi"
                                     className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-white bg-transparent transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100"
@@ -672,10 +588,10 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (!isLembur && !officeAttendance && (!jadwals.length || !jadwalId))}
+                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (!isLembur && !officeAttendance && (!jadwals.length || !jadwalId)) || (isTeaching && teachingDone) || (!isLembur && officeAttendance && kantorRecord?.jam_keluar)}
                 className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isLembur ? 'bg-amber-500 text-amber-950' : 'bg-primary text-white'}`}
             >
-                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isLembur ? 'Kirim bukti lembur' : presensiHariIni?.some((p) => p.jam_masuk && !p.jam_keluar) ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk'}
+                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isLembur ? 'Kirim bukti lembur' : isTeaching ? (teachingDone ? 'Sudah presensi masuk' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}
             </button>
             <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">Foto, waktu, dan koordinat dikirim sebagai bukti presensi.</p>
 

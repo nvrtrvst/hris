@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
+import { Bell, Megaphone } from 'lucide-react';
 
 const navItems = [
     { route: 'presensi.dashboard', label: 'Beranda', match: () => route().current('presensi.dashboard'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" {...p} />) },
@@ -12,7 +13,8 @@ const navItems = [
 ];
 
 export default function MobileLayout({ user, header, children }) {
-    const { url } = usePage();
+    const { url, props } = usePage();
+    const auth = props.auth;
     const primaryUnit = user?.pegawai?.units?.find((unit) => unit.pivot?.is_primary) ?? user?.pegawai?.units?.[0];
     const unitLabel = primaryUnit?.singkatan || primaryUnit?.nama || 'Yayasan';
     const unitInitial = unitLabel.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || 'YYS';
@@ -28,7 +30,20 @@ export default function MobileLayout({ user, header, children }) {
                             <p className="max-w-52 truncate text-sm font-bold leading-tight">Presensi {unitLabel}</p>
                         </div>
                     </div>
-                    <Dropdown>
+                    <div className="flex items-center gap-1">
+                        <Link href={route('presensi.pengumuman')} className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white/80 hover:text-white" aria-label="Pengumuman">
+                            <Megaphone className="h-5 w-5" />
+                        </Link>
+                        <Link href={route('presensi.notifikasi.index')} className="relative flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white/80 hover:text-white" aria-label="Notifikasi">
+                            <Bell className="h-5 w-5" />
+                            {auth?.unread_notifications > 0 && (
+                                <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-primary">
+                                    {auth?.unread_notifications > 99 ? '99+' : auth?.unread_notifications}
+                                </span>
+                            )}
+                        </Link>
+                    </div>
+                        <Dropdown>
                         <Dropdown.Trigger>
                             <button className="flex min-h-11 min-w-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Buka menu akun">
                                 <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-white/20 bg-white/10 text-sm font-bold text-white">
@@ -41,6 +56,14 @@ export default function MobileLayout({ user, header, children }) {
                             </button>
                         </Dropdown.Trigger>
                         <Dropdown.Content align="right" width="48">
+                            <Dropdown.Link href={route('presensi.gaji.index')} className="flex items-center">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                Slip Gaji
+                            </Dropdown.Link>
+                            <Dropdown.Link href={route('presensi.pengumuman')} className="flex items-center">
+                                <Megaphone className="w-4 h-4 mr-2" />
+                                Pengumuman
+                            </Dropdown.Link>
                             <Dropdown.Link href={route('presensi.logout')} method="post" as="button" className="text-red-600 font-bold flex items-center">
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                                 Keluar

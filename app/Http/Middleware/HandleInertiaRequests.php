@@ -48,6 +48,7 @@ class HandleInertiaRequests extends Middleware
                 'roles' => $user ? $user->roles->pluck('name') : [],
                 'is_approver' => $user ? $user->isApprover() : false,
                 'pegawai_complete' => $pegawai ? $pegawai->isDataComplete() : true,
+                'unread_notifications' => $user ? $user->unreadNotifications()->count() : 0,
             ],
             'flash' => [
                 'message' => fn () => $request->session()->get('message'),

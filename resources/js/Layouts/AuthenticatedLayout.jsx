@@ -5,6 +5,7 @@ import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 import FlashToast from '@/Components/FlashToast';
+import { Bell, Megaphone } from 'lucide-react';
 
 export default function AuthenticatedLayout({ user: userProp, header, children }) {
     const { auth } = usePage().props;
@@ -40,6 +41,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     if (!permissions.includes('view_jadwal')) layananPribadi.push({ name: 'Jadwal Pribadi', href: route('jadwal.index'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' });
     if (!permissions.includes('view_presensi')) layananPribadi.push({ name: 'Presensi Pribadi', href: route('presensi.index'), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
     if (!permissions.includes('view_payroll')) layananPribadi.push({ name: 'Slip Gaji Pribadi', href: route('penggajian.index'), icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' });
+    layananPribadi.push({ name: 'Notifikasi', href: route('notifications.index'), icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' });
     
     if (layananPribadi.length > 0) {
         menuGroups.push({ title: 'Layanan Pribadi', items: layananPribadi });
@@ -52,6 +54,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     if (permissions.includes('view_jadwal')) modulUtama.push({ name: 'Jadwal', href: route('jadwal.index'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' });
     if (permissions.includes('view_presensi')) modulUtama.push({ name: 'Presensi', href: route('presensi.index'), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
     if (permissions.includes('view_izin') || auth.is_approver) modulUtama.push({ name: 'Pengajuan Izin', href: route('pengajuan-izin.index'), icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.293.707l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
+    if (permissions.includes('view_dashboard') || permissions.includes('manage_master_data')) modulUtama.push({ name: 'Pengumuman', href: route('pengumuman.index'), icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z' });
 
     if (modulUtama.length > 0) {
         menuGroups.push({ title: 'Modul Utama', items: modulUtama });
@@ -256,12 +259,20 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                             )}
                         </svg>
                     </button>
-                    <div className="flex-1 px-4 sm:px-6 lg:px-8 flex items-center">
-                        {header && (
-                            <div className="flex items-center gap-3">
-                                {header}
-                            </div>
-                        )}
+                    <div className="flex-1 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            {header}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Link href={route('notifications.index')} className="relative p-2 text-text-muted hover:text-primary transition-colors rounded-lg hover:bg-gray-100" title="Notifikasi">
+                                <Bell className="h-5 w-5" />
+                                {auth?.unread_notifications > 0 && (
+                                    <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white">
+                                        {auth?.unread_notifications > 99 ? '99+' : auth?.unread_notifications}
+                                    </span>
+                                )}
+                            </Link>
+                        </div>
                     </div>
                 </header>
 

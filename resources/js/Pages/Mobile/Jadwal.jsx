@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Empty } from '@/Components/MobileUI';
-import { ArrowRight, Calendar, Clock3, X } from 'lucide-react';
+import { ArrowRight, Calendar, Clock3, WifiOff, X } from 'lucide-react';
 
 const hariUrut = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
@@ -27,6 +27,32 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
     const [selectedClass, setSelectedClass] = useState(null);
     const [loadingClasses, setLoadingClasses] = useState(false);
     const [integrationError, setIntegrationError] = useState('');
+    const [offline, setOffline] = useState(false);
+
+    // PWA offline jadwal (F4): cache localStorage, restore saat offline
+    useEffect(() => {
+        const CACHE_KEY = 'hris_jadwal_' + (pegawai?.id || 0);
+        if (!navigator.onLine) {
+            setOffline(true);
+            try {
+                const cached = localStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (parsed && Object.keys(parsed).length > 0 && Object.keys(jadwalPerHari).length === 0) {
+                        Object.assign(jadwalPerHari, parsed);
+                    }
+                }
+            } catch { /* ignore */ }
+        }
+    }, []);
+
+    useEffect(() => {
+        if (jadwalPerHari && Object.keys(jadwalPerHari).length > 0) {
+            try {
+                localStorage.setItem('hris_jadwal_' + (pegawai?.id || 0), JSON.stringify(jadwalPerHari));
+            } catch { /* quota exceeded */ }
+        }
+    }, [jadwalPerHari]);
 
     const loadStudents = (j, classData) => {
         setLoadingSiswa(true);
@@ -100,6 +126,11 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari }) {
                         <p className="mt-0.5 text-sm font-bold">{hariMap[todayName]?.length || 0} sesi</p>
                     </div>
                 </div>
+                {offline && (
+                    <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
+                        <WifiOff className="h-4 w-4" /> Mode offline — data mungkin tidak terbaru
+                    </div>
+                )}
             </div>
 
             {featuredSchedule && (

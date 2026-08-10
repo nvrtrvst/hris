@@ -9,9 +9,65 @@ const decodeEntities = (value) =>
         .replace(/&#039;/g, "'")
         .replace(/&quot;/g, '"');
 
-export default function Pagination({ links, data = null, preserveState = true, className = '' }) {
-    if (!links || links.length === 0) {
+const lastNumericPage = (links) => {
+    const pages = links
+        .map((l) => decodeEntities(String(l.label)))
+        .filter((label) => /^\d+$/.test(label))
+        .map(Number);
+
+    return pages.length ? Math.max(...pages) : 1;
+};
+
+/**
+ * Komponen pagination bersama (admin desktop + mobile).
+ *
+ * @param {Array} links   Array link paginator Laravel (`paginator.links`).
+ * @param {Object|null} pagination  Objek paginator utuh (current_page/last_page) — opsional utk variant mobile.
+ * @param {Object|null} data  Data filter yang dipertahankan saat pindah halaman (mis. `filters`).
+ * @param {string} variant  'desktop' = link nomor halaman; 'mobile' = prev/next + "Halaman X / Y".
+ */
+export default function Pagination({ links, pagination = null, data = null, preserveState = true, className = '', variant = 'desktop' }) {
+    const currentPage = pagination?.current_page ?? Number(links.find((l) => l.active)?.label || 1);
+    const lastPage = pagination?.last_page ?? lastNumericPage(links);
+
+    if (!links || links.length === 0 || lastPage <= 1) {
         return null;
+    }
+
+    const navigate = (page) => {
+        if (page < 1 || page > lastPage || page === currentPage) {
+            return;
+        }
+        const link = links.find((l) => decodeEntities(String(l.label)) === String(page));
+        if (link?.url) {
+            router.get(link.url, data || {}, { preserveState });
+        } else if (data) {
+            router.get(window.location.pathname, { ...data, page }, { preserveState });
+        }
+    };
+
+    if (variant === 'mobile') {
+        return (
+            <nav className={`mt-4 flex items-center justify-center gap-3 ${className}`} aria-label="Navigasi halaman">
+                <button
+                    type="button"
+                    onClick={() => navigate(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                    « Sebelumnya
+                </button>
+                <span className="text-xs font-bold text-slate-500">Halaman {currentPage} / {lastPage}</span>
+                <button
+                    type="button"
+                    onClick={() => navigate(currentPage + 1)}
+                    disabled={currentPage >= lastPage}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                    Berikutnya »
+                </button>
+            </nav>
+        );
     }
 
     const baseClass = (link) =>

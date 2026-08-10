@@ -111,6 +111,26 @@
 
 ---
 
+## Fase 5 — Performance Audit Final (2026-08-10)
+
+| Item | Status | File |
+|------|--------|------|
+| L1 — `LOG_LEVEL=debug` → `warning` (produksi verbose logging) | ✅ | `.env` + `.env.example` |
+| L2/P1 — `CACHE_STORE=database` → `file` (hilangkan DB round-trip per cache hit) | ✅ | `.env` + `.env.example` |
+| Hapus duplikat `LOG_LEVEL` di `.env.example` | ✅ | `.env.example` |
+| Index komposit `(hari, jam_mulai)` di `jadwal` (dashboard superadmin) | ✅ | Migration `2026_08_10_150000_*` |
+| Verifikasi EXPLAIN — J1-J3 & P1-P8 semua pakai index; J2 dari `ALL+filesort` → `ref idx_jadwal_hari_jam` | ✅ | EXPLAIN via MySQL |
+| Notifikasi IzinBaru/StatusIzin/PresensiReminder — hapus `ShouldQueue` (tanpa worker) + fix parse error PHP 8.3 | ✅ | `app/Notifications/*` |
+| N+1 di `presensi:reminder` (whereHas + eager-load + prefetch) | ✅ | `app/Console/Commands/SendPresensiReminder.php` |
+| Search NIK via `nik_hash` (kolom ter-encrypt) | ✅ | `PengajuanIzinController.php`, `PegawaiKomponenImport.php` |
+| Upload-before-save / foto dihapus sebelum store (S1) | ✅ | `MobileIzinController`, `PegawaiController`, `ProfileController` |
+| Konstanta ukuran foto 5MB konsisten (S2) | ✅ | `PresensiMessages` |
+| Fallback `?? 1` unit + N+1 di `JadwalController::generate` (S3) | ✅ | `JadwalController.php` |
+| Raw SQL di `CheckNikStatus` → query builder (S4) | ✅ | `CheckNikStatus.php` |
+| P2/P3 — `sisa_cuti`/`cuti_terpakai` keluar dari `$appends` (anti auto-query per request) | ✅ | `Pegawai.php` + test `MobileCutiSharedTest` |
+
+---
+
 ## Tertunda
 
 ### #6 — Push notification reminder presensi
@@ -144,8 +164,8 @@
 | Verifikasi `APP_ENV=production` | `.env` | **WAJIB** |
 | Verifikasi `APP_DEBUG=false` | `.env` | **WAJIB** |
 | Verifikasi `SESSION_SECURE_COOKIE=true` | `.env` (HTTPS only) | **WAJIB** |
-| Verifikasi `LOG_LEVEL=warning` | `.env` | **SARAN** |
-| Verifikasi `CACHE_STORE=redis` (jika ada Redis) | `.env` | **SARAN** |
+| Verifikasi `LOG_LEVEL=warning` (sudah default di `.env.example`) | `.env` | **SARAN** |
+| Verifikasi `CACHE_STORE=file` (sudah default; `redis` hanya jika ada Redis) | `.env` | **SARAN** |
 | Verifikasi `QUEUE_CONNECTION=database` atau redis | `.env` | **WAJIB** — default sudah database, aman |
 | Migration | `php artisan migrate --force` | **WAJIB** |
 | Build frontend | `npm run build` | **WAJIB** |
@@ -156,4 +176,4 @@
 
 - Semua fase dikerjakan **sinkron** di sesi yang sama (2026-07-25). Belum ada deploy ke production.
 - `SECURITY_AUDIT.md` (2026-07-22) adalah audit read-only independent sebelum fase-fase ini — beberapa temuan sudah di-fix di Fase 1.
-- Pending item audit yang belum ditangani: M1 (KEUANGAN_API_URL guard), L3/L6/L7 (N+1 cuti, foto path, image dimension cap), P2 (HandleInertiaRequests eager-load).
+- Pending item audit yang belum ditangani: M1 (KEUANGAN_API_URL guard). L3/L6/L7 (N+1 cuti, foto path, image cap) & P2 sudah dibereskan di sesi audit performa 2026-08-10.

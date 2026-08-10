@@ -49,9 +49,21 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
     const unitName = primaryUnit?.nama || primaryUnit?.nama_unit || null;
     const jadwals = Array.isArray(jadwalsHariIni) ? jadwalsHariIni : [];
     const records = Array.isArray(presensiSeminggu) ? presensiSeminggu : Object.values(presensiSeminggu || {}).flat();
-    const currentStatus = presensi?.status;
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const todayRecords = records.filter((r) => (r.tanggal || '').startsWith(todayStr));
+    const kantorRec = todayRecords.find((r) => r.tipe_presensi === 'kantor');
+    const lemburRec = todayRecords.find((r) => r.is_lembur);
+    const mengajarRecs = todayRecords.filter((r) => r.tipe_presensi === 'mengajar');
+    const primary = kantorRec || lemburRec || mengajarRecs[0] || presensi || null;
+    const isMengajar = !kantorRec && !lemburRec && mengajarRecs.length > 0;
+    const mengajarStatus = mengajarRecs.some((r) => r.status === 'telat') ? 'telat'
+        : mengajarRecs.some((r) => r.status === 'hadir') ? 'hadir'
+        : null;
+    const belumPulang = !isMengajar && primary?.jam_masuk && !primary?.jam_keluar;
+    const currentStatus = isMengajar ? mengajarStatus : primary?.status;
+    const statusDisplay = belumPulang ? 'Belum pulang' : currentStatus ? statusLabel[currentStatus] || currentStatus : 'Belum presensi';
 
     return (
         <MobileLayout user={auth.user}>
@@ -79,10 +91,10 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                     <div className="flex items-center justify-between gap-3">
                         <div>
                             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-100">Status hari ini</p>
-                            <h2 id="today-status" className="mt-1 text-xl font-bold text-white">{currentStatus ? statusLabel[currentStatus] || currentStatus : 'Belum presensi'}</h2>
+                            <h2 id="today-status" className="mt-1 text-xl font-bold text-white">{statusDisplay}</h2>
                         </div>
-                        <Badge tone={statusTone[currentStatus] || 'slate'} icon={currentStatus ? CheckCircle2 : Clock3} className={!currentStatus ? 'bg-white/10 text-white' : ''}>
-                            {presensi?.jam_keluar ? 'Selesai' : presensi?.jam_masuk ? 'Sedang bekerja' : 'Belum masuk'}
+                        <Badge tone={belumPulang ? 'amber' : statusTone[currentStatus] || 'slate'} icon={belumPulang ? Clock3 : currentStatus ? CheckCircle2 : Clock3} className={!currentStatus ? 'bg-white/10 text-white' : belumPulang ? 'bg-white/10 text-white' : ''}>
+                            {isMengajar ? (currentStatus ? statusLabel[currentStatus] || currentStatus : 'Belum masuk') : primary?.jam_keluar ? 'Selesai' : primary?.jam_masuk ? (belumPulang ? 'Belum pulang' : 'Sedang bekerja') : 'Belum masuk'}
                         </Badge>
                     </div>
                 </div>
@@ -91,15 +103,15 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                     <div className="flex flex-col justify-between px-5 py-4">
                         <div>
                             <p className="flex items-center gap-1.5 text-xs text-emerald-100"><LogIn className="h-4 w-4" /> Masuk</p>
-                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(presensi?.jam_masuk)}</p>
+                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(primary?.jam_masuk)}</p>
                         </div>
-                        {presensi?.jam_masuk && (
+                        {primary?.jam_masuk && (
                             <div className="mt-4 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-inner">
-                                {presensi.foto_masuk_url ? (
-                                    <img src={presensi.foto_masuk_url} alt="Foto Masuk" className="h-full w-full object-cover opacity-90" />
+                                {primary.foto_masuk_url ? (
+                                    <img src={primary.foto_masuk_url} alt="Foto Masuk" className="h-full w-full object-cover opacity-90" />
                                 ) : (
                                     <span className="text-[10px] font-semibold text-white/50 text-center leading-tight px-1">
-                                        {presensi.foto_masuk_status === 'pending' ? 'Diproses' : 'Tak Ada Foto'}
+                                        {primary.foto_masuk_status === 'pending' ? 'Diproses' : 'Tak Ada Foto'}
                                     </span>
                                 )}
                             </div>
@@ -108,15 +120,15 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                     <div className="flex flex-col justify-between px-5 py-4">
                         <div>
                             <p className="flex items-center gap-1.5 text-xs text-emerald-100"><LogOut className="h-4 w-4" /> Keluar</p>
-                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(presensi?.jam_keluar)}</p>
+                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(primary?.jam_keluar)}</p>
                         </div>
-                        {presensi?.jam_keluar && (
+                        {primary?.jam_keluar && (
                             <div className="mt-4 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-inner">
-                                {presensi.foto_keluar_url ? (
-                                    <img src={presensi.foto_keluar_url} alt="Foto Keluar" className="h-full w-full object-cover opacity-90" />
+                                {primary.foto_keluar_url ? (
+                                    <img src={primary.foto_keluar_url} alt="Foto Keluar" className="h-full w-full object-cover opacity-90" />
                                 ) : (
                                     <span className="text-[10px] font-semibold text-white/50 text-center leading-tight px-1">
-                                        {presensi.foto_keluar_status === 'pending' ? 'Diproses' : 'Tak Ada Foto'}
+                                        {primary.foto_keluar_status === 'pending' ? 'Diproses' : 'Tak Ada Foto'}
                                     </span>
                                 )}
                             </div>
@@ -124,14 +136,14 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                     </div>
                 </div>
 
-                {presensi?.lokasi_perlu_review && (
+                {primary?.lokasi_perlu_review && (
                     <div className="mx-4 mb-4 flex items-start gap-2 rounded-xl bg-amber-400/15 px-3 py-2.5 text-xs font-medium text-amber-50">
                         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Lokasi perlu ditinjau admin.
                     </div>
                 )}
 
                 <Link href={route('presensi.absen')} className="mx-4 mb-4 flex min-h-12 items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-bold text-primary transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30">
-                    {presensi?.jam_masuk && !presensi?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi'}
+                    {!isMengajar && primary?.jam_masuk && !primary?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi'}
                     <ArrowRight className="h-5 w-5" />
                 </Link>
             </section>
@@ -140,7 +152,7 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
                     <div className="flex items-center gap-2">
                         <CalendarDays className="h-5 w-5 text-emerald-200" />
-                        <h2 id="today-jadwal" className="text-base font-bold text-white">Jadwal Hari Ini</h2>
+                        <h2 id="today-jadwal" className="text-base font-bold text-white">Jadwal Mengajar Hari Ini</h2>
                     </div>
                     <Link href={route('presensi.jadwal')} className="text-xs font-semibold text-white/80 underline-offset-2 hover:underline">
                         Lihat semua
@@ -155,26 +167,28 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                     <ol className="divide-y divide-white/10">
                         {jadwals.map((jadwal) => {
                             const lokasi = jadwal.unit_sekolah?.nama || jadwal.unit_sekolah?.nama_unit || unitName;
-                            const selesai = toMinutes(jadwal.jam_selesai);
-                            const sudahLewat = selesai <= nowMinutes;
                             const todayStr = format(now, 'yyyy-MM-dd');
-                            const didHadir = records.some(r => r.jadwal_id === jadwal.id && (r.tanggal || '').startsWith(todayStr));
-                            
+                            const sudahLewat = toMinutes(jadwal.jam_selesai) <= nowMinutes;
+                            const rec = records.find(r => r.jadwal_id === jadwal.id && (r.tanggal || '').startsWith(todayStr));
+                            const sudahMasuk = Boolean(rec?.jam_masuk);
+                            const selesai = sudahMasuk;
+                            const bolos = sudahLewat && !sudahMasuk;
+
                             return (
-                                <li key={jadwal.id} className={`flex items-start gap-3 px-5 py-3.5 ${sudahLewat && !didHadir ? 'opacity-80' : sudahLewat ? 'opacity-50' : ''}`}>
+                                <li key={jadwal.id} className={`flex items-start gap-3 px-5 py-3.5 ${bolos ? 'opacity-80' : selesai ? 'opacity-70' : ''}`}>
                                     <div className="flex shrink-0 flex-col items-center justify-center rounded-xl bg-white/10 px-2 py-1.5 min-w-[52px]">
-                                        <Clock3 className={`h-3.5 w-3.5 ${sudahLewat && !didHadir ? 'text-rose-200' : 'text-emerald-200'}`} />
+                                        <Clock3 className={`h-3.5 w-3.5 ${bolos ? 'text-rose-200' : 'text-emerald-200'}`} />
                                         <span className="mt-0.5 font-mono text-xs font-bold tabular-nums text-white">{time(jadwal.jam_mulai)}</span>
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
-                                            <p className={`truncate text-sm font-bold text-white ${sudahLewat && !didHadir ? 'text-rose-100' : sudahLewat ? 'line-through' : ''}`}>
+                                            <p className={`truncate text-sm font-bold text-white ${bolos ? 'text-rose-100' : selesai ? 'line-through' : ''}`}>
                                                 {jadwal.mata_pelajaran?.nama || 'Pelajaran'}
                                             </p>
-                                            {sudahLewat && didHadir && (
-                                                <span className="shrink-0 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">Hadir</span>
+                                            {selesai && (
+                                                <span className="shrink-0 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-100 border border-emerald-400/40">Selesai</span>
                                             )}
-                                            {sudahLewat && !didHadir && (
+                                            {bolos && (
                                                 <span className="shrink-0 rounded-full bg-rose-500/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-100 border border-rose-500/50">Tidak Hadir</span>
                                             )}
                                         </div>

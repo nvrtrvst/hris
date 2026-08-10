@@ -239,7 +239,7 @@ class DashboardController extends Controller
             $kontrakQuery = Pegawai::where('status_kepegawaian', 'kontrak')
                 ->whereNotNull('tanggal_akhir_kontrak')
                 ->where('tanggal_akhir_kontrak', '<=', Carbon::today('Asia/Jakarta')->addDays(30))
-                ->with('jabatans.unitSekolah', 'pengajuanIzins');
+                ->with('jabatans.unitSekolah');
 
             if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 $kontrakQuery->forUnit($user->unit_sekolah_id);
@@ -251,10 +251,10 @@ class DashboardController extends Controller
 
             // 6. Jadwal Hari Ini
             $jadwalHariIniQuery = Jadwal::with([
-                    'pegawai:id,nama_lengkap',
-                    'mataPelajaran:id,nama',
-                    'unitSekolah:id,nama,singkatan',
-                ])
+                'pegawai:id,nama_lengkap',
+                'mataPelajaran:id,nama',
+                'unitSekolah:id,nama,singkatan',
+            ])
                 ->where('hari', $hariIniIndo)
                 ->orderBy('jam_mulai');
 
@@ -265,12 +265,22 @@ class DashboardController extends Controller
 
             // 7. Presensi Hari Ini
             $presensiQuery = Presensi::with('pegawai:id,nama_lengkap')
-                ->where('tanggal', $today);
+                ->where('tanggal', $today)
+                ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status', 'lokasi_perlu_review']);
 
             if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 $presensiQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
             }
-            $presensiHariIni = $presensiQuery->get()->toArray();
+            $presensiHariIni = $presensiQuery->get()
+                ->map(function ($p) {
+                    $p->withoutAppends();
+                    if ($p->pegawai) {
+                        $p->setRelation('pegawai', $p->pegawai->withoutAppends());
+                    }
+
+                    return $p;
+                })
+                ->toArray();
 
             return [
                 'totalPegawai' => $totalPegawai,

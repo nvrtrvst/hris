@@ -24,6 +24,19 @@ class PresensiPhotoController extends Controller
         }
 
         if ($user->can('view_presensi')) {
+            // Admin unit: scope foto ke pegawai unitnya sendiri (anti-IDOR).
+            // Nama file berformat {folder}/{pegawai_id}_{slug}/{uuid}.webp
+            if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+                if (! preg_match('/(\d+)_/', $fullPath, $m)) {
+                    abort(403, 'Akses ditolak.');
+                }
+
+                $pegawai = Pegawai::find((int) $m[1]);
+                if (! $pegawai || ! $pegawai->belongsToUnit($user->unit_sekolah_id)) {
+                    abort(403, 'Akses ditolak.');
+                }
+            }
+
             return Storage::disk($disk)->response($fullPath);
         }
 

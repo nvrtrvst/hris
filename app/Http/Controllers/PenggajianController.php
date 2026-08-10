@@ -2,21 +2,28 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\TransferBankExport;
 use App\Models\KomponenGaji;
 use App\Models\Pegawai;
 use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
-use App\Models\Presensi;
 use App\Models\SkalaMasaBakti;
 use App\Models\UnitSekolah;
+use App\Services\PresensiAggregator;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PenggajianController extends Controller
 {
+    public function __construct(
+        private readonly PresensiAggregator $presensiAggregator,
+    ) {}
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -40,7 +47,7 @@ class PenggajianController extends Controller
             $query->where('periode_bulan', $request->periode_bulan);
         }
 
-        $penggajians = $query->orderBy('periode_bulan', 'desc')->paginate(10);
+        $penggajians = $query->orderBy('periode_bulan', 'desc')->paginate(10)->withQueryString();
 
         return inertia('Payroll/Index', [
             'penggajians' => $penggajians,
@@ -96,41 +103,21 @@ class PenggajianController extends Controller
             ? $user->unit_sekolah_id
             : null;
 
-        // [FIX] N+1: Group Presensi untuk semua pegawai sekaligus (dengan scope unit)
-        $presensiQuery = Presensi::whereBetween('tanggal', [
-            $periodeStart->format('Y-m-d'),
-            $periodeEnd->format('Y-m-d'),
-        ]);
-        if ($unitScope) {
-            $presensiQuery->where(function ($q) use ($unitScope) {
-                $q->where('unit_sekolah_id', $unitScope)->orWhereNull('unit_sekolah_id');
-            });
-        }
-        $attendanceRaw = $presensiQuery
-            ->selectRaw('pegawai_id, status, count(*) as total')
-            ->groupBy('pegawai_id', 'status')
-            ->get();
+        // [PERF] Satu query scan presensi untuk SEMUA kebutuhan payroll,
+        // agregasi di PHP (PresensiAggregator) — hemat 4 query scan.
+        $presensiAgg = $this->presensiAggregator->aggregate(
+            $pegawais->pluck('id'),
+            $periodeStart,
+            $periodeEnd,
+            $attendanceCutoff,
+            $unitScope,
+        );
 
-        $attendanceByPegawai = $attendanceRaw->groupBy('pegawai_id');
-
-        $sakitProrata = Presensi::whereBetween('tanggal', [
-                $periodeStart->format('Y-m-d'),
-                $periodeEnd->format('Y-m-d'),
-            ])
-            ->where('status', 'sakit')
-            ->selectRaw('pegawai_id, COALESCE(SUM(persentase_bayar_jam), 0) as total_persen')
-            ->groupBy('pegawai_id')
-            ->pluck('total_persen', 'pegawai_id');
-
-        // [FIX] N+1: Prefetch presensi lembur untuk semua pegawai sekaligus
-        $lemburQuery = Presensi::whereIn('pegawai_id', $pegawais->pluck('id'))
-            ->where('is_lembur', true)
-            ->where('lembur_status', 'disetujui')
-            ->whereNotNull('jam_masuk')
-            ->whereNotNull('jam_keluar')
-            ->whereBetween('tanggal', [$periodeStart, $attendanceCutoff])
-            ->get();
-        $lemburByPegawai = $lemburQuery->groupBy('pegawai_id');
+        $attendanceByPegawai = $presensiAgg['attendance'];
+        $sakitProrata = $presensiAgg['sakit_prorata'];
+        $presentDaysByPegawai = $presensiAgg['present_days'];
+        $lemburByPegawai = $presensiAgg['lembur'];
+        $attendedJadwalByPegawai = $presensiAgg['attended_jadwal'];
 
         DB::beginTransaction();
         try {
@@ -165,7 +152,7 @@ class PenggajianController extends Controller
                         continue;
                     }
                     $nominal = round((float) $this->computeComponentNominal(
-                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata
+                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDaysByPegawai, $attendedJadwalByPegawai
                     ), 2);
 
                     if ($nominal > 0) {
@@ -236,7 +223,7 @@ class PenggajianController extends Controller
     {
         $periode = $month.'-'.$year;
 
-        $penggajians = Penggajian::with(['pegawai.pengajuanIzins', 'details'])
+        $penggajians = Penggajian::with('pegawai', 'details')
             ->where('periode_bulan', $periode)
             ->where('status', 'draft')
             ->get();
@@ -440,6 +427,57 @@ class PenggajianController extends Controller
         return inertia('Payroll/Show', ['penggajian' => $penggajian]);
     }
 
+    /**
+     * PDF slip gaji (F3).
+     */
+    public function pdf($id)
+    {
+        $penggajian = Penggajian::with(['pegawai.units', 'pegawai.jabatans', 'details'])->findOrFail($id);
+
+        // Verifikasi akses: hanya admin unit/pegawai sendiri/superadmin
+        $user = auth()->user();
+        if (! $user) {
+            abort(403);
+        }
+        if (! $user->can('view_all_units')) {
+            if ($user->unit_sekolah_id) {
+                if (! $penggajian->pegawai?->belongsToUnit($user->unit_sekolah_id)) {
+                    abort(403);
+                }
+            } else {
+                $peg = Pegawai::where('user_id', $user->id)->first();
+                if (! $peg || $penggajian->pegawai_id !== $peg->id) {
+                    abort(403);
+                }
+            }
+        }
+
+        $pdf = Pdf::loadView('exports.pdf-slip', [
+            'penggajian' => $penggajian,
+        ])->setPaper('A4', 'portrait');
+
+        $filename = 'slip-gaji-'.$penggajian->pegawai->nama_lengkap.'-'.$penggajian->periode_bulan.'.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Export daftar gaji untuk transfer bank (Excel) per periode (F3).
+     */
+    public function exportBank(Request $request)
+    {
+        $this->authorizePayrollModification();
+
+        $request->validate([
+            'periode_bulan' => 'required|string',
+        ]);
+
+        return Excel::download(
+            new TransferBankExport($request->periode_bulan),
+            'transfer-bank-'.$request->periode_bulan.'.xlsx'
+        );
+    }
+
     public function markPaid($id)
     {
         $this->authorizePayrollModification();
@@ -525,9 +563,12 @@ class PenggajianController extends Controller
      * @param  Carbon  $periodeStart  Awal periode penggajian
      * @param  Carbon  $attendanceCutoff  Batas cut-off presensi (untuk periode current)
      * @param  Collection|null  $lemburByPegawai  Data presensi lembur (prefetched)
+     * @param  Collection|null  $sakitProrata  Total persen bayar per pegawai utk status sakit
+     * @param  Collection|null  $presentDays  Jumlah hari kalender hadir/telat per pegawai (dedup per tanggal)
+     * @param  Collection|null  $attendedJadwalByPegawai  Map pegawai_id => [jadwal_id => jumlah hadir]
      * @return float nominal komponen gaji
      */
-    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null): float
+    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null, $presentDays = null, $attendedJadwalByPegawai = null): float
     {
         $nominal = 0;
 
@@ -573,7 +614,11 @@ class PenggajianController extends Controller
             } elseif ($this->isKehadiranType($komponen, 'kehadiran_cuti', ['cuti'])) {
                 $nominal = $rate * $counts['cuti'];
             } elseif ($this->isKehadiranType($komponen, 'tunjangan_kehadiran', ['makan', 'transport', 'hadir'])) {
-                $nominal = $rate * ($counts['hadir'] + $counts['telat']);
+                // Dibayar 1x per hari kalender (dedup per tanggal), bukan per record jadwal.
+                $present = $presentDays && isset($presentDays[$pegawai->id])
+                    ? (int) $presentDays[$pegawai->id]
+                    : $counts['hadir'] + $counts['telat'];
+                $nominal = $rate * $present;
             } else {
                 $nominal = 0;
             }
@@ -600,17 +645,9 @@ class PenggajianController extends Controller
 
             $syarat = $komponen->syarat_bayar_jam_mengajar ?: 'hanya_hadir';
 
-            $attendedJadwalIds = collect();
-            if ($syarat === 'hanya_hadir' && $pegawai->jadwals->isNotEmpty()) {
-                $attendedJadwalIds = Presensi::where('pegawai_id', $pegawai->id)
-                    ->whereIn('jadwal_id', $pegawai->jadwals->pluck('id'))
-                    ->whereIn('status', ['hadir', 'telat'])
-                    ->where('is_lembur', false)
-                    ->whereBetween('tanggal', [$periodeStart, $attendanceCutoff])
-                    ->selectRaw('jadwal_id, count(*) as total')
-                    ->groupBy('jadwal_id')
-                    ->pluck('total', 'jadwal_id');
-            }
+            $attendedJadwalIds = $attendedJadwalByPegawai && isset($attendedJadwalByPegawai[$pegawai->id])
+                ? $attendedJadwalByPegawai[$pegawai->id]
+                : collect();
 
             $totalHoursMonthly = 0;
             foreach ($pegawai->jadwals as $jadwal) {

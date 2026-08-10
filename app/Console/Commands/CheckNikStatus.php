@@ -19,7 +19,7 @@ class CheckNikStatus extends Command
     {
         $total = DB::table('pegawai')->count();
         $cipher = DB::table('pegawai')->where('nik', 'like', 'eyJ%')->count();
-        $plain = DB::table('pegawai')->whereRaw("nik IS NOT NULL AND nik NOT LIKE 'eyJ%'")->count();
+        $plain = DB::table('pegawai')->whereNotNull('nik')->where('nik', 'not like', 'eyJ%')->count();
         $nullNik = DB::table('pegawai')->whereNull('nik')->count();
         $hashNull = DB::table('pegawai')->whereNull('nik_hash')->count();
 

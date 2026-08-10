@@ -3,6 +3,9 @@ import { checkGeofence } from '@/Utils/geo';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '@/Constants/AppConstants';
 import { Card, Toggle, Empty } from '@/Components/MobileUI';
 import SlideToConfirm from '@/Components/SlideToConfirm';
+import { useCamera } from '@/Hooks/useCamera';
+import { useGeolocation } from '@/Hooks/useGeolocation';
+import { useMotionSamples } from '@/Hooks/useMotionSamples';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, Clock } from 'lucide-react';
 
 const FOTO_PAGI = 'foto_pagi';
@@ -12,33 +15,30 @@ const SELESAI = 'selesai';
 
 const pad = (n) => String(n).padStart(2, '0');
 
-export default function TetapPresensi({ pegawai, jadwals, presensiHariIni }) {
+export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [loadingLocation, setLoadingLocation] = useState(false);
-    const [locationError, setLocationError] = useState(null);
-    const [showLive, setShowLive] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
-    const [capturedPhoto, setCapturedPhoto] = useState(null);
     const [currentTime, setCurrentTime] = useState('');
-    const [geoStatus, setGeoStatus] = useState('idle');
-    const [currentPosition, setCurrentPosition] = useState(null);
-    const [geoInfo, setGeoInfo] = useState(null);
-    const [geoInfoLoading, setGeoInfoLoading] = useState(false);
     const [posA, setPosA] = useState(null);
+    const [posAwal, setPosAwal] = useState(null);
     const [tappedIds, setTappedIds] = useState(() => new Set(
         presensiHariIni.filter((p) => p.jadwal_id).map((p) => p.jadwal_id)
     ));
     const [tapLoading, setTapLoading] = useState(null);
 
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-    const streamRef = useRef(null);
-    const photoInputRef = useRef(null);
-    const geoControllerRef = useRef(null);
-    const watchIdRef = useRef(null);
-    const geocodedRef = useRef(false);
     const errorRef = useRef(null);
+
+    const {
+        loadingLocation,
+        geoStatus,
+        currentPosition,
+        geoInfo,
+        geoInfoLoading,
+        locationError: geoLocationError,
+        getCurrentPosition,
+        clearGeolocation,
+    } = useGeolocation();
 
     const pagiRecord = useMemo(() => presensiHariIni.find((p) => p.jadwal_id === null && !p.is_lembur), [presensiHariIni]);
     const now = new Date();
@@ -57,166 +57,6 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni }) {
         return TAP_JADWAL;
     }, [pagiRecord, allActiveTapped, jamSekarang]);
 
-    useEffect(() => {
-        if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, [error]);
-
-    useEffect(() => {
-        if (phase === FOTO_PAGI || phase === FOTO_SORE) {
-            startCamera();
-            setCurrentTime(new Date().toLocaleTimeString('id-ID', { hour12: false }));
-            const clock = setInterval(() => {
-                setCurrentTime(new Date().toLocaleTimeString('id-ID', { hour12: false }));
-            }, 1000);
-            getCurrentPosition();
-            return () => {
-                clearInterval(clock);
-                if (streamRef.current) {
-                    streamRef.current.getTracks().forEach((t) => t.stop());
-                    streamRef.current = null;
-                }
-                if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
-                if (geoControllerRef.current) geoControllerRef.current.abort();
-            };
-        }
-        return () => {};
-    }, [phase]);
-
-    useEffect(() => {
-        if (showLive && videoRef.current && streamRef.current) {
-            videoRef.current.srcObject = streamRef.current;
-            videoRef.current.play().catch(() => {});
-        }
-    }, [showLive]);
-
-    const startCamera = useCallback(async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } },
-                audio: false,
-            });
-            streamRef.current = stream;
-            setShowLive(true);
-        } catch (err) {
-            setShowLive(false);
-            if (!locationError) setLocationError('Kamera tidak dapat diakses. Gunakan tombol di bawah untuk unggah foto.');
-        }
-    }, [locationError]);
-
-    const stopCamera = useCallback(() => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach((t) => t.stop());
-            streamRef.current = null;
-        }
-    }, []);
-
-    const createEvidencePhoto = useCallback((source, sourceWidth, sourceHeight) => {
-        return new Promise((resolve) => {
-            const MAX = 1024;
-            const targetRatio = 3 / 4;
-            let cropWidth = sourceWidth, cropHeight = sourceHeight, cropX = 0, cropY = 0;
-            if (sourceWidth / sourceHeight > targetRatio) {
-                cropWidth = sourceHeight * targetRatio;
-                cropX = (sourceWidth - cropWidth) / 2;
-            } else {
-                cropHeight = sourceWidth / targetRatio;
-                cropY = (sourceHeight - cropHeight) / 2;
-            }
-            const scale = Math.min(1, MAX / Math.max(cropWidth, cropHeight));
-            const width = Math.round(cropWidth * scale);
-            const height = Math.round(cropHeight * scale);
-            const cvs = canvasRef.current;
-            cvs.width = width;
-            cvs.height = height;
-            cvs.getContext('2d').drawImage(source, cropX, cropY, cropWidth, cropHeight, 0, 0, width, height);
-            resolve(cvs.toDataURL('image/jpeg', 0.84));
-        });
-    }, []);
-
-    const capturePhoto = useCallback(async () => {
-        if (!currentPosition) return;
-        if (!videoRef.current || !canvasRef.current) return;
-        const video = videoRef.current;
-        if (!video.videoWidth || !video.videoHeight) return;
-
-        setPosA({ ...currentPosition, captured_at: new Date().toISOString() });
-        setIsSubmitting(true);
-        const dataUrl = await createEvidencePhoto(video, video.videoWidth, video.videoHeight);
-        setCapturedPhoto(dataUrl);
-        stopCamera();
-        setShowLive(false);
-        setIsSubmitting(false);
-    }, [currentPosition, createEvidencePhoto, stopCamera]);
-
-    const retakePhoto = useCallback(() => {
-        setCapturedPhoto(null);
-        startCamera();
-    }, [startCamera]);
-
-    const getCurrentPosition = useCallback(() => {
-        setLoadingLocation(true);
-        setGeoStatus('loading');
-        if (!navigator.geolocation) {
-            setGeoStatus('error');
-            setLocationError('Geolocation tidak didukung di perangkat ini.');
-            setLoadingLocation(false);
-            return;
-        }
-        const id = navigator.geolocation.watchPosition(
-            (pos) => {
-                setCurrentPosition({
-                    latitude: pos.coords.latitude,
-                    longitude: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy,
-                });
-                setGeoStatus('ready');
-                setLoadingLocation(false);
-                if (geocodedRef.current) return;
-                geocodedRef.current = true;
-                setGeoInfoLoading(true);
-                geoControllerRef.current?.abort();
-                geoControllerRef.current = new AbortController();
-                fetch(
-                    `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&localityLanguage=id`,
-                    { signal: geoControllerRef.current.signal }
-                )
-                    .then((r) => { if (!r.ok) throw new Error('Geocoding failed'); return r.json(); })
-                    .then((d) => setGeoInfo({
-                        locality: d.locality, city: d.city, principalSubdivision: d.principalSubdivision,
-                        postcode: d.postcode, countryName: d.countryName, streetName: d.streetName, streetNumber: d.streetNumber,
-                    }))
-                    .catch((err) => { if (err.name !== 'AbortError') setGeoInfo(null); })
-                    .finally(() => setGeoInfoLoading(false));
-            },
-            (err) => {
-                setGeoStatus('error');
-                setLocationError(err.message || 'Tidak dapat mengambil lokasi.');
-                setLoadingLocation(false);
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-        watchIdRef.current = id;
-    }, []);
-
-    const handleFileFallback = useCallback((e) => {
-        if (!currentPosition) return;
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const image = new Image();
-            image.onload = async () => {
-                setIsSubmitting(true);
-                const dataUrl = await createEvidencePhoto(image, image.naturalWidth, image.naturalHeight);
-                setCapturedPhoto(dataUrl);
-                setIsSubmitting(false);
-            };
-            image.onerror = () => setError('Foto tidak dapat diproses. Pilih file gambar lain.');
-            image.src = reader.result;
-        };
-        reader.readAsDataURL(file);
-    }, [currentPosition, createEvidencePhoto]);
-
     const lemburUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
 
     const geofence = useMemo(() => {
@@ -231,6 +71,89 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni }) {
 
     const geoBlocked = geofence && !geofence.inside;
     const geoReady = geofence !== null;
+
+    const isInsideJadwal = useCallback((jadwal) => {
+        if (!currentPosition) return false;
+        const unit = jadwal?.unit_sekolah || lemburUnit;
+        if (!unit) return false;
+        const lat = parseFloat(unit.latitude);
+        const lon = parseFloat(unit.longitude);
+        if (isNaN(lat) || isNaN(lon)) return false;
+        const radius = unit.radius_meter ?? 50;
+        const { inside } = checkGeofence(currentPosition.latitude, currentPosition.longitude, lat, lon, radius);
+        return inside;
+    }, [currentPosition, lemburUnit]);
+
+    const camera = useCamera({
+        canCapture: Boolean(currentPosition && geofence?.inside),
+        currentPosition,
+        onWillCapture: (pos) => setPosA(pos),
+    });
+
+    const {
+        videoRef,
+        canvasRef,
+        photoInputRef,
+        streamRef,
+        showLive,
+        capturedPhoto,
+        cameraError,
+        isCapturing,
+        startCamera,
+        capturePhoto,
+        retakePhoto,
+        handleFileFallback,
+        clearCamera,
+    } = camera;
+
+    // Tampilkan error gabungan (kamera / GPS) di fallback upload.
+    const locationError = cameraError || geoLocationError;
+
+    useEffect(() => {
+        if (error) {
+            errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [error]);
+
+    const { motionSamples, collectMotionSamples } = useMotionSamples();
+
+    // Capture posisi awal (first GPS fix) untuk trajectory 3-titik
+    useEffect(() => {
+        if (currentPosition && !posAwal) {
+            setPosAwal({
+                latitude: currentPosition.latitude,
+                longitude: currentPosition.longitude,
+                accuracy: currentPosition.accuracy,
+                captured_at: new Date().toISOString(),
+            });
+        }
+    }, [currentPosition, posAwal]);
+
+    useEffect(() => {
+        setCurrentTime(new Date().toLocaleTimeString('id-ID', { hour12: false }));
+        const clock = setInterval(() => {
+            setCurrentTime(new Date().toLocaleTimeString('id-ID', { hour12: false }));
+        }, 1000);
+        getCurrentPosition();
+
+        if (phase === FOTO_PAGI || phase === FOTO_SORE) {
+            startCamera();
+        }
+
+        return () => {
+            clearInterval(clock);
+            clearCamera();
+            clearGeolocation();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [phase]);
+
+    useEffect(() => {
+        if (showLive && videoRef.current && streamRef.current) {
+            videoRef.current.srcObject = streamRef.current;
+            videoRef.current.play().catch(() => {});
+        }
+    }, [showLive]);
 
     const handleSubmitFoto = useCallback(async (tipe) => {
         setError(null);
@@ -258,6 +181,12 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni }) {
             pos_a_lng: posA?.longitude ?? null,
             pos_a_accuracy: posA?.accuracy ?? null,
             pos_a_captured_at: posA?.captured_at ?? null,
+            pos_awal_lat: posAwal?.latitude ?? null,
+            pos_awal_lng: posAwal?.longitude ?? null,
+            pos_awal_accuracy: posAwal?.accuracy ?? null,
+            pos_awal_captured_at: posAwal?.captured_at ?? null,
+            motion_samples: motionSamples ? JSON.stringify(motionSamples) : null,
+            attestation_token: attestationToken,
         };
 
         try {
@@ -305,13 +234,18 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni }) {
             else { console.error('[TetapPresensi]', err); setError('Tidak dapat terhubung ke server.'); }
         } finally {
             setIsSubmitting(false);
-        }
-    }, [capturedPhoto, currentPosition, geoBlocked, geofence, posA]);
+        }        }, [capturedPhoto, currentPosition, geoBlocked, geofence, posA, posAwal, motionSamples]);
 
     const handleTap = useCallback(async (jadwalId) => {
         setTapLoading(jadwalId);
         setError(null);
         setSuccessMessage(null);
+
+        if (!currentPosition) {
+            setTapLoading(null);
+            setError('Lokasi belum tersedia. Pastikan GPS aktif.');
+            return;
+        }
 
         setTappedIds((prev) => new Set(prev).add(jadwalId));
         setSuccessMessage(null);
@@ -328,6 +262,10 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni }) {
                 body: JSON.stringify({
                     _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                     jadwal_id: jadwalId,
+                    latitude: currentPosition.latitude,
+                    longitude: currentPosition.longitude,
+                    accuracy: currentPosition.accuracy,
+                    mock_suspect: currentPosition.accuracy === 0,
                 }),
             });
 
@@ -354,7 +292,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni }) {
         } finally {
             setTapLoading(null);
         }
-    }, []);
+    }, [currentPosition]);
 
     const timeString = `${pad(now.getHours())}.${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     const dateString = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -425,12 +363,20 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni }) {
                                         <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-primary">{j.jam_mulai?.slice(0, 5)}</span>
                                     </div>
                                     {phase === TAP_JADWAL ? (
-                                        <SlideToConfirm
-                                            onConfirm={() => handleTap(j.id)}
-                                            disabled={done || tapLoading !== null}
-                                            confirmed={done}
-                                            label={done ? 'Sudah di-tap' : `Tap ${j.mata_pelajaran?.nama || 'jadwal'}`}
-                                        />
+                                        <>
+                                            <SlideToConfirm
+                                                onConfirm={() => handleTap(j.id)}
+                                                disabled={done || tapLoading !== null || !currentPosition || !isInsideJadwal(j)}
+                                                confirmed={done}
+                                                label={done ? 'Sudah di-tap' : `Tap ${j.mata_pelajaran?.nama || 'jadwal'}`}
+                                            />
+                                            {!done && (!currentPosition || !isInsideJadwal(j)) && (
+                                                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
+                                                    <MapPin className="h-3 w-3 shrink-0" />
+                                                    {!currentPosition ? 'Tunggu GPS aktif…' : 'Di luar radius unit — geser tidak aktif'}
+                                                </p>
+                                            )}
+                                        </>
                                     ) : done && (
                                         <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
                                             <CheckCircle className="h-4 w-4" /> Sudah di-tap
@@ -483,7 +429,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni }) {
                                 <button
                                     type="button"
                                     onClick={() => photoInputRef.current?.click()}
-                                    disabled={!currentPosition}
+                                    disabled={geoBlocked || !currentPosition}
                                     className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-950 px-6 text-center text-slate-300 transition-colors active:bg-slate-900 disabled:opacity-40"
                                 >
                                     <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-200">
@@ -523,8 +469,8 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni }) {
                                     <div className="mb-4 flex justify-center">
                                         <button
                                             type="button"
-                                            onClick={capturePhoto}
-                                            disabled={!currentPosition}
+                                            onClick={() => { collectMotionSamples(); capturePhoto(); }}
+                                            disabled={isCapturing || geoBlocked || !currentPosition}
                                             aria-label={`Ambil foto ${phase === FOTO_PAGI ? 'pagi' : 'sore'}`}
                                             className={`flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-white bg-transparent transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100`}
                                         >

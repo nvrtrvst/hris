@@ -55,7 +55,23 @@ class Pegawai extends Model
         'wajib_kantor',
     ];
 
-    protected $appends = ['sisa_cuti', 'cuti_terpakai', 'foto_url', 'nik_masked'];
+    // P2: sisa_cuti/cuti_terpakai TIDAK di-appends global — accessor-nya query DB
+    // (pengajuanIzins). Kalau auto-append, setiap serialisasi (termasuk auth.user.pegawai
+    // di HandleInertiaRequests) memicu query per request. Append eksplisit di controller
+    // yang butuh, dengan eager-load pengajuanIzins.
+    protected $appends = ['foto_url', 'nik_masked'];
+
+    /**
+     * Muat data cuti + append accessor sisa_cuti/cuti_terpakai.
+     * Panggil dari controller yang menampilkan sisa cuti di FE.
+     */
+    public function loadCutiInfo(): static
+    {
+        $this->load('pengajuanIzins');
+        $this->append(['sisa_cuti', 'cuti_terpakai']);
+
+        return $this;
+    }
 
     /**
      * Field sensitif yang TIDAK boleh diserialize ke FE / API.
@@ -126,8 +142,20 @@ class Pegawai extends Model
             $pegawai->nik = $plaintext !== ''
                 ? Crypt::encryptString($plaintext)
                 : null;
-            $pegawai->nik_hash = $plaintext !== '' ? hash('sha256', $plaintext) : null;
+            $pegawai->nik_hash = self::nikHash($plaintext);
         });
+    }
+
+    /**
+     * Normalisasi NIK untuk lookup equality: trim + SHA-256.
+     * Satu-satunya sumber kebenaran — semua search/import/seed wajib pakai ini
+     * agar tidak drift dengan saving hook di atas yang menulis nik_hash.
+     */
+    public static function nikHash(string $nik): ?string
+    {
+        $plaintext = trim($nik);
+
+        return $plaintext !== '' ? hash('sha256', $plaintext) : null;
     }
 
     public function user(): BelongsTo

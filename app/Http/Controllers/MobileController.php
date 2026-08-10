@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Constants\PresensiMessages;
 use App\Jobs\ProcessPresensiFoto;
+use App\Models\Announcement;
 use App\Models\Jadwal;
 use App\Models\Presensi;
+use App\Services\AttestationService;
+use App\Services\SpoofDetector;
 use App\Traits\CalculatesDistance;
 use App\Traits\ResolvesPegawai;
 use Carbon\Carbon;
@@ -24,6 +27,10 @@ class MobileController extends Controller
 {
     use CalculatesDistance, ResolvesPegawai;
 
+    public function __construct(
+        private AttestationService $attestationService,
+    ) {}
+
     private function rememberJadwal(string $key, int $ttl, \Closure $callback): mixed
     {
         try {
@@ -31,10 +38,12 @@ class MobileController extends Controller
             if ($cached instanceof \__PHP_Incomplete_Class) {
                 throw new \UnexpectedValueException('Cache corrupted: incomplete class');
             }
+
             return $cached;
         } catch (\Throwable $e) {
             Log::warning('Cache jadwal corrupted', ['key' => $key, 'error' => $e->getMessage()]);
             Cache::forget($key);
+
             return $callback();
         }
     }
@@ -84,7 +93,7 @@ class MobileController extends Controller
         $bulan = (int) ($validated['bulan'] ?? Carbon::now()->month);
         $tahun = (int) ($validated['tahun'] ?? Carbon::now()->year);
 
-        $presensi = Presensi::with('unitSekolah')
+        $presensi = Presensi::with(['unitSekolah', 'jadwal.mataPelajaran'])
             ->where('pegawai_id', $pegawai->id)
             ->whereBetween('tanggal', [
                 Carbon::createFromDate($tahun, $bulan, 1)->startOfMonth()->format('Y-m-d'),
@@ -93,10 +102,86 @@ class MobileController extends Controller
             ->orderBy('tanggal', 'desc')
             ->get();
 
+        // Ringkasan kehadiran bulan ini (F5)
+        $countsCount = $presensi->filter(fn ($p) => ! $p->is_lembur)->groupBy('status')->map->count();
+        $hadir = (int) ($countsCount['hadir'] ?? 0);
+        $telat = (int) ($countsCount['telat'] ?? 0);
+        $sakit = (int) ($countsCount['sakit'] ?? 0);
+        $izin = (int) ($countsCount['izin'] ?? 0);
+        $cuti = (int) ($countsCount['cuti'] ?? 0);
+        $alpa = (int) ($countsCount['alpa'] ?? 0);
+        $awalBulan = Carbon::createFromDate($tahun, $bulan, 1);
+        $workingDays = $this->countWeekdaysInRange($awalBulan->copy()->startOfMonth(), $awalBulan->copy()->endOfMonth());
+        $totalHadir = $hadir + $telat + $izin + $sakit + $cuti;
+        $alphaTerisi = max(0, $workingDays - $totalHadir);
+        $alpa = $alpa + $alphaTerisi;
+        $presentCount = $hadir + $telat;
+        $percent = $workingDays > 0 ? round(($presentCount / $workingDays) * 100) : 0;
+
+        $summary = [
+            'hadir' => $hadir,
+            'telat' => $telat,
+            'sakit' => $sakit,
+            'izin' => $izin,
+            'cuti' => $cuti,
+            'alpa' => $alpa,
+            'working_days' => $workingDays,
+            'present' => $presentCount,
+            'percent' => $percent,
+        ];
+
         return inertia('Mobile/Riwayat', [
             'pegawai' => $pegawai,
             'presensi' => $presensi,
+            'summary' => $summary,
             'filters' => ['bulan' => $bulan, 'tahun' => $tahun],
+        ]);
+    }
+
+    /**
+     * Hitung hari kerja (Senin-Jumat) dalam rentang tanggal (F5).
+     * O(1): formula matematis, bukan loop harian.
+     * Catatan: hari libur nasional belum di-exclude — enhancement nanti.
+     */
+    private function countWeekdaysInRange(Carbon $start, Carbon $end): int
+    {
+        if ($start->gt($end)) {
+            return 0;
+        }
+
+        $totalDays = $start->diffInDays($end) + 1;
+        $fullWeeks = intdiv($totalDays, 7);
+        $remainderDays = $totalDays % 7;
+        $startDay = $start->dayOfWeek; // 0 = Minggu
+
+        $count = $fullWeeks * 5;
+        for ($i = 0; $i < $remainderDays; $i++) {
+            $day = ($startDay + $i) % 7;
+            if ($day !== Carbon::SUNDAY && $day !== Carbon::SATURDAY) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Daftar pengumuman yayasan untuk portal mobile (F6).
+     */
+    public function pengumuman()
+    {
+        $pegawai = $this->getPegawai();
+        $unitId = $pegawai?->units()->first()?->id;
+
+        $pengumuman = Announcement::with('creator:id,name')
+            ->published()
+            ->forUnit($unitId)
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('published_at')
+            ->get();
+
+        return inertia('Mobile/Pengumuman', [
+            'pengumuman' => $pengumuman,
         ]);
     }
 
@@ -175,7 +260,8 @@ class MobileController extends Controller
     private function resolveOwnedJadwal(int $jadwalId): array
     {
         $pegawai = $this->getPegawai();
-        $jadwal = Jadwal::with(['unitSekolah', 'kelas.jurusan'])
+        // Relasi `kelas` sudah dihapus (kelas_label menggantikan) — jangan eager-load.
+        $jadwal = Jadwal::with(['unitSekolah'])
             ->whereKey($jadwalId)
             ->where('pegawai_id', $pegawai->id)
             ->firstOrFail();
@@ -200,6 +286,7 @@ class MobileController extends Controller
     {
         if ($jadwal->kelas_label) {
             $parts = explode(' - ', $jadwal->kelas_label, 2);
+
             return [
                 'tingkat' => trim($parts[0] ?? ''),
                 'kelas' => trim($parts[1] ?? $parts[0] ?? ''),
@@ -269,6 +356,7 @@ class MobileController extends Controller
             'jadwals' => $jadwalHariIni,
             'presensiHariIni' => $presensiHariIni,
             'officeAttendance' => $pegawai->wajib_kantor && ($jadwalHariIni?->isEmpty() ?? false),
+            'attestation_token' => $this->attestationService->issue(),
         ]);
     }
 
@@ -288,7 +376,13 @@ class MobileController extends Controller
             'pos_a_lng' => 'nullable|numeric|between:-180,180',
             'pos_a_accuracy' => 'nullable|numeric|min:0',
             'pos_a_captured_at' => 'nullable|date',
-            'foto' => ['required', 'string', 'max:7000000', 'regex:/^data:image\/\w+;base64,/'],
+            'attestation_token' => 'nullable|string',
+            'pos_awal_lat' => 'nullable|numeric|between:-90,90',
+            'pos_awal_lng' => 'nullable|numeric|between:-180,180',
+            'pos_awal_accuracy' => 'nullable|numeric|min:0',
+            'pos_awal_captured_at' => 'nullable|date',
+            'motion_samples' => 'nullable|json',
+            'foto' => ['required', 'string', 'max:'.PresensiMessages::MAX_FOTO_BASE64, 'regex:/^data:image\/\w+;base64,/'],
         ]);
 
         $pegawai = $this->getPegawai();
@@ -380,6 +474,27 @@ class MobileController extends Controller
         $lokasiPerluReview = $mockSuspect || ($accuracy !== null && $accuracy < 10);
         $capturedAt = $request->filled('captured_at') ? Carbon::parse($request->captured_at) : null;
 
+        // Attestation verification (skip if token not provided — backward compat)
+        if ($request->filled('attestation_token')) {
+            $attestation = $this->attestationService->verify(
+                $request->input('attestation_token'),
+                $request->input('captured_at')
+            );
+            if (! $attestation['valid']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => PresensiMessages::ATTESTATION_EXPIRED,
+                    'errors' => ['attestation' => 'Sesi habis. Silakan refresh halaman.'],
+                ], 422);
+            }
+        }
+
+        // Anti-spoof multi-faktor (trajectory + motion + speed + IP, satu helper)
+        $spoofDetector = new SpoofDetector;
+        $spoofData = $this->computeSpoofData($request, $speed, $accuracy, $spoofDetector);
+        $posisiMencurigakan = $posisiMencurigakan || $spoofData['posisi_mencurigakan'];
+        $lokasiPerluReview = $lokasiPerluReview || $spoofData['posisi_mencurigakan'];
+
         $now = Carbon::now();
         $overlayData = [
             'label' => $isLembur ? 'BUKTI LEMBUR' : 'BUKTI PRESENSI',
@@ -399,7 +514,48 @@ class MobileController extends Controller
         $decoded = base64_decode(explode(',', $base64Data, 2)[1] ?? '');
         $disk->put($tempPath, $decoded);
 
-        $presensi = DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan, $tipePresensi, $hariIni) {
+        try {
+            $presensi = $this->storeAbsenTransaction($request, $pegawai, $jadwal, $unit, $distance, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan, $tipePresensi, $hariIni, $spoofData);
+        } catch (\Throwable $e) {
+            // Jangan tinggalkan sampah temp foto saat transaksi/validasi gagal
+            // (job ProcessPresensiFoto tidak pernah di-dispatch di jalur ini).
+            if ($disk->exists($tempPath)) {
+                $disk->delete($tempPath);
+            }
+
+            throw $e;
+        }
+
+        Bus::dispatchSync(new ProcessPresensiFoto(
+            $presensi->id,
+            $request->tipe,
+            $tempPath,
+            $isLembur ? 'presensi/lembur' : 'presensi',
+            $overlayData,
+            ['id' => $pegawai->id, 'nama' => $pegawai->nama_lengkap, 'latitude' => $request->latitude, 'longitude' => $request->longitude]
+        ));
+
+        $successMessage = $request->tipe === 'masuk'
+            ? sprintf($isLembur ? PresensiMessages::LEMBUR_MASUK_SUCCESS : PresensiMessages::ABSEN_MASUK_SUCCESS, $distance)
+            : sprintf($isLembur ? PresensiMessages::LEMBUR_KELUAR_SUCCESS : PresensiMessages::ABSEN_KELUAR_SUCCESS, $distance);
+
+        return response()->json([
+            'success' => true,
+            'message' => $successMessage,
+        ]);
+    }
+
+    /**
+     * Simpan presensi dalam satu transaksi — dipakai bersama storeAbsen
+     * (mengajar / lembur / kantor) dan storeAbsenTetap (kantor).
+     *
+     * @param  Jadwal|null  $jadwal  Wajib saat tipe 'mengajar'; null untuk lembur/kantor
+     * @param  string  $tipePresensi  lembur | mengajar | kantor (default 'kantor')
+     * @param  string  $hariIni  Nama hari (Indonesia) untuk cek pulang-awal mengajar
+     */
+    private function storeAbsenTransaction(Request $request, $pegawai, ?Jadwal $jadwal, $unit, float $distance, bool $isLembur, float $accuracy, $speed, $capturedAt, bool $lokasiPerluReview, bool $posisiMencurigakan, string $tipePresensi = 'kantor', string $hariIni = '', array $spoofData = []): Presensi
+    {
+        return DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan, $tipePresensi, $hariIni, $spoofData) {
             // Cari presensi existing
             if ($isLembur) {
                 $presensi = Presensi::where('pegawai_id', $pegawai->id)
@@ -409,6 +565,7 @@ class MobileController extends Controller
                     ->first();
             } elseif ($tipePresensi === 'kantor') {
                 $presensi = Presensi::where('pegawai_id', $pegawai->id)
+                    ->whereNull('jadwal_id')
                     ->where('tipe_presensi', 'kantor')
                     ->where('tanggal', Carbon::today())
                     ->lockForUpdate()
@@ -500,29 +657,43 @@ class MobileController extends Controller
                 $presensi->lokasi_perlu_review = $presensi->lokasi_perlu_review || $lokasiPerluReview;
             }
 
+            // Simpan data anti-spoof v2
+            $presensi->trajectory_samples = $spoofData['trajectory_samples'] ?? null;
+            $presensi->motion_samples = $spoofData['motion_samples'] ?? null;
+            $presensi->motion_suspect = $spoofData['motion_suspect'] ?? false;
+            $presensi->ip_geo = $spoofData['ip_geo'] ?? null;
+
             $presensi->save();
 
             return $presensi;
         });
+    }
 
-        Bus::dispatchSync(new ProcessPresensiFoto(
-            $presensi->id,
-            $request->tipe,
-            $tempPath,
-            $isLembur ? 'presensi/lembur' : 'presensi',
-            $overlayData,
-            ['id' => $pegawai->id, 'nama' => $pegawai->nama_lengkap]
-        ));
+    private function computeSpoofData(Request $request, $speed, float $accuracy, $spoofDetector): array
+    {
+        // Build trajectory 3 titik
+        $trajectory = [];
+        if ($request->filled('pos_awal_lat') && $request->filled('pos_awal_lng')) {
+            $trajectory[] = ['label' => 'awal', 'lat' => (float) $request->pos_awal_lat, 'lng' => (float) $request->pos_awal_lng, 'accuracy' => $request->filled('pos_awal_accuracy') ? (float) $request->pos_awal_accuracy : null, 'captured_at' => $request->pos_awal_captured_at];
+        }
+        if ($request->filled('pos_a_lat') && $request->filled('pos_a_lng')) {
+            $trajectory[] = ['label' => 'a', 'lat' => (float) $request->pos_a_lat, 'lng' => (float) $request->pos_a_lng, 'accuracy' => $request->filled('pos_a_accuracy') ? (float) $request->pos_a_accuracy : null, 'captured_at' => $request->pos_a_captured_at];
+        }
+        $trajectory[] = ['label' => 'b', 'lat' => (float) $request->latitude, 'lng' => (float) $request->longitude, 'accuracy' => $accuracy, 'captured_at' => $request->captured_at];
 
-        $label = $isLembur ? PresensiMessages::LABEL_LEMBUR : PresensiMessages::LABEL_ABSEN;
-        $successMessage = $request->tipe === 'masuk'
-            ? sprintf($isLembur ? PresensiMessages::LEMBUR_MASUK_SUCCESS : PresensiMessages::ABSEN_MASUK_SUCCESS, $distance)
-            : sprintf($isLembur ? PresensiMessages::LEMBUR_KELUAR_SUCCESS : PresensiMessages::ABSEN_KELUAR_SUCCESS, $distance);
+        $motionSamples = $request->input('motion_samples');
+        $trajResult = $spoofDetector->analyzeTrajectory($trajectory);
+        $motionResult = $spoofDetector->analyzeMotion($motionSamples);
+        $speedResult = $spoofDetector->analyzeSpeed($speed);
+        $ipResult = $spoofDetector->analyzeGeoIp($request->ip(), (float) $request->latitude, (float) $request->longitude);
 
-        return response()->json([
-            'success' => true,
-            'message' => $successMessage,
-        ]);
+        return [
+            'trajectory_samples' => $trajectory,
+            'motion_samples' => $motionSamples,
+            'motion_suspect' => $motionResult['suspect'],
+            'ip_geo' => $ipResult['geo'] ?? null,
+            'posisi_mencurigakan' => $trajResult['suspect'] || $motionResult['suspect'] || $speedResult['suspect'] || $ipResult['suspect'],
+        ];
     }
 
     public function storeAbsenTetap(Request $request)
@@ -532,7 +703,7 @@ class MobileController extends Controller
 
         $request->validate([
             'tipe' => 'required|in:masuk,keluar',
-            'foto' => ['required', 'string', 'max:7000000', 'regex:/^data:image\/\w+;base64,/'],
+            'foto' => ['required', 'string', 'max:'.PresensiMessages::MAX_FOTO_BASE64, 'regex:/^data:image\/\w+;base64,/'],
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'accuracy' => 'required|numeric|min:0',
@@ -543,6 +714,12 @@ class MobileController extends Controller
             'pos_a_lng' => 'nullable|numeric|between:-180,180',
             'pos_a_accuracy' => 'nullable|numeric|min:0',
             'pos_a_captured_at' => 'nullable|date',
+            'attestation_token' => 'nullable|string',
+            'pos_awal_lat' => 'nullable|numeric|between:-90,90',
+            'pos_awal_lng' => 'nullable|numeric|between:-180,180',
+            'pos_awal_accuracy' => 'nullable|numeric|min:0',
+            'pos_awal_captured_at' => 'nullable|date',
+            'motion_samples' => 'nullable|json',
         ]);
 
         $unit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
@@ -585,6 +762,20 @@ class MobileController extends Controller
 
         $lokasiPerluReview = $mockSuspect || ($accuracy !== null && $accuracy < 10);
         $capturedAt = $request->filled('captured_at') ? Carbon::parse($request->captured_at) : null;
+        // Attestation verification
+        if ($request->filled('attestation_token')) {
+            $attestation = $this->attestationService->verify($request->input('attestation_token'), $request->input('captured_at'));
+            if (! $attestation['valid']) {
+                return response()->json(['success' => false, 'message' => PresensiMessages::ATTESTATION_EXPIRED, 'errors' => ['attestation' => 'Sesi habis.']], 422);
+            }
+        }
+
+        // Anti-spoof multi-faktor
+        $spoofDetector = new SpoofDetector;
+        $spoofData = $this->computeSpoofData($request, $speed, $accuracy, $spoofDetector);
+        $posisiMencurigakan = $posisiMencurigakan || $spoofData['posisi_mencurigakan'];
+        $lokasiPerluReview = $lokasiPerluReview || $spoofData['posisi_mencurigakan'];
+
         $now = Carbon::now();
 
         $overlayData = [
@@ -605,80 +796,31 @@ class MobileController extends Controller
         $decoded = base64_decode(explode(',', $base64Data, 2)[1] ?? '');
         $disk->put($tempPath, $decoded);
 
-        $presensi = DB::transaction(function () use ($request, $pegawai, $unit, $distance, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan) {
-            $presensi = Presensi::where('pegawai_id', $pegawai->id)
-                ->whereNull('jadwal_id')
-                ->where('tipe_presensi', 'kantor')
-                ->where('tanggal', Carbon::today())
-                ->lockForUpdate()
-                ->first();
-
-            if (! $presensi) {
-                $presensi = new Presensi([
-                    'pegawai_id' => $pegawai->id,
-                    'jadwal_id' => null,
-                    'tanggal' => Carbon::today(),
-                ]);
+        try {
+            $presensi = $this->storeAbsenTransaction(
+                $request,
+                $pegawai,
+                null, // $jadwal — presensi kantor tanpa jadwal
+                $unit,
+                $distance,
+                false, // $isLembur
+                $accuracy,
+                $speed,
+                $capturedAt,
+                $lokasiPerluReview,
+                $posisiMencurigakan,
+                'kantor',
+                '',
+                $spoofData,
+            );
+        } catch (\Throwable $e) {
+            // Jangan tinggalkan sampah temp foto saat transaksi/validasi gagal.
+            if ($disk->exists($tempPath)) {
+                $disk->delete($tempPath);
             }
 
-            $presensi->unit_sekolah_id = $unit->id;
-            $presensi->tipe_presensi = 'kantor';
-            $presensi->is_lembur = false;
-
-            if ($request->tipe === 'masuk') {
-                if ($presensi->jam_masuk) {
-                    throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_MASUK]);
-                }
-                $presensi->jam_masuk = Carbon::now()->format('H:i:s');
-                $presensi->latitude_masuk = $request->latitude;
-                $presensi->longitude_masuk = $request->longitude;
-                $presensi->foto_masuk_status = 'pending';
-                $presensi->jarak_masuk_meter = $distance;
-                $presensi->akurasi_masuk = $accuracy;
-                $presensi->kecepatan_masuk = $speed;
-                $presensi->captured_at = $capturedAt;
-                $presensi->lokasi_perlu_review = $lokasiPerluReview;
-                $presensi->pos_a_lat = $request->filled('pos_a_lat') ? $request->pos_a_lat : null;
-                $presensi->pos_a_lng = $request->filled('pos_a_lng') ? $request->pos_a_lng : null;
-                $presensi->pos_a_accuracy = $request->filled('pos_a_accuracy') ? $request->pos_a_accuracy : null;
-                $presensi->pos_a_captured_at = $request->filled('pos_a_captured_at') ? $request->pos_a_captured_at : null;
-                $presensi->posisi_mencurigakan = $posisiMencurigakan;
-
-                $jamMulai = $unit->jam_masuk_kantor;
-                $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jamMulai, (int) $unit->toleransi_menit);
-            } else {
-                if (! $presensi->exists || ! $presensi->jam_masuk) {
-                    throw ValidationException::withMessages(['conflict' => PresensiMessages::BELUM_ABSEN_MASUK]);
-                }
-                if ($presensi->jam_keluar) {
-                    throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_KELUAR]);
-                }
-                $presensi->jam_keluar = Carbon::now()->format('H:i:s');
-                $presensi->latitude_keluar = $request->latitude;
-                $presensi->longitude_keluar = $request->longitude;
-                $presensi->foto_keluar_status = 'pending';
-                $presensi->jarak_keluar_meter = $distance;
-                $presensi->akurasi_keluar = $accuracy;
-                $presensi->kecepatan_keluar = $speed;
-                $presensi->pos_a_lat = $request->filled('pos_a_lat') ? $request->pos_a_lat : null;
-                $presensi->pos_a_lng = $request->filled('pos_a_lng') ? $request->pos_a_lng : null;
-                $presensi->pos_a_accuracy = $request->filled('pos_a_accuracy') ? $request->pos_a_accuracy : null;
-                $presensi->pos_a_captured_at = $request->filled('pos_a_captured_at') ? $request->pos_a_captured_at : null;
-                $presensi->posisi_mencurigakan = $posisiMencurigakan;
-
-                if ($unit->jam_pulang_kantor) {
-                    $batasPulang = Carbon::parse($unit->jam_pulang_kantor)->subMinutes(30)->format('H:i:s');
-                    if ($presensi->jam_keluar < $batasPulang) {
-                        $lokasiPerluReview = true;
-                    }
-                }
-                $presensi->lokasi_perlu_review = $presensi->lokasi_perlu_review || $lokasiPerluReview;
-            }
-
-            $presensi->save();
-
-            return $presensi;
-        });
+            throw $e;
+        }
 
         Bus::dispatchSync(new ProcessPresensiFoto(
             $presensi->id,
@@ -686,7 +828,7 @@ class MobileController extends Controller
             $tempPath,
             'presensi',
             $overlayData,
-            ['id' => $pegawai->id, 'nama' => $pegawai->nama_lengkap],
+            ['id' => $pegawai->id, 'nama' => $pegawai->nama_lengkap, 'latitude' => $request->latitude, 'longitude' => $request->longitude],
         ));
 
         $successMessage = $request->tipe === 'masuk'
@@ -706,6 +848,10 @@ class MobileController extends Controller
 
         $request->validate([
             'jadwal_id' => 'required|integer|min:1',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'accuracy' => 'required|numeric|min:0',
+            'mock_suspect' => 'nullable|boolean',
         ]);
 
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
@@ -722,12 +868,28 @@ class MobileController extends Controller
 
         $pagiRecord = Presensi::where('pegawai_id', $pegawai->id)
             ->whereNull('jadwal_id')
+            ->where('tipe_presensi', 'kantor')
             ->where('tanggal', Carbon::today())
             ->exists();
 
         abort_unless($pagiRecord, 422, 'Silakan foto pagi terlebih dahulu.');
 
-        DB::transaction(function () use ($pegawai, $jadwal) {
+        $distance = $this->calculateDistance($request->latitude, $request->longitude, $jadwal->unitSekolah->latitude, $jadwal->unitSekolah->longitude);
+
+        if ($distance > $jadwal->unitSekolah->radius_meter) {
+            $message = sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $distance, $jadwal->unitSekolah->radius_meter);
+
+            return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
+        }
+
+        $accuracy = (float) $request->accuracy;
+        if ($accuracy !== null && $accuracy <= 0) {
+            $message = PresensiMessages::GEOFENCE_ACCURACY_ZERO;
+
+            return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
+        }
+
+        $status = DB::transaction(function () use ($pegawai, $jadwal, $distance, $request, $accuracy) {
             $exists = Presensi::where('pegawai_id', $pegawai->id)
                 ->where('jadwal_id', $jadwal->id)
                 ->where('tanggal', Carbon::today())
@@ -744,15 +906,24 @@ class MobileController extends Controller
                 'unit_sekolah_id' => $jadwal->unit_sekolah_id,
                 'tanggal' => Carbon::today(),
                 'jam_masuk' => Carbon::now()->format('H:i:s'),
+                'latitude_masuk' => $request->latitude,
+                'longitude_masuk' => $request->longitude,
+                'jarak_masuk_meter' => $distance,
+                'akurasi_masuk' => $accuracy,
                 'tipe_presensi' => 'mengajar',
             ]);
-            $presensi->status = 'hadir';
+            $presensi->is_lembur = false;
+            $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 10;
+            $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $jadwal->unitSekolah->toleransi_menit);
             $presensi->save();
+
+            return $presensi->status;
         });
 
         return response()->json([
             'success' => true,
-            'message' => 'Kehadiran jadwal tercatat.',
+            'message' => $status === 'telat' ? 'Kehadiran jadwal tercatat (telat).' : 'Kehadiran jadwal tercatat.',
+            'status' => $status,
         ]);
     }
 }

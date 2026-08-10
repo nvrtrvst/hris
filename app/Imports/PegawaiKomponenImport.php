@@ -24,22 +24,22 @@ class PegawaiKomponenImport implements ToCollection, WithHeadingRow
             $nominal = isset($row['nominal']) ? trim($row['nominal']) : null;
 
             if ($nik) {
+                // NIK ter-enkripsi — where('nik') tidak akan match. Lookup via nik_hash.
+                $pegawai = Pegawai::where('nik_hash', Pegawai::nikHash($nik))->first();
+                if (! $pegawai) {
+                    continue;
+                }
+
                 if ($nominal !== null && $nominal !== '') {
                     // Hapus format mata uang jika ada (misal: "Rp 500.000" -> 500000)
                     $nominal = preg_replace('/[^0-9]/', '', $nominal);
 
-                    $pegawai = Pegawai::where('nik', $nik)->first();
-                    if ($pegawai) {
-                        $pegawai->komponenGaji()->syncWithoutDetaching([
-                            $this->komponenId => ['nominal' => $nominal],
-                        ]);
-                    }
+                    $pegawai->komponenGaji()->syncWithoutDetaching([
+                        $this->komponenId => ['nominal' => $nominal],
+                    ]);
                 } else {
                     // Jika di Excel kolom nominal dikosongkan, hapus dari pivot (kembali ke default)
-                    $pegawai = Pegawai::where('nik', $nik)->first();
-                    if ($pegawai) {
-                        $pegawai->komponenGaji()->detach($this->komponenId);
-                    }
+                    $pegawai->komponenGaji()->detach($this->komponenId);
                 }
             }
         }

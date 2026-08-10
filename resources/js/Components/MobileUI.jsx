@@ -70,15 +70,16 @@ export function FAB({ onClick, href, icon: Icon, label }) {
     );
 }
 
-export function Toggle({ checked, onChange, tone = 'indigo' }) {
-    const on = tone === 'amber' ? 'bg-amber-500' : 'bg-emerald-500';
+export function Toggle({ checked, onChange, tone = 'indigo', disabled = false }) {
+    const on = tone === 'amber' ? 'bg-amber-500' : tone === 'sky' ? 'bg-sky-500' : 'bg-emerald-500';
     return (
         <button
             type="button"
             onClick={onChange}
+            disabled={disabled}
             role="switch"
             aria-checked={checked}
-            className={`relative h-8 min-w-[52px] rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${checked ? on : 'bg-slate-300'}`}
+            className={`relative h-8 min-w-[52px] rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${checked ? on : 'bg-slate-300'} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
             style={{ width: '52px' }}
         >
             <span

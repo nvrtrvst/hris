@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JabatanController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\KomponenGajiController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\MataPelajaranController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\PegawaiKomponenController;
 use App\Http\Controllers\PengajuanIzinController;
@@ -52,6 +54,13 @@ Route::middleware('auth:web_admin')->group(function () {
 
     // Penggajian — index/show bisa diakses staff (lihat slip gaji sendiri)
     Route::get('penggajian', [PenggajianController::class, 'index'])->name('penggajian.index');
+
+    // Notifikasi
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->middleware('throttle:60,1')->name('notifications.read-all');
+    Route::post('notifications/{id}/read', [NotificationController::class, 'markRead'])->middleware('throttle:60,1')->name('notifications.read');
+    Route::post('notifications/{id}/archive', [NotificationController::class, 'archive'])->middleware('throttle:60,1')->name('notifications.archive');
+    Route::post('notifications/{id}/restore', [NotificationController::class, 'restore'])->middleware('throttle:60,1')->name('notifications.restore');
 
     // ─── Rute Modul (Semua auth, perizinan diurus UI & Controller) ───
     // Pegawai Keuangan Khusus
@@ -112,6 +121,8 @@ Route::middleware('auth:web_admin')->group(function () {
         ->name('presensi.rejectLembur');
     Route::get('presensi/{presensi}/audit', [PresensiController::class, 'audit'])
         ->name('presensi.audit');
+    Route::get('presensi/{presensi}/review', [PresensiController::class, 'reviewDetail'])
+        ->name('presensi.review');
 
     // Komponen Gaji Matrix
     Route::get('komponen-gaji/matrix', [PegawaiKomponenController::class, 'matrix'])->name('komponen-gaji.matrix');
@@ -185,9 +196,19 @@ Route::middleware('auth:web_admin')->group(function () {
             ->name('users.update');
     });
 
+    // Pengumuman yayasan (admin unit scope di controller)
+    Route::get('pengumuman', [AnnouncementController::class, 'index'])->name('pengumuman.index');
+    Route::post('pengumuman', [AnnouncementController::class, 'store'])->middleware('throttle:30,1')->name('pengumuman.store');
+    Route::put('pengumuman/{announcement}', [AnnouncementController::class, 'update'])->middleware('throttle:30,1')->name('pengumuman.update');
+    Route::delete('pengumuman/{announcement}', [AnnouncementController::class, 'destroy'])->middleware('throttle:30,1')->name('pengumuman.destroy');
+
     Route::resource('roles', RoleManagementController::class)
         ->except(['show'])
         ->middleware(['can:manage_roles', 'throttle:60,1']);
+
+    // PDF slip gaji + export bank (F3)
+    Route::get('penggajian/{id}/pdf', [PenggajianController::class, 'pdf'])->name('penggajian.pdf');
+    Route::get('penggajian/export-bank', [PenggajianController::class, 'exportBank'])->name('penggajian.export-bank');
 
     // Pengaturan Master (Superadmin)
     Route::middleware('can:manage_master_data')->group(function () {

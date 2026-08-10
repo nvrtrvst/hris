@@ -16,8 +16,9 @@ export default function Index({ auth, presensis, pegawai, filters, units }) {
     const [suspiciousFilter, setSuspiciousFilter] = React.useState(filters?.suspicious_filter || '');
     const [confirmStatus, setConfirmStatus] = React.useState(null);
     const [persentaseBayar, setPersentaseBayar] = React.useState(100);
-    const [auditModal, setAuditModal] = React.useState({ show: false, loading: false, data: [] });
+    const [auditModal, setAuditModal] = React.useState({ show: false, loading: false, data: [], presensi: null });
     const [auditPegawai, setAuditPegawai] = React.useState('');
+    const [reviewModal, setReviewModal] = React.useState({ show: false, loading: false, data: null });
 
     const applyFilter = () => {
         router.get(route('presensi.index'), {
@@ -44,11 +45,19 @@ export default function Index({ auth, presensis, pegawai, filters, units }) {
 
     const openAudit = (p) => {
         setAuditPegawai(p.pegawai?.nama_lengkap || '');
-        setAuditModal({ show: true, loading: true, data: [] });
+        setAuditModal({ show: true, loading: true, data: [], presensi: null });
         fetch(route('presensi.audit', p.id))
             .then(r => r.json())
-            .then(res => setAuditModal({ show: true, loading: false, data: res.audits || [] }))
-            .catch(() => setAuditModal({ show: true, loading: false, data: [] }));
+            .then(res => setAuditModal({ show: true, loading: false, data: res.audits || [], presensi: res.presensi || null }))
+            .catch(() => setAuditModal({ show: true, loading: false, data: [], presensi: null }));
+    };
+
+    const openReview = (p) => {
+        setReviewModal({ show: true, loading: true, data: null });
+        fetch(route('presensi.review', p.id))
+            .then(r => r.json())
+            .then(res => setReviewModal({ show: true, loading: false, data: res.presensi || null }))
+            .catch(() => setReviewModal({ show: true, loading: false, data: null }));
     };
 
     const lemburBadge = (p) => {
@@ -103,7 +112,9 @@ export default function Index({ auth, presensis, pegawai, filters, units }) {
                                             </select>
                                             <select className="select-field text-xs h-9 w-full md:w-auto md:min-w-[140px]" value={lokasiFilter} onChange={e => setLokasiFilter(e.target.value)}>
                                                 <option value="">Semua Lokasi</option>
+                                                <option value="review_semua">Perlu Review (Semua)</option>
                                                 <option value="perlu_review">Perlu Review GPS</option>
+                                                <option value="pulang_awal">Pulang Awal</option>
                                             </select>
                                             <select className="select-field text-xs h-9 w-full md:w-auto md:min-w-[140px]" value={suspiciousFilter} onChange={e => setSuspiciousFilter(e.target.value)}>
                                                 <option value="">Semua GPS</option>
@@ -243,9 +254,16 @@ export default function Index({ auth, presensis, pegawai, filters, units }) {
                                                                 <div className="text-primary">{p.jarak_keluar_meter ? `${p.jarak_keluar_meter}m` : '-'} <span className="text-text-secondary text-xs">Keluar</span></div>
                                                             </div>
                                                             {isAdmin && (
-                                                                <button onClick={() => openAudit(p)} className="p-1.5 rounded-button text-text-secondary hover:text-primary hover:bg-surface transition-colors" title="Riwayat perubahan">
-                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                                </button>
+                                                                <>
+                                                                    {(p.lokasi_perlu_review || p.posisi_mencurigakan || p.motion_suspect) && (
+                                                                        <button onClick={() => openReview(p)} className="p-1.5 rounded-button text-warning hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Detail Review anti-spoof">
+                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                                                        </button>
+                                                                    )}
+                                                                    <button onClick={() => openAudit(p)} className="p-1.5 rounded-button text-text-secondary hover:text-primary hover:bg-surface transition-colors" title="Riwayat perubahan">
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                                    </button>
+                                                                </>
                                                             )}
                                                         </div>
                                                         {p.lokasi_perlu_review && <div className="mt-1 text-[10px] font-bold text-danger bg-rose-50 inline-block px-2 py-0.5 rounded">Perlu Review</div>}
@@ -333,7 +351,7 @@ export default function Index({ auth, presensis, pegawai, filters, units }) {
                                 </div>
                             )}
 
-                            <Modal show={auditModal.show} onClose={() => setAuditModal({ show: false, loading: false, data: [] })} maxWidth="lg">
+                            <Modal show={auditModal.show} onClose={() => setAuditModal({ show: false, loading: false, data: [], presensi: null })} maxWidth="lg">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center gap-3">
@@ -347,10 +365,33 @@ export default function Index({ auth, presensis, pegawai, filters, units }) {
                                                 {auditPegawai && <p className="text-sm text-text-secondary mt-0.5">{auditPegawai}</p>}
                                             </div>
                                         </div>
-                                        <button onClick={() => setAuditModal({ show: false, loading: false, data: [] })} className="p-1.5 rounded-button text-text-secondary hover:text-primary hover:bg-surface transition-colors">
+                                        <button onClick={() => setAuditModal({ show: false, loading: false, data: [], presensi: null })} className="p-1.5 rounded-button text-text-secondary hover:text-primary hover:bg-surface transition-colors">
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                         </button>
                                     </div>
+                                    {auditModal.presensi && (auditModal.presensi.foto_masuk_url || auditModal.presensi.foto_keluar_url) && (
+                                        <div className="bg-surface rounded-lg p-4 mb-5">
+                                            <p className="text-xs font-bold uppercase tracking-wide text-text-secondary mb-2">Bukti Foto</p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {[{ label: 'Foto Masuk', url: auditModal.presensi.foto_masuk_url, status: auditModal.presensi.foto_masuk_status, error: auditModal.presensi.foto_masuk_error, tone: 'bg-emerald-100 text-emerald-700' }, { label: 'Foto Keluar', url: auditModal.presensi.foto_keluar_url, status: auditModal.presensi.foto_keluar_status, error: auditModal.presensi.foto_keluar_error, tone: 'bg-rose-100 text-rose-700' }].map((f, i) => (
+                                                    f.url && (
+                                                        <div key={i}>
+                                                            <a href={f.url} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden border border-border hover:ring-2 hover:ring-primary transition-shadow" title={`${f.label} — buka di tab baru`}>
+                                                                <img src={f.url} alt={f.label} className="w-full aspect-[3/4] object-cover" loading="lazy" />
+                                                            </a>
+                                                            <div className="flex items-center justify-between mt-1.5 px-0.5">
+                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${f.tone}`}>{f.label}</span>
+                                                                {f.status && f.status !== 'success' && (
+                                                                    <span className="text-[10px] font-semibold text-warning">{f.status}{f.error ? ` — ${f.error}` : ''}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {auditModal.loading ? (
                                         <div className="space-y-4 py-4">
                                             {[1,2,3].map(i => (
@@ -435,6 +476,150 @@ export default function Index({ auth, presensis, pegawai, filters, units }) {
                                             </div>
                                         </div>
                                     )}
+                                </div>
+                            </Modal>
+
+                            <Modal show={reviewModal.show} onClose={() => setReviewModal({ show: false, loading: false, data: null })} maxWidth="lg">
+                                <div className="p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+                                                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-primary">Detail Review Anti-Spoof</h3>
+                                                {reviewModal.data && <p className="text-sm text-text-secondary mt-0.5">{reviewModal.data.pegawai_nama} • {reviewModal.data.tanggal}</p>}
+                                            </div>
+                                        </div>
+                                        <button onClick={() => setReviewModal({ show: false, loading: false, data: null })} className="p-1.5 rounded-button text-text-secondary hover:text-primary hover:bg-surface transition-colors">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </div>
+
+                                    {reviewModal.loading ? (
+                                        <div className="space-y-4 py-4">
+                                            {[1,2,3].map(i => (
+                                                <div key={i} className="flex gap-4 animate-pulse">
+                                                    <div className="flex-1 space-y-2">
+                                                        <div className="h-3 bg-surface rounded w-24"/>
+                                                        <div className="h-4 bg-surface rounded w-40"/>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : !reviewModal.data ? (
+                                        <div className="text-center py-12">
+                                            <p className="text-sm text-text-secondary">Data detail tidak tersedia.</p>
+                                        </div>
+                                    ) : (() => {
+                                        const d = reviewModal.data;
+                                        const flags = [
+                                            d.lokasi_perlu_review && { label: 'Lokasi Perlu Review', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+                                            d.posisi_mencurigakan && { label: 'Posisi Mencurigakan', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+                                            d.motion_suspect && { label: 'Motion Suspect (emulator)', cls: 'bg-purple-50 text-purple-700 border-purple-200' },
+                                        ].filter(Boolean);
+                                        return (
+                                            <div className="space-y-5">
+                                                {/* Flags */}
+                                                <div className="flex flex-wrap gap-2">
+                                                    {flags.length ? flags.map((f, i) => (
+                                                        <span key={i} className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${f.cls}`}>{f.label}</span>
+                                                    )) : <span className="text-xs text-text-secondary">Tidak ada flag aktif.</span>}
+                                                </div>
+
+                                                {/* Bukti Foto (overlay burn-in) */}
+                                                <div className="bg-surface rounded-lg p-4">
+                                                    <p className="text-xs font-bold uppercase tracking-wide text-text-secondary mb-2">Bukti Foto (overlay nama • waktu • lokasi)</p>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        {[{ label: 'Foto Masuk', url: d.foto_masuk_url, status: d.foto_masuk_status, error: d.foto_masuk_error, tone: 'bg-emerald-100 text-emerald-700' }, { label: 'Foto Keluar', url: d.foto_keluar_url, status: d.foto_keluar_status, error: d.foto_keluar_error, tone: 'bg-rose-100 text-rose-700' }].map((f, i) => (
+                                                            <div key={i}>
+                                                                {f.url ? (
+                                                                    <a href={f.url} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden border border-border hover:ring-2 hover:ring-primary transition-shadow" title={`${f.label} — buka di tab baru`}>
+                                                                        <img src={f.url} alt={f.label} className="w-full aspect-[3/4] object-cover" loading="lazy" />
+                                                                    </a>
+                                                                ) : (
+                                                                    <div className="flex items-center justify-center w-full aspect-[3/4] rounded-lg border border-dashed border-border bg-white">
+                                                                        <span className="text-xs text-text-secondary">{f.label} tidak tersedia</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex items-center justify-between mt-1.5 px-0.5">
+                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${f.tone}`}>{f.label}</span>
+                                                                    {f.status && f.status !== 'success' && (
+                                                                        <span className="text-[10px] font-semibold text-warning">{f.status}{f.error ? ` — ${f.error}` : ''}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <p className="mt-2 text-[11px] leading-relaxed text-text-secondary">Foto di-burn-in nama, unit, waktu (HH:mm:ss) dan koordinat saat pengambilan. EXIF GPS (jika tersedia) juga dibandingkan di bawah.</p>
+                                                </div>
+
+                                                {/* GPS Report */}
+                                                <div className="bg-surface rounded-lg p-4">
+                                                    <p className="text-xs font-bold uppercase tracking-wide text-text-secondary mb-2">Data GPS</p>
+                                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                                        <div><span className="text-text-secondary">Akurasi:</span> <b className="text-primary">{d.akurasi_masuk ?? '-'}m</b></div>
+                                                        <div><span className="text-text-secondary">Kecepatan:</span> <b className="text-primary">{d.kecepatan_masuk ?? '-'} m/s</b></div>
+                                                        <div className="col-span-2"><span className="text-text-secondary">Koordinat:</span> <b className="text-primary font-mono">{d.latitude_masuk ?? '-'}, {d.longitude_masuk ?? '-'}</b></div>
+                                                        {d.captured_at && <div className="col-span-2"><span className="text-text-secondary">Waktu capture:</span> <b className="text-primary">{new Date(d.captured_at).toLocaleString('id-ID')}</b></div>}
+                                                    </div>
+                                                </div>
+
+                                                {/* Trajectory */}
+                                                <div className="bg-surface rounded-lg p-4">
+                                                    <p className="text-xs font-bold uppercase tracking-wide text-text-secondary mb-2">Trajectory (Awal → A → B)</p>
+                                                    {d.trajectory?.length ? (
+                                                        <div className="space-y-2">
+                                                            {d.trajectory.map((t, i) => (
+                                                                <div key={i} className="flex items-center justify-between text-xs">
+                                                                    <span className="font-bold uppercase text-primary">{t.label || '?'}</span>
+                                                                    <span className="font-mono text-text-secondary">{t.lat}, {t.lng}</span>
+                                                                    <span className="text-text-secondary">akurasi {t.accuracy ?? '-'}m</span>
+                                                                    <span className="text-text-secondary">{t.captured_at ? new Date(t.captured_at).toLocaleTimeString('id-ID') : '-'}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : <p className="text-xs text-text-secondary">Tidak ada data trajectory (client lama / tidak didukung).</p>}
+                                                </div>
+
+                                                {/* Motion */}
+                                                <div className="bg-surface rounded-lg p-4">
+                                                    <p className="text-xs font-bold uppercase tracking-wide text-text-secondary mb-2">Motion (Accelerometer)</p>
+                                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                                        <div><span className="text-text-secondary">Sample count:</span> <b className="text-primary">{d.motion_sample_count}</b></div>
+                                                        <div><span className="text-text-secondary">Varians:</span> <b className="text-primary">{d.motion_variance ?? '-'}</b></div>
+                                                    </div>
+                                                    {d.motion_suspect && <p className="mt-2 text-xs text-purple-600 bg-purple-50 rounded-lg px-3 py-2">Varians sangat rendah / nol — indikasi emulator atau device virtual.</p>}
+                                                </div>
+
+                                                {/* IP Geo */}
+                                                {d.ip_geo && (
+                                                    <div className="bg-surface rounded-lg p-4">
+                                                        <p className="text-xs font-bold uppercase tracking-wide text-text-secondary mb-2">IP Geolocation</p>
+                                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                                            <div><span className="text-text-secondary">IP:</span> <b className="text-primary font-mono">{d.ip_geo.ip}</b></div>
+                                                            <div><span className="text-text-secondary">Lokasi IP:</span> <b className="text-primary">{d.ip_geo.city ? `${d.ip_geo.city}, ${d.ip_geo.country}` : '-'}</b></div>
+                                                            <div className="col-span-2"><span className="text-text-secondary">Jarak GPS vs IP:</span> <b className={d.ip_geo.distance_km > 500 ? 'text-danger' : 'text-primary'}>{d.ip_geo.distance_km ?? '-'} km</b></div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* EXIF */}
+                                                {d.exif_meta && (
+                                                    <div className="bg-surface rounded-lg p-4">
+                                                        <p className="text-xs font-bold uppercase tracking-wide text-text-secondary mb-2">EXIF Foto</p>
+                                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                                            <div><span className="text-text-secondary">EXIF GPS:</span> <b className="text-primary font-mono">{d.exif_meta.gps_lat ? `${d.exif_meta.gps_lat.toFixed(5)}, ${d.exif_meta.gps_lng?.toFixed(5)}` : '-'}</b></div>
+                                                            <div><span className="text-text-secondary">DateTimeOriginal:</span> <b className="text-primary">{d.exif_meta.datetime_original || '-'}</b></div>
+                                                            {d.exif_meta.mismatch && (
+                                                                <div className="col-span-2"><span className="text-danger font-bold">⚠ Mismatch {d.exif_meta.mismatch_distance_m}m dengan koordinat reported</span></div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </Modal>
 

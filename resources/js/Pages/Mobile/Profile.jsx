@@ -1,11 +1,12 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
-import { Card } from '@/Components/MobileUI';
+import { Card, Toggle } from '@/Components/MobileUI';
+import { initPush, disablePush } from '@/push';
 import {
     Pencil, ChevronDown, User, Mail, Phone, Building2, BadgeCheck,
     CalendarDays, GraduationCap, KeyRound, ShieldAlert, LogOut, Check,
-    MapPin, IdCard,
+    MapPin, IdCard, BellRing,
 } from 'lucide-react';
 
 function Field({ icon: Icon, label, value }) {
@@ -61,6 +62,43 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
 
     const [editOpen, setEditOpen] = useState(false);
     const [passOpen, setPassOpen] = useState(false);
+    const [notifOpen, setNotifOpen] = useState(false);
+    const [pushEnabled, setPushEnabled] = useState(false);
+    const [pushBusy, setPushBusy] = useState(false);
+    const [pushMessage, setPushMessage] = useState(null);
+
+    useEffect(() => {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        navigator.serviceWorker.getRegistration('/sw.js')
+            .then((reg) => (reg ? reg.pushManager.getSubscription() : null))
+            .then((sub) => setPushEnabled(Boolean(sub)))
+            .catch(() => {});
+    }, []);
+
+    const handleTogglePush = async (enabled) => {
+        setPushBusy(true);
+        setPushMessage(null);
+        try {
+            if (enabled) {
+                const ok = await initPush();
+                if (ok) {
+                    setPushEnabled(true);
+                    setPushMessage('Notifikasi aktif. Anda akan menerima pengingat presensi & status izin.');
+                } else {
+                    setPushEnabled(false);
+                    setPushMessage('Tidak dapat mengaktifkan notifikasi. Periksa izin browser atau gunakan HTTPS.');
+                }
+            } else {
+                await disablePush();
+                setPushEnabled(false);
+                setPushMessage('Notifikasi dimatikan.');
+            }
+        } catch (err) {
+            setPushMessage('Gagal mengubah pengaturan notifikasi.');
+        } finally {
+            setPushBusy(false);
+        }
+    };
 
     const editForm = useForm({
         name: user?.name || '',
@@ -206,6 +244,22 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
                             {editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan'}
                         </button>
                     </form>
+                </Section>
+
+                {/* NOTIFIKASI PUSH */}
+                <Section title="Notifikasi" icon={BellRing} open={notifOpen} onToggle={() => setNotifOpen((v) => !v)} accent="text-sky-500">
+                    <div className="space-y-3 pt-2">
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                            <div>
+                                <p className="text-sm font-bold text-slate-800">Pengingat presensi & status izin</p>
+                                <p className="mt-0.5 text-xs text-slate-500">Butuh izin notifikasi browser. Untuk hasil terbaik gunakan HTTPS & buka via "Add to Home Screen".</p>
+                            </div>
+                            <Toggle checked={pushEnabled} onChange={handleTogglePush} disabled={pushBusy} tone="sky" />
+                        </div>
+                        {pushMessage && (
+                            <p className="rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700">{pushMessage}</p>
+                        )}
+                    </div>
                 </Section>
 
                 {/* PASSWORD */}

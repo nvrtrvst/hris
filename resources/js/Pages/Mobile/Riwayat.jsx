@@ -6,7 +6,7 @@ import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, getDay }
 import { id } from 'date-fns/locale';
 import { History, CalendarDays, Clock, MapPin, CheckCircle2, AlertTriangle, FileText, XCircle, Ban } from 'lucide-react';
 
-export default function Riwayat({ auth, presensi, filters }) {
+export default function Riwayat({ auth, presensi, summary, filters }) {
     const activeMonth = `${filters?.tahun || new Date().getFullYear()}-${String(filters?.bulan || new Date().getMonth() + 1).padStart(2, '0')}`;
 
     const handleFilter = (e) => {
@@ -110,6 +110,20 @@ export default function Riwayat({ auth, presensi, filters }) {
                 ))}
             </div>
 
+            {/* Kehadiran bulan ini (F5) */}
+            {summary && (
+                <Card press={false} className="mb-6 p-4">
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Kehadiran Bulan Ini</p>
+                        <p className="text-sm font-extrabold text-primary">{summary.present}/{summary.working_days} hari ({summary.percent}%)</p>
+                    </div>
+                    <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all" style={{ width: `${Math.min(100, summary.percent)}%` }} />
+                    </div>
+                    <p className="mt-2 text-[11px] text-slate-400">Alpa {summary.alpa} • Sakit {summary.sakit} • Izin {summary.izin} • Cuti {summary.cuti}</p>
+                </Card>
+            )}
+
             <Card press={false} className="mb-6 p-4">
                 <div className="mb-4 flex items-center justify-between">
                     <div>
@@ -155,18 +169,27 @@ export default function Riwayat({ auth, presensi, filters }) {
                             <div className="space-y-2.5">
                                 {items.map((p) => {
                                     const b = getStatusBadge(p.status);
+                                    const label = p.jadwal?.mata_pelajaran?.nama
+                                        || (p.is_lembur ? 'Lembur' : p.tipe_presensi === 'kantor' ? 'Presensi Kantor' : 'Presensi');
+                                    const kelas = p.jadwal?.kelas_label;
+                                    const isKantor = p.tipe_presensi === 'kantor';
+                                    const belumPulang = Boolean(p.jam_masuk) && !p.jam_keluar;
+                                    const badge = isKantor && belumPulang
+                                        ? { tone: 'amber', label: 'Belum pulang', icon: Clock }
+                                        : b;
                                     return (
                                         <Card key={p.id} className="flex items-center justify-between py-3.5">
                                             <div className="min-w-0">
-                                                <p className="truncate font-bold text-slate-800">{p.mata_pelajaran || 'Presensi'}</p>
+                                                <p className="truncate font-bold text-slate-800">{label}</p>
                                                 <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
                                                     <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{formatJam(p.jam_masuk)}–{formatJam(p.jam_keluar)}</span>
+                                                    {kelas && <span className="inline-flex items-center gap-1 text-slate-400">{kelas}</span>}
                                                     {p.jarak_meter != null && (
                                                         <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-400" />{p.jarak_meter}m</span>
                                                     )}
                                                 </p>
                                             </div>
-                                            <Badge tone={b.tone} icon={b.icon}>{b.label}</Badge>
+                                            <Badge tone={badge.tone} icon={badge.icon}>{badge.label}</Badge>
                                         </Card>
                                     );
                                 })}

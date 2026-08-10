@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\PresensiMessages;
+use App\Events\IzinBaruEvent;
 use App\Helpers\ApprovalHelper;
+use App\Helpers\NotificationHelper;
 use App\Helpers\PayrollLockHelper;
 use App\Models\PengajuanIzin;
 use App\Models\User;
@@ -11,6 +14,7 @@ use App\Services\ImageUploadService;
 use App\Traits\ResolvesPegawai;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class MobileIzinController extends Controller
@@ -40,6 +44,9 @@ class MobileIzinController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
+        // Create.jsx menampilkan sisa_cuti — eager-load + append eksplisit (P2).
+        $pegawai->loadCutiInfo();
+
         return Inertia::render('Mobile/Izin/Create', [
             'pegawai' => $pegawai,
         ]);
@@ -57,7 +64,7 @@ class MobileIzinController extends Controller
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'alasan' => 'required|string',
-            'bukti_foto' => ['nullable', 'string', 'regex:/^data:image\/\w+;base64,/'],
+            'bukti_foto' => ['nullable', 'string', 'max:'.PresensiMessages::MAX_FOTO_BASE64, 'regex:/^data:image\/\w+;base64,/'],
         ]);
 
         if ($request->jenis_izin === 'sakit' && ! $request->bukti_foto) {
@@ -65,6 +72,8 @@ class MobileIzinController extends Controller
         }
 
         if ($request->jenis_izin === 'cuti') {
+            // sisa_cuti dipakai utk validasi — eager-load pengajuanIzins + append eksplisit (P2).
+            $pegawai->loadCutiInfo();
             $requestedDays = Carbon::parse($request->tanggal_mulai)->diffInDays(Carbon::parse($request->tanggal_selesai)) + 1;
             if ($requestedDays > $pegawai->sisa_cuti) {
                 return back()->withErrors(['alasan' => 'Sisa cuti Anda tidak mencukupi. Anda mengajukan '.$requestedDays.' hari, sedangkan sisa cuti: '.$pegawai->sisa_cuti.' hari.']);
@@ -95,23 +104,32 @@ class MobileIzinController extends Controller
                 $request->bukti_foto,
                 'izin',
                 null,
-                5 * 1024 * 1024,
+                PresensiMessages::MAX_FOTO_BYTES,
                 ['id' => $pegawai->id, 'nama' => $pegawai->nama_lengkap]
             );
             $pengajuan->bukti_foto = $imageName;
         }
 
-        $pengajuan->save();
+        try {
+            $pengajuan->save();
 
-        $approvers = ApprovalHelper::determineApprovers($pegawai);
-        $pengajuan->update([
-            'approver_l1_id' => $approvers['l1_id'],
-            'approver_l2_id' => $approvers['l2_id'],
-        ]);
-
-        if ($approvers['l1_id']) {
-            User::find($approvers['l1_id'])?->notify(new IzinBaru($pengajuan));
+            $approvers = ApprovalHelper::determineApprovers($pegawai);
+            $pengajuan->update([
+                'approver_l1_id' => $approvers['l1_id'],
+                'approver_l2_id' => $approvers['l2_id'],
+            ]);
+        } catch (\Throwable $e) {
+            // Jangan tinggalkan file bukti foto yang menggantung bila save gagal.
+            if (! empty($imageName)) {
+                Storage::disk(config('filesystems.presensi_disk', 'presensi'))->delete($imageName);
+            }
+            throw $e;
         }
+
+        NotificationHelper::sendSafely(User::find($approvers['l1_id']), new IzinBaru($pengajuan));
+
+        // Real-time: beri tahu approver L1 via Reverb (F2b).
+        IzinBaruEvent::dispatch($pengajuan);
 
         return redirect()->route('presensi.izin.index')->with('message', 'Pengajuan berhasil dikirim dan menunggu persetujuan.');
     }

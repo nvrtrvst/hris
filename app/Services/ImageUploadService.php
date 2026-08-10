@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Constants\PresensiMessages;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -17,7 +18,7 @@ class ImageUploadService
      * @param  array|null  $pegawai  ['id' => int, 'nama' => string] untuk folder per-pegawai
      * @return string Path relatif
      */
-    public function storeBase64(string $base64, string $folder = 'presensi', ?array $overlayData = null, int $maxBytes = 5 * 1024 * 1024, ?array $pegawai = null): string
+    public function storeBase64(string $base64, string $folder = 'presensi', ?array $overlayData = null, int $maxBytes = PresensiMessages::MAX_FOTO_BYTES, ?array $pegawai = null): string
     {
         if (! preg_match('/^data:image\/(\w+);base64,/', $base64, $matches)) {
             throw new \InvalidArgumentException('Format gambar base64 tidak valid.');
@@ -62,7 +63,9 @@ class ImageUploadService
         if ($pegawai) {
             $sub = $pegawai['id'].'_'.Str::slug($pegawai['nama'], '_');
             $actualFolder = $folder.'/'.$sub;
-            $fileName = $actualFolder.'/'.now()->format('Y-m-d_H-i-s').'.webp';
+            // UUID, bukan timestamp: absen masuk & keluar dalam detik yang sama
+            // bisa menghasilkan nama file identik dan saling menimpa.
+            $fileName = $actualFolder.'/'.Str::uuid().'.webp';
         } else {
             $fileName = $folder.'/'.Str::uuid().'.webp';
         }

@@ -37,10 +37,13 @@ class JadwalController extends Controller
             $query->where('kelas_label', $request->kelas_label);
         }
 
-        $jadwals = $query->orderBy('hari')->orderBy('jam_mulai')->get();
+        $jadwals = $query->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu')")
+            ->orderBy('jam_mulai')
+            ->get();
 
         $kelasLabels = $jadwals->pluck('kelas_label')->filter()->unique()->sort()->values();
         $units = UnitSekolah::all(['id', 'nama', 'singkatan']);
+        $mapel = MataPelajaran::all(['id', 'nama']);
 
         // Get Pegawai for Matrix Rows — HANYA kolom yang dibutuhkan frontend
         $pegawaiQuery = Pegawai::with(['units:id,singkatan'])
@@ -70,6 +73,7 @@ class JadwalController extends Controller
             'jadwals' => $jadwals,
             'pegawais' => $pegawais,
             'units' => $units,
+            'mapel' => $mapel,
             'kelasLabels' => $kelasLabels,
             'filters' => $request->only(['unit_sekolah_id', 'kelas_label']),
         ]);
@@ -104,7 +108,8 @@ class JadwalController extends Controller
             'pegawai_id' => 'required|exists:pegawai,id',
             'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
             'kelas_label' => 'nullable|string|max:255',
-            'mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
+            // Mapel WAJIB untuk jadwal mengajar, opsional untuk jenis lain (piket/ekskul/shift).
+            'mata_pelajaran_id' => 'nullable|required_if:jenis_jadwal,mengajar|exists:mata_pelajaran,id',
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu',
             'jam_mulai' => 'required|date_format:H:i',
             'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
@@ -192,7 +197,8 @@ class JadwalController extends Controller
             'pegawai_id' => 'required|exists:pegawai,id',
             'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
             'kelas_label' => 'nullable|string|max:255',
-            'mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
+            // Mapel WAJIB untuk jadwal mengajar, opsional untuk jenis lain (piket/ekskul/shift).
+            'mata_pelajaran_id' => 'nullable|required_if:jenis_jadwal,mengajar|exists:mata_pelajaran,id',
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu',
             'jam_mulai' => 'required|date_format:H:i',
             'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
@@ -250,11 +256,12 @@ class JadwalController extends Controller
             abort(403);
         }
 
+        // Generate SELALU membuat jadwal mengajar → mapel wajib (konsisten dgn store/update).
         $request->validate([
             'tahun_ajaran' => 'required|string|max:10',
             'semester' => 'required|integer|in:1,2',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
-            'mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
+            'mata_pelajaran_id' => 'required|exists:mata_pelajaran,id',
             'waktu_mulai' => 'nullable|date_format:H:i',
             'waktu_selesai' => 'nullable|date_format:H:i',
         ]);
@@ -271,7 +278,10 @@ class JadwalController extends Controller
                 $q->where('unit_sekolah.id', $unitId);
             });
         }
-        $pegawais = $pegawaiQuery->get(['id']);
+        $pegawais = $pegawaiQuery->with('units')->get(['id']);
+
+        // Pre-fetch unit yang dipilih user (1 query, bukan per-pegawai).
+        $selectedUnit = $unitId ? UnitSekolah::find($unitId) : null;
 
         $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
         $timeBlocks = [
@@ -294,16 +304,26 @@ class JadwalController extends Controller
             return back()->withErrors(['waktu' => 'Tidak ada blok waktu yang tersedia dalam rentang waktu yang dipilih.']);
         }
 
-        $mapel = $request->mata_pelajaran_id ? MataPelajaran::find($request->mata_pelajaran_id) : null;
+        $mapel = MataPelajaran::findOrFail($request->mata_pelajaran_id);
 
-        $generatedCount = DB::transaction(function () use ($pegawais, $days, $timeBlocks, $mapel, $unitId, $request) {
+        [$generatedCount, $skippedNoUnit, $skippedNoMax] = DB::transaction(function () use ($pegawais, $days, $timeBlocks, $mapel, $request) {
             $count = 0;
+            $skippedNoUnit = 0;
+            $skippedNoMax = 0;
 
             foreach ($pegawais as $pegawai) {
-                $empUnitId = $unitId ?? ($pegawai->units->first()->id ?? 1);
-                $unit = UnitSekolah::find($empUnitId);
-                $maxMinutes = ($unit && $unit->max_jam_minggu) ? $unit->max_jam_minggu * 60 : 0;
+                // Jangan fallback ke unit id 1 — pegawai tanpa unit harus di-skip,
+                // bukan dibuatkan jadwal di unit yang salah.
+                $unit = $selectedUnit ?? $pegawai->units->first();
+                if (! $unit) {
+                    $skippedNoUnit++;
+
+                    continue;
+                }
+                $maxMinutes = $unit->max_jam_minggu ? $unit->max_jam_minggu * 60 : 0;
                 if ($maxMinutes === 0) {
+                    $skippedNoMax++;
+
                     continue;
                 }
 
@@ -344,7 +364,7 @@ class JadwalController extends Controller
                         if (! $conflict) {
                             Jadwal::create([
                                 'pegawai_id' => $pegawai->id,
-                                'unit_sekolah_id' => $empUnitId,
+                                'unit_sekolah_id' => $unit->id,
                                 'mata_pelajaran_id' => $mapel ? $mapel->id : null,
                                 'hari' => $day,
                                 'jam_mulai' => $time[0],
@@ -362,14 +382,22 @@ class JadwalController extends Controller
                 }
             }
 
-            return $count;
+            return [$count, $skippedNoUnit, $skippedNoMax];
         });
 
         foreach ($pegawais as $p) {
             $this->clearJadwalCache($p->id);
         }
 
-        return redirect()->route('jadwal.index')->with('message', "Berhasil me-generate $generatedCount jadwal acak untuk guru.");
+        $message = "Berhasil me-generate $generatedCount jadwal acak untuk guru.";
+        if ($skippedNoUnit > 0) {
+            $message .= " $skippedNoUnit pegawai di-skip (tidak memiliki unit).";
+        }
+        if ($skippedNoMax > 0) {
+            $message .= " $skippedNoMax pegawai di-skip (max_jam_minggu 0).";
+        }
+
+        return redirect()->route('jadwal.index')->with('message', $message);
     }
 
     public function swap(Request $request)

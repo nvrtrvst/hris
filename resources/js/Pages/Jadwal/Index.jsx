@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 
-    export default function Index({ auth, jadwals, pegawais, units, kelasLabels, filters }) {
+    export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, filters }) {
         const isAdmin = auth.permissions?.includes('view_jadwal');
         const [unitFilter, setUnitFilter] = useState(filters.unit_sekolah_id || '');
         const [kelasFilter, setKelasFilter] = useState(filters.kelas_label || '');
@@ -19,6 +19,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
             tahun_ajaran: '2026/2027',
             semester: '1',
             unit_sekolah_id: '',
+            mata_pelajaran_id: '',
             waktu_mulai: '07:00',
             waktu_selesai: '15:00',
         });
@@ -472,6 +473,23 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
                                     <option value="2">2 (Genap)</option>
                                 </select>
                             </div>
+                        </div>
+
+                        {/* Mata Pelajaran — wajib karena generate selalu membuat jadwal mengajar */}
+                        <div>
+                            <label className="form-label mb-1">Mata Pelajaran <span className="text-red-500">*</span></label>
+                            <select
+                                value={genData.mata_pelajaran_id}
+                                onChange={e => setGenData({...genData, mata_pelajaran_id: e.target.value})}
+                                className={`select-field ${errors?.mata_pelajaran_id ? 'input-error' : ''}`}
+                                required
+                            >
+                                <option value="">Pilih Mapel</option>
+                                {mapel.map(m => (
+                                    <option key={m.id} value={m.id}>{m.nama}</option>
+                                ))}
+                            </select>
+                            {errors?.mata_pelajaran_id && <p className="form-error">{errors.mata_pelajaran_id}</p>}
                         </div>
 
                         {/* Tahun Ajaran */}

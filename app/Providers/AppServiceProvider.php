@@ -24,6 +24,17 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
 
+        // [AUDIT M1] Integrasi keuangan WAJIB HTTPS di produksi.
+        // Cegah payload payroll/siswa terkirim plaintext ke endpoint tak aman.
+        if (app()->environment('production')) {
+            $keuanganUrl = (string) config('keuangan.url');
+            if ($keuanganUrl !== '' && ! str_starts_with($keuanganUrl, 'https://')) {
+                throw new \RuntimeException(
+                    'KEUANGAN_API_URL harus https:// di produksi. Perbaiki .env sebelum deploy.'
+                );
+            }
+        }
+
         // Kustomisasi isi email Lupa Kata Sandi
         ResetPassword::toMailUsing(function (object $notifiable, string $token) {
             return (new MailMessage)
