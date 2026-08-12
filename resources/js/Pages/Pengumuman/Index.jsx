@@ -2,66 +2,160 @@ import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Pagination from '@/Components/Pagination';
-import { Megaphone, PinIcon, Pencil, Trash2, Plus } from 'lucide-react';
+import StatCard from '@/Components/StatCard';
+import { Calendar, Megaphone, Pencil, Pin as PinIcon, Plus, Save, Trash2, X as XIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale/id';
 
-export default function PengumumanIndex({ auth, announcements, units, userUnitId }) {
+export default function PengumumanIndex({ auth, announcements, units, userUnitId, flash }) {
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16) });
 
-    const resetForm = () => { setForm({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16) }); setEditing(null); setShowForm(false); };
-    const openEdit = (a) => { setForm({ title: a.title, body: a.body, is_pinned: a.is_pinned, unit_sekolah_id: a.unit_sekolah_id || '', published_at: a.published_at?.slice(0, 16) || '' }); setEditing(a.id); setShowForm(true); };
+    const resetForm = () => {
+        setForm({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16) });
+        setEditing(null);
+        setShowForm(false);
+    };
+    const openEdit = (a) => {
+        setForm({ title: a.title, body: a.body, is_pinned: a.is_pinned, unit_sekolah_id: a.unit_sekolah_id || '', published_at: a.published_at?.slice(0, 16) || '' });
+        setEditing(a.id);
+        setShowForm(true);
+    };
     const submit = (e) => {
         e.preventDefault();
         const method = editing ? 'put' : 'post';
         const routeName = editing ? route('pengumuman.update', editing) : route('pengumuman.store');
         router[method](routeName, form, { preserveState: true, onSuccess: () => resetForm() });
     };
-    const destroy = (id) => { if (confirm('Hapus pengumuman ini?')) router.delete(route('pengumuman.destroy', id), { preserveState: true }); };
+    const destroy = (id) => {
+        if (confirm('Hapus pengumuman ini?')) router.delete(route('pengumuman.destroy', id), { preserveState: true });
+    };
+
+    const total = announcements?.total ?? announcements?.data?.length ?? 0;
+    const items = announcements.data || announcements || [];
 
     return (
-        <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-primary">Pengumuman</h2>}>
+        <AuthenticatedLayout header={<h2 className="page-title">Pengumuman</h2>}>
             <Head title="Pengumuman" />
-            <div className="py-12">
-                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-                    <button onClick={() => { resetForm(); setShowForm(!showForm); }} className="mb-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" /> Tambah pengumuman</button>
+            <div className="py-8 bg-surface min-h-screen">
+                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-4">
+                    {/* Header */}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h3 className="text-xl font-extrabold text-text-primary">Pengumuman</h3>
+                            <p className="text-sm text-text-muted">Bagikan informasi penting kepada seluruh pegawai.</p>
+                        </div>
+                        <button onClick={() => { resetForm(); setShowForm(!showForm); }} className="btn-primary inline-flex shrink-0 items-center gap-2">
+                            {showForm ? <><XIcon className="h-4 w-4" /> Tutup form</> : <><Plus className="h-4 w-4" /> Tambah pengumuman</>}
+                        </button>
+                    </div>
+
+                    {/* Flash */}
+                    {flash?.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
+                    {flash?.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <StatCard Icon={Megaphone} label="Total Pengumuman" value={total} />
+                        <StatCard Icon={PinIcon} label="Disematkan (Pin)" value={items.filter((a) => a.is_pinned).length} />
+                    </div>
+
+                    {/* Form */}
                     {showForm && (
-                        <form onSubmit={submit} className="mb-6 rounded-xl border bg-white p-4 space-y-3">
-                            <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Judul" className="w-full rounded-lg border px-3 py-2 text-sm" />
-                            <textarea required value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={4} placeholder="Isi pengumuman..." className="w-full rounded-lg border px-3 py-2 text-sm" />
-                            <div className="flex items-center gap-4 text-sm">
-                                <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_pinned} onChange={(e) => setForm({ ...form, is_pinned: e.target.checked })} /> Pin</label>
-                                {!userUnitId && (
-                                    <select value={form.unit_sekolah_id} onChange={(e) => setForm({ ...form, unit_sekolah_id: e.target.value })} className="rounded-lg border px-2 py-1 text-sm">
-                                        <option value="">Semua unit</option>
-                                        {units.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
-                                    </select>
-                                )}
-                                <input type="datetime-local" value={form.published_at} onChange={(e) => setForm({ ...form, published_at: e.target.value })} className="rounded-lg border px-2 py-1 text-sm" />
+                        <form onSubmit={submit} className="card space-y-4 p-6">
+                            <h4 className="text-sm font-extrabold uppercase tracking-wide text-primary">
+                                {editing ? 'Edit Pengumuman' : 'Buat Pengumuman Baru'}
+                            </h4>
+                            <div>
+                                <label className="form-label text-xs">Judul <span className="text-danger">*</span></label>
+                                <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                                    placeholder="Judul pengumuman" className="input-field" />
                             </div>
-                            <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white">{editing ? 'Simpan' : 'Publikasikan'}</button>
-                        </form>
-                    )}
-                    <div className="space-y-2">
-                        {announcements.data?.length === 0 ? (
-                            <div className="rounded-xl bg-white p-8 text-center"><Megaphone className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 font-bold text-slate-500">Belum ada pengumuman</p></div>
-                        ) : (announcements.data || announcements).map((a) => (
-                            <div key={a.id} className={`rounded-xl border p-4 ${a.is_pinned ? 'border-primary/30 bg-primary/[0.02]' : 'bg-white'}`}>
-                                <div className="flex items-start justify-between">
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">{a.is_pinned && <PinIcon className="h-4 w-4 text-primary" />}<h3 className="font-bold text-slate-900">{a.title}</h3></div>
-                                        <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">{a.body}</p>
-                                        <p className="mt-2 text-xs text-slate-400">{a.published_at}</p>
+                            <div>
+                                <label className="form-label text-xs">Isi Pengumuman <span className="text-danger">*</span></label>
+                                <textarea required value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })}
+                                    rows={4} placeholder="Isi pengumuman..." className="input-field" />
+                            </div>
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                                <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-text-primary">
+                                    <input type="checkbox" checked={form.is_pinned}
+                                        onChange={(e) => setForm({ ...form, is_pinned: e.target.checked })}
+                                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+                                    Sematkan (Pin)
+                                </label>
+                                {!userUnitId && (
+                                    <div className="relative flex-1 sm:max-w-xs">
+                                        <select value={form.unit_sekolah_id}
+                                            onChange={(e) => setForm({ ...form, unit_sekolah_id: e.target.value })}
+                                            className="select-field">
+                                            <option value="">Semua unit</option>
+                                            {units.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
+                                        </select>
                                     </div>
-                                    <div className="flex shrink-0 gap-1 ml-3">
-                                        <button onClick={() => openEdit(a)} className="rounded-lg bg-slate-100 p-2 text-slate-500"><Pencil className="h-4 w-4" /></button>
-                                        <button onClick={() => destroy(a.id)} className="rounded-lg bg-rose-50 p-2 text-rose-500"><Trash2 className="h-4 w-4" /></button>
-                                    </div>
+                                )}
+                                <div className="relative flex-1 sm:max-w-xs">
+                                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                    <input type="datetime-local" value={form.published_at}
+                                        onChange={(e) => setForm({ ...form, published_at: e.target.value })}
+                                        className="input-field pl-9" />
                                 </div>
                             </div>
-                        ))}
+                            <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
+                                <button type="button" onClick={resetForm} className="btn-secondary">Batal</button>
+                                <button type="submit" className="btn-primary inline-flex items-center gap-2">
+                                    <Save className="h-4 w-4" /> {editing ? 'Simpan' : 'Publikasikan'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+
+                    {/* List */}
+                    <div className="space-y-2">
+                        {items.length === 0 ? (
+                            <div className="card flex flex-col items-center px-6 py-12 text-center">
+                                <Megaphone className="h-8 w-8 text-border" />
+                                <p className="mt-3 text-sm font-bold text-text-primary">Belum ada pengumuman</p>
+                                <p className="mt-1 text-xs text-text-muted">Bagikan pengumuman pertama untuk mulai berkomunikasi dengan pegawai.</p>
+                            </div>
+                        ) : (
+                            items.map((a) => (
+                                <div key={a.id} className={`card p-5 transition-all hover:shadow-card ${a.is_pinned ? 'border-primary/40 bg-primary/[0.02]' : ''}`}>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {a.is_pinned && (
+                                                    <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                                                        <PinIcon className="h-3 w-3" /> Pin
+                                                    </span>
+                                                )}
+                                                <h3 className="text-sm font-extrabold text-text-primary">{a.title}</h3>
+                                            </div>
+                                            <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">{a.body}</p>
+                                            <p className="mt-2 flex items-center gap-1 text-xs text-text-muted">
+                                                <Calendar className="h-3 w-3" />
+                                                {a.published_at ? format(new Date(a.published_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}
+                                            </p>
+                                        </div>
+                                        <div className="flex shrink-0 gap-1.5">
+                                            <button onClick={() => openEdit(a)} title="Edit"
+                                                className="rounded-lg bg-surface p-2 text-text-secondary transition-colors hover:text-primary">
+                                                <Pencil className="h-4 w-4" />
+                                            </button>
+                                            <button onClick={() => destroy(a.id)} title="Hapus"
+                                                className="rounded-lg bg-rose-50 p-2 text-rose-500 transition-colors hover:bg-rose-100">
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
-                    <Pagination links={announcements.links} className="mt-4 justify-center" />
+
+                    {announcements.links && items.length > 0 && (
+                        <Pagination links={announcements.links} className="justify-center" />
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

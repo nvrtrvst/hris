@@ -6,6 +6,7 @@ use App\Helpers\HariHelper;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
 use App\Models\Pegawai;
+use App\Models\PengajuanIzin;
 use App\Models\Penggajian;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
@@ -112,7 +113,7 @@ class DashboardController extends Controller
 
         $roleType = 'Staff';
         if ($user->can('view_dashboard')) {
-            $roleType = 'Super Admin'; // Any admin module view
+            $roleType = 'Admin'; // Any admin module view (superadmin / admin unit)
         }
 
         if ($roleType === 'Staff') {
@@ -165,7 +166,7 @@ class DashboardController extends Controller
             }
             $pegawaiDijadwalkan = $jadwalQuery->distinct('pegawai_id')->count('pegawai_id');
 
-            $presensiQuery = Presensi::where('tanggal', $today)->whereIn('status', ['hadir', 'telat']);
+            $presensiQuery = Presensi::where('tanggal', $today->toDateString())->whereIn('status', ['hadir', 'telat']);
             if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 $presensiQuery->whereHas('pegawai', function ($q) use ($user) {
                     $q->forUnit($user->unit_sekolah_id);
@@ -235,7 +236,7 @@ class DashboardController extends Controller
                 ];
             }
 
-            // 5. Kontrak Berakhir
+            // 5. Kontrak Berakhir (30 hari ke depan)
             $kontrakQuery = Pegawai::where('status_kepegawaian', 'kontrak')
                 ->whereNotNull('tanggal_akhir_kontrak')
                 ->where('tanggal_akhir_kontrak', '<=', Carbon::today('Asia/Jakarta')->addDays(30))
@@ -246,8 +247,25 @@ class DashboardController extends Controller
             }
             $kontrakBerakhir = $kontrakQuery->get();
 
-            // [FIX] convert to array before caching — serializable_classes=false blokir object
-            $kontrakBerakhirArr = $kontrakBerakhir->toArray();
+            // Map eksplisit (unit_nama/kontrak_berakhir bukan accessor model) + sisa hari
+            $kontrakBerakhirArr = $kontrakBerakhir->map(function (Pegawai $p) {
+                $unit = $p->jabatans->first()?->unitSekolah;
+
+                return [
+                    'id' => $p->id,
+                    'nama_lengkap' => $p->nama_lengkap,
+                    'unit_nama' => $unit?->nama ?? $unit?->singkatan ?? '-',
+                    'kontrak_berakhir' => Carbon::parse($p->tanggal_akhir_kontrak)->format('d M Y'),
+                    'sisa_hari' => Carbon::today('Asia/Jakarta')->diffInDays(Carbon::parse($p->tanggal_akhir_kontrak), false),
+                ];
+            })->values()->all();
+
+            // 5b. Pengajuan izin/cuti pending (nyata, bukan hardcoded 0)
+            $pengajuanQuery = PengajuanIzin::where('status', 'pending');
+            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+                $pengajuanQuery->whereHas('pegawai', fn ($q) => $q->forUnit($user->unit_sekolah_id));
+            }
+            $pengajuanPending = $pengajuanQuery->count();
 
             // 6. Jadwal Hari Ini
             $jadwalHariIniQuery = Jadwal::with([
@@ -265,7 +283,7 @@ class DashboardController extends Controller
 
             // 7. Presensi Hari Ini
             $presensiQuery = Presensi::with('pegawai:id,nama_lengkap')
-                ->where('tanggal', $today)
+                ->where('tanggal', $today->toDateString())
                 ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status', 'lokasi_perlu_review']);
 
             if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
@@ -293,6 +311,7 @@ class DashboardController extends Controller
                 'attendanceTrend' => $attendanceTrend,
                 'kontrakBerakhir' => $kontrakBerakhirArr,
                 'kontrakBerakhir_count' => $kontrakBerakhir->count(),
+                'pengajuanPending' => $pengajuanPending,
                 'jadwalHariIni' => $jadwalHariIni,
                 'presensiHariIni' => $presensiHariIni,
             ];
@@ -308,6 +327,7 @@ class DashboardController extends Controller
         $attendanceTrend = $admin['attendanceTrend'];
         $kontrakBerakhir = $admin['kontrakBerakhir'];
         $kontrakBerakhirCount = $admin['kontrakBerakhir_count'];
+        $pengajuanPending = $admin['pengajuanPending'];
 
         return inertia('Dashboard', [
             'roleType' => $roleType,
@@ -320,6 +340,7 @@ class DashboardController extends Controller
                 'pengeluaran_gaji' => $pengeluaranGaji,
                 'is_estimasi_payroll' => $isEstimasiPayroll,
                 'kontrak_berakhir_count' => $kontrakBerakhirCount,
+                'pengajuan_pending' => $pengajuanPending,
             ],
             'trends' => $attendanceTrend,
             'kontrakBerakhir' => $kontrakBerakhir,

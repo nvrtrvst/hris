@@ -1,13 +1,39 @@
-import React, { useState } from 'react';
+import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Save, CheckSquare, Square } from 'lucide-react';
-import FlashToast from '@/Components/FlashToast';
+import { ArrowLeft, CheckSquare, KeyRound, Loader2, Save, ShieldCheck, Square } from 'lucide-react';
+
+const inputClass = 'input-field';
+
+const Field = ({ label, required, error, hint, children }) => (
+    <div>
+        <label className="form-label text-xs">{label} {required && <span className="text-danger">*</span>}</label>
+        {children}
+        {error && <p className="form-error">{error}</p>}
+        {hint && !error && <p className="form-hint">{hint}</p>}
+    </div>
+);
+
+function SectionCard({ Icon, title, description, children }) {
+    return (
+        <div className="card p-6">
+            <div className="mb-5">
+                <h3 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-primary">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                        <Icon className="h-4 w-4 text-primary" />
+                    </span>
+                    {title}
+                </h3>
+                {description && <p className="mt-1.5 text-xs text-text-muted">{description}</p>}
+            </div>
+            {children}
+        </div>
+    );
+}
 
 export default function Form({ auth, role, rolePermissions, allPermissions, flash }) {
     const isEdit = !!role;
 
-    // We expect rolePermissions to be an array of permission names.
     const { data, setData, post, put, processing, errors } = useForm({
         name: role?.name || '',
         permissions: rolePermissions || []
@@ -23,131 +49,93 @@ export default function Form({ auth, role, rolePermissions, allPermissions, flas
     };
 
     const togglePermission = (permissionName) => {
-        let newPerms = [...data.permissions];
-        if (newPerms.includes(permissionName)) {
-            newPerms = newPerms.filter(p => p !== permissionName);
-        } else {
-            newPerms.push(permissionName);
-        }
+        const newPerms = data.permissions.includes(permissionName)
+            ? data.permissions.filter((p) => p !== permissionName)
+            : [...data.permissions, permissionName];
         setData('permissions', newPerms);
     };
 
     const toggleGroup = (groupPermissions) => {
-        const groupNames = groupPermissions.map(p => p.name);
-        const allChecked = groupNames.every(name => data.permissions.includes(name));
-
-        let newPerms = [...data.permissions];
-        if (allChecked) {
-            newPerms = newPerms.filter(p => !groupNames.includes(p));
-        } else {
-            const toAdd = groupNames.filter(name => !newPerms.includes(name));
-            newPerms = [...newPerms, ...toAdd];
-        }
+        const groupNames = groupPermissions.map((p) => p.name);
+        const allChecked = groupNames.every((name) => data.permissions.includes(name));
+        const newPerms = allChecked
+            ? data.permissions.filter((p) => !groupNames.includes(p))
+            : [...data.permissions, ...groupNames.filter((name) => !data.permissions.includes(name))];
         setData('permissions', newPerms);
     };
 
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-text-primary leading-tight">{isEdit ? 'Edit Role' : 'Tambah Role Baru'}</h2>}
+            header={<h2 className="page-title">{isEdit ? 'Edit Role' : 'Tambah Role Baru'}</h2>}
         >
             <Head title={isEdit ? 'Edit Role' : 'Tambah Role'} />
 
-            <FlashToast flash={flash} />
+            <div className="py-8 bg-surface min-h-screen">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+                    <Link href={route('roles.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
+                        <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Role
+                    </Link>
 
-            <div className="py-12">
-                <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
+                    {flash?.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
+                    {flash?.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
 
-                    <div className="mb-6">
-                        <Link href={route('roles.index')} className="link inline-flex items-center">
-                            <ArrowLeft className="w-4 h-4 mr-1" />
-                            Kembali ke Daftar Role
-                        </Link>
-                    </div>
+                    <form onSubmit={submit} className="space-y-4">
+                        <SectionCard Icon={ShieldCheck} title={isEdit ? `Edit Role: ${role.name.toUpperCase()}` : 'Buat Role Baru'}
+                            description="Tentukan nama peran dan akses bawaan yang akan diberikan kepada akun dengan peran ini.">
+                            <Field label="Nama Role" required error={errors.name}
+                                hint="Gunakan huruf kecil, pisahkan dengan garis bawah (underscore). Jangan gunakan spasi.">
+                                <input type="text" value={data.name} onChange={(e) => setData('name', e.target.value)}
+                                    className={`${inputClass} max-w-md`} placeholder="Contoh: keuangan_pusat"
+                                    disabled={role?.name === 'superadmin'} required />
+                            </Field>
+                        </SectionCard>
 
-                    <div className="page-card">
-                        <div className="page-card-header">
-                            <div>
-                                <h3 className="text-xl font-bold text-text-primary">{isEdit ? `Edit Role: ${role.name.toUpperCase()}` : 'Buat Role Baru'}</h3>
-                                <p className="page-subtitle">Tentukan nama peran dan akses bawaan yang akan diberikan kepada akun dengan peran ini.</p>
-                            </div>
-                        </div>
+                        <SectionCard Icon={KeyRound} title="Akses Default Role">
+                            <div className="space-y-4">
+                                {Object.keys(allPermissions).map((group) => {
+                                    const groupPerms = allPermissions[group];
+                                    const groupNames = groupPerms.map((p) => p.name);
+                                    const isAllChecked = groupNames.every((n) => data.permissions.includes(n));
 
-                        <form onSubmit={submit} className="p-6">
-
-                            <div className="mb-8">
-                                <label className="form-label">Nama Role</label>
-                                <input
-                                    type="text"
-                                    value={data.name}
-                                    onChange={e => setData('name', e.target.value)}
-                                    className="input-field max-w-md"
-                                    placeholder="Contoh: keuangan_pusat"
-                                    disabled={role?.name === 'superadmin'}
-                                    required
-                                />
-                                {errors.name && <p className="form-error">{errors.name}</p>}
-                                <p className="form-hint">Gunakan huruf kecil, pisahkan dengan garis bawah (underscore). Jangan gunakan spasi.</p>
-                            </div>
-
-                            <div className="divider"></div>
-
-                            <div>
-                                <h4 className="text-md font-bold text-text-primary mb-4">Akses Default Role</h4>
-
-                                <div className="space-y-6">
-                                    {Object.keys(allPermissions).map(group => {
-                                        const groupPerms = allPermissions[group];
-                                        const groupNames = groupPerms.map(p => p.name);
-                                        const isAllChecked = groupNames.every(n => data.permissions.includes(n));
-
-                                        return (
-                                            <div key={group} className="bg-white rounded-card border border-border overflow-hidden">
-                                                <div className="bg-surface px-4 py-3 border-b border-border flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => toggleGroup(groupPerms)}>
-                                                    <h5 className="font-semibold text-text-primary capitalize">Modul {group.replace('_', ' ')}</h5>
-                                                    <button type="button" className="text-sm font-medium text-primary flex items-center">
-                                                        {isAllChecked ? <CheckSquare className="w-4 h-4 mr-1"/> : <Square className="w-4 h-4 mr-1"/>}
-                                                        {isAllChecked ? 'Batalkan Semua' : 'Pilih Semua'}
-                                                    </button>
-                                                </div>
-                                                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                                    {groupPerms.map(perm => (
-                                                        <label key={perm.id} className="relative flex items-start cursor-pointer group">
-                                                            <div className="flex items-center h-5">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={data.permissions.includes(perm.name)}
-                                                                    onChange={() => togglePermission(perm.name)}
-                                                                    className="h-4 w-4 text-primary border-border rounded focus:ring-primary cursor-pointer"
-                                                                />
-                                                            </div>
-                                                            <div className="ml-3 text-sm">
-                                                                <span className="font-medium text-text-secondary group-hover:text-primary transition-colors">{perm.name}</span>
-                                                            </div>
-                                                        </label>
-                                                    ))}
-                                                </div>
+                                    return (
+                                        <div key={group} className="overflow-hidden rounded-xl border border-border">
+                                            <div className="flex cursor-pointer items-center justify-between border-b border-border bg-surface px-4 py-3 transition-colors hover:bg-primary/5"
+                                                onClick={() => toggleGroup(groupPerms)}>
+                                                <h5 className="text-sm font-extrabold capitalize text-text-primary">Modul {group.replace('_', ' ')}</h5>
+                                                <button type="button" className="flex items-center text-xs font-semibold text-primary">
+                                                    {isAllChecked ? <CheckSquare className="mr-1 h-4 w-4" /> : <Square className="mr-1 h-4 w-4" />}
+                                                    {isAllChecked ? 'Batalkan Semua' : 'Pilih Semua'}
+                                                </button>
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 md:grid-cols-3">
+                                                {groupPerms.map((perm) => (
+                                                    <label key={perm.id} className="flex cursor-pointer items-start group">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={data.permissions.includes(perm.name)}
+                                                            onChange={() => togglePermission(perm.name)}
+                                                            className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-primary"
+                                                        />
+                                                        <span className="ml-2.5 text-xs font-medium text-text-secondary transition-colors group-hover:text-primary">
+                                                            {perm.name}
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
+                        </SectionCard>
 
-                            <div className="divider"></div>
-
-                            <div className="flex justify-end">
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="btn-primary"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    {isEdit ? 'Simpan Perubahan' : 'Buat Role'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
+                        <div className="card flex items-center justify-end gap-3 p-5">
+                            <Link href={route('roles.index')} className="btn-secondary">Batal</Link>
+                            <button type="submit" disabled={processing} className="btn-primary flex items-center gap-2">
+                                {processing ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan…</> : <><Save className="h-4 w-4" /> {isEdit ? 'Simpan Perubahan' : 'Buat Role'}</>}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </AuthenticatedLayout>

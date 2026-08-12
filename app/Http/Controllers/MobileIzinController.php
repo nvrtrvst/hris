@@ -7,6 +7,7 @@ use App\Events\IzinBaruEvent;
 use App\Helpers\ApprovalHelper;
 use App\Helpers\NotificationHelper;
 use App\Helpers\PayrollLockHelper;
+use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\User;
 use App\Notifications\IzinBaru;
@@ -126,11 +127,42 @@ class MobileIzinController extends Controller
             throw $e;
         }
 
-        NotificationHelper::sendSafely(User::find($approvers['l1_id']), new IzinBaru($pengajuan));
+        $this->notifyPengajuanBaru($pengajuan, $pegawai, $approvers);
 
         // Real-time: beri tahu approver L1 via Reverb (F2b).
         IzinBaruEvent::dispatch($pengajuan);
 
         return redirect()->route('presensi.izin.index')->with('message', 'Pengajuan berhasil dikirim dan menunggu persetujuan.');
+    }
+
+    /**
+     * Kabari approver L1 bahwa ada pengajuan baru. Bila L1 tidak
+     * dikonfigurasi (jabatan tanpa approver), fallback ke semua admin unit
+     * di unit pegawai + superadmin — pengajuan tidak boleh luput dari
+     * perhatian siapa pun.
+     */
+    private function notifyPengajuanBaru(PengajuanIzin $pengajuan, Pegawai $pegawai, array $approvers): void
+    {
+        // Approver L1 terkonfigurasi & ditemukan → kabari dia saja.
+        if (! empty($approvers['has_l1'])) {
+            NotificationHelper::sendSafely(User::find($approvers['l1_id']), new IzinBaru($pengajuan));
+
+            return;
+        }
+
+        // Tanpa L1 (tidak dikonfigurasi / tidak ditemukan) → fallback ke semua
+        // admin unit di unit pegawai + superadmin. Pengajuan tidak boleh luput.
+        $primaryUnit = $pegawai->units()->wherePivot('is_primary', true)->first()
+            ?? $pegawai->units()->first();
+
+        $targets = User::role(['admin_unit', 'superadmin'])
+            ->where(function ($q) use ($primaryUnit) {
+                $q->whereNull('unit_sekolah_id')->orWhere('unit_sekolah_id', $primaryUnit?->id);
+            })
+            ->get();
+
+        foreach ($targets->unique('id') as $target) {
+            NotificationHelper::sendSafely($target, new IzinBaru($pengajuan));
+        }
     }
 }

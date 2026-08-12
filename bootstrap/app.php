@@ -28,6 +28,12 @@ return Application::configure(basePath: dirname(__DIR__))
             IsolatePortalSession::class,
         ]);
 
+        // Catatan cache-busting: HTML tidak perlu header no-cache manual —
+        // Laravel otomatis mengirim `Cache-Control: no-store, private` untuk
+        // semua respons dengan session, dan nginx (deploy/*.conf) menambahkan
+        // lapisan no-cache di edge. Aset Vite ber-hash di-cache immutable 1 tahun.
+        // Anti stale-bundle setelah deploy dijamin oleh Inertia asset versioning
+        // (HandleInertiaRequests::version → mtime manifest Vite → 409 full-reload).
         $middleware->web(
             append: [
                 HandleInertiaRequests::class,

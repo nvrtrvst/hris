@@ -31,6 +31,11 @@ class PengajuanIzin extends Model
     ];
 
     protected $casts = [
+        // Cast date PENTING: notifikasi (IzinBaru/StatusIzin) memanggil
+        // ->format() pada tanggal ini — tanpa cast, tanggal berupa string dan
+        // notifikasi gagal tersimpan (exception ditelan NotificationHelper).
+        'tanggal_mulai' => 'date',
+        'tanggal_selesai' => 'date',
         'approved_at_l1' => 'datetime',
         'approved_at_l2' => 'datetime',
     ];

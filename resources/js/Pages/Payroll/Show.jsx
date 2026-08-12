@@ -1,6 +1,7 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
+import { ArrowLeft, CheckCircle2, Printer } from 'lucide-react';
 import { formatRupiah } from '@/Utils/format';
 import { PAYROLL_STATUS } from '@/Constants';
 
@@ -11,32 +12,31 @@ export default function Show({ auth, penggajian }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-2xl text-primary leading-tight">Slip Gaji</h2>}
+            header={<h2 className="page-title">Slip Gaji</h2>}
         >
             <Head title={`Slip Gaji - ${penggajian.pegawai.nama_lengkap}`} />
 
             <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
 
-                    <div className="page-header">
-                        <Link href={route('penggajian.index')} className="link text-sm flex items-center">
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                            Kembali ke Daftar
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
+                        <Link href={route('penggajian.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
+                            <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar
                         </Link>
-                        <div className="flex items-center gap-3">
-                            <button className="btn-primary btn-sm" onClick={() => window.print()}>
-                                Cetak Slip
+                        <div className="flex items-center gap-2">
+                            <button className="btn-secondary btn-sm inline-flex items-center gap-1.5" onClick={() => window.print()}>
+                                <Printer className="h-3.5 w-3.5" /> Cetak Slip
                             </button>
                             {penggajian.status === PAYROLL_STATUS.FINALIZED && (
                                 <button
-                                    className="btn-sm inline-flex items-center gap-1.5 bg-success text-white rounded-button px-3 py-1.5 text-xs font-medium hover:bg-green-700 transition-all duration-150"
+                                    className="btn-primary btn-sm inline-flex items-center gap-1.5"
                                     onClick={() => {
                                         if (confirm('Tandai slip gaji ini sudah DIBAYAR?')) {
                                             router.post(route('penggajian.mark_paid', penggajian.id));
                                         }
                                     }}
                                 >
-                                    Tandai Dibayar
+                                    <CheckCircle2 className="h-3.5 w-3.5" /> Tandai Dibayar
                                 </button>
                             )}
                         </div>
@@ -65,7 +65,7 @@ export default function Show({ auth, penggajian }) {
                                             </tr>
                                             <tr>
                                                 <td className="py-1 text-text-secondary">NIK</td>
-                                                <td className="py-1 font-bold text-text-primary">: {penggajian.pegawai.nik}</td>
+                                                <td className="py-1 font-bold text-text-primary">: {penggajian.pegawai.nik_masked}</td>
                                             </tr>
                                             <tr>
                                                 <td className="py-1 text-text-secondary">Status</td>

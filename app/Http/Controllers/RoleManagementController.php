@@ -21,11 +21,21 @@ class RoleManagementController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
+        $totalRole = (clone $query)->count();
+        $systemRoles = ['superadmin', 'admin_unit', 'pegawai'];
+        $totalSystem = (clone $query)->whereIn('name', $systemRoles)->count();
+        $stats = [
+            'total_role' => $totalRole,
+            'total_system' => $totalSystem,
+            'total_custom' => $totalRole - $totalSystem,
+        ];
+
         $roles = $query->paginate(15)->withQueryString();
 
         return Inertia::render('Roles/Index', [
             'roles' => $roles,
             'filters' => $request->only(['search']),
+            'stats' => $stats,
         ]);
     }
 
@@ -56,7 +66,10 @@ class RoleManagementController extends Controller
             'permissions.*' => 'exists:permissions,name',
         ]);
 
-        $role = Role::create(['name' => strtolower($request->name)]);
+        // Guard eksplisit 'web': permission/role Spatie dibuat dgn guard 'web'
+        // (RolePermissionSeeder). Tanpa ini, guard mengikuti AUTH_GUARD env
+        // (mis. web_admin saat test) → syncPermissions gagal PermissionDoesNotExist.
+        $role = Role::create(['name' => strtolower($request->name), 'guard_name' => 'web']);
 
         if ($request->has('permissions')) {
             $role->syncPermissions($request->permissions);

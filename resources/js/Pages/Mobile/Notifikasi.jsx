@@ -4,6 +4,8 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Empty } from '@/Components/MobileUI';
 import Pagination from '@/Components/Pagination';
 import { Bell, CheckCheck, Search, Archive, ArchiveRestore } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
 
 export default function Notifikasi({ auth, notifications, filters }) {
     const [search, setSearch] = useState(filters?.search || '');
@@ -81,7 +83,7 @@ export default function Notifikasi({ auth, notifications, filters }) {
                                     <p className={`text-sm ${!n.read_at ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
                                         {n.data?.message || n.data?.pegawai_nama || 'Notifikasi'}
                                     </p>
-                                    <p className="mt-0.5 text-xs text-slate-400">{n.created_at}</p>
+                                    <p className="mt-0.5 text-xs text-slate-400">{n.created_at ? format(parseISO(n.created_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}</p>
                                 </div>
                                 <div className="flex shrink-0 items-center gap-1.5">
                                     {view === 'all' && !n.read_at && (

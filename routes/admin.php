@@ -10,6 +10,7 @@ use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PegawaiController;
+use App\Http\Controllers\PegawaiDokumenController;
 use App\Http\Controllers\PegawaiKomponenController;
 use App\Http\Controllers\PengajuanIzinController;
 use App\Http\Controllers\PenggajianController;
@@ -44,6 +45,11 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::post('/lengkapi-data', [ProfileController::class, 'updatePegawai'])->name('lengkapi-data.store');
 
     // Pegawai — index/show bisa diakses staff, tapi create/edit/delete dikontrol di controller
+    // Route statis template/import DIDAHULUKAN agar tidak tertelan wildcard {pegawai} (anti-shadowing).
+    Route::get('pegawai/template', [PegawaiController::class, 'downloadTemplate'])->name('pegawai.template');
+    Route::post('pegawai/import', [PegawaiController::class, 'import'])
+        ->middleware('throttle:30,1')
+        ->name('pegawai.import');
     Route::resource('pegawai', PegawaiController::class)->middleware('throttle:60,1');
 
     // Jadwal — index bisa diakses staff (lihat jadwal sendiri)
@@ -69,16 +75,20 @@ Route::middleware('auth:web_admin')->group(function () {
         ->middleware('throttle:60,1')
         ->name('pegawai.keuangan.update');
 
-    // Pegawai Import/Template
-    Route::get('pegawai/template', [PegawaiController::class, 'downloadTemplate'])->name('pegawai.template');
-    Route::post('pegawai/import', [PegawaiController::class, 'import'])
-        ->middleware('throttle:30,1')
-        ->name('pegawai.import');
-
     // Pegawai — NIK plaintext khusus HR/admin (gate view_sensitive_data)
     Route::get('pegawai/{pegawai}/nik-asli', [PegawaiController::class, 'nikAsli'])
         ->middleware('throttle:30,1')
         ->name('pegawai.nik-asli');
+
+    // Dokumen pegawai — upload/download/hapus (file private, unduh terproteksi)
+    Route::post('pegawai/{pegawai}/dokumen', [PegawaiDokumenController::class, 'store'])
+        ->middleware('throttle:30,1')
+        ->name('pegawai.dokumen.store');
+    Route::get('pegawai/{pegawai}/dokumen/{dokumen}/download', [PegawaiDokumenController::class, 'download'])
+        ->name('pegawai.dokumen.download');
+    Route::delete('pegawai/{pegawai}/dokumen/{dokumen}', [PegawaiDokumenController::class, 'destroy'])
+        ->middleware('throttle:30,1')
+        ->name('pegawai.dokumen.destroy');
 
     // Unit Sekolah
     Route::resource('unit-sekolah', UnitSekolahController::class)->only(['index', 'create', 'store', 'edit', 'update'])->middleware('throttle:60,1');
@@ -130,8 +140,9 @@ Route::middleware('auth:web_admin')->group(function () {
         ->middleware('throttle:60,1')
         ->name('komponen-gaji.matrix.update');
 
-    // Komponen Gaji
-    Route::resource('komponen-gaji', KomponenGajiController::class)->middleware('throttle:60,1');
+    // Komponen Gaji — hanya route yang method-nya ada di controller (create/show/edit
+    // tidak diimplementasikan; UI memakai modal di index). Menghindari GET → 500.
+    Route::resource('komponen-gaji', KomponenGajiController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('throttle:60,1');
     Route::resource('skala-masa-bakti', SkalaMasaBaktiController::class)->only(['index', 'store', 'destroy'])->middleware('throttle:60,1');
 
     // Atur Nominal Spesifik per Pegawai (Manual / Import Excel)
@@ -181,8 +192,9 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('laporan/penggajian', [LaporanController::class, 'exportPenggajian'])->name('laporan.penggajian');
     Route::get('laporan/lemburan', [LaporanController::class, 'exportLemburan'])->name('laporan.lemburan');
 
-    // Rute slip gaji ditempatkan setelah rute admin agar tidak tabrakan dengan /penggajian/run
-    Route::get('penggajian/{id}', [PenggajianController::class, 'show'])->name('penggajian.show');
+    // Rute slip gaji ditempatkan setelah rute admin agar tidak tabrakan dengan /penggajian/run.
+    // whereNumber: cegah shadowing — '/penggajian/export-bank' tidak boleh masuk ke {id}.
+    Route::get('penggajian/{id}', [PenggajianController::class, 'show'])->whereNumber('id')->name('penggajian.show');
 
     Route::middleware('can:manage_users')->group(function () {
         Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
@@ -207,7 +219,7 @@ Route::middleware('auth:web_admin')->group(function () {
         ->middleware(['can:manage_roles', 'throttle:60,1']);
 
     // PDF slip gaji + export bank (F3)
-    Route::get('penggajian/{id}/pdf', [PenggajianController::class, 'pdf'])->name('penggajian.pdf');
+    Route::get('penggajian/{id}/pdf', [PenggajianController::class, 'pdf'])->whereNumber('id')->name('penggajian.pdf');
     Route::get('penggajian/export-bank', [PenggajianController::class, 'exportBank'])->name('penggajian.export-bank');
 
     // Pengaturan Master (Superadmin)
@@ -216,7 +228,7 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::get('backup/download', [BackupController::class, 'download'])
             ->middleware('throttle:10,1')
             ->name('backup.download');
-        Route::resource('mata-pelajaran', MataPelajaranController::class)->only(['index', 'store', 'destroy'])->middleware('throttle:60,1');
+        Route::resource('mata-pelajaran', MataPelajaranController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('throttle:60,1');
         Route::resource('jabatan', JabatanController::class)->except(['show', 'create', 'edit'])->middleware('throttle:60,1');
     });
 });

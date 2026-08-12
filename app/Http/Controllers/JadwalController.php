@@ -18,6 +18,8 @@ class JadwalController extends Controller
     {
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_jadwal');
+        $search = trim((string) $request->input('search', ''));
+
         $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'mataPelajaran:id,nama']);
 
         if (! $isAdmin) {
@@ -37,7 +39,11 @@ class JadwalController extends Controller
             $query->where('kelas_label', $request->kelas_label);
         }
 
-        $jadwals = $query->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu')")
+        if ($search !== '') {
+            $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', "%{$search}%"));
+        }
+
+        $jadwals = $query->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 WHEN 'Minggu' THEN 7 END")
             ->orderBy('jam_mulai')
             ->get();
 
@@ -67,7 +73,32 @@ class JadwalController extends Controller
             });
         }
 
+        if ($search !== '') {
+            $pegawaiQuery->where('nama_lengkap', 'like', "%{$search}%");
+        }
+
         $pegawais = $pegawaiQuery->orderBy('nama_lengkap')->get();
+
+        // Ringkasan statistik: 1 pass agregasi PHP — TANPA query tambahan
+        $totalMenitMengajar = 0;
+        $totalMengajar = 0;
+        foreach ($jadwals as $j) {
+            if ($j->jenis_jadwal !== 'mengajar') {
+                continue;
+            }
+            $totalMengajar++;
+            [$h1, $m1] = array_pad(explode(':', (string) $j->jam_mulai), 2, 0);
+            [$h2, $m2] = array_pad(explode(':', (string) $j->jam_selesai), 2, 0);
+            $totalMenitMengajar += max(0, (int) $h2 * 60 + (int) $m2 - ((int) $h1 * 60 + (int) $m1));
+        }
+
+        $stats = [
+            'total_jadwal' => $jadwals->count(),
+            'total_mengajar' => $totalMengajar,
+            'total_jam_menit' => $totalMenitMengajar,
+            'total_pegawai' => $pegawais->count(),
+            'total_kelas' => $kelasLabels->count(),
+        ];
 
         return inertia('Jadwal/Index', [
             'jadwals' => $jadwals,
@@ -75,7 +106,8 @@ class JadwalController extends Controller
             'units' => $units,
             'mapel' => $mapel,
             'kelasLabels' => $kelasLabels,
-            'filters' => $request->only(['unit_sekolah_id', 'kelas_label']),
+            'stats' => $stats,
+            'filters' => $request->only(['unit_sekolah_id', 'kelas_label', 'search']),
         ]);
     }
 

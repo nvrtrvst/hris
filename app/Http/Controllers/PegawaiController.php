@@ -62,7 +62,13 @@ class PegawaiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Pegawai::with(['units', 'jabatans', 'mapels']);
+        $request->validate([
+            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
+            'jabatan_id' => 'nullable|exists:jabatan,id',
+        ]);
+
+        $query = Pegawai::with(['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama']);
 
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
@@ -96,6 +102,22 @@ class PegawaiController extends Controller
             });
         }
 
+        // Stats ringkasan: 1 query agregat + 1 count ringan (kontrak berakhir)
+        $agg = (clone $query)->selectRaw("COUNT(*) as total, SUM(CASE WHEN status_aktif = 'aktif' THEN 1 ELSE 0 END) as aktif")->first();
+        $kontrakEnd = now()->addDays(30)->format('Y-m-d');
+        $kontrakBerakhir = (clone $query)
+            ->where('status_kepegawaian', 'kontrak')
+            ->whereNotNull('tanggal_akhir_kontrak')
+            ->where('tanggal_akhir_kontrak', '<=', $kontrakEnd)
+            ->count();
+
+        $stats = [
+            'total' => (int) ($agg->total ?? 0),
+            'aktif' => (int) ($agg->aktif ?? 0),
+            'nonaktif' => (int) ($agg->total ?? 0) - (int) ($agg->aktif ?? 0),
+            'kontrak_berakhir' => (int) $kontrakBerakhir,
+        ];
+
         $pegawais = $query->paginate(10)->withQueryString();
 
         $unitSekolahs = UnitSekolah::all();
@@ -104,6 +126,7 @@ class PegawaiController extends Controller
 
         return inertia('Pegawai/Index', [
             'pegawais' => $pegawais,
+            'stats' => $stats,
             'filters' => $request->only(['search', 'unit_sekolah_id', 'mata_pelajaran_id', 'jabatan_id']),
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'userUnitId' => $user->unit_sekolah_id,

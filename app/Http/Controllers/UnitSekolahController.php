@@ -10,9 +10,26 @@ class UnitSekolahController extends Controller
 {
     public function index()
     {
-        $units = UnitSekolah::all();
+        $user = auth()->user();
+        $query = UnitSekolah::withCount(['pegawais', 'jadwals'])->orderBy('nama');
 
-        return inertia('UnitSekolah/Index', ['units' => $units]);
+        // admin_unit hanya melihat unitnya sendiri.
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $query->where('id', $user->unit_sekolah_id);
+        }
+
+        $units = $query->get();
+
+        $stats = [
+            'total_unit' => $units->count(),
+            'total_pegawai' => $units->sum('pegawais_count'),
+            'total_jadwal' => $units->sum('jadwals_count'),
+        ];
+
+        return inertia('UnitSekolah/Index', [
+            'units' => $units,
+            'stats' => $stats,
+        ]);
     }
 
     public function create()
@@ -32,11 +49,13 @@ class UnitSekolahController extends Controller
             'durasi_jp' => 'nullable|integer|min:1|max:255',
             'max_jam_minggu' => 'nullable|integer|min:1|max:168',
             'toleransi_menit' => 'nullable|integer|min:0|max:60',
+            'toleransi_tap_menit' => 'nullable|integer|min:0|max:60',
             'jam_masuk_kantor' => 'required|date_format:H:i',
             'jam_pulang_kantor' => 'nullable|date_format:H:i',
         ]);
 
         $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;
+        $validated['toleransi_tap_menit'] = $validated['toleransi_tap_menit'] ?? 15;
 
         $disk = config('filesystems.image_disk', 'public');
         $newLogo = $request->hasFile('logo') ? $request->file('logo')->store('unit_logos', $disk) : null;
@@ -73,11 +92,13 @@ class UnitSekolahController extends Controller
             'durasi_jp' => 'nullable|integer|min:1|max:255',
             'max_jam_minggu' => 'nullable|integer|min:1|max:168',
             'toleransi_menit' => 'nullable|integer|min:0|max:60',
+            'toleransi_tap_menit' => 'nullable|integer|min:0|max:60',
             'jam_masuk_kantor' => 'required|date_format:H:i',
             'jam_pulang_kantor' => 'nullable|date_format:H:i',
         ]);
 
         $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;
+        $validated['toleransi_tap_menit'] = $validated['toleransi_tap_menit'] ?? $unit_sekolah->toleransi_tap_menit ?? 15;
 
         $disk = config('filesystems.image_disk', 'public');
         $oldLogo = $unit_sekolah->logo;

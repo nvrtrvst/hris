@@ -27,6 +27,8 @@ class PresensiController extends Controller
         $request->validate([
             'lokasi_filter' => 'nullable|in:perlu_review,pulang_awal,review_semua',
             'suspicious_filter' => 'nullable|boolean',
+            'status_filter' => 'nullable|in:hadir,telat,sakit,izin,cuti,alpa',
+            'search' => 'nullable|string|max:100',
         ]);
 
         $user = auth()->user();
@@ -59,6 +61,15 @@ class PresensiController extends Controller
             });
         }
 
+        if ($request->search) {
+            $query->whereHas('pegawai', function ($q) use ($request) {
+                $q->where('nama_lengkap', 'like', '%'.$request->search.'%');
+            });
+        }
+
+        // Ringkasan periode (scope + unit + search + tanggal) — bebas dari filter detail
+        $stats = $this->presensiStats((clone $query));
+
         // Filter lembur
         if ($request->lembur_filter === 'lembur_pending') {
             $query->where('is_lembur', true)->where('lembur_status', 'pending');
@@ -86,20 +97,47 @@ class PresensiController extends Controller
             $query->where('posisi_mencurigakan', true);
         }
 
+        if ($request->status_filter) {
+            $query->where('status', $request->status_filter);
+        }
+
         $presensis = $query->orderBy('tanggal', 'desc')->paginate(10)->withQueryString();
 
         $units = [];
         if ($user->can('view_all_units')) {
-            $units = UnitSekolah::all();
+            $units = UnitSekolah::orderBy('nama')->get();
         }
 
         return inertia('Presensi/Index', [
             'presensis' => $presensis,
             'pegawai' => $isAdmin ? null : ($pegawai ?? null),
-            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter']),
+            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'status_filter', 'search']),
             'units' => $units,
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
+            'stats' => $stats,
         ]);
+    }
+
+    /**
+     * Ringkasan presensi untuk kartu statistik halaman index.
+     * Satu query agregat (group by status) + dua count ringan.
+     */
+    private function presensiStats($query): array
+    {
+        $byStatus = (clone $query)->toBase()
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $stats = ['hadir' => 0, 'telat' => 0, 'sakit' => 0, 'izin' => 0, 'cuti' => 0, 'alpa' => 0];
+        foreach ($stats as $key => $_) {
+            $stats[$key] = (int) ($byStatus[$key] ?? 0);
+        }
+        $stats['total'] = array_sum($stats);
+        $stats['lembur_pending'] = (clone $query)->where('is_lembur', true)->where('lembur_status', 'pending')->count();
+        $stats['perlu_review'] = (clone $query)->where('lokasi_perlu_review', true)->count();
+
+        return $stats;
     }
 
     public function create()
@@ -119,7 +157,7 @@ class PresensiController extends Controller
             ->get();
 
         $presensiHariIni = Presensi::where('pegawai_id', $pegawai->id ?? 0)
-            ->where('tanggal', Carbon::today())
+            ->where('tanggal', Carbon::today()->toDateString())
             ->get();
 
         return inertia('Presensi/Create', [
@@ -171,7 +209,7 @@ class PresensiController extends Controller
             $presensi = DB::transaction(function () use ($request, $unit, $distance) {
                 $presensi = Presensi::where('pegawai_id', $request->pegawai_id)
                     ->where('jadwal_id', $request->jadwal_id)
-                    ->where('tanggal', Carbon::today())
+                    ->where('tanggal', Carbon::today()->toDateString())
                     ->lockForUpdate()
                     ->first();
 
@@ -179,7 +217,7 @@ class PresensiController extends Controller
                     $presensi = new Presensi([
                         'pegawai_id' => $request->pegawai_id,
                         'jadwal_id' => $request->jadwal_id,
-                        'tanggal' => Carbon::today(),
+                        'tanggal' => Carbon::today()->toDateString(),
                     ]);
                 }
 

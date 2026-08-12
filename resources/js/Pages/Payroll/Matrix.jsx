@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { ArrowLeft, Loader2, Save, Search, X } from 'lucide-react';
 
 export default function Matrix({ auth, pegawais, komponens, unitSekolahs = [] }) {
     const initialData = pegawais.map(p => {
@@ -43,30 +44,34 @@ export default function Matrix({ auth, pegawais, komponens, unitSekolahs = [] })
     };
 
     return (
-        <AuthenticatedLayout user={auth.user}>
+        <AuthenticatedLayout
+            user={auth.user}
+            header={<h2 className="page-title">Matrix Master Gaji Pokok</h2>}
+        >
             <Head title="Matrix Master Gaji Pokok" />
 
             <div className="-m-4 sm:-m-6 lg:-m-8 h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] flex flex-col bg-surface pt-6 pb-6 px-4 sm:px-6 lg:px-8">
                 <form onSubmit={submit} className="flex flex-col flex-1 min-h-0">
                     <div className="flex justify-between items-center mb-4 shrink-0">
                             <div>
-                                <Link href={route('komponen-gaji.index')} className="link text-xs mb-2 inline-flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                    </svg>
+                                <Link href={route('komponen-gaji.index')} className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-text-secondary transition-colors hover:text-primary">
+                                    <ArrowLeft className="h-3.5 w-3.5" />
                                     Kembali ke Komponen Gaji
                                 </Link>
-                                <h2 className="text-2xl font-bold text-text-primary">Matrix Master Gaji Pokok</h2>
+                                <h2 className="text-xl font-extrabold text-text-primary">Matrix Master Gaji Pokok</h2>
                                 <p className="text-sm text-text-muted">Atur Gaji Pokok dan Tunjangan Tetap untuk semua pegawai sekaligus.</p>
                             </div>
-                            <div className="flex space-x-3 items-center">
-                                <input
-                                    type="text"
-                                    placeholder="Cari Nama / NIP..."
-                                    className="input-field w-64"
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                />
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="relative">
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                    <input
+                                        type="text"
+                                        placeholder="Cari Nama / NIP..."
+                                        className="input-field w-56 pl-9"
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                    />
+                                </div>
                                 <select
                                     className="select-field"
                                     value={filterUnit}
@@ -77,12 +82,11 @@ export default function Matrix({ auth, pegawais, komponens, unitSekolahs = [] })
                                         <option key={u.id} value={u.id}>{u.nama}</option>
                                     ))}
                                 </select>
-                                <div className="h-8 w-px bg-border mx-1"></div>
-                                <Link href={route('komponen-gaji.index')} className="btn-secondary btn-sm">
-                                    Batal
+                                <Link href={route('komponen-gaji.index')} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+                                    <X className="h-3.5 w-3.5" /> Batal
                                 </Link>
-                                <button type="submit" disabled={processing} className="btn-primary btn-sm">
-                                    {processing ? 'Menyimpan...' : 'Simpan Perubahan'}
+                                <button type="submit" disabled={processing} className="btn-primary btn-sm inline-flex items-center gap-1.5">
+                                    {processing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Menyimpan…</> : <><Save className="h-3.5 w-3.5" /> Simpan Perubahan</>}
                                 </button>
                             </div>
                         </div>

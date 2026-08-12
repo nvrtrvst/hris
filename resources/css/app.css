@@ -15,6 +15,25 @@
 }
 
 @layer components {
+    /* Posisi toast "Versi baru tersedia": mobile full-width di atas dengan
+       safe-area status bar PWA; desktop (sm+) kanan-atas. Dipisah dari
+       Tailwind karena nilai env() + max() tidak diparse oleh vite plugin. */
+    .toast-version-top {
+        top: max(1rem, env(safe-area-inset-top));
+    }
+
+    @media (min-width: 640px) {
+        .toast-version-top {
+            top: max(1.5rem, env(safe-area-inset-top));
+        }
+    }
+
+    /* Posisi FlashToast: sama dengan toast-version-top untuk mobile
+       (full-width margin 16px + safe-area), desktop tetap kanan-atas. */
+    .toast-flash-top {
+        top: max(1.5rem, env(safe-area-inset-top));
+    }
+
     .card {
         @apply bg-white rounded-card border border-border shadow-card;
     }

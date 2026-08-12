@@ -13,9 +13,12 @@ class PegawaiDokumen extends Model
         'pegawai_id',
         'nama_dokumen',
         'jenis',
-        'path',
+        'file_path',
         'keterangan',
     ];
+
+    // Path storage internal tidak boleh bocor ke payload frontend.
+    protected $hidden = ['file_path'];
 
     public function pegawai(): BelongsTo
     {

@@ -26,9 +26,11 @@ class PenggajianController extends Controller
 
     public function index(Request $request)
     {
+        $request->validate(['status' => 'nullable|in:draft,finalized,paid']);
+
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_payroll');
-        $query = Penggajian::with('pegawai');
+        $query = Penggajian::with(['pegawai.units:id,singkatan,nama']);
 
         if (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
@@ -47,11 +49,32 @@ class PenggajianController extends Controller
             $query->where('periode_bulan', $request->periode_bulan);
         }
 
-        $penggajians = $query->orderBy('periode_bulan', 'desc')->paginate(10)->withQueryString();
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Stats ringkasan: 1 query agregat (tanpa memuat baris)
+        $stats = (clone $query)->selectRaw("
+            COUNT(*) as total,
+            COALESCE(SUM(gaji_bersih), 0) as total_bersih,
+            COALESCE(SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END), 0) as draft,
+            COALESCE(SUM(CASE WHEN status = 'finalized' THEN 1 ELSE 0 END), 0) as finalized,
+            COALESCE(SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END), 0) as paid
+        ")->first();
+
+        // Daftar periode unik untuk dropdown filter
+        $periodeOptions = (clone $query)->select('periode_bulan')
+            ->distinct()
+            ->orderByDesc('periode_bulan')
+            ->pluck('periode_bulan');
+
+        $penggajians = $query->orderByDesc('periode_bulan')->orderByDesc('id')->paginate(10)->withQueryString();
 
         return inertia('Payroll/Index', [
             'penggajians' => $penggajians,
-            'filters' => $request->only(['periode_bulan']),
+            'stats' => $stats,
+            'periodeOptions' => $periodeOptions,
+            'filters' => $request->only(['periode_bulan', 'status']),
         ]);
     }
 

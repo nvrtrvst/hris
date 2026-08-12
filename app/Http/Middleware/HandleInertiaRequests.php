@@ -16,9 +16,25 @@ class HandleInertiaRequests extends Middleware
 
     /**
      * Determine the current asset version.
+     *
+     * Asset version = mtime manifest Vite. Berubah setiap `npm run build`,
+     * sehingga Inertia client mendeteksi mismatch version dan otomatis
+     * melakukan full-page reload — mencegah error stale-bundle setelah
+     * deploy (tanpa hard refresh manual).
      */
     public function version(Request $request): ?string
     {
+        $manifest = public_path('build/manifest.json');
+
+        if (is_file($manifest)) {
+            $mtime = @filemtime($manifest);
+
+            if ($mtime !== false) {
+                return (string) $mtime;
+            }
+        }
+
+        // Mode dev (`npm run dev`) tanpa manifest: nonaktifkan version check.
         return parent::version($request);
     }
 

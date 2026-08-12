@@ -2,6 +2,8 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import { Card, Toggle } from '@/Components/MobileUI';
+import { format, parseISO } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
 import { initPush, disablePush } from '@/push';
 import {
     Pencil, ChevronDown, User, Mail, Phone, Building2, BadgeCheck,
@@ -50,7 +52,7 @@ function Section({ title, icon: Icon, open, onToggle, children, accent = 'text-p
     );
 }
 
-export default function MobileProfile({ mustVerifyEmail, status }) {
+export default function MobileProfile({ status }) {
     const user = usePage().props.auth.user;
     const pegawai = user?.pegawai;
 
@@ -200,7 +202,7 @@ export default function MobileProfile({ mustVerifyEmail, status }) {
                         icon={CalendarDays}
                         label="Bergabung Sejak"
                         value={pegawai?.tanggal_mulai_kerja
-                            ? new Date(pegawai.tanggal_mulai_kerja).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                            ? format(parseISO(pegawai.tanggal_mulai_kerja), 'd MMMM yyyy', { locale: idLocale })
                             : null}
                     />
                 </Card>

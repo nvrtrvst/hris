@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use NotificationChannels\WebPush\PushSubscription;
 
 class PushSubscriptionController extends Controller
 {
@@ -21,19 +20,17 @@ class PushSubscriptionController extends Controller
             abort(401);
         }
 
-        // Upsert: endpoint unik per subscriber. Jika endpoint sama sudah terdaftar
-        // untuk user lain (mis. pindah akun), ambil alih ke user aktif.
-        $subscription = PushSubscription::query()
-            ->updateOrCreate(
-                ['endpoint' => $validated['endpoint']],
-                [
-                    'subscribable_id' => $user->id,
-                    'subscribable_type' => $user->getMorphClass(),
-                    'public_key' => $validated['public_key'] ?? null,
-                    'auth_token' => $validated['auth_token'] ?? null,
-                    'content_encoding' => $validated['content_encoding'] ?? 'aesgcm',
-                ]
-            );
+        // Upsert via relasi morphMany: kolom subscribable_id/subscribable_type TIDAK
+        // ada di $fillable model package — updateOrCreate via query builder akan
+        // gagal NOT NULL constraint (bug 500). updatePushSubscription() bawaan
+        // package mengisi morph key otomatis & mengambil alih endpoint yang
+        // dipakai user lain (mis. pindah akun).
+        $subscription = $user->updatePushSubscription(
+            $validated['endpoint'],
+            $validated['public_key'] ?? null,
+            $validated['auth_token'] ?? null,
+            $validated['content_encoding'] ?? 'aesgcm',
+        );
 
         return response()->json(['success' => true, 'subscription_id' => $subscription->id]);
     }
@@ -44,10 +41,10 @@ class PushSubscriptionController extends Controller
             'endpoint' => 'required|string|url|max:500',
         ]);
 
-        PushSubscription::query()
-            ->where('endpoint', $validated['endpoint'])
-            ->where('subscribable_id', $request->user()?->id)
-            ->delete();
+        $user = $request->user();
+        if ($user) {
+            $user->deletePushSubscription($validated['endpoint']);
+        }
 
         return response()->json(['success' => true]);
     }

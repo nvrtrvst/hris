@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use NotificationChannels\WebPush\WebPushChannel;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,6 +25,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        // Channel webpush: package v11 tidak mendaftarkan driver otomatis —
+        // tanpa ini semua notifikasi via 'webpush' gagal 'Driver not supported'.
+        // Dependency (WebPush + ReportHandler) di-bind oleh WebPushServiceProvider.
+        Notification::extend('webpush', fn ($app) => $app->make(WebPushChannel::class));
 
         // [AUDIT M1] Integrasi keuangan WAJIB HTTPS di produksi.
         // Cegah payload payroll/siswa terkirim plaintext ke endpoint tak aman.

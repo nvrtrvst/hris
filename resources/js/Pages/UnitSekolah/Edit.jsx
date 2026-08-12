@@ -1,6 +1,7 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 import UnitForm from './UnitForm';
 
 export default function Edit({ auth, unit }) {
@@ -14,6 +15,7 @@ export default function Edit({ auth, unit }) {
         radius_meter: unit.radius_meter,
         durasi_jp: unit.durasi_jp || 45,
         toleransi_menit: unit.toleransi_menit ?? 0,
+        toleransi_tap_menit: unit.toleransi_tap_menit ?? 15,
         max_jam_minggu: unit.max_jam_minggu ?? 30,
         jam_masuk_kantor: unit.jam_masuk_kantor?.slice(0, 5) || '07:30',
         jam_pulang_kantor: unit.jam_pulang_kantor?.slice(0, 5) || '15:00',
@@ -31,19 +33,20 @@ export default function Edit({ auth, unit }) {
         >
             <Head title={`Edit Unit - ${unit.nama}`} />
             <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="card p-6">
-                        <UnitForm
-                            data={data}
-                            setData={setData}
-                            errors={errors}
-                            processing={processing}
-                            onSubmit={handleSubmit}
-                            isEdit={true}
-                            unitName={unit.nama}
-                            unitLogoUrl={unit.logo_url}
-                        />
-                    </div>
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+                    <Link href={route('unit-sekolah.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
+                        <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Unit
+                    </Link>
+                    <UnitForm
+                        data={data}
+                        setData={setData}
+                        errors={errors}
+                        processing={processing}
+                        onSubmit={handleSubmit}
+                        isEdit={true}
+                        unitName={unit.nama}
+                        unitLogoUrl={unit.logo_url}
+                    />
                 </div>
             </div>
         </AuthenticatedLayout>

@@ -252,7 +252,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             const data = await res.json();
             if (data.success) {
                 setSuccessMessage(data.message || 'Presensi berhasil dikirim.');
-                setCapturedPhoto(null);
+                clearCamera();
                 setJadwalId(null);
                 setTimeout(() => {
                     if (typeof window !== 'undefined') window.location.assign(route('presensi.dashboard'));
@@ -588,7 +588,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (!isLembur && !officeAttendance && (!jadwals.length || !jadwalId)) || (isTeaching && teachingDone) || (!isLembur && officeAttendance && kantorRecord?.jam_keluar)}
+                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (!isLembur && !officeAttendance && !jadwals.length) || (isTeaching && teachingDone) || (!isLembur && officeAttendance && kantorRecord?.jam_keluar)}
                 className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isLembur ? 'bg-amber-500 text-amber-950' : 'bg-primary text-white'}`}
             >
                 {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isLembur ? 'Kirim bukti lembur' : isTeaching ? (teachingDone ? 'Sudah presensi masuk' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}

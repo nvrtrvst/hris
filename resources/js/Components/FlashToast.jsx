@@ -40,15 +40,20 @@ export default function FlashToast() {
         }
     }, [show, showPassword]);
 
-    if (!show || !toastMessage) return null;
-
-    if (!show || !toastMessage) return null;
-
+    // Live region SELALU di DOM agar screen reader mengumumkan pesan saat
+    // muncul. Error memakai role=alert (assertive), lainnya role=status
+    // (polite). Konten visual conditional di dalamnya.
     return (
-        <div 
-            className={`fixed top-6 right-6 z-[9999] max-w-sm w-full shadow-toast rounded-xl overflow-hidden print:hidden transition-all duration-500 ${show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+        <div
+            role={toastType === 'error' ? 'alert' : 'status'}
+            aria-live={toastType === 'error' ? 'assertive' : 'polite'}
+            aria-atomic="true"
         >
-            <div className={`${toastType === 'success' ? 'bg-success' : 'bg-danger'} p-4`}>
+            {show && toastMessage && (
+            <div 
+                className={`toast-flash-top fixed left-4 right-4 z-[9999] shadow-toast rounded-xl overflow-hidden print:hidden transition-all duration-500 sm:left-auto sm:right-6 sm:w-full sm:max-w-sm ${show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+            >
+                <div className={`${toastType === 'success' ? 'bg-success' : 'bg-danger'} p-4`}>
                 <div className="flex items-start gap-3">
                     <svg className="w-5 h-5 text-white flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {toastType === 'success' ? (
@@ -74,12 +79,14 @@ export default function FlashToast() {
                     <div className="h-full bg-white/40 rounded-full" style={{ animation: `shrinkWidth ${showPassword ? '15s' : '4s'} linear forwards` }}></div>
                 </div>
             </div>
-            <style>{`
-                @keyframes shrinkWidth {
-                    from { width: 100%; }
-                    to { width: 0%; }
-                }
-            `}</style>
+                <style>{`
+                    @keyframes shrinkWidth {
+                        from { width: 100%; }
+                        to { width: 0%; }
+                    }
+                `}</style>
+            </div>
+            )}
         </div>
     );
 }

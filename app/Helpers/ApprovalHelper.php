@@ -28,7 +28,7 @@ class ApprovalHelper
             ?? $pegawai->units()->first();
 
         if (! $primaryUnit) {
-            return ['l1_id' => null, 'l2_id' => null, 'has_l2' => false];
+            return ['l1_id' => null, 'l2_id' => null, 'has_l1' => false, 'has_l2' => false];
         }
 
         $primaryJabatan = $pegawai->jabatans()
@@ -37,16 +37,21 @@ class ApprovalHelper
             ->first();
 
         if (! $primaryJabatan) {
-            return ['l1_id' => null, 'l2_id' => null, 'has_l2' => false];
+            return ['l1_id' => null, 'l2_id' => null, 'has_l1' => false, 'has_l2' => false];
         }
 
-        $l1Id = $primaryJabatan->approver_l1_jabatan_id
-            ? self::findApproverInUnit($primaryUnit->id, $primaryJabatan->approver_l1_jabatan_id)?->id
+        // has_l1 = L1 terkonfigurasi (approver_l1_jabatan_id) DAN approver-nya
+        // ditemukan di unit. Fallback admin unit di bawah TIDAK menandai has_l1,
+        // sehingga notifikasi tahu kapan harus fallback ke admin unit + superadmin.
+        $l1Approver = $primaryJabatan->approver_l1_jabatan_id
+            ? self::findApproverInUnit($primaryUnit->id, $primaryJabatan->approver_l1_jabatan_id)
             : null;
 
-        $l2Id = $primaryJabatan->approver_l2_jabatan_id
-            ? self::findApproverInUnit($primaryUnit->id, $primaryJabatan->approver_l2_jabatan_id)?->id
+        $l2Approver = $primaryJabatan->approver_l2_jabatan_id
+            ? self::findApproverInUnit($primaryUnit->id, $primaryJabatan->approver_l2_jabatan_id)
             : null;
+
+        $l1Id = $l1Approver?->id;
 
         // Fallback: jika L1 tidak ditemukan (approver nonaktif/tidak ada), cari admin unit sebagai L1
         if (! $l1Id) {
@@ -58,6 +63,8 @@ class ApprovalHelper
             }
         }
 
+        $l2Id = $l2Approver?->id;
+
         if ($l1Id && $l2Id && $l1Id === $l2Id) {
             $l2Id = null;
         }
@@ -65,6 +72,7 @@ class ApprovalHelper
         return [
             'l1_id' => $l1Id,
             'l2_id' => $l2Id,
+            'has_l1' => $l1Approver !== null,
             'has_l2' => $primaryJabatan->approver_l2_jabatan_id !== null,
         ];
     }

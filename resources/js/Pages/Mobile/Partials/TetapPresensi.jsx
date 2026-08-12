@@ -13,6 +13,10 @@ const TAP_JADWAL = 'tap_jadwal';
 const FOTO_SORE = 'foto_sore';
 const SELESAI = 'selesai';
 
+// Tap jadwal hanya dalam rentang [jam_mulai, jam_selesai + grace] —
+// harus sinkron dengan PresensiMessages::TAP_GRACE_MINUTES di backend.
+const TAP_GRACE_MINUTES = 15;
+
 const pad = (n) => String(n).padStart(2, '0');
 
 export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null }) {
@@ -46,16 +50,33 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const jamSore = 960;
     const toMinutes = (hms) => { if (!hms) return 0; const p = String(hms).split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1] || 0, 10); };
 
-    const activeJadwals = useMemo(() => jadwals.filter((j) => tappedIds.has(j.id) || toMinutes(j.jam_mulai) <= jamSekarang), [jadwals, tappedIds, jamSekarang]);
-    const allActiveTapped = activeJadwals.length > 0 && activeJadwals.every((j) => tappedIds.has(j.id));
+    // Jadwal "aktif" = sudah di-tap ATAU masih dalam jendela waktu tap
+    // (mulai <= sekarang <= selesai + grace) — jadwal yang sudah lewat
+    // tidak bisa di-tap lagi (cegah presensi retroaktif).
+    const activeJadwals = useMemo(() => jadwals.filter((j) => {
+        if (tappedIds.has(j.id)) return true;
+        const mulai = toMinutes(j.jam_mulai);
+        const selesai = toMinutes(j.jam_selesai) || (mulai + 60);
+        // Grace per unit (toleransi_tap_menit), fallback ke konstanta global.
+        const grace = j.unit_sekolah?.toleransi_tap_menit ?? TAP_GRACE_MINUTES;
+
+        return mulai <= jamSekarang && jamSekarang <= selesai + grace;
+    }), [jadwals, tappedIds, jamSekarang]);
     const untappedActive = activeJadwals.filter((j) => !tappedIds.has(j.id));
+    // Setidaknya ada jadwal yang jam mulainya sudah tiba — pembeda antara
+    // "semua belum mulai" (tunggu) vs "semua sudah lewat" (lanjut foto sore).
+    const sudahMulai = useMemo(() => jadwals.some((j) => toMinutes(j.jam_mulai) <= jamSekarang), [jadwals, jamSekarang]);
+    const masihBisaTap = untappedActive.length > 0;
 
     const phase = useMemo(() => {
         if (!pagiRecord) return FOTO_PAGI;
         if (pagiRecord.jam_keluar) return SELESAI;
-        if (allActiveTapped || jamSekarang >= jamSore) return FOTO_SORE;
+        if (jamSekarang >= jamSore) return FOTO_SORE;
+        // Semua jadwal yang sudah dimulai sudah di-tap / lewat batas → lanjut foto sore.
+        if (sudahMulai && !masihBisaTap) return FOTO_SORE;
+
         return TAP_JADWAL;
-    }, [pagiRecord, allActiveTapped, jamSekarang]);
+    }, [pagiRecord, sudahMulai, masihBisaTap, jamSekarang]);
 
     const lemburUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
 
@@ -218,7 +239,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             const data = await res.json();
             if (data.success) {
                 setSuccessMessage(data.message || `${tipe === 'masuk' ? 'Foto pagi' : 'Foto sore'} berhasil.`);
-                setCapturedPhoto(null);
+                clearCamera();
                 if (tipe === 'keluar') {
                     setTimeout(() => { if (typeof window !== 'undefined') window.location.assign(route('presensi.dashboard')); }, 1500);
                 } else {
@@ -588,7 +609,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             )}
 
             {activeJadwals.length === 0 && jadwals.length > 0 && (
-                <Empty icon={Clock} title="Jadwal hari ini belum mulai" subtitle="Jadwal aktif akan muncul setelah jam mengajar tiba." />
+                <Empty icon={Clock} title="Tidak ada jadwal yang bisa di-tap" subtitle={sudahMulai ? 'Semua jadwal sudah berakhir — lanjut ke foto sore.' : 'Jadwal aktif akan muncul setelah jam mengajar tiba.'} />
             )}
             {jadwals.length === 0 && (
                 <Empty icon={Clock} title="Tidak ada jadwal hari ini" subtitle="Jika tidak ada jadwal, lanjut ke foto sore." />

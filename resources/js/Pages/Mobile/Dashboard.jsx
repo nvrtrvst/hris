@@ -4,7 +4,6 @@ import { id } from 'date-fns/locale';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Badge, Card, Empty, SectionTitle } from '@/Components/MobileUI';
 import {
-    AlertTriangle,
     ArrowRight,
     CalendarDays,
     CheckCircle2,
@@ -135,12 +134,6 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                         )}
                     </div>
                 </div>
-
-                {primary?.lokasi_perlu_review && (
-                    <div className="mx-4 mb-4 flex items-start gap-2 rounded-xl bg-amber-400/15 px-3 py-2.5 text-xs font-medium text-amber-50">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Lokasi perlu ditinjau admin.
-                    </div>
-                )}
 
                 <Link href={route('presensi.absen')} className="mx-4 mb-4 flex min-h-12 items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-bold text-primary transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30">
                     {!isMengajar && primary?.jam_masuk && !primary?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi'}

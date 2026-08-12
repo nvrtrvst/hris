@@ -56,13 +56,13 @@ class MobileController extends Controller
         $hariIniIndo = $hariMap[Carbon::now()->format('l')];
 
         $presensiHariIni = Presensi::with('unitSekolah')->where('pegawai_id', $pegawai->id)
-            ->where('tanggal', Carbon::today())
+            ->where('tanggal', Carbon::today()->toDateString())
             ->first();
 
         $presensiTerbaru = Presensi::with('unitSekolah')
             ->where('pegawai_id', $pegawai->id)
-            ->where('tanggal', '>=', Carbon::today()->subDays(3))
-            ->where('tanggal', '<=', Carbon::today())
+            ->where('tanggal', '>=', Carbon::today()->subDays(3)->toDateString())
+            ->where('tanggal', '<=', Carbon::today()->toDateString())
             ->orderBy('tanggal', 'desc')
             ->get();
 
@@ -192,7 +192,7 @@ class MobileController extends Controller
         $jadwals = $this->rememberJadwal('mobile.jadwal.'.$pegawai->id, 900, function () use ($pegawai) {
             return Jadwal::with(['unitSekolah', 'mataPelajaran'])
                 ->where('pegawai_id', $pegawai->id)
-                ->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu')")
+                ->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 WHEN 'Minggu' THEN 7 END")
                 ->orderBy('jam_mulai', 'asc')
                 ->get()
                 ->groupBy('hari');
@@ -348,7 +348,7 @@ class MobileController extends Controller
         });
 
         $presensiHariIni = Presensi::where('pegawai_id', $pegawai->id)
-            ->where('tanggal', Carbon::today())
+            ->where('tanggal', Carbon::today()->toDateString())
             ->get();
 
         return inertia('Mobile/Absen', [
@@ -560,20 +560,20 @@ class MobileController extends Controller
             if ($isLembur) {
                 $presensi = Presensi::where('pegawai_id', $pegawai->id)
                     ->where('is_lembur', true)
-                    ->where('tanggal', Carbon::today())
+                    ->where('tanggal', Carbon::today()->toDateString())
                     ->lockForUpdate()
                     ->first();
             } elseif ($tipePresensi === 'kantor') {
                 $presensi = Presensi::where('pegawai_id', $pegawai->id)
                     ->whereNull('jadwal_id')
                     ->where('tipe_presensi', 'kantor')
-                    ->where('tanggal', Carbon::today())
+                    ->where('tanggal', Carbon::today()->toDateString())
                     ->lockForUpdate()
                     ->first();
             } else {
                 $presensi = Presensi::where('pegawai_id', $pegawai->id)
                     ->where('jadwal_id', $request->jadwal_id)
-                    ->where('tanggal', Carbon::today())
+                    ->where('tanggal', Carbon::today()->toDateString())
                     ->lockForUpdate()
                     ->first();
             }
@@ -582,7 +582,7 @@ class MobileController extends Controller
                 $presensi = new Presensi([
                     'pegawai_id' => $pegawai->id,
                     'jadwal_id' => $request->jadwal_id,
-                    'tanggal' => Carbon::today(),
+                    'tanggal' => Carbon::today()->toDateString(),
                 ]);
             }
 
@@ -866,10 +866,27 @@ class MobileController extends Controller
         abort_unless($jadwal, 422, 'Jadwal tidak ditemukan.');
         abort_unless($jadwal->unitSekolah, 422, 'Unit jadwal tidak tersedia.');
 
+        // Tap hanya boleh dalam rentang [jam_mulai, jam_selesai + grace] —
+        // cegah presensi retroaktif untuk jadwal yang sudah lama berakhir.
+        $sekarang = Carbon::now()->format('H:i:s');
+        if ($jadwal->jam_mulai && $sekarang < $jadwal->jam_mulai) {
+            return response()->json(['success' => false, 'message' => PresensiMessages::TAP_BELUM_DIMULAI], 422);
+        }
+        if ($jadwal->jam_selesai) {
+            $graceTap = (int) ($jadwal->unitSekolah->toleransi_tap_menit ?? PresensiMessages::TAP_GRACE_MINUTES);
+            $batasTap = Carbon::parse($jadwal->jam_selesai)->addMinutes($graceTap)->format('H:i:s');
+            if ($sekarang > $batasTap) {
+                return response()->json([
+                    'success' => false,
+                    'message' => sprintf(PresensiMessages::TAP_SUDAH_BERAKHIR, $batasTap),
+                ], 422);
+            }
+        }
+
         $pagiRecord = Presensi::where('pegawai_id', $pegawai->id)
             ->whereNull('jadwal_id')
             ->where('tipe_presensi', 'kantor')
-            ->where('tanggal', Carbon::today())
+            ->where('tanggal', Carbon::today()->toDateString())
             ->exists();
 
         abort_unless($pagiRecord, 422, 'Silakan foto pagi terlebih dahulu.');
@@ -892,7 +909,7 @@ class MobileController extends Controller
         $status = DB::transaction(function () use ($pegawai, $jadwal, $distance, $request, $accuracy) {
             $exists = Presensi::where('pegawai_id', $pegawai->id)
                 ->where('jadwal_id', $jadwal->id)
-                ->where('tanggal', Carbon::today())
+                ->where('tanggal', Carbon::today()->toDateString())
                 ->lockForUpdate()
                 ->exists();
 
@@ -904,7 +921,7 @@ class MobileController extends Controller
                 'pegawai_id' => $pegawai->id,
                 'jadwal_id' => $jadwal->id,
                 'unit_sekolah_id' => $jadwal->unit_sekolah_id,
-                'tanggal' => Carbon::today(),
+                'tanggal' => Carbon::today()->toDateString(),
                 'jam_masuk' => Carbon::now()->format('H:i:s'),
                 'latitude_masuk' => $request->latitude,
                 'longitude_masuk' => $request->longitude,

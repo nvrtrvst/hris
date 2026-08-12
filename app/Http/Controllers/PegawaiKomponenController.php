@@ -34,7 +34,8 @@ class PegawaiKomponenController extends Controller
 
                 return [
                     'id' => $pegawai->id,
-                    'nik' => $pegawai->nik,
+                    // NIK plaintext TIDAK pernah dikirim ke frontend — hanya versi masked.
+                    'nik_masked' => $pegawai->nik_masked,
                     'nama_lengkap' => $pegawai->nama_lengkap,
                     'unit' => $pegawai->units->first()->nama ?? '-',
                     'nominal' => $pivot ? $pivot->pivot->nominal : null,

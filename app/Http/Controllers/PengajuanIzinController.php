@@ -66,11 +66,18 @@ class PengajuanIzinController extends Controller
                 ->whereDate('tanggal_selesai', '>=', $request->tanggal);
         }
 
+        $stats = [
+            'total' => (clone $query)->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'selesai' => (clone $query)->whereIn('status', ['disetujui', 'ditolak'])->count(),
+        ];
+
         $pengajuans = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
         return Inertia::render('PengajuanIzin/Index', [
             'pengajuans' => $pengajuans,
             'filters' => $request->only(['search', 'status', 'tanggal', 'tab']),
+            'stats' => $stats,
         ]);
     }
 

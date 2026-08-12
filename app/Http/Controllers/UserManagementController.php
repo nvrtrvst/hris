@@ -24,11 +24,18 @@ class UserManagementController extends Controller
             });
         }
 
+        $stats = [
+            'total_user' => (clone $query)->count(),
+            'total_superadmin' => (clone $query)->role('superadmin')->count(),
+            'total_admin_unit' => (clone $query)->role('admin_unit')->count(),
+        ];
+
         $users = $query->paginate(15)->withQueryString();
 
         return Inertia::render('Users/Index', [
             'users' => $users,
             'filters' => $request->only(['search']),
+            'stats' => $stats,
         ]);
     }
 

@@ -10,10 +10,20 @@ class JabatanController extends Controller
 {
     public function index()
     {
-        $jabatans = Jabatan::with('approverL1', 'approverL2')->orderBy('nama')->get();
+        $jabatans = Jabatan::with('approverL1', 'approverL2')
+            ->withCount('pegawai')
+            ->orderBy('nama')
+            ->get();
+
+        $stats = [
+            'total_jabatan' => $jabatans->count(),
+            'total_guru' => $jabatans->where('is_guru', true)->count(),
+            'total_pegawai' => $jabatans->sum('pegawai_count'),
+        ];
 
         return inertia('Jabatan/Index', [
             'jabatans' => $jabatans,
+            'stats' => $stats,
         ]);
     }
 

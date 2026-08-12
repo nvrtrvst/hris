@@ -7,6 +7,7 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <meta name="theme-color" content="#0F3D3E">
         <meta name="format-detection" content="telephone=no">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <link rel="manifest" href="/manifest.json">
         <link rel="apple-touch-icon" href="/icons/icon-192.png">

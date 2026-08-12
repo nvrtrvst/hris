@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
-import { Search, Filter, CheckCircle, XCircle, Clock, Info, User, FileText, Calendar, AlertCircle, ChevronRight } from 'lucide-react';
+import { Search, Filter, CheckCircle, XCircle, Clock, Info, User, FileText, Calendar, AlertCircle, ChevronRight, CalendarCheck2, Inbox } from 'lucide-react';
 
 const TABS = [
     { key: 'l1', label: 'Approval L1' },
@@ -13,7 +13,7 @@ const TABS = [
     { key: 'semua', label: 'Semua' },
 ];
 
-export default function Index({ auth, pengajuans, filters }) {
+export default function Index({ auth, pengajuans, filters, stats }) {
     const { flash } = usePage().props;
     const [selectedItem, setSelectedItem] = useState(null);
     const [modalType, setModalType] = useState(null);
@@ -153,7 +153,47 @@ export default function Index({ auth, pengajuans, filters }) {
             <Head title="Pengajuan Izin" />
 
             <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+                    {/* Header */}
+                    <div>
+                        <h3 className="text-xl font-extrabold text-text-primary">Pengajuan Izin / Cuti</h3>
+                        <p className="text-sm text-text-muted">Tinjau dan proses pengajuan izin, sakit, dan cuti dari pegawai.</p>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div className="card flex items-center gap-4 p-5">
+                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                                <Inbox className="h-5 w-5 text-primary" />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-2xl font-extrabold leading-tight text-text-primary tabular-nums">{stats?.total ?? 0}</p>
+                                <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-muted">Total Pengajuan</p>
+                                <p className="truncate text-[11px] text-text-muted">Sesuai tab & filter aktif</p>
+                            </div>
+                        </div>
+                        <div className="card flex items-center gap-4 p-5">
+                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50">
+                                <Clock className="h-5 w-5 text-amber-600" />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-2xl font-extrabold leading-tight text-text-primary tabular-nums">{stats?.pending ?? 0}</p>
+                                <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-muted">Menunggu Persetujuan</p>
+                                <p className="truncate text-[11px] text-text-muted">Butuh tindakan Anda</p>
+                            </div>
+                        </div>
+                        <div className="card flex items-center gap-4 p-5">
+                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
+                                <CalendarCheck2 className="h-5 w-5 text-emerald-600" />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-2xl font-extrabold leading-tight text-text-primary tabular-nums">{stats?.selesai ?? 0}</p>
+                                <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-muted">Selesai Diproses</p>
+                                <p className="truncate text-[11px] text-text-muted">Disetujui / ditolak</p>
+                            </div>
+                        </div>
+                    </div>
+
                     {flash.message && (
                         <div className="bg-success-light border border-success/30 text-success px-4 py-3 rounded-card mb-6 flex items-center shadow-card">
                             <CheckCircle className="w-5 h-5 mr-3 text-success" />
@@ -269,7 +309,7 @@ export default function Index({ auth, pengajuans, filters }) {
                                                     </div>
                                                     <div className="ml-4">
                                                         <div className="text-sm font-bold text-text-primary group-hover:text-primary transition-colors">{item.pegawai?.nama_lengkap}</div>
-                                                        <div className="text-xs text-text-muted font-mono mt-0.5">{item.pegawai?.nik}</div>
+                                                        <div className="text-xs text-text-muted font-mono mt-0.5">{item.pegawai?.nik_masked}</div>
                                                     </div>
                                                 </div>
                                             </td>
