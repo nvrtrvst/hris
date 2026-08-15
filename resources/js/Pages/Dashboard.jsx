@@ -1,6 +1,7 @@
 import React, { useState, Component, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
+import usePolling from '@/Utils/usePolling';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { avatarTone, initials } from '@/Utils/avatar';
 import {
@@ -92,6 +93,11 @@ export default function Dashboard(props) {
 
 function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadwalHariIni, presensiHariIni }) {
     const [detailPresensi, setDetailPresensi] = useState(null);
+
+    // Live polling: refresh data kehadiran/jadwal/presensi tiap 60 detik (partial reload
+    // Inertia — hanya prop yang di-`only` dikirim ulang). Berhenti saat tab tidak aktif.
+    const isAdmin = roleType === 'Admin';
+    usePolling({ enabled: isAdmin, only: ['stats', 'trends', 'jadwalHariIni', 'presensiHariIni'] });
 
     const presensiMap = useMemo(() => {
         const map = {};

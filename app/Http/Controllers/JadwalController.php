@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
@@ -100,6 +101,18 @@ class JadwalController extends Controller
             'total_kelas' => $kelasLabels->count(),
         ];
 
+        // Presensi mengajar HARI INI — dipakai badge status live di matriks jadwal
+        // (Mengajar / Selesai), di-polling 60 detik oleh frontend.
+        // Frontend hanya membaca jadwal_id + jam_masuk — tanpa eager-load ekstra.
+        $presensiHariIni = Presensi::where('tanggal', now()->toDateString())
+            ->whereNotNull('jadwal_id')
+            ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status']);
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $presensiHariIni->where('unit_sekolah_id', $user->unit_sekolah_id);
+        } elseif ($request->filled('unit_sekolah_id')) {
+            $presensiHariIni->where('unit_sekolah_id', $request->unit_sekolah_id);
+        }
+
         return inertia('Jadwal/Index', [
             'jadwals' => $jadwals,
             'pegawais' => $pegawais,
@@ -107,6 +120,7 @@ class JadwalController extends Controller
             'mapel' => $mapel,
             'kelasLabels' => $kelasLabels,
             'stats' => $stats,
+            'presensiHariIni' => $presensiHariIni->get()->toArray(),
             'filters' => $request->only(['unit_sekolah_id', 'kelas_label', 'search']),
         ]);
     }

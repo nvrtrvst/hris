@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { ArrowLeft, ArrowRight, CalendarDays, ClipboardList, FileText, Loader2, Lock, Sparkles, TrendingUp, UserCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarDays, ClipboardList, FileText, Info, Loader2, Lock, Sparkles, TrendingUp, UserCheck } from 'lucide-react';
 
 const MONTHS = [
     { val: '01', label: 'Januari' }, { val: '02', label: 'Februari' }, { val: '03', label: 'Maret' },
@@ -69,6 +69,13 @@ export default function RunPayrollIndex({ auth }) {
                         </div>
 
                         <form onSubmit={submit} className="space-y-6">
+                            <div className="flex items-start gap-2 rounded-xl border border-info/30 bg-info-light p-3 text-xs leading-relaxed text-info">
+                                <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                                <span>
+                                    Periode <strong>{MONTHS.find((m) => m.val === data.month)?.label} {data.year}</strong> — jika draft untuk periode ini sudah ada, draft lama akan <strong>dihitung ulang dari nol</strong>.
+                                </span>
+                            </div>
+
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
                                     <label className="form-label mb-1.5">Pilih Bulan</label>

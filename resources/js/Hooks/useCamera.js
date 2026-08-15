@@ -4,7 +4,10 @@ import { useCallback, useRef, useState } from 'react';
  * Hook kamera bersama utk halaman presensi mobile.
  *
  * Mengelola: getUserMedia (selfie), pratinjau live, ambil foto bukti
- * (crop 3:4 + resize max 1024px), fallback upload dari galeri.
+ * (crop 3:4 + resize max 640px, JPEG q0.75 — sama dengan target resize
+ * server di ImageUploadService (640px), sehingga resize server jadi no-op
+ * dan beban CPU/RAM di jam sibuk (250 absen serentak) turun drastis),
+ * fallback upload dari galeri.
  *
  * @param {object} opts
  * @param {boolean} opts.canCapture — true saat GPS siap & dalam radius (foto diblokir di luar itu)
@@ -46,7 +49,7 @@ export function useCamera({ canCapture = true, currentPosition = null, onWillCap
 
     const createEvidencePhoto = useCallback((source, sourceWidth, sourceHeight) => {
         return new Promise((resolve) => {
-            const MAX = 1024;
+            const MAX = 640;
             const targetRatio = 3 / 4;
             let cropWidth = sourceWidth;
             let cropHeight = sourceHeight;
@@ -71,7 +74,7 @@ export function useCamera({ canCapture = true, currentPosition = null, onWillCap
             const ctx = canvas.getContext('2d');
             ctx.drawImage(source, cropX, cropY, cropWidth, cropHeight, 0, 0, width, height);
 
-            resolve(canvas.toDataURL('image/jpeg', 0.84));
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
         });
     }, []);
 

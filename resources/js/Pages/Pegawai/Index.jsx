@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { subscribeRouter } from '@/Utils/routerEvents';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
@@ -54,17 +55,10 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
     const { flash = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
 
-    useEffect(() => {
-        const onStart = () => setProcessing(true);
-        const onFinish = () => setProcessing(false);
-        router.on('start', onStart);
-        router.on('finish', onFinish);
-
-        return () => {
-            router.off('start', onStart);
-            router.off('finish', onFinish);
-        };
-    }, []);
+    useEffect(() => subscribeRouter({
+        start: () => setProcessing(true),
+        finish: () => setProcessing(false),
+    }), []);
 
     const [search, setSearch] = useState(filters.search || '');
     const [unitSekolahId, setUnitSekolahId] = useState(filters.unit_sekolah_id || '');

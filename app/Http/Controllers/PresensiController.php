@@ -28,6 +28,7 @@ class PresensiController extends Controller
             'lokasi_filter' => 'nullable|in:perlu_review,pulang_awal,review_semua',
             'suspicious_filter' => 'nullable|boolean',
             'status_filter' => 'nullable|in:hadir,telat,sakit,izin,cuti,alpa',
+            'jadwal_filter' => 'nullable|in:sedang_berlangsung',
             'search' => 'nullable|string|max:100',
         ]);
 
@@ -101,6 +102,22 @@ class PresensiController extends Controller
             $query->where('status', $request->status_filter);
         }
 
+        // Kelas yang sedang berlangsung SEKARANG: record mengajar hari ini yang
+        // sudah absen masuk dan jam jadwal-nya sedang berjalan (jam_mulai <= now < jam_selesai).
+        // Konsisten dengan badge "Mengajar" di daftar (Index.jsx).
+        // Perbandingan string polos (bukan whereTime) supaya index komposit
+        // idx_jadwal_pegawai_hari_jam tetap terpakai — jam selalu tersimpan H:i:s zero-padded.
+        if ($request->jadwal_filter === 'sedang_berlangsung') {
+            $now = Carbon::now()->format('H:i:s');
+            $query->where('tanggal', Carbon::today()->toDateString())
+                ->whereNotNull('jadwal_id')
+                ->whereNotNull('jam_masuk')
+                ->whereHas('jadwal', function ($q) use ($now) {
+                    $q->where('jam_mulai', '<=', $now)
+                        ->where('jam_selesai', '>', $now);
+                });
+        }
+
         $presensis = $query->orderBy('tanggal', 'desc')->paginate(10)->withQueryString();
 
         $units = [];
@@ -111,7 +128,7 @@ class PresensiController extends Controller
         return inertia('Presensi/Index', [
             'presensis' => $presensis,
             'pegawai' => $isAdmin ? null : ($pegawai ?? null),
-            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'status_filter', 'search']),
+            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'status_filter', 'jadwal_filter', 'search']),
             'units' => $units,
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'stats' => $stats,

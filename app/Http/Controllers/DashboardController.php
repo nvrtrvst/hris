@@ -10,6 +10,7 @@ use App\Models\PengajuanIzin;
 use App\Models\Penggajian;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -144,39 +145,52 @@ class DashboardController extends Controller
         }
 
         // Logic for Admin / HR / Unit Dashboard
+        //
+        // Data dipisah jadi dua kelompok:
+        //  - Cached (5 menit): jumlah pegawai/unit, estimasi payroll, kontrak berakhir,
+        //    pengajuan pending — jarang berubah, mahal dihitung.
+        //  - Live (per request): kehadiran hari ini, jadwal, presensi, trend — harus segar
+        //    karena dashboard admin di-polling tiap 60 detik dari browser.
         $today = Carbon::today('Asia/Jakarta');
 
-        // [PERF] Cache agregat dashboard per user (5 menit) agar tidak hitung ulang tiap load.
+        $cached = $this->adminCachedStats($user);
+        $live = $this->adminLiveData($user, $today);
+
+        return inertia('Dashboard', [
+            'roleType' => $roleType,
+            'stats' => [
+                'total_pegawai' => $cached['totalPegawai'],
+                'total_unit' => $cached['totalUnit'],
+                'hadir_hari_ini_count' => $live['hadirHariIniCount'],
+                'pegawai_dijadwalkan' => $live['pegawaiDijadwalkan'],
+                'hadir_percentage' => $live['hadirPercentage'],
+                'pengeluaran_gaji' => $cached['pengeluaranGaji'],
+                'is_estimasi_payroll' => $cached['isEstimasiPayroll'],
+                'kontrak_berakhir_count' => $cached['kontrakBerakhir_count'],
+                'pengajuan_pending' => $cached['pengajuanPending'],
+            ],
+            'trends' => $live['attendanceTrend'],
+            'kontrakBerakhir' => $cached['kontrakBerakhir'],
+            'jadwalHariIni' => $live['jadwalHariIni'],
+            'presensiHariIni' => $live['presensiHariIni'],
+        ]);
+    }
+
+    /**
+     * Data dashboard yang jarang berubah — cache 5 menit per user.
+     */
+    private function adminCachedStats(User $user): array
+    {
         $cacheKey = 'dashboard:admin:'.$user->id;
-        $admin = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($user, $today) {
-            // 1. Total Pegawai Aktif
+
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($user) {
+            // 1. Total Pegawai Aktif + Total Unit
             $pegawaiQuery = Pegawai::where('status_aktif', 'aktif');
             if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 $pegawaiQuery->forUnit($user->unit_sekolah_id);
             }
             $totalPegawai = $pegawaiQuery->count();
             $totalUnit = UnitSekolah::count();
-
-            // 2. Kehadiran Hari Ini (Real vs Jadwal)
-            $hariIniIndo = HariHelper::hariIniIndo();
-
-            $jadwalQuery = Jadwal::where('hari', $hariIniIndo);
-            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-                $jadwalQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
-            }
-            $pegawaiDijadwalkan = $jadwalQuery->distinct('pegawai_id')->count('pegawai_id');
-
-            $presensiQuery = Presensi::where('tanggal', $today->toDateString())->whereIn('status', ['hadir', 'telat']);
-            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-                $presensiQuery->whereHas('pegawai', function ($q) use ($user) {
-                    $q->forUnit($user->unit_sekolah_id);
-                });
-            }
-            $hadirHariIniCount = $presensiQuery->count();
-
-            $hadirPercentage = $pegawaiDijadwalkan > 0
-                ? round(($hadirHariIniCount / $pegawaiDijadwalkan) * 100)
-                : 0;
 
             // 3. Estimasi Payroll Bulan Ini
             $currentMonthStr = date('m-Y');
@@ -194,46 +208,6 @@ class DashboardController extends Controller
                 $isEstimasiPayroll = true;
                 $baseSalary = KomponenGaji::where('jenis', 'fixed')->sum('nilai_default');
                 $pengeluaranGaji = $totalPegawai * $baseSalary;
-            }
-
-            // 4. Trend Kehadiran 7 Hari Terakhir
-            $hariMap = [
-                'Sunday' => 'Minggu',
-                'Monday' => 'Senin',
-                'Tuesday' => 'Selasa',
-                'Wednesday' => 'Rabu',
-                'Thursday' => 'Kamis',
-                'Friday' => 'Jumat',
-                'Saturday' => 'Sabtu',
-            ];
-
-            $startDate = Carbon::today('Asia/Jakarta')->subDays(6);
-            $endDate = Carbon::today('Asia/Jakarta');
-
-            $trendQuery = Presensi::whereBetween('tanggal', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
-                ->whereIn('status', ['hadir', 'telat'])
-                ->selectRaw('tanggal, count(*) as total')
-                ->groupBy('tanggal');
-
-            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-                $trendQuery->whereHas('pegawai', function ($q) use ($user) {
-                    $q->forUnit($user->unit_sekolah_id);
-                });
-            }
-
-            $trendData = $trendQuery->pluck('total', 'tanggal');
-
-            $attendanceTrend = [];
-            for ($i = 6; $i >= 0; $i--) {
-                $date = Carbon::today('Asia/Jakarta')->subDays($i);
-                $dayName = $hariMap[$date->format('l')];
-                $count = $trendData->get($date->format('Y-m-d'), 0);
-
-                $attendanceTrend[] = [
-                    'day' => $dayName,
-                    'hadir' => $count,
-                    'date' => $date->format('d/m'),
-                ];
             }
 
             // 5. Kontrak Berakhir (30 hari ke depan)
@@ -267,85 +241,125 @@ class DashboardController extends Controller
             }
             $pengajuanPending = $pengajuanQuery->count();
 
-            // 6. Jadwal Hari Ini
-            $jadwalHariIniQuery = Jadwal::with([
-                'pegawai:id,nama_lengkap',
-                'mataPelajaran:id,nama',
-                'unitSekolah:id,nama,singkatan',
-            ])
-                ->where('hari', $hariIniIndo)
-                ->orderBy('jam_mulai');
-
-            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-                $jadwalHariIniQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
-            }
-            $jadwalHariIni = $jadwalHariIniQuery->get()->toArray();
-
-            // 7. Presensi Hari Ini
-            $presensiQuery = Presensi::with('pegawai:id,nama_lengkap')
-                ->where('tanggal', $today->toDateString())
-                ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status', 'lokasi_perlu_review']);
-
-            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-                $presensiQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
-            }
-            $presensiHariIni = $presensiQuery->get()
-                ->map(function ($p) {
-                    $p->withoutAppends();
-                    if ($p->pegawai) {
-                        $p->setRelation('pegawai', $p->pegawai->withoutAppends());
-                    }
-
-                    return $p;
-                })
-                ->toArray();
-
             return [
                 'totalPegawai' => $totalPegawai,
                 'totalUnit' => $totalUnit,
-                'pegawaiDijadwalkan' => $pegawaiDijadwalkan,
-                'hadirHariIniCount' => $hadirHariIniCount,
-                'hadirPercentage' => $hadirPercentage,
                 'pengeluaranGaji' => $pengeluaranGaji,
                 'isEstimasiPayroll' => $isEstimasiPayroll,
-                'attendanceTrend' => $attendanceTrend,
                 'kontrakBerakhir' => $kontrakBerakhirArr,
                 'kontrakBerakhir_count' => $kontrakBerakhir->count(),
                 'pengajuanPending' => $pengajuanPending,
-                'jadwalHariIni' => $jadwalHariIni,
-                'presensiHariIni' => $presensiHariIni,
             ];
         });
+    }
 
-        $totalPegawai = $admin['totalPegawai'];
-        $totalUnit = $admin['totalUnit'];
-        $pegawaiDijadwalkan = $admin['pegawaiDijadwalkan'];
-        $hadirHariIniCount = $admin['hadirHariIniCount'];
-        $hadirPercentage = $admin['hadirPercentage'];
-        $pengeluaranGaji = $admin['pengeluaranGaji'];
-        $isEstimasiPayroll = $admin['isEstimasiPayroll'];
-        $attendanceTrend = $admin['attendanceTrend'];
-        $kontrakBerakhir = $admin['kontrakBerakhir'];
-        $kontrakBerakhirCount = $admin['kontrakBerakhir_count'];
-        $pengajuanPending = $admin['pengajuanPending'];
+    /**
+     * Data dashboard yang berubah cepat (kehadiran/jadwal/presensi/trend) —
+     * dihitung fresh tiap request agar polling 60 detik menampilkan angka terkini.
+     */
+    private function adminLiveData(User $user, Carbon $today): array
+    {
+        // 2. Kehadiran Hari Ini (Real vs Jadwal)
+        $hariIniIndo = HariHelper::hariIniIndo();
 
-        return inertia('Dashboard', [
-            'roleType' => $roleType,
-            'stats' => [
-                'total_pegawai' => $totalPegawai,
-                'total_unit' => $totalUnit,
-                'hadir_hari_ini_count' => $hadirHariIniCount,
-                'pegawai_dijadwalkan' => $pegawaiDijadwalkan,
-                'hadir_percentage' => $hadirPercentage,
-                'pengeluaran_gaji' => $pengeluaranGaji,
-                'is_estimasi_payroll' => $isEstimasiPayroll,
-                'kontrak_berakhir_count' => $kontrakBerakhirCount,
-                'pengajuan_pending' => $pengajuanPending,
-            ],
-            'trends' => $attendanceTrend,
-            'kontrakBerakhir' => $kontrakBerakhir,
-            'jadwalHariIni' => $admin['jadwalHariIni'],
-            'presensiHariIni' => $admin['presensiHariIni'],
-        ]);
+        $jadwalQuery = Jadwal::where('hari', $hariIniIndo);
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $jadwalQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
+        }
+        $pegawaiDijadwalkan = $jadwalQuery->distinct('pegawai_id')->count('pegawai_id');
+
+        $presensiQuery = Presensi::where('tanggal', $today->toDateString())->whereIn('status', ['hadir', 'telat']);
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $presensiQuery->whereHas('pegawai', function ($q) use ($user) {
+                $q->forUnit($user->unit_sekolah_id);
+            });
+        }
+        $hadirHariIniCount = $presensiQuery->count();
+
+        $hadirPercentage = $pegawaiDijadwalkan > 0
+            ? round(($hadirHariIniCount / $pegawaiDijadwalkan) * 100)
+            : 0;
+
+        // 4. Trend Kehadiran 7 Hari Terakhir
+        $hariMap = [
+            'Sunday' => 'Minggu',
+            'Monday' => 'Senin',
+            'Tuesday' => 'Selasa',
+            'Wednesday' => 'Rabu',
+            'Thursday' => 'Kamis',
+            'Friday' => 'Jumat',
+            'Saturday' => 'Sabtu',
+        ];
+
+        $startDate = Carbon::today('Asia/Jakarta')->subDays(6);
+        $endDate = Carbon::today('Asia/Jakarta');
+
+        $trendQuery = Presensi::whereBetween('tanggal', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->whereIn('status', ['hadir', 'telat'])
+            ->selectRaw('tanggal, count(*) as total')
+            ->groupBy('tanggal');
+
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $trendQuery->whereHas('pegawai', function ($q) use ($user) {
+                $q->forUnit($user->unit_sekolah_id);
+            });
+        }
+
+        $trendData = $trendQuery->pluck('total', 'tanggal');
+
+        $attendanceTrend = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today('Asia/Jakarta')->subDays($i);
+            $dayName = $hariMap[$date->format('l')];
+            $count = $trendData->get($date->format('Y-m-d'), 0);
+
+            $attendanceTrend[] = [
+                'day' => $dayName,
+                'hadir' => $count,
+                'date' => $date->format('d/m'),
+            ];
+        }
+
+        // 6. Jadwal Hari Ini
+        $jadwalHariIniQuery = Jadwal::with([
+            'pegawai:id,nama_lengkap',
+            'mataPelajaran:id,nama',
+            'unitSekolah:id,nama,singkatan',
+        ])
+            ->where('hari', $hariIniIndo)
+            ->orderBy('jam_mulai');
+
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $jadwalHariIniQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
+        }
+        $jadwalHariIni = $jadwalHariIniQuery->get()->toArray();
+
+        // 7. Presensi Hari Ini
+        $presensiQuery = Presensi::with('pegawai:id,nama_lengkap')
+            ->where('tanggal', $today->toDateString())
+            ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status', 'lokasi_perlu_review']);
+
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $presensiQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
+        }
+        $presensiHariIni = $presensiQuery->get()
+            ->map(function ($p) {
+                $p->withoutAppends();
+                if ($p->pegawai) {
+                    $p->setRelation('pegawai', $p->pegawai->withoutAppends());
+                }
+
+                return $p;
+            })
+            ->toArray();
+
+        return [
+            'pegawaiDijadwalkan' => $pegawaiDijadwalkan,
+            'hadirHariIniCount' => $hadirHariIniCount,
+            'hadirPercentage' => $hadirPercentage,
+            'attendanceTrend' => $attendanceTrend,
+            'jadwalHariIni' => $jadwalHariIni,
+            'presensiHariIni' => $presensiHariIni,
+        ];
     }
 }

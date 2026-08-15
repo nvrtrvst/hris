@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { subscribeRouter } from '@/Utils/routerEvents';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Pagination from '@/Components/Pagination';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -59,17 +60,10 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
     const { flash = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
 
-    useEffect(() => {
-        const onStart = () => setProcessing(true);
-        const onFinish = () => setProcessing(false);
-        router.on('start', onStart);
-        router.on('finish', onFinish);
-
-        return () => {
-            router.off('start', onStart);
-            router.off('finish', onFinish);
-        };
-    }, []);
+    useEffect(() => subscribeRouter({
+        start: () => setProcessing(true),
+        finish: () => setProcessing(false),
+    }), []);
 
     const [filterPeriode, setFilterPeriode] = useState(filters.periode_bulan || '');
     const [filterStatus, setFilterStatus] = useState(filters.status || '');

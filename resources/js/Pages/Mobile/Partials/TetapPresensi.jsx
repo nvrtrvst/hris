@@ -63,20 +63,37 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         return mulai <= jamSekarang && jamSekarang <= selesai + grace;
     }), [jadwals, tappedIds, jamSekarang]);
     const untappedActive = activeJadwals.filter((j) => !tappedIds.has(j.id));
-    // Setidaknya ada jadwal yang jam mulainya sudah tiba — pembeda antara
-    // "semua belum mulai" (tunggu) vs "semua sudah lewat" (lanjut foto sore).
-    const sudahMulai = useMemo(() => jadwals.some((j) => toMinutes(j.jam_mulai) <= jamSekarang), [jadwals, jamSekarang]);
     const masihBisaTap = untappedActive.length > 0;
+    // Ada jadwal yang SEDANG berlangsung (mulai <= sekarang < selesai) —
+    // di-tap bukan berarti selesai; foto sore menunggu jam mengajar habis.
+    const adaBerlangsung = useMemo(() => jadwals.some((j) => {
+        const mulai = toMinutes(j.jam_mulai);
+        const selesai = toMinutes(j.jam_selesai) || (mulai + 60);
+
+        return mulai <= jamSekarang && jamSekarang < selesai;
+    }), [jadwals, jamSekarang]);
+    // Semua jadwal hari ini "beres": di-tap & jam selesainya sudah lewat, ATAU
+    // sudah lewat batas tap (terlambat — tidak bisa di-tap lagi).
+    const semuaBeres = useMemo(() => jadwals.length > 0 && jadwals.every((j) => {
+        const mulai = toMinutes(j.jam_mulai);
+        const selesai = toMinutes(j.jam_selesai) || (mulai + 60);
+        if (tappedIds.has(j.id)) return jamSekarang >= selesai;
+        const grace = j.unit_sekolah?.toleransi_tap_menit ?? TAP_GRACE_MINUTES;
+
+        return jamSekarang > selesai + grace;
+    }), [jadwals, tappedIds, jamSekarang]);
 
     const phase = useMemo(() => {
         if (!pagiRecord) return FOTO_PAGI;
         if (pagiRecord.jam_keluar) return SELESAI;
-        if (jamSekarang >= jamSore) return FOTO_SORE;
-        // Semua jadwal yang sudah dimulai sudah di-tap / lewat batas → lanjut foto sore.
-        if (sudahMulai && !masihBisaTap) return FOTO_SORE;
+        // Foto sore hanya ketika tidak ada lagi jadwal yang berlangsung/menunggu
+        // di-tap — cegah presensi keluar sebelum jam mengajar selesai.
+        if (semuaBeres) return FOTO_SORE;
+        // Tanpa jadwal sama sekali: foto sore tetap tersedia setelah jam sore tiba.
+        if (jadwals.length === 0 && jamSekarang >= jamSore) return FOTO_SORE;
 
         return TAP_JADWAL;
-    }, [pagiRecord, sudahMulai, masihBisaTap, jamSekarang]);
+    }, [pagiRecord, semuaBeres, jadwals.length, jamSekarang]);
 
     const lemburUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
 
@@ -366,9 +383,9 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                         <h2 id="jadwal-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Agenda Mengajar</h2>
                         <span className="text-xs text-slate-500">{tappedIds.size} dari {activeJadwals.length} sudah di-tap</span>
                     </div>
-                    {phase === FOTO_SORE && untappedActive.length > 0 && (
-                        <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-                            ⚠ {untappedActive.length} jadwal aktif belum di-tap
+                    {phase === TAP_JADWAL && adaBerlangsung && !masihBisaTap && (
+                        <div className="mb-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800">
+                            ⏳ Semua jadwal aktif sudah di-tap. Foto sore tersedia setelah jam mengajar selesai.
                         </div>
                     )}
                     <div className="space-y-2">
@@ -609,7 +626,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             )}
 
             {activeJadwals.length === 0 && jadwals.length > 0 && (
-                <Empty icon={Clock} title="Tidak ada jadwal yang bisa di-tap" subtitle={sudahMulai ? 'Semua jadwal sudah berakhir — lanjut ke foto sore.' : 'Jadwal aktif akan muncul setelah jam mengajar tiba.'} />
+                <Empty icon={Clock} title="Tidak ada jadwal yang bisa di-tap" subtitle={semuaBeres ? 'Semua jadwal sudah berakhir — lanjut ke foto sore.' : 'Jadwal aktif akan muncul setelah jam mengajar tiba.'} />
             )}
             {jadwals.length === 0 && (
                 <Empty icon={Clock} title="Tidak ada jadwal hari ini" subtitle="Jika tidak ada jadwal, lanjut ke foto sore." />

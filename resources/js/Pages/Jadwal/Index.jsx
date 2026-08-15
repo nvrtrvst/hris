@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { subscribeRouter } from '@/Utils/routerEvents';
+import useNowEveryMinute from '@/Utils/useNowEveryMinute';
+import usePolling from '@/Utils/usePolling';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -67,22 +70,56 @@ const StatCard = ({ label, value, sub, Icon, iconBg, iconCls }) => (
     </div>
 );
 
-export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, stats = {}, filters = {} }) {
+const toMinutes = (hms) => {
+    if (!hms) return 0;
+    const p = String(hms).split(':');
+
+    return (+p[0]) * 60 + (+p[1] || 0);
+};
+
+// Indikator status mengajar hari ini — konsisten dengan halaman Presensi & Dashboard:
+// "Mengajar" (amber berkedip) selama jam_selesai belum lewat, "Selesai" setelahnya.
+// Hanya relevan untuk jadwal HARI INI dengan record presensi mengajar.
+const JadwalLiveBadge = ({ jadwal, presensi, now }) => {
+    if (!presensi?.jam_masuk) return null;
+    const current = now || new Date();
+    const todayStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+    const isHariIni = jadwal.hari === DAYS[current.getDay() === 0 ? 6 : current.getDay() - 1];
+    if (!isHariIni) return null;
+    const selesai = toMinutes(jadwal.jam_selesai) <= current.getHours() * 60 + current.getMinutes();
+
+    if (selesai) {
+        return (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700 print:hidden">
+                Selesai
+            </span>
+        );
+    }
+
+    return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 print:hidden">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden="true" />
+            Mengajar
+        </span>
+    );
+};
+
+export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, stats = {}, filters = {}, presensiHariIni = [] }) {
     const isAdmin = auth.permissions?.includes('view_jadwal');
     const { flash = {}, errors = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
+    const now = useNowEveryMinute();
 
-    useEffect(() => {
-        const onStart = () => setProcessing(true);
-        const onFinish = () => setProcessing(false);
-        router.on('start', onStart);
-        router.on('finish', onFinish);
+    // Overlay "Memuat jadwal…" HANYA untuk navigasi penuh — polling partial reload
+    // (only: ['presensiHariIni']) tidak boleh memicu flash overlay tiap 60 detik.
+    useEffect(() => subscribeRouter({
+        start: (visit) => { if (!visit?.only?.length) setProcessing(true); },
+        finish: () => setProcessing(false),
+    }), []);
 
-        return () => {
-            router.off('start', onStart);
-            router.off('finish', onFinish);
-        };
-    }, []);
+    // Live polling (admin saja): refresh presensi hari ini tiap 60 detik agar badge
+    // Mengajar/Selesai berganti otomatis. Berhenti saat tab tidak aktif.
+    usePolling({ enabled: isAdmin, only: ['presensiHariIni'] });
 
     const [unitFilter, setUnitFilter] = useState(filters.unit_sekolah_id || '');
     const [kelasFilter, setKelasFilter] = useState(filters.kelas_label || '');
@@ -140,6 +177,16 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
         return m;
     }, [jadwals]);
+
+    // Index O(1): presensi mengajar hari ini per jadwal (badge live di matriks).
+    const presensiByJadwal = useMemo(() => {
+        const m = new Map();
+        (presensiHariIni || []).forEach((p) => {
+            if (p.jadwal_id && !m.has(p.jadwal_id)) m.set(p.jadwal_id, p);
+        });
+
+        return m;
+    }, [presensiHariIni]);
 
     const hasFilter = Boolean(searchName || unitFilter || kelasFilter);
 
@@ -466,6 +513,11 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                             <span className={`mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border ${meta.badge}`}>
                                                                                 {meta.label}
                                                                             </span>
+                                                                            <JadwalLiveBadge
+                                                                                jadwal={jadwal}
+                                                                                presensi={presensiByJadwal.get(jadwal.id)}
+                                                                                now={now}
+                                                                            />
 
                                                                             {/* Action Overlay */}
                                                                             <div className="absolute inset-0 bg-primary/90 opacity-0 group-hover/card:opacity-100 flex items-center justify-center gap-2 rounded-lg transition-opacity backdrop-blur-sm print:hidden">

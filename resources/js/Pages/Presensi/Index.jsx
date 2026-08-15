@@ -1,4 +1,6 @@
 import React from 'react';
+import { subscribeRouter } from '@/Utils/routerEvents';
+import useNowEveryMinute from '@/Utils/useNowEveryMinute';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Pagination from '@/Components/Pagination';
 import Modal from '@/Components/Modal';
@@ -91,6 +93,44 @@ const kerjaDurasi = (masuk, keluar) => {
     return m > 0 ? `${Math.floor(m / 60)}j${String(m % 60).padStart(2, '0')}m` : null;
 };
 
+const toMinutes = (hms) => {
+    if (!hms) return 0;
+    const p = String(hms).split(':');
+
+    return (+p[0]) * 60 + (+p[1] || 0);
+};
+
+// Indikator status mengajar — konsisten dengan Dashboard mobile:
+// "Mengajar" (berlangsung) selama jam mengajar belum habis, "Selesai"
+// setelah jam_selesai lewat. Hanya untuk record yang sudah ada jam_masuk;
+// record tanpa absen cukup terbaca dari kolom Status.
+// Prop `now` (Date) membuat badge live-update tiap menit via useNowEveryMinute.
+const JadwalStatusBadge = ({ p, now }) => {
+    if (!p?.jadwal || !p.jam_masuk) return null;
+    const current = now || new Date();
+    const nowMinutes = current.getHours() * 60 + current.getMinutes();
+    // Badge "Mengajar" hanya bermakna untuk record hari ini — record hari
+    // sebelumnya/lama selalu sudah selesai, apa pun jam sekarang.
+    const todayStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+    const isHariIni = String(p.tanggal || '').startsWith(todayStr);
+    const sudahLewat = !isHariIni || toMinutes(p.jadwal.jam_selesai) <= nowMinutes;
+
+    if (sudahLewat) {
+        return (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                Selesai
+            </span>
+        );
+    }
+
+    return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden="true" />
+            Mengajar
+        </span>
+    );
+};
+
 const fmtDateInput = (d) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -98,18 +138,13 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const isAdmin = auth.permissions?.includes('view_presensi');
     const { flash = {} } = usePage().props;
     const [processing, setProcessing] = React.useState(false);
+    // Jam "sekarang" yang live — dipakai badge Mengajar/Selesai biar berganti otomatis.
+    const now = useNowEveryMinute();
 
-    React.useEffect(() => {
-        const onStart = () => setProcessing(true);
-        const onFinish = () => setProcessing(false);
-        router.on('start', onStart);
-        router.on('finish', onFinish);
-
-        return () => {
-            router.off('start', onStart);
-            router.off('finish', onFinish);
-        };
-    }, []);
+    React.useEffect(() => subscribeRouter({
+        start: () => setProcessing(true),
+        finish: () => setProcessing(false),
+    }), []);
 
     const [startDate, setStartDate] = React.useState(filters?.start_date || '');
     const [endDate, setEndDate] = React.useState(filters?.end_date || '');
@@ -118,6 +153,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [lokasiFilter, setLokasiFilter] = React.useState(filters?.lokasi_filter || '');
     const [suspiciousFilter, setSuspiciousFilter] = React.useState(filters?.suspicious_filter || '');
     const [statusFilter, setStatusFilter] = React.useState(filters?.status_filter || '');
+    const [jadwalFilter, setJadwalFilter] = React.useState(filters?.jadwal_filter || '');
     const [search, setSearch] = React.useState(filters?.search || '');
 
     const [confirmStatus, setConfirmStatus] = React.useState(null);
@@ -126,7 +162,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [auditPegawai, setAuditPegawai] = React.useState('');
     const [reviewModal, setReviewModal] = React.useState({ show: false, loading: false, data: null });
 
-    const hasFilter = Boolean(search || statusFilter || unitId || lemburFilter || lokasiFilter || suspiciousFilter || startDate || endDate);
+    const hasFilter = Boolean(search || statusFilter || jadwalFilter || unitId || lemburFilter || lokasiFilter || suspiciousFilter || startDate || endDate);
 
     const buildParams = React.useCallback((overrides = {}) => ({
         start_date: startDate,
@@ -136,9 +172,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         lokasi_filter: lokasiFilter,
         suspicious_filter: suspiciousFilter,
         status_filter: statusFilter,
+        jadwal_filter: jadwalFilter,
         search,
         ...overrides,
-    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, search]);
+    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, jadwalFilter, search]);
 
     const applyFilters = React.useCallback((overrides = {}) => {
         router.get(route('presensi.index'), buildParams(overrides), { preserveState: true, preserveScroll: true });
@@ -178,6 +215,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         setLokasiFilter('');
         setSuspiciousFilter('');
         setStatusFilter('');
+        setJadwalFilter('');
         setSearch('');
         router.get(route('presensi.index'), {}, { preserveState: true });
     };
@@ -237,7 +275,12 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         </div>
                         <p className="flex items-center gap-2 text-xs font-medium text-text-secondary">
                             <CalendarDays className="h-4 w-4 text-primary" />
-                            {startDate || endDate
+                            {jadwalFilter === 'sedang_berlangsung' ? (
+                                <span className="inline-flex items-center gap-1.5 text-amber-700">
+                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden="true" />
+                                    Kelas sedang berlangsung (hari ini)
+                                </span>
+                            ) : startDate || endDate
                                 ? `${startDate || '…'} s/d ${endDate || '…'}`
                                 : 'Semua periode'}
                         </p>
@@ -279,7 +322,19 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             </div>
 
                             {isAdmin && (
-                                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                                    <select className={filterSelect} value={jadwalFilter} onChange={(e) => {
+                                        setJadwalFilter(e.target.value);
+                                        // "Sedang Berlangsung" selalu memaksa tanggal = hari ini;
+                                        // bersihkan range tanggal agar tidak konflik jadi kosong.
+                                        if (e.target.value === 'sedang_berlangsung') {
+                                            setStartDate('');
+                                            setEndDate('');
+                                        }
+                                    }}>
+                                        <option value="">Semua Jadwal</option>
+                                        <option value="sedang_berlangsung">Sedang Berlangsung</option>
+                                    </select>
                                     <select className={filterSelect} value={lemburFilter} onChange={(e) => setLemburFilter(e.target.value)}>
                                         <option value="">Semua Presensi</option>
                                         <option value="lembur_semua">Semua Lembur</option>
@@ -372,7 +427,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                                         {p.jadwal ? (
                                                             <div className="text-xs leading-tight">
-                                                                <div className="font-semibold text-primary">{p.jadwal.mata_pelajaran?.nama || 'Jadwal'}</div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-semibold text-primary">{p.jadwal.mata_pelajaran?.nama || 'Jadwal'}</span>
+                                                                    <JadwalStatusBadge p={p} now={now} />
+                                                                </div>
                                                                 <div className="text-text-secondary">{p.jadwal.kelas_label || '—'}</div>
                                                                 <div className="font-mono text-[11px] text-text-secondary">{p.jadwal.jam_mulai?.substring(0, 5)}–{p.jadwal.jam_selesai?.substring(0, 5)}</div>
                                                             </div>
@@ -520,7 +578,12 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                     <div className="mt-0.5 flex items-center gap-3 text-xs text-text-secondary">
                                                         <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Masuk <b className="font-mono text-primary">{p.jam_masuk?.substring(0, 5) || '—'}</b></span>
                                                         <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Keluar <b className="font-mono text-primary">{p.jam_keluar?.substring(0, 5) || '—'}</b></span>
-                                                        {p.tipe_presensi === 'mengajar' && <span className="text-[11px] text-text-muted">{p.jadwal?.mata_pelajaran?.nama || ''}</span>}
+                                                        {p.tipe_presensi === 'mengajar' && (
+                                                            <span className="flex items-center gap-2 text-[11px] text-text-muted">
+                                                                {p.jadwal?.mata_pelajaran?.nama || ''}
+                                                                <JadwalStatusBadge p={p} now={now} />
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>

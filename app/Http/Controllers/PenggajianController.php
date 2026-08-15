@@ -246,7 +246,7 @@ class PenggajianController extends Controller
     {
         $periode = $month.'-'.$year;
 
-        $penggajians = Penggajian::with('pegawai', 'details')
+        $penggajians = Penggajian::with(['pegawai.units:id,nama,singkatan', 'details'])
             ->where('periode_bulan', $periode)
             ->where('status', 'draft')
             ->get();
@@ -277,6 +277,14 @@ class PenggajianController extends Controller
             $totalPotongan = '0.00';
             $totalTaxable = '0.00';
 
+            // [PERF] Hindari N+1: KomponenGaji::find() per baris detail (dulu bisa
+            // 1000+ query untuk 100 pegawai × 10 komponen). Prefetch 1 query;
+            // jika semua detail ad-hoc (tanpa komponen id) langsung lewati.
+            $komponenIds = collect($request->details)->pluck('komponen_gaji_id')->filter()->unique()->all();
+            $komponenById = $komponenIds
+                ? KomponenGaji::whereIn('id', $komponenIds)->get()->keyBy('id')
+                : collect();
+
             foreach ($request->details as $d) {
                 // Konversi dari data array
                 $nominal = round((float) ($d['nominal'] ?? 0), 2);
@@ -289,9 +297,8 @@ class PenggajianController extends Controller
                     }
 
                     $isTaxable = false;
-                    if (! empty($d['komponen_gaji_id'])) {
-                        $komponen = KomponenGaji::find($d['komponen_gaji_id']);
-                        $isTaxable = $komponen ? (bool) $komponen->is_taxable : false;
+                    if (! empty($d['komponen_gaji_id']) && isset($komponenById[$d['komponen_gaji_id']])) {
+                        $isTaxable = (bool) $komponenById[$d['komponen_gaji_id']]->is_taxable;
                     }
                     if ($isTaxable && $tipe === 'pendapatan') {
                         $totalTaxable = bcadd($totalTaxable, (string) $nominal, 2);

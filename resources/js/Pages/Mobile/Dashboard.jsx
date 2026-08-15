@@ -164,13 +164,17 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                             const sudahLewat = toMinutes(jadwal.jam_selesai) <= nowMinutes;
                             const rec = records.find(r => r.jadwal_id === jadwal.id && (r.tanggal || '').startsWith(todayStr));
                             const sudahMasuk = Boolean(rec?.jam_masuk);
-                            const selesai = sudahMasuk;
+                            // Selesai hanya setelah jam mengajar HABIS (jam_selesai lewat),
+                            // bukan saat presensi masuk — mis. jadwal 45 menit tetap
+                            // berstatus "Mengajar" selama jamnya belum selesai.
+                            const selesai = sudahMasuk && sudahLewat;
+                            const sedangMengajar = sudahMasuk && !selesai;
                             const bolos = sudahLewat && !sudahMasuk;
 
                             return (
                                 <li key={jadwal.id} className={`flex items-start gap-3 px-5 py-3.5 ${bolos ? 'opacity-80' : selesai ? 'opacity-70' : ''}`}>
                                     <div className="flex shrink-0 flex-col items-center justify-center rounded-xl bg-white/10 px-2 py-1.5 min-w-[52px]">
-                                        <Clock3 className={`h-3.5 w-3.5 ${bolos ? 'text-rose-200' : 'text-emerald-200'}`} />
+                                        <Clock3 className={`h-3.5 w-3.5 ${bolos ? 'text-rose-200' : sedangMengajar ? 'text-amber-200' : 'text-emerald-200'}`} />
                                         <span className="mt-0.5 font-mono text-xs font-bold tabular-nums text-white">{time(jadwal.jam_mulai)}</span>
                                     </div>
                                     <div className="min-w-0 flex-1">
@@ -178,6 +182,12 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                                             <p className={`truncate text-sm font-bold text-white ${bolos ? 'text-rose-100' : selesai ? 'line-through' : ''}`}>
                                                 {jadwal.mata_pelajaran?.nama || 'Pelajaran'}
                                             </p>
+                                            {sedangMengajar && (
+                                                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-100 border border-amber-400/40">
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" aria-hidden="true" />
+                                                    Mengajar
+                                                </span>
+                                            )}
                                             {selesai && (
                                                 <span className="shrink-0 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-100 border border-emerald-400/40">Selesai</span>
                                             )}
