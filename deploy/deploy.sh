@@ -24,7 +24,7 @@ PHP_BIN="${PHP_BIN:-sudo -u www-data php}"
 NODE22_BIN="/opt/node22/bin/node"
 ADMIN_DOMAIN="${ADMIN_DOMAIN:-https://simsdm.nuurulmuttaqiin.or.id}"
 MOBILE_DOMAIN="${MOBILE_DOMAIN:-https://presensi.nuurulmuttaqiin.or.id}"
-LOG_FILE="${LOG_FILE:-/var/log/hris-deploy.log}"
+LOG_FILE="${LOG_FILE:-$REPO_DIR/storage/logs/hris-deploy.log}"
 
 # Warna output (fallback plain kalau terminal non-TTY)
 if [[ -t 1 ]]; then
@@ -38,7 +38,7 @@ warn()  { echo "${C_YELLOW}⚠${C_RESET} $*"; }
 fail()  { echo "${C_RED}✖${C_RESET} $*" >&2; exit 1; }
 step()  { echo; echo "${C_BOLD}── $* ──${C_RESET}"; }
 
-log()   { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
+log()   { mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true; echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE" 2>/dev/null || true; }
 
 # ── Pre-flight ─────────────────────────────────────────────────────────────
 step "Pre-flight"
