@@ -12,6 +12,7 @@ use App\Services\SpoofDetector;
 use App\Traits\CalculatesDistance;
 use App\Traits\ResolvesPegawai;
 use Carbon\Carbon;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
@@ -546,8 +547,34 @@ class MobileController extends Controller
     }
 
     /**
+     * Hitung presensi_key (harus sinkron dengan ekspresi generated column di migration
+     * add_presensi_key_unique_to_presensi). Dipakai untuk lookup cepat via unique index.
+     */
+    private function buildPresensiKey(bool $isLembur, string $tipePresensi, $jadwalId, string $tanggal): ?string
+    {
+        if ($isLembur) {
+            return 'L'.$tanggal;
+        }
+        if ($tipePresensi === 'kantor') {
+            return 'K'.$tanggal;
+        }
+        if ($jadwalId !== null) {
+            return 'M'.$tanggal.'-'.$jadwalId;
+        }
+
+        return null;
+    }
+
+    /**
      * Simpan presensi dalam satu transaksi — dipakai bersama storeAbsen
      * (mengajar / lembur / kantor) dan storeAbsenTetap (kantor).
+     *
+     * Anti-deadlock (fix 2026-08-15): TIDAK memakai SELECT ... FOR UPDATE.
+     * Pencarian existing tanpa lock + unique index (pegawai_id, presensi_key)
+     * mencegah double-absen — gap lock hilang, deadlock 1213 mustahil.
+     * Race insert menang via catch UniqueConstraintViolationException (duplicate key,
+     * driver-agnostic: MySQL 1062 / SQLite 19).
+     * Retry 3x tetap ada sebagai jaring pengaman error concurrency lain.
      *
      * @param  Jadwal|null  $jadwal  Wajib saat tipe 'mengajar'; null untuk lembur/kantor
      * @param  string  $tipePresensi  lembur | mengajar | kantor (default 'kantor')
@@ -556,33 +583,33 @@ class MobileController extends Controller
     private function storeAbsenTransaction(Request $request, $pegawai, ?Jadwal $jadwal, $unit, float $distance, bool $isLembur, float $accuracy, $speed, $capturedAt, bool $lokasiPerluReview, bool $posisiMencurigakan, string $tipePresensi = 'kantor', string $hariIni = '', array $spoofData = []): Presensi
     {
         return DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan, $tipePresensi, $hariIni, $spoofData) {
-            // Cari presensi existing
-            if ($isLembur) {
-                $presensi = Presensi::where('pegawai_id', $pegawai->id)
-                    ->where('is_lembur', true)
-                    ->where('tanggal', Carbon::today()->toDateString())
-                    ->lockForUpdate()
-                    ->first();
-            } elseif ($tipePresensi === 'kantor') {
-                $presensi = Presensi::where('pegawai_id', $pegawai->id)
-                    ->whereNull('jadwal_id')
-                    ->where('tipe_presensi', 'kantor')
-                    ->where('tanggal', Carbon::today()->toDateString())
-                    ->lockForUpdate()
-                    ->first();
+            $tanggal = Carbon::today()->toDateString();
+            $presensiKey = $this->buildPresensiKey($isLembur, $tipePresensi, $request->jadwal_id, $tanggal);
+
+            // Cari existing TANPA lock — uniknya dijamin unique index (pegawai_id, presensi_key).
+            $presensi = $presensiKey !== null
+                ? Presensi::where('pegawai_id', $pegawai->id)->where('presensi_key', $presensiKey)->first()
+                : null;
+
+            // Validasi konflik sebelum set field
+            if ($request->tipe === 'masuk') {
+                if ($presensi && $presensi->jam_masuk) {
+                    throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_MASUK]);
+                }
             } else {
-                $presensi = Presensi::where('pegawai_id', $pegawai->id)
-                    ->where('jadwal_id', $request->jadwal_id)
-                    ->where('tanggal', Carbon::today()->toDateString())
-                    ->lockForUpdate()
-                    ->first();
+                if (! $presensi || ! $presensi->jam_masuk) {
+                    throw ValidationException::withMessages(['conflict' => PresensiMessages::BELUM_ABSEN_MASUK]);
+                }
+                if ($presensi->jam_keluar) {
+                    throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_KELUAR]);
+                }
             }
 
             if (! $presensi) {
                 $presensi = new Presensi([
                     'pegawai_id' => $pegawai->id,
                     'jadwal_id' => $request->jadwal_id,
-                    'tanggal' => Carbon::today()->toDateString(),
+                    'tanggal' => $tanggal,
                 ]);
             }
 
@@ -591,9 +618,6 @@ class MobileController extends Controller
             $presensi->tipe_presensi = $tipePresensi;
 
             if ($request->tipe === 'masuk') {
-                if ($presensi->jam_masuk) {
-                    throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_MASUK]);
-                }
                 $presensi->jam_masuk = Carbon::now()->format('H:i:s');
                 $presensi->latitude_masuk = $request->latitude;
                 $presensi->longitude_masuk = $request->longitude;
@@ -617,12 +641,6 @@ class MobileController extends Controller
                     $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jamMulai, (int) $unit->toleransi_menit);
                 }
             } else {
-                if (! $presensi->exists || ! $presensi->jam_masuk) {
-                    throw ValidationException::withMessages(['conflict' => PresensiMessages::BELUM_ABSEN_MASUK]);
-                }
-                if ($presensi->jam_keluar) {
-                    throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_KELUAR]);
-                }
                 $presensi->jam_keluar = Carbon::now()->format('H:i:s');
                 $presensi->latitude_keluar = $request->latitude;
                 $presensi->longitude_keluar = $request->longitude;
@@ -663,10 +681,38 @@ class MobileController extends Controller
             $presensi->motion_suspect = $spoofData['motion_suspect'] ?? false;
             $presensi->ip_geo = $spoofData['ip_geo'] ?? null;
 
-            $presensi->save();
+            try {
+                $presensi->save();
+            } catch (UniqueConstraintViolationException $e) {
+                // Race: request lain membuat record yang sama antara SELECT dan INSERT.
+                // Unique index (pegawai_id, presensi_key) menolak — bukan error, cukup
+                // tolak absen masuk ganda. Exception ini driver-agnostic (MySQL 1062 /
+                // SQLite 19) sehingga perilaku konsisten di produksi maupun test.
+                if ($request->tipe === 'masuk') {
+                    throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_MASUK]);
+                }
+
+                // tipe keluar: jalur ini praktis unreachable (save keluar = UPDATE pada
+                // baris yang sudah ada, key tidak berubah → tidak bisa kena unique violation).
+                // Defensif: re-fetch record yang baru dibuat pihak lain, lalu set jam_keluar.
+                $presensi = $presensiKey !== null
+                    ? Presensi::where('pegawai_id', $pegawai->id)->where('presensi_key', $presensiKey)->firstOrFail()
+                    : $presensi;
+                if ($presensi->jam_keluar) {
+                    throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_KELUAR]);
+                }
+                $presensi->jam_keluar = Carbon::now()->format('H:i:s');
+                $presensi->latitude_keluar = $request->latitude;
+                $presensi->longitude_keluar = $request->longitude;
+                $presensi->foto_keluar_status = 'pending';
+                $presensi->jarak_keluar_meter = $distance;
+                $presensi->akurasi_keluar = $accuracy;
+                $presensi->kecepatan_keluar = $speed;
+                $presensi->save();
+            }
 
             return $presensi;
-        });
+        }, 3);
     }
 
     private function computeSpoofData(Request $request, $speed, float $accuracy, $spoofDetector): array
@@ -906,36 +952,35 @@ class MobileController extends Controller
             return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
         }
 
+        // Anti-deadlock (pola sama dengan storeAbsenTransaction): tanpa SELECT FOR UPDATE.
+        // Unique index (pegawai_id, presensi_key) menolak tap ganda — race ditangkap di 1062.
         $status = DB::transaction(function () use ($pegawai, $jadwal, $distance, $request, $accuracy) {
-            $exists = Presensi::where('pegawai_id', $pegawai->id)
-                ->where('jadwal_id', $jadwal->id)
-                ->where('tanggal', Carbon::today()->toDateString())
-                ->lockForUpdate()
-                ->exists();
+            try {
+                $presensi = new Presensi([
+                    'pegawai_id' => $pegawai->id,
+                    'jadwal_id' => $jadwal->id,
+                    'unit_sekolah_id' => $jadwal->unit_sekolah_id,
+                    'tanggal' => Carbon::today()->toDateString(),
+                    'jam_masuk' => Carbon::now()->format('H:i:s'),
+                    'latitude_masuk' => $request->latitude,
+                    'longitude_masuk' => $request->longitude,
+                    'jarak_masuk_meter' => $distance,
+                    'akurasi_masuk' => $accuracy,
+                    'tipe_presensi' => 'mengajar',
+                ]);
+                $presensi->is_lembur = false;
+                $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 10;
+                $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $jadwal->unitSekolah->toleransi_menit);
+                $presensi->save();
 
-            if ($exists) {
+                return $presensi->status;
+            } catch (UniqueConstraintViolationException $e) {
+                // Tap ganda: unique index (pegawai_id, presensi_key) menolak — driver-agnostic
+                // (MySQL 1062 / SQLite 19). Tidak ada retry — ini bukan error concurrency.
+
                 throw ValidationException::withMessages(['jadwal_id' => 'Jadwal ini sudah di-tap.']);
             }
-
-            $presensi = new Presensi([
-                'pegawai_id' => $pegawai->id,
-                'jadwal_id' => $jadwal->id,
-                'unit_sekolah_id' => $jadwal->unit_sekolah_id,
-                'tanggal' => Carbon::today()->toDateString(),
-                'jam_masuk' => Carbon::now()->format('H:i:s'),
-                'latitude_masuk' => $request->latitude,
-                'longitude_masuk' => $request->longitude,
-                'jarak_masuk_meter' => $distance,
-                'akurasi_masuk' => $accuracy,
-                'tipe_presensi' => 'mengajar',
-            ]);
-            $presensi->is_lembur = false;
-            $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 10;
-            $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $jadwal->unitSekolah->toleransi_menit);
-            $presensi->save();
-
-            return $presensi->status;
-        });
+        }, 3);
 
         return response()->json([
             'success' => true,
