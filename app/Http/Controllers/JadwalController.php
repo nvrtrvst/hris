@@ -44,6 +44,13 @@ class JadwalController extends Controller
             $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', "%{$search}%"));
         }
 
+        // Filter jenis pegawai (Dapodik-style)
+        if ($request->jenis_filter === 'pendidik') {
+            $query->whereHas('pegawai.jabatans', fn ($q) => $q->where('is_guru', true));
+        } elseif ($request->jenis_filter === 'kependidikan') {
+            $query->whereHas('pegawai', fn ($q) => $q->whereDoesntHave('jabatans', fn ($q2) => $q2->where('is_guru', true)));
+        }
+
         $jadwals = $query->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 WHEN 'Minggu' THEN 7 END")
             ->orderBy('jam_mulai')
             ->get();
@@ -76,6 +83,13 @@ class JadwalController extends Controller
 
         if ($search !== '') {
             $pegawaiQuery->where('nama_lengkap', 'like', "%{$search}%");
+        }
+
+        // Filter jenis pegawai (Dapodik-style) untuk matrix rows
+        if ($request->jenis_filter === 'pendidik') {
+            $pegawaiQuery->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
+        } elseif ($request->jenis_filter === 'kependidikan') {
+            $pegawaiQuery->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
         }
 
         $pegawais = $pegawaiQuery->orderBy('nama_lengkap')->get();
@@ -121,7 +135,7 @@ class JadwalController extends Controller
             'kelasLabels' => $kelasLabels,
             'stats' => $stats,
             'presensiHariIni' => $presensiHariIni->get()->toArray(),
-            'filters' => $request->only(['unit_sekolah_id', 'kelas_label', 'search']),
+            'filters' => $request->only(['unit_sekolah_id', 'kelas_label', 'search', 'jenis_filter']),
         ]);
     }
 

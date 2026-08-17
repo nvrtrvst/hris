@@ -64,6 +64,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
     const [unitSekolahId, setUnitSekolahId] = useState(filters.unit_sekolah_id || '');
     const [mataPelajaranId, setMataPelajaranId] = useState(filters.mata_pelajaran_id || '');
     const [jabatanId, setJabatanId] = useState(filters.jabatan_id || '');
+    const [jenisFilter, setJenisFilter] = useState(filters.jenis_filter || '');
     const [showImportModal, setShowImportModal] = useState(false);
 
     const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
@@ -71,13 +72,14 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
         unit_sekolah_id: isAdminUnit ? auth.user.unit_sekolah_id : '',
     });
 
-    const hasFilter = Boolean(search || unitSekolahId || mataPelajaranId || jabatanId);
+    const hasFilter = Boolean(search || unitSekolahId || mataPelajaranId || jabatanId || jenisFilter);
 
     const buildParams = (overrides = {}) => ({
         search,
         unit_sekolah_id: unitSekolahId,
         mata_pelajaran_id: mataPelajaranId,
         jabatan_id: jabatanId,
+        jenis_filter: jenisFilter,
         ...overrides,
     });
 
@@ -107,6 +109,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
         setUnitSekolahId('');
         setMataPelajaranId('');
         setJabatanId('');
+        setJenisFilter('');
         router.get(route('pegawai.index'), {}, { preserveState: true });
     };
 
@@ -170,8 +173,8 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
 
                     {/* Filter bar */}
                     <div className="card p-5">
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-                            <div className="relative lg:col-span-1">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
+                            <div className="relative lg:col-span-2">
                                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                 <input
                                     type="text"
@@ -181,6 +184,18 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                     className="input-field h-9 pl-9 text-xs w-full"
                                 />
                             </div>
+                            <select
+                                className={filterSelect}
+                                value={jenisFilter}
+                                onChange={(e) => {
+                                    setJenisFilter(e.target.value);
+                                    applyFilters({ jenis_filter: e.target.value, search });
+                                }}
+                            >
+                                <option value="">Semua Jenis</option>
+                                <option value="pendidik">Pendidik (Guru)</option>
+                                <option value="kependidikan">Tenaga Kependidikan</option>
+                            </select>
                             {!isAdminUnit && (
                                 <select
                                     className={filterSelect}
@@ -197,18 +212,6 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                             )}
                             <select
                                 className={filterSelect}
-                                value={mataPelajaranId}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    setMataPelajaranId(val);
-                                    applyFilters({ mata_pelajaran_id: val, search });
-                                }}
-                            >
-                                <option value="">Semua Mata Pelajaran</option>
-                                {mataPelajarans && mataPelajarans.map((m) => <option key={m.id} value={m.id}>{m.nama}</option>)}
-                            </select>
-                            <select
-                                className={filterSelect}
                                 value={jabatanId}
                                 onChange={(e) => {
                                     const val = e.target.value;
@@ -218,6 +221,18 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                             >
                                 <option value="">Semua Jabatan</option>
                                 {jabatans && jabatans.map((j) => <option key={j.id} value={j.id}>{j.nama}</option>)}
+                            </select>
+                            <select
+                                className={filterSelect}
+                                value={mataPelajaranId}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setMataPelajaranId(val);
+                                    applyFilters({ mata_pelajaran_id: val, search });
+                                }}
+                            >
+                                <option value="">Semua Mapel</option>
+                                {mataPelajarans && mataPelajarans.map((m) => <option key={m.id} value={m.id}>{m.nama}</option>)}
                             </select>
                         </div>
 

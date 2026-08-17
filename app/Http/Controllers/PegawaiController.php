@@ -66,6 +66,7 @@ class PegawaiController extends Controller
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
             'mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
             'jabatan_id' => 'nullable|exists:jabatan,id',
+            'jenis_filter' => 'nullable|in:pendidik,kependidikan',
         ]);
 
         $query = Pegawai::with(['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama']);
@@ -102,6 +103,14 @@ class PegawaiController extends Controller
             });
         }
 
+        // Filter jenis pegawai (Dapodik-style): pendidik = punya jabatan guru,
+        // kependidikan = tidak punya jabatan guru sama sekali
+        if ($request->jenis_filter === 'pendidik') {
+            $query->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
+        } elseif ($request->jenis_filter === 'kependidikan') {
+            $query->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
+        }
+
         // Stats ringkasan: 1 query agregat + 1 count ringan (kontrak berakhir)
         $agg = (clone $query)->selectRaw("COUNT(*) as total, SUM(CASE WHEN status_aktif = 'aktif' THEN 1 ELSE 0 END) as aktif")->first();
         $kontrakEnd = now()->addDays(30)->format('Y-m-d');
@@ -127,7 +136,7 @@ class PegawaiController extends Controller
         return inertia('Pegawai/Index', [
             'pegawais' => $pegawais,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'unit_sekolah_id', 'mata_pelajaran_id', 'jabatan_id']),
+            'filters' => $request->only(['search', 'unit_sekolah_id', 'mata_pelajaran_id', 'jabatan_id', 'jenis_filter']),
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'userUnitId' => $user->unit_sekolah_id,
             'unitSekolahs' => $unitSekolahs,

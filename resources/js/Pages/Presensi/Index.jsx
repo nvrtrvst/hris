@@ -296,99 +296,96 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                     {/* Filter bar */}
                     <div className="card p-5">
-                        <div className="flex flex-col gap-4">
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-                                {isAdmin && (
-                                    <>
-                                        <div className="relative lg:col-span-2">
-                                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                            <input
-                                                type="text"
-                                                value={search}
-                                                onChange={(e) => setSearch(e.target.value)}
-                                                placeholder="Cari nama pegawai…"
-                                                className="input-field h-9 pl-9 text-xs w-full"
-                                            />
-                                        </div>
-                                        {auth.permissions?.includes('view_all_units') && (
-                                            <select className={filterSelect} value={unitId} onChange={(e) => setUnitId(e.target.value)}>
-                                                <option value="">Semua Unit</option>
-                                                {units?.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
-                                            </select>
-                                        )}
-                                    </>
-                                )}
-                                <select className={filterSelect} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                                    <option value="">Semua Status</option>
-                                    {Object.entries(STATUS_META).map(([key, m]) => <option key={key} value={key}>{m.label}</option>)}
-                                </select>
-                                {isAdmin && (
-                                    <select className={filterSelect} value={jenisFilter} onChange={(e) => setJenisFilter(e.target.value)}>
-                                        <option value="">Semua Jenis</option>
-                                        <option value="pendidik">Pendidik (Guru)</option>
-                                        <option value="kependidikan">Tenaga Kependidikan</option>
-                                    </select>
-                                )}
-                            </div>
-
+                        {/* Row 1: Search + Quick Filters */}
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
                             {isAdmin && (
-                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-                                    <select className={filterSelect} value={jadwalFilter} onChange={(e) => {
-                                        setJadwalFilter(e.target.value);
-                                        // "Sedang Berlangsung" selalu memaksa tanggal = hari ini;
-                                        // bersihkan range tanggal agar tidak konflik jadi kosong.
-                                        if (e.target.value === 'sedang_berlangsung') {
-                                            setStartDate('');
-                                            setEndDate('');
-                                        }
-                                    }}>
-                                        <option value="">Semua Jadwal</option>
-                                        <option value="sedang_berlangsung">Sedang Berlangsung</option>
-                                    </select>
-                                    <select className={filterSelect} value={lemburFilter} onChange={(e) => setLemburFilter(e.target.value)}>
-                                        <option value="">Semua Presensi</option>
-                                        <option value="lembur_semua">Semua Lembur</option>
-                                        <option value="lembur_pending">Lembur Pending</option>
-                                        <option value="lembur_disetujui">Lembur Disetujui</option>
-                                        <option value="lembur_ditolak">Lembur Ditolak</option>
-                                    </select>
-                                    <select className={filterSelect} value={lokasiFilter} onChange={(e) => setLokasiFilter(e.target.value)}>
-                                        <option value="">Semua Lokasi</option>
-                                        <option value="review_semua">Perlu Review (Semua)</option>
-                                        <option value="perlu_review">Perlu Review GPS</option>
-                                        <option value="pulang_awal">Pulang Awal</option>
-                                    </select>
-                                    <select className={filterSelect} value={suspiciousFilter} onChange={(e) => setSuspiciousFilter(e.target.value)}>
-                                        <option value="">Semua GPS</option>
-                                        <option value="1">Posisi Mencurigakan</option>
-                                    </select>
+                                <div className="relative lg:col-span-2">
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                    <input
+                                        type="text"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        placeholder="Cari nama pegawai…"
+                                        className="input-field h-9 pl-9 text-xs w-full"
+                                    />
                                 </div>
                             )}
+                            <select className={filterSelect} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                                <option value="">Semua Status</option>
+                                {Object.entries(STATUS_META).map(([key, m]) => <option key={key} value={key}>{m.label}</option>)}
+                            </select>
+                            {isAdmin && auth.permissions?.includes('view_all_units') && (
+                                <select className={filterSelect} value={unitId} onChange={(e) => setUnitId(e.target.value)}>
+                                    <option value="">Semua Unit</option>
+                                    {units?.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
+                                </select>
+                            )}
+                            {isAdmin && (
+                                <select className={filterSelect} value={jenisFilter} onChange={(e) => setJenisFilter(e.target.value)}>
+                                    <option value="">Semua Jenis</option>
+                                    <option value="pendidik">Pendidik (Guru)</option>
+                                    <option value="kependidikan">Tenaga Kependidikan</option>
+                                </select>
+                            )}
+                        </div>
 
-                            <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <input type="date" className="input-field text-xs h-9" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                                    <span className="text-xs text-text-secondary">–</span>
-                                    <input type="date" className="input-field text-xs h-9" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-                                </div>
-                                <div className="ml-1 flex flex-wrap gap-1.5">
-                                    {[{ k: 'hari', label: 'Hari Ini' }, { k: '7hari', label: '7 Hari' }, { k: 'bulan', label: 'Bulan Ini' }].map((p) => (
-                                        <button key={p.k} type="button" onClick={() => applyPreset(p.k)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary hover:bg-primary-50">
-                                            {p.label}
-                                        </button>
-                                    ))}
-                                </div>
-                                <div className="ml-auto flex items-center gap-2">
-                                    {hasFilter && (
-                                        <button type="button" onClick={resetFilters} className="btn-secondary btn-sm flex items-center gap-1.5">
-                                            <RotateCcw className="h-3.5 w-3.5" /> Reset
-                                        </button>
-                                    )}
-                                    <button type="button" onClick={() => applyFilters()} disabled={processing} className="btn-primary btn-sm flex items-center gap-1.5">
-                                        {processing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Filter className="h-3.5 w-3.5" />}
-                                        Terapkan
+                        {/* Row 2: Extended Filters (admin only) */}
+                        {isAdmin && (
+                            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                                <select className={filterSelect} value={jadwalFilter} onChange={(e) => {
+                                    setJadwalFilter(e.target.value);
+                                    if (e.target.value === 'sedang_berlangsung') {
+                                        setStartDate('');
+                                        setEndDate('');
+                                    }
+                                }}>
+                                    <option value="">Semua Jadwal</option>
+                                    <option value="sedang_berlangsung">Sedang Berlangsung</option>
+                                </select>
+                                <select className={filterSelect} value={lemburFilter} onChange={(e) => setLemburFilter(e.target.value)}>
+                                    <option value="">Semua Presensi</option>
+                                    <option value="lembur_semua">Semua Lembur</option>
+                                    <option value="lembur_pending">Lembur Pending</option>
+                                    <option value="lembur_disetujui">Lembur Disetujui</option>
+                                    <option value="lembur_ditolak">Lembur Ditolak</option>
+                                </select>
+                                <select className={filterSelect} value={lokasiFilter} onChange={(e) => setLokasiFilter(e.target.value)}>
+                                    <option value="">Semua Lokasi</option>
+                                    <option value="review_semua">Perlu Review (Semua)</option>
+                                    <option value="perlu_review">Perlu Review GPS</option>
+                                    <option value="pulang_awal">Pulang Awal</option>
+                                </select>
+                                <select className={filterSelect} value={suspiciousFilter} onChange={(e) => setSuspiciousFilter(e.target.value)}>
+                                    <option value="">Semua GPS</option>
+                                    <option value="1">Posisi Mencurigakan</option>
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Row 3: Date Range + Actions */}
+                        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <input type="date" className="input-field text-xs h-9" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                                <span className="text-xs text-text-secondary">–</span>
+                                <input type="date" className="input-field text-xs h-9" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                            </div>
+                            <div className="ml-1 flex flex-wrap gap-1.5">
+                                {[{ k: 'hari', label: 'Hari Ini' }, { k: '7hari', label: '7 Hari' }, { k: 'bulan', label: 'Bulan Ini' }].map((p) => (
+                                    <button key={p.k} type="button" onClick={() => applyPreset(p.k)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary hover:bg-primary-50">
+                                        {p.label}
                                     </button>
-                                </div>
+                                ))}
+                            </div>
+                            <div className="ml-auto flex items-center gap-2">
+                                {hasFilter && (
+                                    <button type="button" onClick={resetFilters} className="btn-secondary btn-sm flex items-center gap-1.5">
+                                        <RotateCcw className="h-3.5 w-3.5" /> Reset
+                                    </button>
+                                )}
+                                <button type="button" onClick={() => applyFilters()} disabled={processing} className="btn-primary btn-sm flex items-center gap-1.5">
+                                    {processing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Filter className="h-3.5 w-3.5" />}
+                                    Terapkan
+                                </button>
                             </div>
                         </div>
                     </div>

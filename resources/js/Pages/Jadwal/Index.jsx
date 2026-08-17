@@ -124,6 +124,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
     const [unitFilter, setUnitFilter] = useState(filters.unit_sekolah_id || '');
     const [kelasFilter, setKelasFilter] = useState(filters.kelas_label || '');
     const [searchName, setSearchName] = useState(filters.search || '');
+    const [jenisFilter, setJenisFilter] = useState(filters.jenis_filter || '');
     const [showRekapModal, setShowRekapModal] = useState(false);
     const [viewMode, setViewMode] = useState('matrix');
     const [expandedGuru, setExpandedGuru] = useState(null);
@@ -188,42 +189,57 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         return m;
     }, [presensiHariIni]);
 
-    const hasFilter = Boolean(searchName || unitFilter || kelasFilter);
+    const hasFilter = Boolean(searchName || unitFilter || kelasFilter || jenisFilter);
 
     // Ref filter terbaru — cegah stale closure saat debounce search tertunda
     // lalu user mengganti unit/kelas sebelum timer jalan.
-    const latestFiltersRef = useRef({ unitFilter, kelasFilter });
-    latestFiltersRef.current = { unitFilter, kelasFilter };
+    const latestFiltersRef = useRef({ unitFilter, kelasFilter, jenisFilter });
+    latestFiltersRef.current = { unitFilter, kelasFilter, jenisFilter };
 
     // ── Search debounce → server (filter konsisten dengan matriks) ──
     useEffect(() => {
         if (searchName === (filters.search || '')) return;
         const timer = setTimeout(() => {
-            const { unitFilter: u, kelasFilter: k } = latestFiltersRef.current;
-            router.get(route('jadwal.index'), { unit_sekolah_id: u, kelas_label: k, search: searchName }, { preserveState: true, preserveScroll: true });
+            const { unitFilter: u, kelasFilter: k, jenisFilter: j } = latestFiltersRef.current;
+            router.get(route('jadwal.index'), { unit_sekolah_id: u, kelas_label: k, jenis_filter: j, search: searchName }, { preserveState: true, preserveScroll: true });
         }, 400);
 
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchName]);
 
+    const buildParams = (overrides = {}) => ({
+        unit_sekolah_id: unitFilter,
+        kelas_label: kelasFilter,
+        jenis_filter: jenisFilter,
+        search: searchName,
+        ...overrides,
+    });
+
     const handleUnitFilterChange = (e) => {
         const value = e.target.value;
         setUnitFilter(value);
         setKelasFilter('');
-        router.get(route('jadwal.index'), { unit_sekolah_id: value, kelas_label: '', search: searchName }, { preserveState: true });
+        router.get(route('jadwal.index'), buildParams({ unit_sekolah_id: value, kelas_label: '' }), { preserveState: true });
     };
 
     const handleKelasFilterChange = (e) => {
         const value = e.target.value;
         setKelasFilter(value);
-        router.get(route('jadwal.index'), { unit_sekolah_id: unitFilter, kelas_label: value, search: searchName }, { preserveState: true });
+        router.get(route('jadwal.index'), buildParams({ kelas_label: value }), { preserveState: true });
+    };
+
+    const handleJenisFilterChange = (e) => {
+        const value = e.target.value;
+        setJenisFilter(value);
+        router.get(route('jadwal.index'), buildParams({ jenis_filter: value }), { preserveState: true });
     };
 
     const resetFilters = () => {
         setSearchName('');
         setUnitFilter('');
         setKelasFilter('');
+        setJenisFilter('');
         router.get(route('jadwal.index'), {}, { preserveState: true });
     };
 
@@ -317,7 +333,8 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                     {/* Filter bar */}
                     {isAdmin && (
                         <div className="card p-5">
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                            {/* Row 1: Search + Quick Filters */}
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
                                 <div className="relative lg:col-span-2">
                                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                     <input
@@ -329,8 +346,13 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     />
                                 </div>
                                 <select className={filterSelect} value={unitFilter} onChange={handleUnitFilterChange}>
-                                    <option value="">Semua Unit Sekolah</option>
+                                    <option value="">Semua Unit</option>
                                     {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
+                                </select>
+                                <select className={filterSelect} value={jenisFilter} onChange={handleJenisFilterChange}>
+                                    <option value="">Semua Jenis</option>
+                                    <option value="pendidik">Pendidik (Guru)</option>
+                                    <option value="kependidikan">Tenaga Kependidikan</option>
                                 </select>
                                 <select className={filterSelect} value={kelasFilter} onChange={handleKelasFilterChange}>
                                     <option value="">Semua Kelas</option>
@@ -338,7 +360,8 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                 </select>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
+                            {/* Row 2: Actions */}
+                            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
                                 {hasFilter && (
                                     <button type="button" onClick={resetFilters} className="btn-secondary btn-sm flex items-center gap-1.5">
                                         <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
