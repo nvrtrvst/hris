@@ -29,6 +29,7 @@ class PresensiController extends Controller
             'suspicious_filter' => 'nullable|boolean',
             'status_filter' => 'nullable|in:hadir,telat,sakit,izin,cuti,alpa',
             'jadwal_filter' => 'nullable|in:sedang_berlangsung',
+            'jenis_filter' => 'nullable|in:pendidik,kependidikan',
             'search' => 'nullable|string|max:100',
         ]);
 
@@ -102,6 +103,14 @@ class PresensiController extends Controller
             $query->where('status', $request->status_filter);
         }
 
+        // Filter jenis pegawai (Dapodik-style): pendidik = punya jabatan guru (is_guru),
+        // tenaga kependidikan = TIDAK punya jabatan guru sama sekali (TU, pustakawan, OB, dll).
+        if ($request->jenis_filter === 'pendidik') {
+            $query->whereHas('pegawai', fn ($q) => $q->whereHas('jabatans', fn ($q2) => $q2->where('is_guru', true)));
+        } elseif ($request->jenis_filter === 'kependidikan') {
+            $query->whereHas('pegawai', fn ($q) => $q->whereDoesntHave('jabatans', fn ($q2) => $q2->where('is_guru', true)));
+        }
+
         // Kelas yang sedang berlangsung SEKARANG: record mengajar hari ini yang
         // sudah absen masuk dan jam jadwal-nya sedang berjalan (jam_mulai <= now < jam_selesai).
         // Konsisten dengan badge "Mengajar" di daftar (Index.jsx).
@@ -128,7 +137,7 @@ class PresensiController extends Controller
         return inertia('Presensi/Index', [
             'presensis' => $presensis,
             'pegawai' => $isAdmin ? null : ($pegawai ?? null),
-            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'status_filter', 'jadwal_filter', 'search']),
+            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'status_filter', 'jadwal_filter', 'jenis_filter', 'search']),
             'units' => $units,
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'stats' => $stats,

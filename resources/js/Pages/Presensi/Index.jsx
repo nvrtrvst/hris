@@ -154,6 +154,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [suspiciousFilter, setSuspiciousFilter] = React.useState(filters?.suspicious_filter || '');
     const [statusFilter, setStatusFilter] = React.useState(filters?.status_filter || '');
     const [jadwalFilter, setJadwalFilter] = React.useState(filters?.jadwal_filter || '');
+    const [jenisFilter, setJenisFilter] = React.useState(filters?.jenis_filter || '');
     const [search, setSearch] = React.useState(filters?.search || '');
 
     const [confirmStatus, setConfirmStatus] = React.useState(null);
@@ -162,7 +163,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [auditPegawai, setAuditPegawai] = React.useState('');
     const [reviewModal, setReviewModal] = React.useState({ show: false, loading: false, data: null });
 
-    const hasFilter = Boolean(search || statusFilter || jadwalFilter || unitId || lemburFilter || lokasiFilter || suspiciousFilter || startDate || endDate);
+    const hasFilter = Boolean(search || statusFilter || jadwalFilter || jenisFilter || unitId || lemburFilter || lokasiFilter || suspiciousFilter || startDate || endDate);
 
     const buildParams = React.useCallback((overrides = {}) => ({
         start_date: startDate,
@@ -173,9 +174,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         suspicious_filter: suspiciousFilter,
         status_filter: statusFilter,
         jadwal_filter: jadwalFilter,
+        jenis_filter: jenisFilter,
         search,
         ...overrides,
-    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, jadwalFilter, search]);
+    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, jadwalFilter, jenisFilter, search]);
 
     const applyFilters = React.useCallback((overrides = {}) => {
         router.get(route('presensi.index'), buildParams(overrides), { preserveState: true, preserveScroll: true });
@@ -216,6 +218,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         setSuspiciousFilter('');
         setStatusFilter('');
         setJadwalFilter('');
+        setJenisFilter('');
         setSearch('');
         router.get(route('presensi.index'), {}, { preserveState: true });
     };
@@ -319,6 +322,13 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     <option value="">Semua Status</option>
                                     {Object.entries(STATUS_META).map(([key, m]) => <option key={key} value={key}>{m.label}</option>)}
                                 </select>
+                                {isAdmin && (
+                                    <select className={filterSelect} value={jenisFilter} onChange={(e) => setJenisFilter(e.target.value)}>
+                                        <option value="">Semua Jenis</option>
+                                        <option value="pendidik">Pendidik (Guru)</option>
+                                        <option value="kependidikan">Tenaga Kependidikan</option>
+                                    </select>
+                                )}
                             </div>
 
                             {isAdmin && (
