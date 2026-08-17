@@ -23,11 +23,14 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
     protected $unit_id;
 
-    public function __construct($start_date, $end_date, $unit_id = null)
+    protected $jenis;
+
+    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null)
     {
         $this->start_date = $start_date;
         $this->end_date = $end_date;
         $this->unit_id = $unit_id;
+        $this->jenis = $jenis;
     }
 
     public function collection()
@@ -39,7 +42,22 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
             $query->where('unit_sekolah_id', $this->unit_id);
         }
 
+        $this->applyJenisFilter($query);
+
         return $query->orderBy('tanggal', 'asc')->get();
+    }
+
+    /**
+     * Filter jenis pegawai (Dapodik-style): pendidik = punya jabatan guru,
+     * kependidikan = tidak punya jabatan guru sama sekali.
+     */
+    protected function applyJenisFilter($query): void
+    {
+        if ($this->jenis === 'pendidik') {
+            $query->whereHas('pegawai', fn ($q) => $q->guru());
+        } elseif ($this->jenis === 'kependidikan') {
+            $query->whereHas('pegawai', fn ($q) => $q->nonGuru());
+        }
     }
 
     public function map($presensi): array

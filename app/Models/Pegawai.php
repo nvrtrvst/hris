@@ -285,6 +285,24 @@ class Pegawai extends Model
     }
 
     /**
+     * Scope: pendidik = punya minimal satu jabatan guru (is_guru = true).
+     * Konsisten dengan filter jenis Dapodik di Presensi/Pegawai/Jadwal.
+     */
+    public function scopeGuru($query)
+    {
+        return $query->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
+    }
+
+    /**
+     * Scope: tenaga kependidikan = TIDAK punya jabatan guru sama sekali
+     * (TU, pustakawan, laboran, OB, satpam, dll).
+     */
+    public function scopeNonGuru($query)
+    {
+        return $query->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
+    }
+
+    /**
      * Cek apakah pegawai termasuk unit tertentu.
      */
     public function belongsToUnit($unitId): bool

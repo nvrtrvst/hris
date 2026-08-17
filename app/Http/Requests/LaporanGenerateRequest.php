@@ -35,6 +35,7 @@ class LaporanGenerateRequest extends FormRequest
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'jenis_filter' => 'nullable|in:pendidik,kependidikan',
         ];
     }
 
@@ -49,6 +50,7 @@ class LaporanGenerateRequest extends FormRequest
             'end_date.required' => 'Tanggal akhir harus diisi',
             'end_date.after_or_equal' => 'Tanggal akhir harus sama atau setelah tanggal awal',
             'unit_sekolah_id.exists' => 'Unit sekolah tidak ditemukan',
+            'jenis_filter.in' => 'Jenis pegawai harus salah satu dari: pendidik, kependidikan',
         ];
     }
 

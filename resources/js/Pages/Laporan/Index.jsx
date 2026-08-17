@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { Building2, Calendar, Download, FileSpreadsheet, Loader2, Search, FileText } from 'lucide-react';
+import { Building2, Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users } from 'lucide-react';
 import axios from 'axios';
 
 const Field = ({ label, children }) => (
@@ -22,7 +22,8 @@ export default function LaporanIndex({ auth, units }) {
         start_date: firstDay,
         end_date: today,
         report_type: 'presensi',
-        unit_sekolah_id: ''
+        unit_sekolah_id: '',
+        jenis_filter: ''
     });
 
     const [previewData, setPreviewData] = useState(null);
@@ -37,7 +38,8 @@ export default function LaporanIndex({ auth, units }) {
                     type: filter.report_type,
                     start_date: filter.start_date,
                     end_date: filter.end_date,
-                    unit_sekolah_id: filter.unit_sekolah_id
+                    unit_sekolah_id: filter.unit_sekolah_id,
+                    jenis_filter: filter.jenis_filter
                 }
             });
             setPreviewData(res.data);
@@ -60,6 +62,9 @@ export default function LaporanIndex({ auth, units }) {
         params.append('end_date', filter.end_date);
         if (filter.unit_sekolah_id) {
             params.append('unit_sekolah_id', filter.unit_sekolah_id);
+        }
+        if (filter.jenis_filter) {
+            params.append('jenis_filter', filter.jenis_filter);
         }
 
         window.location.href = `${url}?${params.toString()}`;
@@ -88,7 +93,7 @@ export default function LaporanIndex({ auth, units }) {
 
                     {/* Filter Card */}
                     <div className="card p-6">
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                             <Field label="Jenis Laporan">
                                 <div className="relative">
                                     <FileText className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
@@ -137,6 +142,20 @@ export default function LaporanIndex({ auth, units }) {
                                         {units.map((u) => (
                                             <option key={u.id} value={u.id}>{u.nama}</option>
                                         ))}
+                                    </select>
+                                </div>
+                            </Field>
+                            <Field label="Jenis Pegawai (Opsional)">
+                                <div className="relative">
+                                    <Users className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                    <select
+                                        className="select-field pl-9"
+                                        value={filter.jenis_filter}
+                                        onChange={(e) => setFilter({ ...filter, jenis_filter: e.target.value })}
+                                    >
+                                        <option value="">-- Semua Jenis --</option>
+                                        <option value="pendidik">Pendidik (Guru)</option>
+                                        <option value="kependidikan">Tenaga Kependidikan</option>
                                     </select>
                                 </div>
                             </Field>

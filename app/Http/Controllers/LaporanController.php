@@ -36,13 +36,14 @@ class LaporanController extends Controller
     {
         $validated = $request->validated();
 
+        $jenis = $validated['jenis_filter'] ?? null;
         $export = null;
         if ($validated['type'] === 'presensi') {
-            $export = new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null);
+            $export = new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $jenis);
         } elseif ($validated['type'] === 'penggajian') {
-            $export = new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null);
+            $export = new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $jenis);
         } elseif ($validated['type'] === 'lemburan') {
-            $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null);
+            $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $jenis);
         }
 
         if (! $export) {
@@ -67,7 +68,7 @@ class LaporanController extends Controller
         $validated = $request->validated();
 
         return Excel::download(
-            new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null),
+            new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
             'Laporan_Presensi_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -77,7 +78,7 @@ class LaporanController extends Controller
         $validated = $request->validated();
 
         return Excel::download(
-            new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null),
+            new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
             'Laporan_Rekap_Gaji_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -87,7 +88,7 @@ class LaporanController extends Controller
         $validated = $request->validated();
 
         return Excel::download(
-            new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null),
+            new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
             'Laporan_Lemburan_Potongan_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }

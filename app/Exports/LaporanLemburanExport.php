@@ -25,11 +25,14 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
 
     protected $unit_id;
 
-    public function __construct($start_date, $end_date, $unit_id = null)
+    protected $jenis;
+
+    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null)
     {
         $this->start_date = $start_date;
         $this->end_date = $end_date;
         $this->unit_id = $unit_id;
+        $this->jenis = $jenis;
     }
 
     public function collection()
@@ -45,6 +48,12 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
             $query->whereHas('pegawai.units', function ($q) {
                 $q->where('unit_sekolah.id', $this->unit_id);
             });
+        }
+
+        if ($this->jenis === 'pendidik') {
+            $query->whereHas('pegawai', fn ($q) => $q->guru());
+        } elseif ($this->jenis === 'kependidikan') {
+            $query->whereHas('pegawai', fn ($q) => $q->nonGuru());
         }
 
         return $query->orderBy('tanggal')->get();
