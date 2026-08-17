@@ -11,37 +11,72 @@
             <td align="center">
                 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,61,62,0.08);">
 
-                    {{-- Header teal --}}
+                    {{-- Gold accent strip --}}
                     <tr>
-                        <td style="background-color:#0F3D3E;padding:24px 36px 18px;">
+                        <td style="background-color:#C9A227;height:4px;line-height:0;font-size:0;">&nbsp;</td>
+                    </tr>
+
+                    {{-- Header utama --}}
+                    <tr>
+                        <td style="background-color:#0F3D3E;padding:26px 36px 0;">
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                                 <tr>
-                                    <td style="color:#ffffff;font-size:17px;font-weight:700;letter-spacing:0.2px;">
-                                        Yayasan Nuurul Muttaqiin
+                                    <td valign="top">
+                                        <table role="presentation" cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td style="border-left:3px solid #C9A227;padding-left:14px;">
+                                                    <p style="margin:0;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.2px;line-height:1.3;">
+                                                        Yayasan Nuurul Muttaqiin
+                                                    </p>
+                                                    <p style="margin:5px 0 0;color:#9CC9C3;font-size:11px;letter-spacing:0.4px;font-weight:600;">
+                                                        Sistem Informasi Sumber Daya Manusia
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
                                     </td>
-                                    <td align="right" style="color:#80B8B1;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;">
-                                        HRIS Portal
+                                    <td align="right" valign="top">
+                                        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+                                            <tr>
+                                                <td align="center" style="width:118px;height:118px;border-radius:59px;background-color:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.22);">
+                                                    &nbsp;
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <p style="margin:0;color:#C9A227;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;">
+                                            HRIS Portal
+                                        </p>
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
 
-                    {{-- Logo unit --}}
+                    {{-- Band unit (sedikit lebih gelap untuk kesan kedalaman) --}}
                     <tr>
-                        <td style="background-color:#0F3D3E;padding:0 28px 24px;">
+                        <td style="background-color:#0B3334;padding:6px 36px 26px;">
+                            {{-- Divider berlian emas --}}
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+                                <tr>
+                                    <td style="border-bottom:1px solid #1C5455;line-height:0;font-size:0;">&nbsp;</td>
+                                    <td width="36" align="center" style="color:#C9A227;font-size:9px;line-height:9px;padding:0 6px;">&#9670;</td>
+                                    <td style="border-bottom:1px solid #1C5455;line-height:0;font-size:0;">&nbsp;</td>
+                                </tr>
+                            </table>
+
+                            {{-- Logo unit --}}
                             <table role="presentation" cellpadding="0" cellspacing="0">
                                 <tr>
                                     @foreach ($unitLogos as $unit)
-                                        <td align="center" style="padding:0 10px 0 0;">
+                                        <td align="center" style="padding:0 6px;">
                                             <table role="presentation" cellpadding="0" cellspacing="0">
                                                 <tr>
-                                                    <td align="center" style="background-color:#ffffff;border-radius:8px;padding:5px 8px;">
-                                                        <img src="{{ $unit['logo'] }}" alt="{{ $unit['nama'] }}" width="96" style="display:block;width:96px;height:30px;">
+                                                    <td align="center" style="background-color:#ffffff;border-radius:10px;border:1px solid #DCEAE7;padding:6px 8px;box-shadow:0 3px 10px rgba(0,0,0,0.18);">
+                                                        <img src="{{ $unit['logo'] }}" alt="{{ $unit['nama'] }}" width="72" height="23" style="display:block;width:72px;height:23px;">
                                                     </td>
                                                 </tr>
                                                 <tr>
-                                                    <td align="center" style="padding-top:6px;color:#80B8B1;font-size:10px;font-weight:700;letter-spacing:1.5px;">
+                                                    <td align="center" style="padding-top:7px;color:#9CC9C3;font-size:9.5px;font-weight:700;letter-spacing:1.5px;">
                                                         {{ $unit['nama'] }}
                                                     </td>
                                                 </tr>
@@ -71,7 +106,7 @@
                             <table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 28px;">
                                 <tr>
                                     <td>
-                                        <a href="{{ $url }}" style="display:inline-block;background-color:#0F3D3E;color:#ffffff;padding:14px 34px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.2px;">
+                                        <a href="{{ $url }}" style="display:inline-block;background-color:#C9A227;color:#0F3D3E;padding:14px 34px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.2px;box-shadow:0 4px 14px rgba(201,162,39,0.35);">
                                             Atur Ulang Kata Sandi
                                         </a>
                                     </td>
@@ -82,8 +117,8 @@
                                 <tr>
                                     <td style="font-size:12.5px;color:#1A5A57;line-height:1.8;">
                                         <strong style="font-size:13px;">Perhatian</strong><br>
-                                        • Tautan ini berlaku <strong>60 menit</strong> dan hanya bisa digunakan <strong>sekali</strong>.<br>
-                                        • Jika Anda tidak meminta reset ini, abaikan email ini — kata sandi Anda tidak akan berubah.
+                                        &bull; Tautan ini berlaku <strong>60 menit</strong> dan hanya bisa digunakan <strong>sekali</strong>.<br>
+                                        &bull; Jika Anda tidak meminta reset ini, abaikan email ini &mdash; kata sandi Anda tidak akan berubah.
                                     </td>
                                 </tr>
                             </table>
