@@ -13,7 +13,7 @@
 
                     {{-- Header teal --}}
                     <tr>
-                        <td style="background-color:#0F3D3E;padding:28px 36px;">
+                        <td style="background-color:#0F3D3E;padding:24px 36px 18px;">
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td style="color:#ffffff;font-size:17px;font-weight:700;letter-spacing:0.2px;">
@@ -22,6 +22,32 @@
                                     <td align="right" style="color:#80B8B1;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;">
                                         HRIS Portal
                                     </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    {{-- Logo unit --}}
+                    <tr>
+                        <td style="background-color:#0F3D3E;padding:0 28px 24px;">
+                            <table role="presentation" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    @foreach ($unitLogos as $unit)
+                                        <td align="center" style="padding:0 10px 0 0;">
+                                            <table role="presentation" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td align="center" style="background-color:#ffffff;border-radius:8px;padding:5px 8px;">
+                                                        <img src="{{ $unit['logo'] }}" alt="{{ $unit['nama'] }}" width="96" style="display:block;width:96px;height:30px;">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td align="center" style="padding-top:6px;color:#80B8B1;font-size:10px;font-weight:700;letter-spacing:1.5px;">
+                                                        {{ $unit['nama'] }}
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    @endforeach
                                 </tr>
                             </table>
                         </td>

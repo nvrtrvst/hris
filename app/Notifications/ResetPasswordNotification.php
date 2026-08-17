@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\UnitSekolah;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -37,6 +38,32 @@ class ResetPasswordNotification extends Notification
                 'email' => $notifiable->getEmailForPasswordReset(),
                 'url' => $url,
                 'appName' => config('app.name', 'HRIS Yayasan'),
+                'unitLogos' => $this->unitLogos(),
             ]);
+    }
+
+    /**
+     * Daftar unit untuk header email: nama unit + logo yayasan (inline base64
+     * agar selalu tampil tanpa perlu Gmail memuat gambar eksternal).
+     *
+     * @return array<int, array{nama: string, logo: string}>
+     */
+    private function unitLogos(): array
+    {
+        static $logoDataUri = null;
+
+        if ($logoDataUri === null) {
+            $path = resource_path('views/emails/yayasan-logo.png');
+            $logoDataUri = 'data:image/png;base64,'.base64_encode((string) file_get_contents($path));
+        }
+
+        return UnitSekolah::query()
+            ->orderBy('id')
+            ->get(['nama'])
+            ->map(fn (UnitSekolah $unit) => [
+                'nama' => $unit->nama,
+                'logo' => $logoDataUri,
+            ])
+            ->all();
     }
 }
