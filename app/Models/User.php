@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\ResetPasswordNotification;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -52,6 +53,14 @@ class User extends Authenticatable
     public function needsPasswordChange(): bool
     {
         return (bool) $this->force_password_change;
+    }
+
+    /**
+     * Kirim notifikasi reset kata sandi dengan template email ber-branding.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 
     public function isApprover(): bool
