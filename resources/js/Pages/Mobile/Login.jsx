@@ -99,7 +99,6 @@ export default function MobileLogin({ status }) {
                             autoComplete="username"
                             autoCapitalize="none"
                             spellCheck="false"
-                            autoFocus
                             placeholder="nama@yayasan.sch.id"
                             value={data.login}
                             error={errors.login}
