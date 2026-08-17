@@ -31,6 +31,8 @@ class ResetPasswordNotification extends Notification
             'email' => $notifiable->getEmailForPasswordReset(),
         ], false));
 
+        $logos = $this->unitLogos();
+
         return (new MailMessage)
             ->subject('Atur Ulang Kata Sandi — HRIS Yayasan Nuurul Muttaqiin')
             ->view('emails.reset-password', [
@@ -38,7 +40,8 @@ class ResetPasswordNotification extends Notification
                 'email' => $notifiable->getEmailForPasswordReset(),
                 'url' => $url,
                 'appName' => config('app.name', 'HRIS Yayasan'),
-                'unitLogos' => $this->unitLogos(),
+                'unitLogos' => $logos,
+                'yayasanLogo' => $logos[0]['logo'] ?? null,
             ]);
     }
 

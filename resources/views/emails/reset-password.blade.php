@@ -38,9 +38,8 @@
                                     <td align="right" valign="top">
                                         <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
                                             <tr>
-                                                <td align="center" valign="middle" style="width:118px;height:118px;border-radius:59px;background-color:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.25);">
-                                                    <p style="margin:0;color:#C9A227;font-size:36px;font-weight:800;letter-spacing:3px;line-height:1;">NM</p>
-                                                    <p style="margin:4px 0 0;color:#9CC9C3;font-size:8px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;">Est. Yayasan</p>
+                                                <td align="center" valign="middle" style="width:118px;height:118px;border-radius:59px;background-color:#ffffff;border:1px solid #C9A227;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
+                                                    <img src="{{ $yayasanLogo }}" alt="Yayasan Nuurul Muttaqiin" width="92" height="83" style="display:block;width:92px;height:83px;">
                                                 </td>
                                             </tr>
                                         </table>
@@ -73,7 +72,7 @@
                                             <table role="presentation" cellpadding="0" cellspacing="0">
                                                 <tr>
                                                     <td align="center" style="background-color:#ffffff;border-radius:10px;border:1px solid #DCEAE7;padding:6px 8px;box-shadow:0 3px 10px rgba(0,0,0,0.18);">
-                                                        <img src="{{ $unit['logo'] }}" alt="{{ $unit['nama'] }}" width="72" height="23" style="display:block;width:72px;height:23px;">
+                                                        <img src="{{ $unit['logo'] }}" alt="{{ $unit['nama'] }}" width="44" height="40" style="display:block;width:44px;height:40px;">
                                                     </td>
                                                 </tr>
                                                 <tr>
