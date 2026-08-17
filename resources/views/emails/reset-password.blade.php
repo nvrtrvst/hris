@@ -36,10 +36,11 @@
                                         </table>
                                     </td>
                                     <td align="right" valign="top">
-                                        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+                                        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
                                             <tr>
-                                                <td align="center" style="width:118px;height:118px;border-radius:59px;background-color:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.22);">
-                                                    &nbsp;
+                                                <td align="center" valign="middle" style="width:118px;height:118px;border-radius:59px;background-color:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.25);">
+                                                    <p style="margin:0;color:#C9A227;font-size:36px;font-weight:800;letter-spacing:3px;line-height:1;">NM</p>
+                                                    <p style="margin:4px 0 0;color:#9CC9C3;font-size:8px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;">Est. Yayasan</p>
                                                 </td>
                                             </tr>
                                         </table>
