@@ -303,6 +303,19 @@ class Pegawai extends Model
     }
 
     /**
+     * Label jenis pegawai (Dapodik): 'Pendidik' jika punya minimal satu
+     * jabatan guru (is_guru = true), selain itu 'Tenaga Kependidikan'.
+     * Dipakai untuk kolom Jenis di laporan/export. Pastikan relasi
+     * `jabatans` sudah di-eager-load sebelum dipanggil dalam loop (hindari N+1).
+     */
+    public function jenisPegawaiLabel(): string
+    {
+        return $this->jabatans->contains('is_guru', true)
+            ? 'Pendidik'
+            : 'Tenaga Kependidikan';
+    }
+
+    /**
      * Cek apakah pegawai termasuk unit tertentu.
      */
     public function belongsToUnit($unitId): bool

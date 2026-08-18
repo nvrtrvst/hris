@@ -122,6 +122,7 @@ class LaporanJenisFilterTest extends TestCase
             ->assertJson(fn ($json) => $json
                 ->has('data', 1)
                 ->where('data.0.1', 'Guru Pendidik')
+                ->where('data.0.3', 'Pendidik')
                 ->etc());
     }
 
@@ -133,6 +134,7 @@ class LaporanJenisFilterTest extends TestCase
             ->assertJson(fn ($json) => $json
                 ->has('data', 1)
                 ->where('data.0.1', 'Staf Tata Usaha')
+                ->where('data.0.3', 'Tenaga Kependidikan')
                 ->etc());
     }
 

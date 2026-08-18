@@ -35,7 +35,8 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
 
     public function collection()
     {
-        $query = Penggajian::with(['pegawai.units']);
+        // Eager-load jabatans untuk kolom Jenis (hindari N+1 di map()).
+        $query = Penggajian::with(['pegawai.units', 'pegawai.jabatans']);
 
         $months = [];
         $cursor = Carbon::parse($this->start_date)->startOfMonth();
@@ -68,9 +69,12 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
             $unitName = $penggajian->pegawai->units->first()->nama;
         }
 
+        $pegawai = $penggajian->pegawai;
+
         return [
-            $penggajian->pegawai->nik ?? '-',
-            $penggajian->pegawai->nama_lengkap ?? '-',
+            $pegawai->nik ?? '-',
+            $pegawai->nama_lengkap ?? '-',
+            $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $unitName,
             $penggajian->periode_bulan,
             $penggajian->total_pendapatan,
@@ -85,6 +89,7 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
         return [
             'NIP',
             'Nama Pegawai',
+            'Jenis',
             'Unit Sekolah',
             'Periode Penggajian',
             'Total Pendapatan (Rp)',
@@ -114,23 +119,23 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
                 $periodeStr = Carbon::parse($this->start_date)->format('d/m/Y').' s/d '.Carbon::parse($this->end_date)->format('d/m/Y');
 
                 // Kop Yayasan
-                $sheet->mergeCells('A1:H1');
+                $sheet->mergeCells('A1:I1');
                 $sheet->setCellValue('A1', 'YAYASAN PENDIDIKAN');
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A2:H2');
+                $sheet->mergeCells('A2:I2');
                 $sheet->setCellValue('A2', 'LAPORAN REKAPITULASI PENGGAJIAN PEGAWAI');
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A3:H3');
+                $sheet->mergeCells('A3:I3');
                 $sheet->setCellValue('A3', 'Periode: '.$periodeStr.' | Unit: '.$namaUnit);
                 $sheet->getStyle('A3')->getFont()->setItalic(true);
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 // Styling for Headings
-                $sheet->getStyle('A6:H6')->applyFromArray([
+                $sheet->getStyle('A6:I6')->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
@@ -138,8 +143,8 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
                     ],
                 ]);
 
-                // Format Columns as Currency
-                $sheet->getStyle('E7:G1000')->getNumberFormat()->setFormatCode('"Rp "#,##0.00_-');
+                // Format Columns as Currency (F=Total Pendapatan, G=Potongan, H=Take Home Pay)
+                $sheet->getStyle('F7:H1000')->getNumberFormat()->setFormatCode('"Rp "#,##0.00_-');
             },
         ];
     }

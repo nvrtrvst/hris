@@ -35,7 +35,8 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
     public function collection()
     {
-        $query = Presensi::with(['pegawai', 'unitSekolah'])
+        // Eager-load jabatans untuk kolom Jenis (hindari N+1 di map()).
+        $query = Presensi::with(['pegawai.jabatans', 'unitSekolah'])
             ->whereBetween('tanggal', [$this->start_date, $this->end_date]);
 
         if ($this->unit_id) {
@@ -62,10 +63,13 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
     public function map($presensi): array
     {
+        $pegawai = $presensi->pegawai;
+
         return [
             $presensi->tanggal->format('d/m/Y'),
-            $presensi->pegawai->nama_lengkap ?? '-',
-            $presensi->pegawai->nik ?? '-',
+            $pegawai->nama_lengkap ?? '-',
+            $pegawai->nik ?? '-',
+            $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $presensi->unitSekolah->nama ?? '-',
             $presensi->jam_masuk ?? '-',
             $presensi->jam_keluar ?? '-',
@@ -80,6 +84,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
             'Tanggal',
             'Nama Pegawai',
             'NIP',
+            'Jenis',
             'Unit Sekolah',
             'Jam Masuk',
             'Jam Keluar',
@@ -108,23 +113,23 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
                 $periodeStr = Carbon::parse($this->start_date)->format('d/m/Y').' s/d '.Carbon::parse($this->end_date)->format('d/m/Y');
 
                 // Kop Yayasan
-                $sheet->mergeCells('A1:H1');
+                $sheet->mergeCells('A1:I1');
                 $sheet->setCellValue('A1', 'YAYASAN PENDIDIKAN'); // Ganti dengan nama yayasan asli
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A2:H2');
+                $sheet->mergeCells('A2:I2');
                 $sheet->setCellValue('A2', 'LAPORAN REKAPITULASI PRESENSI PEGAWAI');
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A3:H3');
+                $sheet->mergeCells('A3:I3');
                 $sheet->setCellValue('A3', 'Periode: '.$periodeStr.' | Unit: '.$namaUnit);
                 $sheet->getStyle('A3')->getFont()->setItalic(true);
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                // Styling for Headings (A6:H6)
-                $sheet->getStyle('A6:H6')->applyFromArray([
+                // Styling for Headings (A6:I6)
+                $sheet->getStyle('A6:I6')->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
