@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
-import { Search, Filter, CheckCircle, XCircle, Clock, Info, User, FileText, Calendar, AlertCircle, ChevronRight, CalendarCheck2, Inbox } from 'lucide-react';
+import { Search, Filter, CheckCircle, XCircle, Clock, Info, User, FileText, Calendar, AlertCircle, ChevronRight, CalendarCheck2, Inbox, Users } from 'lucide-react';
 
 const TABS = [
     { key: 'l1', label: 'Approval L1' },
@@ -21,6 +21,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
     const [search, setSearch] = useState(filters?.search || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || 'semua');
     const [dateFilter, setDateFilter] = useState(filters?.tanggal || '');
+    const [jenisFilter, setJenisFilter] = useState(filters?.jenis_filter || '');
     const [activeTab, setActiveTab] = useState(filters?.tab || 'l1');
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -57,6 +58,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
             search,
             status: statusFilter,
             tanggal: dateFilter,
+            jenis_filter: jenisFilter,
             tab: tab || activeTab,
         }, {
             preserveState: true,
@@ -77,7 +79,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         }
         const timer = setTimeout(() => handleFilter(), 300);
         return () => clearTimeout(timer);
-    }, [search, statusFilter, dateFilter]);
+    }, [search, statusFilter, dateFilter, jenisFilter]);
 
     const getStatusBadge = (status) => {
         switch (status) {
@@ -265,6 +267,20 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                     onChange={(e) => setDateFilter(e.target.value)}
                                 />
                             </div>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Users className="h-4 w-4 text-text-muted" />
+                                </div>
+                                <select
+                                    className="select-field pl-9"
+                                    value={jenisFilter}
+                                    onChange={(e) => setJenisFilter(e.target.value)}
+                                >
+                                    <option value="">Semua Jenis</option>
+                                    <option value="pendidik">Pendidik (Guru)</option>
+                                    <option value="kependidikan">Tenaga Kependidikan</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -365,7 +381,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                 </div>
                                 <Pagination
                                     links={pengajuans.links}
-                                    data={{ search, status: statusFilter, tanggal: dateFilter, tab: activeTab }}
+                                    data={{ search, status: statusFilter, tanggal: dateFilter, jenis_filter: jenisFilter, tab: activeTab }}
                                 />
                             </div>
                         )}

@@ -66,6 +66,11 @@ class PengajuanIzinController extends Controller
                 ->whereDate('tanggal_selesai', '>=', $request->tanggal);
         }
 
+        // Filter jenis pegawai (Dapodik): pendidik = punya jabatan guru, kependidikan = tidak.
+        if ($request->filled('jenis_filter') && in_array($request->jenis_filter, ['pendidik', 'kependidikan'], true)) {
+            $query->whereHas('pegawai', fn ($q) => $request->jenis_filter === 'pendidik' ? $q->guru() : $q->nonGuru());
+        }
+
         $stats = [
             'total' => (clone $query)->count(),
             'pending' => (clone $query)->where('status', 'pending')->count(),
@@ -76,7 +81,7 @@ class PengajuanIzinController extends Controller
 
         return Inertia::render('PengajuanIzin/Index', [
             'pengajuans' => $pengajuans,
-            'filters' => $request->only(['search', 'status', 'tanggal', 'tab']),
+            'filters' => $request->only(['search', 'status', 'tanggal', 'tab', 'jenis_filter']),
             'stats' => $stats,
         ]);
     }
