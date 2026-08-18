@@ -19,6 +19,16 @@ class PegawaiConstants
     ];
 
     /**
+     * Label tampilan status kepegawaian (dipakai export Excel).
+     */
+    public const STATUS_KEPEGAWAIAN_LABELS = [
+        'tetap' => 'Tetap',
+        'kontrak' => 'Kontrak',
+        'honorer' => 'Honorer',
+        'gtt' => 'GTT (Guru Tidak Tetap)',
+    ];
+
+    /**
      * Jenjang pendidikan terakhir (standar Dapodik).
      * Dipakai dropdown template import supaya data konsisten.
      */

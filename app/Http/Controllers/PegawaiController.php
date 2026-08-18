@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Constants\PegawaiConstants;
+use App\Exports\PegawaiExport;
 use App\Exports\PegawaiTemplateExport;
 use App\Imports\PegawaiImport;
 use App\Models\Jabatan;
@@ -72,9 +73,10 @@ class PegawaiController extends Controller
     }
 
     /**
-     * Display a listing of the resource.
+     * Query pegawai dengan semua filter index (search, unit, mapel, jabatan, jenis).
+     * Dipakai index() dan export() agar hasil export selalu sama dengan yang terlihat.
      */
-    public function index(Request $request)
+    private function pegawaiQuery(Request $request, array $with = ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama'])
     {
         $request->validate([
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
@@ -83,7 +85,7 @@ class PegawaiController extends Controller
             'jenis_filter' => 'nullable|in:pendidik,kependidikan',
         ]);
 
-        $query = Pegawai::with(['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama']);
+        $query = Pegawai::with($with);
 
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
@@ -124,6 +126,45 @@ class PegawaiController extends Controller
         } elseif ($request->jenis_filter === 'kependidikan') {
             $query->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
         }
+
+        return $query;
+    }
+
+    /**
+     * Export data pegawai (backup/analisis) — mengikuti filter index saat ini.
+     * NIK plaintext hanya untuk pemegang permission view_sensitive_data (superadmin);
+     * selain itu NIK ter-mask (keamanan).
+     */
+    public function export(Request $request)
+    {
+        Gate::authorize('view_pegawai');
+
+        $query = $this->pegawaiQuery($request, ['units:id,nama', 'jabatans:id,nama', 'user:id,email']);
+
+        $withNik = (bool) (auth()->user()?->can('view_sensitive_data'));
+        $pegawais = $query->get();
+
+        if ($withNik) {
+            Log::warning('Sensitive data export', [
+                'user_id' => auth()->id(),
+                'rows' => $pegawais->count(),
+                'field' => 'nik',
+            ]);
+        }
+
+        return Excel::download(
+            new PegawaiExport($pegawais, $withNik),
+            'data_pegawai_'.now()->format('Ymd_His').'.xlsx'
+        );
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request)
+    {
+        $query = $this->pegawaiQuery($request);
+        $user = auth()->user();
 
         // Stats ringkasan: 1 query agregat + 1 count ringan (kontrak berakhir)
         $agg = (clone $query)->selectRaw("COUNT(*) as total, SUM(CASE WHEN status_aktif = 'aktif' THEN 1 ELSE 0 END) as aktif")->first();

@@ -157,6 +157,18 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                             <a href={route('pegawai.template')} className="btn-secondary btn-sm flex items-center gap-1.5">
                                 <Download className="h-3.5 w-3.5" /> Template
                             </a>
+                            <a
+                                href={route('pegawai.export', {
+                                    search,
+                                    unit_sekolah_id: unitSekolahId,
+                                    mata_pelajaran_id: mataPelajaranId,
+                                    jabatan_id: jabatanId,
+                                    jenis_filter: jenisFilter,
+                                })}
+                                className="btn-secondary btn-sm flex items-center gap-1.5"
+                            >
+                                <FileSpreadsheet className="h-3.5 w-3.5" /> Export
+                            </a>
                             <button type="button" onClick={() => setShowImportModal(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
                                 <Upload className="h-3.5 w-3.5" /> Import
                             </button>

@@ -47,6 +47,7 @@ Route::middleware('auth:web_admin')->group(function () {
     // Pegawai — index/show bisa diakses staff, tapi create/edit/delete dikontrol di controller
     // Route statis template/import DIDAHULUKAN agar tidak tertelan wildcard {pegawai} (anti-shadowing).
     Route::get('pegawai/template', [PegawaiController::class, 'downloadTemplate'])->name('pegawai.template');
+    Route::get('pegawai/export', [PegawaiController::class, 'export'])->name('pegawai.export');
     Route::post('pegawai/import', [PegawaiController::class, 'import'])
         ->middleware('throttle:30,1')
         ->name('pegawai.import');
