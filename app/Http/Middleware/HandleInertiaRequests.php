@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Announcement;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -56,6 +57,14 @@ class HandleInertiaRequests extends Middleware
 
         $pegawai = $user?->pegawai;
 
+        // Jumlah pengumuman yang tampil untuk pegawai (badge ikon megaphone di mobile).
+        // Dihitung hanya saat user punya relasi pegawai — admin (tanpa pegawai) = 0.
+        $announcementCount = 0;
+        if ($pegawai) {
+            $unitId = $pegawai->units->first()?->id;
+            $announcementCount = Announcement::published()->forUnit($unitId)->count();
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
@@ -65,6 +74,7 @@ class HandleInertiaRequests extends Middleware
                 'is_approver' => $user ? $user->isApprover() : false,
                 'pegawai_complete' => $pegawai ? $pegawai->isDataComplete() : true,
                 'unread_notifications' => $user ? $user->unreadNotifications()->count() : 0,
+                'announcement_count' => $announcementCount,
             ],
             'flash' => [
                 'message' => fn () => $request->session()->get('message'),

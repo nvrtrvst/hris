@@ -31,8 +31,13 @@ export default function MobileLayout({ user, header, children }) {
                         </div>
                     </div>
                     <div className="flex items-center gap-1">
-                        <Link href={route('presensi.pengumuman')} className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white/80 hover:text-white" aria-label="Pengumuman">
+                        <Link href={route('presensi.pengumuman')} className="relative flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white/80 hover:text-white" aria-label="Pengumuman">
                             <Megaphone className="h-5 w-5" />
+                            {auth?.announcement_count > 0 && (
+                                <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-400 px-1 text-[9px] font-bold leading-none text-amber-950 ring-2 ring-primary">
+                                    {auth?.announcement_count > 99 ? '99+' : auth?.announcement_count}
+                                </span>
+                            )}
                         </Link>
                         <Link href={route('presensi.notifikasi.index')} className="relative flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white/80 hover:text-white" aria-label="Notifikasi">
                             <Bell className="h-5 w-5" />
