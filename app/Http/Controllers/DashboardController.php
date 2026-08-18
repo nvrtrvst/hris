@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\HariHelper;
+use App\Models\Announcement;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
 use App\Models\Pegawai;
@@ -167,6 +168,22 @@ class DashboardController extends Controller
         $units = $user->can('view_all_units') ? UnitSekolah::orderBy('nama')->get(['id', 'nama', 'singkatan']) : collect();
         $selectedUnit = $unitId ? UnitSekolah::find($unitId) : null;
 
+        // Pengumuman terbaru (5) — admin unit hanya melihat umum + unitnya.
+        $announcementQuery = Announcement::with('unitSekolah:id,nama')
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('published_at');
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $announcementQuery->where(fn ($q) => $q->whereNull('unit_sekolah_id')->orWhere('unit_sekolah_id', $user->unit_sekolah_id));
+        }
+        $pengumuman = $announcementQuery->limit(5)->get(['id', 'title', 'unit_sekolah_id', 'is_pinned', 'published_at'])
+            ->map(fn ($a) => [
+                'id' => $a->id,
+                'title' => $a->title,
+                'unit_nama' => $a->unitSekolah?->nama,
+                'is_pinned' => $a->is_pinned,
+                'published_at' => $a->published_at?->toISOString(),
+            ]);
+
         return inertia('Dashboard', [
             'roleType' => $roleType,
             'units' => $units,
@@ -187,6 +204,7 @@ class DashboardController extends Controller
             'kontrakBerakhir' => $cached['kontrakBerakhir'],
             'jadwalHariIni' => $live['jadwalHariIni'],
             'presensiHariIni' => $live['presensiHariIni'],
+            'pengumuman' => $pengumuman,
         ]);
     }
 

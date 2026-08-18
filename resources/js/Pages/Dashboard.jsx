@@ -11,6 +11,8 @@ import {
     Building2,
     CalendarDays,
     CalendarClock,
+    Megaphone,
+    PinIcon,
     CheckCircle2,
     Clock3,
     FileWarning,
@@ -92,7 +94,7 @@ export default function Dashboard(props) {
     );
 }
 
-function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadwalHariIni, presensiHariIni, units = [], selectedUnitId = null, selectedUnitNama = null }) {
+function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadwalHariIni, presensiHariIni, pengumuman = [], units = [], selectedUnitId = null, selectedUnitNama = null }) {
     const [detailPresensi, setDetailPresensi] = useState(null);
 
     // Live polling: refresh data kehadiran/jadwal/presensi tiap 60 detik (partial reload
@@ -132,6 +134,13 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
     const s = stats || {};
     const hasKontrak = (kontrakBerakhir || []).length > 0;
     const chartData = Array.isArray(trends) ? trends : [];
+
+    const pengumumanStatus = (a) => {
+        if (!a.published_at) return { label: 'Draft', cls: 'border-slate-200 bg-slate-50 text-slate-600' };
+        if (new Date(a.published_at) > new Date()) return { label: 'Terjadwal', cls: 'border-amber-200 bg-amber-50 text-amber-700' };
+        return { label: 'Tayang', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+    };
+    const formatTgl = (iso) => iso ? new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Belum dijadwalkan';
 
     const kontrakTone = (sisa) => {
         if (sisa <= 0) return { badge: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Lewat' };
@@ -360,6 +369,51 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                 </div>
                             );
                         })()}
+                    </div>
+
+                    {/* Pengumuman terbaru */}
+                    <div className="card p-0 overflow-hidden">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 bg-surface/50 px-5 py-4">
+                            <h3 className="flex items-center gap-2 text-base font-bold text-primary">
+                                <Megaphone className="h-5 w-5 text-primary" />
+                                Pengumuman Terbaru
+                            </h3>
+                            <Link href={route('pengumuman.index')} className="text-xs font-semibold text-primary underline-offset-2 hover:underline">
+                                Kelola pengumuman →
+                            </Link>
+                        </div>
+                        {pengumuman.length > 0 ? (
+                            <div className="divide-y divide-border/50">
+                                {pengumuman.slice(0, 5).map((a) => {
+                                    const st = pengumumanStatus(a);
+
+                                    return (
+                                        <div key={a.id} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-surface/60">
+                                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${a.is_pinned ? 'bg-amber-50 text-amber-600' : 'bg-surface text-text-secondary'}`}>
+                                                {a.is_pinned ? <PinIcon className="h-4 w-4" /> : <Megaphone className="h-4 w-4" />}
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="truncate text-sm font-bold text-primary">{a.title}</div>
+                                                <div className="mt-0.5 text-[11px] text-text-secondary">
+                                                    {formatTgl(a.published_at)}{a.unit_nama ? ` · ${a.unit_nama}` : ' · Semua Unit'}
+                                                </div>
+                                            </div>
+                                            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${st.cls}`}>{st.label}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center py-10 text-center">
+                                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface">
+                                    <Megaphone className="h-7 w-7 text-text-muted" />
+                                </div>
+                                <p className="mt-3 text-sm font-bold text-primary">Belum ada pengumuman</p>
+                                <Link href={route('pengumuman.index')} className="mt-2 text-xs font-semibold text-primary underline-offset-2 hover:underline">
+                                    Buat pengumuman pertama →
+                                </Link>
+                            </div>
+                        )}
                     </div>
 
                     {/* Charts & kontrak */}
