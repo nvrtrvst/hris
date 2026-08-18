@@ -246,22 +246,32 @@ class DashboardController extends Controller
                 $pengeluaranGaji = $totalPegawai * $baseSalary;
             }
 
-            // 5. Kontrak Berakhir (30 hari ke depan)
-            $kontrakQuery = Pegawai::where('status_kepegawaian', 'kontrak')
+            // 5. Kontrak Berakhir (30 hari ke depan) — kontrak/honorer/gtt.
+            // Visibilitas: superadmin semua (filter unit opsional); selain itu
+            // HANYA bawahan langsung (aturan: kontrak hanya untuk atasan,
+            // superadmin, dan dirinya sendiri).
+            $kontrakQuery = Pegawai::whereIn('status_kepegawaian', ['kontrak', 'honorer', 'gtt'])
                 ->whereNotNull('tanggal_akhir_kontrak')
                 ->where('tanggal_akhir_kontrak', '<=', Carbon::today('Asia/Jakarta')->addDays(30))
-                ->with('jabatans.unitSekolah');
+                ->with('units');
 
-            if ($unitId) {
-                $kontrakQuery->forUnit($unitId);
-            } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-                $kontrakQuery->forUnit($user->unit_sekolah_id);
+            if ($user->can('view_all_units') || $user->can('manage_users')) {
+                if ($unitId) {
+                    $kontrakQuery->forUnit($unitId);
+                }
+            } else {
+                $userPegawaiId = $user->pegawai?->id;
+                if (! $userPegawaiId) {
+                    $kontrakQuery->whereRaw('1 = 0');
+                } else {
+                    $kontrakQuery->where('atasan_langsung_id', $userPegawaiId);
+                }
             }
             $kontrakBerakhir = $kontrakQuery->get();
 
             // Map eksplisit (unit_nama/kontrak_berakhir bukan accessor model) + sisa hari
             $kontrakBerakhirArr = $kontrakBerakhir->map(function (Pegawai $p) {
-                $unit = $p->jabatans->first()?->unitSekolah;
+                $unit = $p->units->first(fn ($u) => ! empty($u->pivot->is_primary)) ?? $p->units->first();
 
                 return [
                     'id' => $p->id,

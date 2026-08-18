@@ -57,7 +57,7 @@ const JENIS_DOKUMEN = ['SK', 'Ijazah', 'KTP', 'Sertifikat', 'Kontrak', 'Surat La
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '—');
 
-export default function Show({ auth, pegawai }) {
+export default function Show({ auth, pegawai, canViewKontrak = false }) {
     const { delete: destroy } = useForm();
 
     const handleDelete = () => {
@@ -200,7 +200,7 @@ export default function Show({ auth, pegawai }) {
                                                 <CalendarDays className="h-3 w-3" /> Wajib Kantor
                                             </span>
                                         )}
-                                        {kontrakSisa !== null && (
+                                        {canViewKontrak && kontrakSisa !== null && (
                                             <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${kontrakSisa <= 30 ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-border bg-surface text-text-secondary'}`}>
                                                 Kontrak sisa {kontrakSisa} hari
                                             </span>
@@ -266,7 +266,7 @@ export default function Show({ auth, pegawai }) {
                                 <InfoRow label="Pendidikan Terakhir">{pegawai.pendidikan_terakhir || '—'}</InfoRow>
                                 <InfoRow label="Mulai Bekerja">{fmtDate(pegawai.tanggal_mulai_kerja)}</InfoRow>
                                 <InfoRow label="Jatah Cuti Tahunan">{pegawai.jatah_cuti_tahunan ?? 12} hari</InfoRow>
-                                {pegawai.tanggal_akhir_kontrak && <InfoRow label="Akhir Kontrak">{fmtDate(pegawai.tanggal_akhir_kontrak)}</InfoRow>}
+                                {canViewKontrak && pegawai.tanggal_akhir_kontrak && <InfoRow label="Akhir Kontrak">{fmtDate(pegawai.tanggal_akhir_kontrak)}</InfoRow>}
                             </div>
 
                             {/* Unit & Jabatan */}

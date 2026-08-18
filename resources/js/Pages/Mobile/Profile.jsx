@@ -7,7 +7,7 @@ import { id as idLocale } from 'date-fns/locale';
 import { initPush, disablePush } from '@/push';
 import {
     Pencil, ChevronDown, User, Mail, Phone, Building2, BadgeCheck,
-    CalendarDays, GraduationCap, KeyRound, ShieldAlert, LogOut, Check,
+    CalendarDays, CalendarClock, GraduationCap, KeyRound, ShieldAlert, LogOut, Check,
     MapPin, IdCard, BellRing,
 } from 'lucide-react';
 
@@ -205,6 +205,13 @@ export default function MobileProfile({ status }) {
                             ? format(parseISO(pegawai.tanggal_mulai_kerja), 'd MMMM yyyy', { locale: idLocale })
                             : null}
                     />
+                    {['honorer', 'kontrak', 'gtt'].includes(pegawai?.status_kepegawaian) && pegawai?.tanggal_akhir_kontrak && (
+                        <Field
+                            icon={CalendarClock}
+                            label="Akhir Kontrak"
+                            value={`${format(parseISO(pegawai.tanggal_akhir_kontrak), 'd MMMM yyyy', { locale: idLocale })} · sisa ${Math.max(0, Math.ceil((new Date(pegawai.tanggal_akhir_kontrak) - new Date()) / (1000 * 60 * 60 * 24)))} hari`}
+                        />
+                    )}
                 </Card>
 
                 {/* EDIT PROFILE */}

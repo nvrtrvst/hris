@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             MassivePegawaiSeeder::class,
             NonGuruPegawaiSeeder::class,
             KomponenGajiSeeder::class,
+            AtasanHierarchySeeder::class,
         ]);
     }
 }

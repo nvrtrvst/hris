@@ -202,6 +202,21 @@ class Pegawai extends Model
         return $this->belongsTo(Pegawai::class, 'atasan_langsung_id');
     }
 
+    /**
+     * Jabatan dari penugasan PRIMARY (atau penugasan pertama bila tidak ada
+     * yang ditandai primary). Asumsikan relasi `units` sudah eager-load dengan
+     * pivot jabatan_id/is_primary.
+     */
+    public function jabatanPrimer(): ?Jabatan
+    {
+        $unit = $this->units->first(fn ($u) => ! empty($u->pivot->is_primary))
+            ?? $this->units->first();
+
+        return $unit?->pivot?->jabatan_id
+            ? Jabatan::find($unit->pivot->jabatan_id)
+            : null;
+    }
+
     public function bawahan(): HasMany
     {
         return $this->hasMany(Pegawai::class, 'atasan_langsung_id');

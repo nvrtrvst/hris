@@ -37,7 +37,7 @@ function SectionCard({ Icon, title, description, children }) {
     );
 }
 
-export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, statusKepegawaian, pendidikanTerakhir }) {
+export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, statusKepegawaian, pendidikanTerakhir, atasanCandidates = [] }) {
     const canViewSensitive = auth.permissions?.includes('view_sensitive_data');
     const { data, setData, post, processing, errors } = useForm({
         _method: 'put',
@@ -53,6 +53,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         alamat_ktp: pegawai.alamat_ktp,
         no_hp: pegawai.no_hp,
         status_kepegawaian: pegawai.status_kepegawaian,
+        atasan_langsung_id: pegawai.atasan_langsung_id ?? '',
         wajib_kantor: pegawai.wajib_kantor ?? false,
         jatah_cuti_tahunan: pegawai.jatah_cuti_tahunan ?? 12,
         status_aktif: pegawai.status_aktif,
@@ -249,6 +250,16 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                                 <select value={data.status_kepegawaian} onChange={(e) => setData('status_kepegawaian', e.target.value)} className={selectClass}>
                                     {(statusKepegawaian || []).map((s) => (
                                         <option key={s} value={s}>{statusKepegawaianLabel(s)}</option>
+                                    ))}
+                                </select>
+                            </Field>
+                            <Field label="Atasan Langsung" error={errors.atasan_langsung_id} hint="Kepala Sekolah/Kepala TU sesuai struktur organisasi.">
+                                <select value={data.atasan_langsung_id} onChange={(e) => setData('atasan_langsung_id', e.target.value)} className={selectClass}>
+                                    <option value="">— Tanpa Atasan —</option>
+                                    {(atasanCandidates || []).map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.nama_lengkap}{c.jabatan ? ` — ${c.jabatan}` : ''}{c.unit ? ` · ${c.unit}` : ''}
+                                        </option>
                                     ))}
                                 </select>
                             </Field>

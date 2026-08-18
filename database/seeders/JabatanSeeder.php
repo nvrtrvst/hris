@@ -32,10 +32,15 @@ class JabatanSeeder extends Seeder
             ['nama' => 'Laboran', 'is_guru' => false],
 
             // D. Tenaga Administrasi
+            ['nama' => 'Kepala Tata Usaha', 'is_guru' => false],
             ['nama' => 'Tenaga Administrasi (TU)', 'is_guru' => false],
             ['nama' => 'Bendahara', 'is_guru' => false],
             ['nama' => 'Kasir', 'is_guru' => false],
             ['nama' => 'Operator / Pranata Komputer', 'is_guru' => false],
+
+            // Yayasan (kantor pusat)
+            ['nama' => 'Ketua Yayasan', 'is_guru' => false],
+            ['nama' => 'Kepala Yayasan', 'is_guru' => false],
 
             // E. Tenaga Kependidikan lainnya
             ['nama' => 'Satpam / Petugas Keamanan', 'is_guru' => false],
