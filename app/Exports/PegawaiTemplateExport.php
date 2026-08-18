@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Constants\PegawaiConstants;
 use App\Models\Jabatan;
+use App\Models\UnitSekolah;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -31,6 +32,7 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
             'Tanggal Mulai Kerja (YYYY-MM-DD)',
             'Pendidikan Terakhir (dropdown)',
             'Nama Jabatan (pilih dari dropdown)',
+            'Unit Sekolah (dropdown — kosongkan jika satu unit)',
         ];
     }
 
@@ -52,6 +54,7 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 '2020-01-01',
                 'S1',
                 'Guru Mata Pelajaran',
+                'SMP',
             ],
             [
                 '1234567890123457',
@@ -68,6 +71,7 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 '2023-01-01',
                 'SMK/Sederajat',
                 'Kasir',
+                'SMA',
             ],
         ];
     }
@@ -91,9 +95,12 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 // versi Excel/WPS. Referensi antar-sheet jauh lebih kompatibel.
                 $listSheet = new Worksheet($sheet->getParent(), 'DaftarPegawai');
                 $listSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
+                $unitNames = UnitSekolah::orderBy('nama')->pluck('nama')->values();
+
                 $listSheet->setCellValue('A1', 'Nama Jabatan');
                 $listSheet->setCellValue('B1', 'Pendidikan Terakhir');
                 $listSheet->setCellValue('C1', 'Status Kepegawaian');
+                $listSheet->setCellValue('D1', 'Unit Sekolah');
                 foreach ($jabatanNames as $i => $name) {
                     $listSheet->setCellValue('A'.($i + 2), $name);
                 }
@@ -103,12 +110,16 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 foreach (PegawaiConstants::STATUS_KEPEGAWAIAN as $i => $s) {
                     $listSheet->setCellValue('C'.($i + 2), $s);
                 }
+                foreach ($unitNames as $i => $u) {
+                    $listSheet->setCellValue('D'.($i + 2), $u);
+                }
                 $spreadsheet = $sheet->getParent();
                 $spreadsheet->addSheet($listSheet);
 
                 $lastA = $jabatanNames->count() + 1;
                 $lastB = count(PegawaiConstants::PENDIDIKAN_TERAKHIR) + 1;
                 $lastC = count(PegawaiConstants::STATUS_KEPEGAWAIAN) + 1;
+                $lastD = $unitNames->count() + 1;
 
                 // Defined name (named range) — cara paling kompatibel antar aplikasi
                 // spreadsheet (Excel, LibreOffice, WPS). Referensi langsung ke sheet
@@ -116,6 +127,7 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 $spreadsheet->addNamedRange(new NamedRange('DAFTAR_JABATAN', $listSheet, "\$A\$2:\$A\${$lastA}"));
                 $spreadsheet->addNamedRange(new NamedRange('DAFTAR_PENDIDIKAN', $listSheet, "\$B\$2:\$B\${$lastB}"));
                 $spreadsheet->addNamedRange(new NamedRange('DAFTAR_STATUS', $listSheet, "\$C\$2:\$C\${$lastC}"));
+                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_UNIT', $listSheet, "\$D\$2:\$D\${$lastD}"));
 
                 $listValidation = function (string $formula, string $errorTitle, string $error) {
                     $validation = new DataValidation;
@@ -133,10 +145,11 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                     return $validation;
                 };
 
-                // Nama Jabatan (N), Pendidikan Terakhir (M), Status Kepegawaian (K).
+                // Nama Jabatan (N), Pendidikan Terakhir (M), Status Kepegawaian (K), Unit (O).
                 $sheet->setDataValidation('N2:N500', $listValidation('DAFTAR_JABATAN', 'Jabatan tidak valid', 'Pilih jabatan dari daftar yang tersedia.'));
                 $sheet->setDataValidation('M2:M500', $listValidation('DAFTAR_PENDIDIKAN', 'Pendidikan tidak valid', 'Pilih jenjang pendidikan dari daftar yang tersedia.'));
                 $sheet->setDataValidation('K2:K500', $listValidation('DAFTAR_STATUS', 'Status tidak valid', 'Pilih status kepegawaian dari daftar yang tersedia.'));
+                $sheet->setDataValidation('O2:O500', $listValidation('DAFTAR_UNIT', 'Unit tidak valid', 'Pilih unit dari daftar yang tersedia.'));
             },
         ];
     }

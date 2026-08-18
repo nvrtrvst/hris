@@ -73,18 +73,22 @@ class PegawaiTemplateImportTest extends TestCase
         $this->assertNotNull($ss->getNamedRange('DAFTAR_JABATAN'));
         $this->assertNotNull($ss->getNamedRange('DAFTAR_PENDIDIKAN'));
         $this->assertNotNull($ss->getNamedRange('DAFTAR_STATUS'));
+        $this->assertNotNull($ss->getNamedRange('DAFTAR_UNIT'));
 
         $this->assertSame('DAFTAR_JABATAN', $sheet->getDataValidation('N2')->getFormula1());
         $this->assertSame('DAFTAR_PENDIDIKAN', $sheet->getDataValidation('M2')->getFormula1());
         $this->assertSame('DAFTAR_STATUS', $sheet->getDataValidation('K2')->getFormula1());
+        $this->assertSame('DAFTAR_UNIT', $sheet->getDataValidation('O2')->getFormula1());
         $this->assertTrue($sheet->getDataValidation('N2')->getShowDropDown());
         $this->assertTrue($sheet->getDataValidation('M2')->getShowDropDown());
         $this->assertTrue($sheet->getDataValidation('K2')->getShowDropDown());
+        $this->assertTrue($sheet->getDataValidation('O2')->getShowDropDown());
 
         // Isi sheet tersembunyi sesuai sumber kebenaran
         $this->assertSame(Jabatan::orderBy('nama')->first()->nama, $list->getCell('A2')->getValue());
         $this->assertSame('SD/Sederajat', $list->getCell('B2')->getValue());
         $this->assertSame('tetap', $list->getCell('C2')->getValue());
+        $this->assertSame(UnitSekolah::orderBy('nama')->first()->nama, $list->getCell('D2')->getValue());
     }
 
     public function test_import_menolak_jabatan_yang_tidak_ada_dan_menampilkan_daftar_tersedia(): void
@@ -163,9 +167,77 @@ class PegawaiTemplateImportTest extends TestCase
         $this->assertDatabaseCount('pegawai', 1);
     }
 
-    private function csv(string $nik, string $nama, string $jabatan): string
+    public function test_import_unit_per_baris_multi_unit(): void
     {
-        $header = 'NIK,NIP,Nama Lengkap,Tempat Lahir,Tanggal Lahir,Jenis Kelamin,Agama,Status Pernikahan,No HP,Alamat KTP,Status Kepegawaian,Tanggal Mulai Kerja,Pendidikan Terakhir,Nama Jabatan';
+        $other = $this->makeUnit('SMA');
+        $csv = $this->csv('1234567890999994', 'Dewi Lestari', 'Kasir', 'SMA');
+
+        $response = $this->actingAs($this->superadmin, 'web_admin')->post(route('pegawai.import'), [
+            'unit_sekolah_id' => $this->unit->id,
+            'file' => UploadedFile::fake()->createWithContent('import.csv', $csv),
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $pegawai = Pegawai::where('nik_hash', Pegawai::nikHash('1234567890999994'))->first();
+        $this->assertNotNull($pegawai);
+        $this->assertSame($other->id, $pegawai->units()->first()->id, 'Kolom unit di template menimpa unit modal');
+    }
+
+    public function test_import_menolak_unit_yang_tidak_ada(): void
+    {
+        $csv = $this->csv('1234567890999995', 'Andi Pratama', 'Kasir', 'UnitBogus');
+
+        $response = $this->actingAs($this->superadmin, 'web_admin')->post(route('pegawai.import'), [
+            'unit_sekolah_id' => $this->unit->id,
+            'file' => UploadedFile::fake()->createWithContent('import.csv', $csv),
+        ]);
+
+        $response->assertSessionHasErrors();
+        $messages = implode(' ', session('errors')->all());
+        $this->assertStringContainsString('Unit \'UnitBogus\' tidak ditemukan', $messages);
+        $this->assertStringContainsString('Unit yang tersedia', $messages);
+        $this->assertDatabaseMissing('pegawai', ['nik_hash' => Pegawai::nikHash('1234567890999995')]);
+    }
+
+    public function test_admin_unit_dipaksa_ke_unitnya_sendiri(): void
+    {
+        $this->makeUnit('SMA');
+        $adminUnit = User::factory()->create(['role' => 'admin_unit', 'unit_sekolah_id' => $this->unit->id]);
+        $adminUnit->assignRole('admin_unit');
+
+        // Kolom unit di template berisi 'SMA', tapi admin unit tetap harus masuk unitnya sendiri.
+        $csv = $this->csv('1234567890999996', 'Rina Wati', 'Kasir', 'SMA');
+
+        $response = $this->actingAs($adminUnit, 'web_admin')->post(route('pegawai.import'), [
+            'unit_sekolah_id' => $this->unit->id,
+            'file' => UploadedFile::fake()->createWithContent('import.csv', $csv),
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $pegawai = Pegawai::where('nik_hash', Pegawai::nikHash('1234567890999996'))->first();
+        $this->assertNotNull($pegawai);
+        $this->assertSame($this->unit->id, $pegawai->units()->first()->id, 'Admin unit tidak boleh import ke unit lain');
+    }
+
+    private function makeUnit(string $nama): UnitSekolah
+    {
+        return UnitSekolah::create([
+            'nama' => $nama,
+            'singkatan' => strtoupper(substr($nama, 0, 3)),
+            'latitude' => -6.2,
+            'longitude' => 106.8,
+            'radius_meter' => 100,
+            'durasi_jp' => 45,
+            'toleransi_menit' => 0,
+            'toleransi_tap_menit' => 15,
+        ]);
+    }
+
+    private function csv(string $nik, string $nama, string $jabatan, string $unit = ''): string
+    {
+        $header = 'NIK,NIP,Nama Lengkap,Tempat Lahir,Tanggal Lahir,Jenis Kelamin,Agama,Status Pernikahan,No HP,Alamat KTP,Status Kepegawaian,Tanggal Mulai Kerja,Pendidikan Terakhir,Nama Jabatan,Unit Sekolah';
 
         $row = implode(',', [
             $nik,
@@ -182,6 +254,7 @@ class PegawaiTemplateImportTest extends TestCase
             '2020-01-01',
             'SMA/SMK',
             $jabatan,
+            $unit,
         ]);
 
         return $header.PHP_EOL.$row;

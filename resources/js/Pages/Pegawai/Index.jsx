@@ -421,7 +421,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
 
                             <div className="flex items-start gap-2 rounded-lg border border-info/30 bg-info-light p-3 text-xs text-info">
                                 <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0" />
-                                <span>Pastikan file mengikuti format <strong>Template Excel</strong>. Kolom <strong>Nama Jabatan</strong>, <strong>Status Kepegawaian</strong>, dan <strong>Pendidikan Terakhir</strong> sudah berupa dropdown — pilih dari daftar, jangan mengetik manual. Sistem menolak seluruh data jika ada satu baris saja yang salah format.</span>
+                                <span>Pastikan file mengikuti format <strong>Template Excel</strong>. Kolom <strong>Nama Jabatan</strong>, <strong>Status Kepegawaian</strong>, <strong>Pendidikan Terakhir</strong>, dan <strong>Unit Sekolah</strong> sudah berupa dropdown. <strong>Unit Sekolah opsional</strong>: kosongkan jika semua pegawai di file ini masuk ke unit yang dipilih di atas (untuk import multi-unit, isi kolomnya per baris). Sistem menolak seluruh data jika ada satu baris saja yang salah format.</span>
                             </div>
                         </div>
 

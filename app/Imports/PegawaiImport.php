@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Constants\PegawaiConstants;
 use App\Models\Jabatan;
 use App\Models\Pegawai;
+use App\Models\UnitSekolah;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -18,7 +19,12 @@ class PegawaiImport implements ToCollection
 {
     protected $unitSekolahId;
 
-    public function __construct($unitSekolahId)
+    /**
+     * @param  int|null  $unitSekolahId  Unit default (dari pilihan modal).
+     * @param  bool  $allowUnitOverride  Superadmin: kolom Unit di template bisa menimpa per baris.
+     *                                   Admin unit: false, selalu dipaksa ke unitnya sendiri.
+     */
+    public function __construct($unitSekolahId, protected bool $allowUnitOverride = false)
     {
         $this->unitSekolahId = $unitSekolahId;
     }
@@ -69,6 +75,7 @@ class PegawaiImport implements ToCollection
             '*.11' => 'required|date', // Tanggal Mulai Kerja
             '*.12' => 'required|string|max:255', // Pendidikan Terakhir
             '*.13' => 'required|string|max:255', // Nama Jabatan
+            '*.14' => 'nullable|string|max:255', // Unit Sekolah (opsional, fallback ke unit modal)
         ], [
             '*.0.required' => 'NIK wajib diisi pada baris :position.',
             '*.0.size' => 'NIK harus 16 digit pada baris :position.',
@@ -95,6 +102,23 @@ class PegawaiImport implements ToCollection
             }
         }
 
+        // Validasi unit per baris (opsional): kalau diisi, harus ada di sistem.
+        // Admin unit dipaksa ke unitnya sendiri — kolom unit diabaikan (anti-bypass).
+        $units = collect();
+        if ($this->allowUnitOverride) {
+            $unitNames = collect($data)->pluck(14)->map(fn ($v) => trim((string) $v))->filter()->unique();
+            $units = UnitSekolah::whereIn('nama', $unitNames)->get()->keyBy(fn ($u) => strtolower($u->nama));
+            $allUnitNames = UnitSekolah::orderBy('nama')->pluck('nama');
+            $unitHint = $allUnitNames->take(10)->implode(', ').($allUnitNames->count() > 10 ? ', ...' : '');
+
+            foreach ($data as $index => $row) {
+                $unitName = strtolower(trim((string) ($row[14] ?? '')));
+                if ($unitName !== '' && ! $units->has($unitName)) {
+                    $validator->errors()->add($index.'.14', "Unit '{$row[14]}' tidak ditemukan dalam sistem pada baris ".($index + 2).'. Unit yang tersedia: '.$unitHint);
+                }
+            }
+        }
+
         // Cek duplikat NIK terhadap DB & dalam file.
         // Kolom `nik` terenkripsi jadi `unique:pegawai,nik` tidak bisa dipakai;
         // lookup memakai nik_hash (satu-satunya sumber kebenaran).
@@ -114,13 +138,22 @@ class PegawaiImport implements ToCollection
         }
 
         // Process all rows since validation passed
-        foreach ($data as $row) {
+        foreach ($data as $index => $row) {
+            $unitId = $this->unitSekolahId;
+            if ($this->allowUnitOverride && trim((string) ($row[14] ?? '')) !== '') {
+                $unitId = $units[strtolower(trim($row[14]))]->id;
+            }
+
+            if ($unitId === null) {
+                throw ValidationException::withMessages(['unit_sekolah_id' => 'Tidak ada unit untuk baris '.($index + 2).'. Pilih unit di form import atau isi kolom Unit Sekolah di template.']);
+            }
+
             $user = User::create([
                 'name' => $row[2],
                 'email' => $row[0].'@yayasan.com', // email berbasis NIK pasti unik
                 'password' => Hash::make($row[0]), // password default is NIK
                 'role' => 'pegawai',
-                'unit_sekolah_id' => $this->unitSekolahId,
+                'unit_sekolah_id' => $unitId,
             ]);
             $user->assignRole('pegawai');
 
@@ -145,7 +178,7 @@ class PegawaiImport implements ToCollection
 
             $jabatanId = $jabatans[strtolower(trim($row[13]))]->id;
 
-            $pegawai->units()->attach($this->unitSekolahId, ['jabatan_id' => $jabatanId, 'is_primary' => true]);
+            $pegawai->units()->attach($unitId, ['jabatan_id' => $jabatanId, 'is_primary' => true]);
         }
     }
 }

@@ -49,9 +49,16 @@ class PegawaiController extends Controller
         $request->validate($rules);
         $unitId = ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) ? $user->unit_sekolah_id : $request->unit_sekolah_id;
 
+        // Kalau tidak ada unit sama sekali (modal kosong & kolom unit di template kosong),
+        // tidak ada baris yang bisa disimpan — tolak lebih awal dengan pesan jelas.
+        if (! $unitId && (! $user || ! $user->can('view_all_units'))) {
+            throw ValidationException::withMessages(['unit_sekolah_id' => 'Pilih unit sekolah di form, atau isi kolom Unit Sekolah di template.']);
+        }
+
         try {
-            DB::transaction(function () use ($request, $unitId) {
-                Excel::import(new PegawaiImport($unitId), $request->file('file'));
+            DB::transaction(function () use ($request, $unitId, $user) {
+                $allowOverride = $user && $user->can('view_all_units');
+                Excel::import(new PegawaiImport($unitId, $allowOverride), $request->file('file'));
             });
 
             return back()->with('message', 'Data pegawai berhasil diimport.');
