@@ -42,16 +42,19 @@ class PegawaiImport implements ToCollection
         // Skip header row
         $rows->shift();
 
-        // Convert dates to standard format for validation
+        // Convert dates to standard format for validation.
+        // CSV reader PhpSpreadsheet mengubah angka (mis. NIK) jadi integer,
+        // jadi semua sel dinormalisasi ke string dulu agar validasi & penyimpanan konsisten.
         $data = $rows->map(function ($row) {
+            $row = collect($row)->map(fn ($v) => $v === null ? null : (string) $v);
             $row[4] = $this->parseDate($row[4]); // Tanggal Lahir
             $row[11] = $this->parseDate($row[11]); // Tanggal Mulai Kerja
 
-            return $row;
-        })->toArray();
+            return $row->toArray();
+        })->values()->toArray();
 
         $validator = Validator::make($data, [
-            '*.0' => 'required|string|size:16|unique:pegawai,nik', // NIK
+            '*.0' => 'required|string|size:16', // NIK
             '*.1' => 'nullable|string|max:50|unique:pegawai,nip', // NIP
             '*.2' => 'required|string|max:255', // Nama Lengkap
             '*.3' => 'required|string|max:255', // Tempat Lahir
@@ -68,7 +71,6 @@ class PegawaiImport implements ToCollection
         ], [
             '*.0.required' => 'NIK wajib diisi pada baris :position.',
             '*.0.size' => 'NIK harus 16 digit pada baris :position.',
-            '*.0.unique' => 'NIK sudah terdaftar pada baris :position.',
             '*.13.required' => 'Nama Jabatan wajib diisi pada baris :position.',
         ]);
 
@@ -82,11 +84,28 @@ class PegawaiImport implements ToCollection
             return strtolower($item->nama);
         });
 
+        $allJabatanNames = Jabatan::orderBy('nama')->pluck('nama');
+        $availableHint = $allJabatanNames->take(10)->implode(', ').($allJabatanNames->count() > 10 ? ', ...' : '');
+
         foreach ($data as $index => $row) {
             $namaJabatan = strtolower(trim($row[13]));
             if (! $jabatans->has($namaJabatan)) {
-                $validator->errors()->add($index.'.13', "Jabatan '{$row[13]}' tidak ditemukan dalam sistem pada baris ".($index + 2));
+                $validator->errors()->add($index.'.13', "Jabatan '{$row[13]}' tidak ditemukan dalam sistem pada baris ".($index + 2).'. Jabatan yang tersedia: '.$availableHint);
             }
+        }
+
+        // Cek duplikat NIK terhadap DB & dalam file.
+        // Kolom `nik` terenkripsi jadi `unique:pegawai,nik` tidak bisa dipakai;
+        // lookup memakai nik_hash (satu-satunya sumber kebenaran).
+        $nikHashes = collect($data)->pluck(0)->map(fn ($nik) => Pegawai::nikHash((string) $nik))->filter();
+        $existingHashes = Pegawai::whereIn('nik_hash', $nikHashes)->pluck('nik_hash')->flip();
+        $seen = [];
+        foreach ($data as $index => $row) {
+            $hash = Pegawai::nikHash((string) $row[0]);
+            if ($hash !== null && ($existingHashes->has($hash) || isset($seen[$hash]))) {
+                $validator->errors()->add($index.'.0', 'NIK sudah terdaftar pada baris '.($index + 2).'.');
+            }
+            $seen[$hash] = true;
         }
 
         if ($validator->errors()->isNotEmpty()) {
