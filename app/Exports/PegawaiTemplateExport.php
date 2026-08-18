@@ -79,45 +79,51 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
 
                 // Daftar jabatan dari master data -> sheet tersembunyi sebagai sumber dropdown.
                 // Dibaca dari DB setiap kali template di-download, jadi jabatan baru otomatis muncul.
-                $names = Jabatan::orderBy('nama')->pluck('nama')->values();
+                $jabatanNames = Jabatan::orderBy('nama')->pluck('nama')->values();
 
-                if ($names->isEmpty()) {
+                if ($jabatanNames->isEmpty()) {
                     return;
                 }
 
-                $listSheet = new Worksheet($sheet->getParent(), 'DaftarJabatan');
+                // Semua daftar dropdown diletakkan di SATU sheet tersembunyi (bukan list
+                // inline) karena list inline data validation tidak muncul di sebagian
+                // versi Excel/WPS. Referensi antar-sheet jauh lebih kompatibel.
+                $listSheet = new Worksheet($sheet->getParent(), 'DaftarPegawai');
                 $listSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
-                foreach ($names as $i => $name) {
-                    $listSheet->setCellValue('A'.($i + 1), $name);
+                $listSheet->setCellValue('A1', 'Nama Jabatan');
+                $listSheet->setCellValue('B1', 'Pendidikan Terakhir');
+                $listSheet->setCellValue('C1', 'Status Kepegawaian');
+                foreach ($jabatanNames as $i => $name) {
+                    $listSheet->setCellValue('A'.($i + 2), $name);
+                }
+                foreach (PegawaiConstants::PENDIDIKAN_TERAKHIR as $i => $p) {
+                    $listSheet->setCellValue('B'.($i + 2), $p);
+                }
+                foreach (PegawaiConstants::STATUS_KEPEGAWAIAN as $i => $s) {
+                    $listSheet->setCellValue('C'.($i + 2), $s);
                 }
                 $sheet->getParent()->addSheet($listSheet);
 
-                // Dropdown di kolom N (Nama Jabatan) untuk baris data 2..500.
-                $validation = new DataValidation;
-                $validation->setType(DataValidation::TYPE_LIST);
-                $validation->setFormula1('DaftarJabatan!$A$1:$A'.$names->count());
-                $validation->setAllowBlank(false);
-                $validation->setShowErrorMessage(true);
-                $validation->setErrorTitle('Jabatan tidak valid');
-                $validation->setError('Pilih jabatan dari daftar yang tersedia.');
+                $listValidation = function (string $formula, string $errorTitle, string $error) {
+                    $validation = new DataValidation;
+                    $validation->setType(DataValidation::TYPE_LIST);
+                    $validation->setFormula1($formula);
+                    $validation->setAllowBlank(false);
+                    $validation->setShowErrorMessage(true);
+                    $validation->setErrorTitle($errorTitle);
+                    $validation->setError($error);
 
-                $sheet->setDataValidation('N2:N500', $validation);
+                    return $validation;
+                };
 
-                // Dropdown Status Kepegawaian (K) & Pendidikan Terakhir (M) —
-                // daftar pendek, cukup inline tanpa sheet tersembunyi.
-                $statusValidation = new DataValidation;
-                $statusValidation->setType(DataValidation::TYPE_LIST);
-                $statusValidation->setFormula1('"'.implode(',', PegawaiConstants::STATUS_KEPEGAWAIAN).'"');
-                $statusValidation->setAllowBlank(false);
-                $statusValidation->setShowErrorMessage(true);
-                $sheet->setDataValidation('K2:K500', $statusValidation);
+                $lastA = $jabatanNames->count() + 1;
+                $lastB = count(PegawaiConstants::PENDIDIKAN_TERAKHIR) + 1;
+                $lastC = count(PegawaiConstants::STATUS_KEPEGAWAIAN) + 1;
 
-                $pendidikanValidation = new DataValidation;
-                $pendidikanValidation->setType(DataValidation::TYPE_LIST);
-                $pendidikanValidation->setFormula1('"'.implode(',', PegawaiConstants::PENDIDIKAN_TERAKHIR).'"');
-                $pendidikanValidation->setAllowBlank(false);
-                $pendidikanValidation->setShowErrorMessage(true);
-                $sheet->setDataValidation('M2:M500', $pendidikanValidation);
+                // Nama Jabatan (N), Pendidikan Terakhir (M), Status Kepegawaian (K).
+                $sheet->setDataValidation('N2:N500', $listValidation("DaftarPegawai!\$A\$2:\$A\${$lastA}", 'Jabatan tidak valid', 'Pilih jabatan dari daftar yang tersedia.'));
+                $sheet->setDataValidation('M2:M500', $listValidation("DaftarPegawai!\$B\$2:\$B\${$lastB}", 'Pendidikan tidak valid', 'Pilih jenjang pendidikan dari daftar yang tersedia.'));
+                $sheet->setDataValidation('K2:K500', $listValidation("DaftarPegawai!\$C\$2:\$C\${$lastC}", 'Status tidak valid', 'Pilih status kepegawaian dari daftar yang tersedia.'));
             },
         ];
     }
