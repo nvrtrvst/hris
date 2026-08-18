@@ -117,6 +117,13 @@ class DashboardController extends Controller
             $roleType = 'Admin'; // Any admin module view (superadmin / admin unit)
         }
 
+        // Filter unit (superadmin saja — admin unit sudah ter-scope ke unitnya).
+        $unitId = null;
+        if ($roleType === 'Admin' && $user->can('view_all_units') && $request->filled('unit_id')) {
+            $validatedUnit = $request->validate(['unit_id' => 'nullable|exists:unit_sekolah,id']);
+            $unitId = $validatedUnit['unit_id'] ?? null;
+        }
+
         if ($roleType === 'Staff') {
             $pegawai = Pegawai::where('user_id', $user->id)->first();
 
@@ -153,11 +160,18 @@ class DashboardController extends Controller
         //    karena dashboard admin di-polling tiap 60 detik dari browser.
         $today = Carbon::today('Asia/Jakarta');
 
-        $cached = $this->adminCachedStats($user);
-        $live = $this->adminLiveData($user, $today);
+        $cached = $this->adminCachedStats($user, $unitId);
+        $live = $this->adminLiveData($user, $today, $unitId);
+
+        // Daftar unit untuk dropdown filter (superadmin), + unit aktif saat ini.
+        $units = $user->can('view_all_units') ? UnitSekolah::orderBy('nama')->get(['id', 'nama', 'singkatan']) : collect();
+        $selectedUnit = $unitId ? UnitSekolah::find($unitId) : null;
 
         return inertia('Dashboard', [
             'roleType' => $roleType,
+            'units' => $units,
+            'selectedUnitId' => $unitId,
+            'selectedUnitNama' => $selectedUnit?->nama,
             'stats' => [
                 'total_pegawai' => $cached['totalPegawai'],
                 'total_unit' => $cached['totalUnit'],
@@ -177,26 +191,30 @@ class DashboardController extends Controller
     }
 
     /**
-     * Data dashboard yang jarang berubah — cache 5 menit per user.
+     * Data dashboard yang jarang berubah — cache 5 menit per user (+ unit).
      */
-    private function adminCachedStats(User $user): array
+    private function adminCachedStats(User $user, ?int $unitId = null): array
     {
-        $cacheKey = 'dashboard:admin:'.$user->id;
+        $cacheKey = 'dashboard:admin:'.$user->id.':'.($unitId ?? 'all');
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($user) {
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($user, $unitId) {
             // 1. Total Pegawai Aktif + Total Unit
             $pegawaiQuery = Pegawai::where('status_aktif', 'aktif');
-            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            if ($unitId) {
+                $pegawaiQuery->forUnit($unitId);
+            } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 $pegawaiQuery->forUnit($user->unit_sekolah_id);
             }
             $totalPegawai = $pegawaiQuery->count();
-            $totalUnit = UnitSekolah::count();
+            $totalUnit = $unitId ? 1 : UnitSekolah::count();
 
             // 3. Estimasi Payroll Bulan Ini
             $currentMonthStr = date('m-Y');
 
             $penggajianQuery = Penggajian::where('periode_bulan', $currentMonthStr);
-            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            if ($unitId) {
+                $penggajianQuery->whereHas('pegawai', fn ($q) => $q->forUnit($unitId));
+            } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 $penggajianQuery->whereHas('pegawai', function ($q) use ($user) {
                     $q->forUnit($user->unit_sekolah_id);
                 });
@@ -216,7 +234,9 @@ class DashboardController extends Controller
                 ->where('tanggal_akhir_kontrak', '<=', Carbon::today('Asia/Jakarta')->addDays(30))
                 ->with('jabatans.unitSekolah');
 
-            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            if ($unitId) {
+                $kontrakQuery->forUnit($unitId);
+            } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 $kontrakQuery->forUnit($user->unit_sekolah_id);
             }
             $kontrakBerakhir = $kontrakQuery->get();
@@ -236,7 +256,9 @@ class DashboardController extends Controller
 
             // 5b. Pengajuan izin/cuti pending (nyata, bukan hardcoded 0)
             $pengajuanQuery = PengajuanIzin::where('status', 'pending');
-            if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            if ($unitId) {
+                $pengajuanQuery->whereHas('pegawai', fn ($q) => $q->forUnit($unitId));
+            } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 $pengajuanQuery->whereHas('pegawai', fn ($q) => $q->forUnit($user->unit_sekolah_id));
             }
             $pengajuanPending = $pengajuanQuery->count();
@@ -257,22 +279,21 @@ class DashboardController extends Controller
      * Data dashboard yang berubah cepat (kehadiran/jadwal/presensi/trend) —
      * dihitung fresh tiap request agar polling 60 detik menampilkan angka terkini.
      */
-    private function adminLiveData(User $user, Carbon $today): array
+    private function adminLiveData(User $user, Carbon $today, ?int $unitId = null): array
     {
         // 2. Kehadiran Hari Ini (Real vs Jadwal)
         $hariIniIndo = HariHelper::hariIniIndo();
+        $scopedUnit = $unitId ?? ($user->unit_sekolah_id && ! $user->can('view_all_units') ? $user->unit_sekolah_id : null);
 
         $jadwalQuery = Jadwal::where('hari', $hariIniIndo);
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $jadwalQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
+        if ($scopedUnit) {
+            $jadwalQuery->where('unit_sekolah_id', $scopedUnit);
         }
         $pegawaiDijadwalkan = $jadwalQuery->distinct('pegawai_id')->count('pegawai_id');
 
         $presensiQuery = Presensi::where('tanggal', $today->toDateString())->whereIn('status', ['hadir', 'telat']);
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $presensiQuery->whereHas('pegawai', function ($q) use ($user) {
-                $q->forUnit($user->unit_sekolah_id);
-            });
+        if ($scopedUnit) {
+            $presensiQuery->where('unit_sekolah_id', $scopedUnit);
         }
         $hadirHariIniCount = $presensiQuery->count();
 
@@ -299,10 +320,8 @@ class DashboardController extends Controller
             ->selectRaw('tanggal, count(*) as total')
             ->groupBy('tanggal');
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $trendQuery->whereHas('pegawai', function ($q) use ($user) {
-                $q->forUnit($user->unit_sekolah_id);
-            });
+        if ($scopedUnit) {
+            $trendQuery->where('unit_sekolah_id', $scopedUnit);
         }
 
         $trendData = $trendQuery->pluck('total', 'tanggal');
@@ -329,8 +348,8 @@ class DashboardController extends Controller
             ->where('hari', $hariIniIndo)
             ->orderBy('jam_mulai');
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $jadwalHariIniQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
+        if ($scopedUnit) {
+            $jadwalHariIniQuery->where('unit_sekolah_id', $scopedUnit);
         }
         $jadwalHariIni = $jadwalHariIniQuery->get()->toArray();
 
@@ -339,8 +358,8 @@ class DashboardController extends Controller
             ->where('tanggal', $today->toDateString())
             ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status', 'lokasi_perlu_review']);
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $presensiQuery->where('unit_sekolah_id', $user->unit_sekolah_id);
+        if ($scopedUnit) {
+            $presensiQuery->where('unit_sekolah_id', $scopedUnit);
         }
         $presensiHariIni = $presensiQuery->get()
             ->map(function ($p) {

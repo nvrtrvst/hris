@@ -1,6 +1,6 @@
 import React, { useState, Component, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import usePolling from '@/Utils/usePolling';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { avatarTone, initials } from '@/Utils/avatar';
@@ -8,6 +8,7 @@ import {
     AlertTriangle,
     ArrowRight,
     Banknote,
+    Building2,
     CalendarDays,
     CalendarClock,
     CheckCircle2,
@@ -91,13 +92,22 @@ export default function Dashboard(props) {
     );
 }
 
-function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadwalHariIni, presensiHariIni }) {
+function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadwalHariIni, presensiHariIni, units = [], selectedUnitId = null, selectedUnitNama = null }) {
     const [detailPresensi, setDetailPresensi] = useState(null);
 
     // Live polling: refresh data kehadiran/jadwal/presensi tiap 60 detik (partial reload
     // Inertia — hanya prop yang di-`only` dikirim ulang). Berhenti saat tab tidak aktif.
     const isAdmin = roleType === 'Admin';
     usePolling({ enabled: isAdmin, only: ['stats', 'trends', 'jadwalHariIni', 'presensiHariIni'] });
+
+    // Filter unit (superadmin): reload penuh agar semua angka ter-scope ke unit.
+    const setUnitFilter = (e) => {
+        const unitId = e.target.value;
+        router.get(route('dashboard'), unitId ? { unit_id: unitId } : {}, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
 
     const presensiMap = useMemo(() => {
         const map = {};
@@ -133,9 +143,27 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
         <AuthenticatedLayout
             user={auth?.user}
             header={
-                <div className="flex flex-col gap-1">
-                    <h1 className="page-title">Dashboard {roleType}</h1>
-                    <p className="page-subtitle">{todayString}</p>
+                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="flex flex-col gap-1">
+                        <h1 className="page-title">Dashboard {roleType}</h1>
+                        <p className="page-subtitle">{todayString}</p>
+                    </div>
+                    {units.length > 0 && (
+                        <div className="relative sm:mb-1 sm:w-64">
+                            <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                            <select
+                                aria-label="Filter unit"
+                                value={selectedUnitId || ''}
+                                onChange={setUnitFilter}
+                                className="select-field h-9 pl-9 text-xs font-semibold"
+                            >
+                                <option value="">Semua Unit</option>
+                                {units.map((u) => (
+                                    <option key={u.id} value={u.id}>{u.nama}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                 </div>
             }
         >
@@ -191,7 +219,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                     {/* Stat cards */}
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                         <StatCard label="Pegawai Aktif" value={s.total_pegawai || 0} Icon={Users} iconBg="bg-primary/10" iconCls="text-primary" />
-                        <StatCard label="Unit Sekolah" value={s.total_unit || 0} Icon={School} iconBg="bg-blue-100" iconCls="text-blue-600" />
+                        <StatCard label={selectedUnitNama ? `Unit: ${selectedUnitNama}` : 'Unit Sekolah'} value={selectedUnitNama || s.total_unit || 0} Icon={School} iconBg="bg-blue-100" iconCls="text-blue-600" />
                         <StatCard
                             label="Kontrak Berakhir"
                             value={s.kontrak_berakhir_count || 0}
