@@ -8,6 +8,8 @@ import {
     ArrowLeft,
     BadgeCheck,
     Banknote,
+    Eye,
+    EyeOff,
     Briefcase,
     Building2,
     CalendarDays,
@@ -16,6 +18,7 @@ import {
     FileText,
     GraduationCap,
     History,
+    Loader2,
     Mail,
     MapPin,
     Paperclip,
@@ -60,6 +63,32 @@ export default function Show({ auth, pegawai }) {
     const handleDelete = () => {
         if (confirm('Apakah Anda yakin ingin menonaktifkan pegawai ini?')) {
             destroy(route('pegawai.destroy', pegawai.id), { data: { alasan_nonaktif: 'Dinonaktifkan oleh sistem' } });
+        }
+    };
+
+    // ── NIK asli (khusus permission view_sensitive_data, via endpoint ber-audit) ──
+    const canViewSensitive = auth.permissions?.includes('view_sensitive_data');
+    const [nikRevealed, setNikRevealed] = useState(false);
+    const [nikAsli, setNikAsli] = useState(null);
+    const [nikLoading, setNikLoading] = useState(false);
+    const [nikError, setNikError] = useState(null);
+
+    const toggleNik = async () => {
+        if (!canViewSensitive) return;
+        if (nikAsli) {
+            setNikRevealed((v) => !v);
+            return;
+        }
+        setNikLoading(true);
+        setNikError(null);
+        try {
+            const { data } = await window.axios.get(route('pegawai.nik-asli', pegawai.id));
+            setNikAsli(data.nik);
+            setNikRevealed(true);
+        } catch {
+            setNikError('Tidak dapat menampilkan NIK.');
+        } finally {
+            setNikLoading(false);
         }
     };
 
@@ -132,7 +161,31 @@ export default function Show({ auth, pegawai }) {
                                 <div className="min-w-0">
                                     <h3 className="text-2xl font-extrabold text-primary">{pegawai.nama_lengkap}</h3>
                                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
-                                        {pegawai.nik_masked && <span className="inline-flex items-center gap-1"><User className="h-3 w-3" /> NIK: {pegawai.nik_masked}</span>}
+                                        {pegawai.nik_masked && (
+                                            <span className="inline-flex items-center gap-1">
+                                                <User className="h-3 w-3" />
+                                                NIK: {nikRevealed && nikAsli ? nikAsli : pegawai.nik_masked}
+                                                {canViewSensitive && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={toggleNik}
+                                                        disabled={nikLoading}
+                                                        className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded text-primary hover:bg-primary/10 disabled:opacity-50"
+                                                        title={nikRevealed ? 'Sembunyikan NIK' : 'Tampilkan NIK asli'}
+                                                        aria-label={nikRevealed ? 'Sembunyikan NIK' : 'Tampilkan NIK asli'}
+                                                    >
+                                                        {nikLoading ? (
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        ) : nikRevealed ? (
+                                                            <EyeOff className="h-3.5 w-3.5" />
+                                                        ) : (
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </span>
+                                        )}
+                                        {nikError && <span className="text-rose-600">{nikError}</span>}
                                         {pegawai.nip && <span className="inline-flex items-center gap-1"><BadgeCheck className="h-3 w-3" /> NIP: {pegawai.nip}</span>}
                                     </div>
                                     <div className="mt-3 flex flex-wrap gap-2">                                                    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${kep.badge}`}>
