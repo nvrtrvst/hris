@@ -12,7 +12,6 @@ use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\UnitSekolah;
 use App\Models\User;
-use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -309,30 +308,11 @@ class PegawaiController extends Controller
         $jabatans = Jabatan::all();
         $mapels = MataPelajaran::orderBy('nama')->get();
 
-        // Opsi 2: expose decrypted NIK hanya untuk user dengan permission view_sensitive_data
-        // Default model $hidden = ['nik'] agar tidak bocor via Index/Show. Edit butuh plaintext
-        // agar field tidak kosong dan user tidak dipaksa retype.
+        // Expose plaintext NIK hanya untuk user dengan permission view_sensitive_data.
+        // Default model $hidden = ['nik'] agar tidak bocor via Index/Show. Edit butuh
+        // plaintext agar field tidak kosong dan user tidak dipaksa retype.
         if ($user && $user->can('view_sensitive_data')) {
-            // Expose plaintext NIK as a separate field 'nik_plain' (no cast) so the
-            // serializer returns it as-is. Cast pada 'nik' tetap menghasilkan
-            // ciphertext/auto-decrypt di sisi PHP; kita tidak pakai 'nik' di view.
-            $raw = $pegawai->getRawOriginal('nik');
-            try {
-                $plain = \Crypt::decryptString($raw);
-                // ponytail: legacy double-encrypt from earlier patch. Detect ciphertext
-                // by JWT-shaped prefix and peel one extra layer. Read-only, never writes
-                // back, so DB stays as-is until a separate normalize pass runs.
-                if (is_string($plain) && preg_match('/^eyJ[A-Za-z0-9+\/=]+$/', $plain)) {
-                    try {
-                        $plain = \Crypt::decryptString($plain);
-                    } catch (\Throwable) {
-                        $plain = null;
-                    }
-                }
-                $pegawai->nik_plain = $plain;
-            } catch (DecryptException $e) {
-                $pegawai->nik_plain = null;
-            }
+            $pegawai->nik_plain = $pegawai->getNikPlaintext();
         }
 
         return inertia('Pegawai/Edit', [
@@ -559,6 +539,6 @@ class PegawaiController extends Controller
             'field' => 'nik',
         ]);
 
-        return response()->json(['nik' => $pegawai->nik]);
+        return response()->json(['nik' => $pegawai->getNikPlaintext()]);
     }
 }

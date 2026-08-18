@@ -3,9 +3,7 @@
 namespace App\Exports;
 
 use App\Constants\PegawaiConstants;
-use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Crypt;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
@@ -86,23 +84,11 @@ class PegawaiExport implements FromCollection, WithHeadings, WithStyles
     }
 
     /**
-     * NIK plaintext aman — model meng-hide kolom nik dari serialisasi, tapi\n     * akses properti di PHP mengembalikan plaintext via cast encrypted.\n     */
+     * NIK plaintext aman — sumber tunggal di Pegawai::getNikPlaintext()
+     * (menangani double-encrypt legacy + decrypt error).
+     */
     private function plainNik($pegawai): string
     {
-        try {
-            $raw = $pegawai->getRawOriginal('nik');
-            if (! is_string($raw) || $raw === '') {
-                return '';
-            }
-
-            $plain = Crypt::decryptString($raw);
-            if (preg_match('/^eyJ[A-Za-z0-9+\/=]+$/', $plain)) {
-                $plain = Crypt::decryptString($plain);
-            }
-
-            return $plain;
-        } catch (DecryptException) {
-            return '';
-        }
+        return $pegawai->getNikPlaintext() ?? '';
     }
 }

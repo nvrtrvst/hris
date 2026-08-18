@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Helpers\FileHelper;
 use App\Observers\PegawaiObserver;
 use Carbon\Carbon;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -154,6 +155,36 @@ class Pegawai extends Model
      * Satu-satunya sumber kebenaran — semua search/import/seed wajib pakai ini
      * agar tidak drift dengan saving hook di atas yang menulis nik_hash.
      */
+    /**
+     * NIK plaintext aman. DB bisa double-encrypted (saving hook + cast encrypted),
+     * jadi decrypt pertama bisa menghasilkan ciphertext dalam (JWT-shaped) —
+     * peel satu lapis ekstra. Read-only; dipakai endpoint nik-asli, form edit,
+     * dan export. Jangan pernah menulis kembali ke DB dari sini.
+     */
+    public function getNikPlaintext(): ?string
+    {
+        $raw = $this->getRawOriginal('nik');
+        if (! is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        try {
+            $plain = Crypt::decryptString($raw);
+        } catch (DecryptException) {
+            return null;
+        }
+
+        if (is_string($plain) && preg_match('/^eyJ[A-Za-z0-9+\/=]+$/', $plain)) {
+            try {
+                $plain = Crypt::decryptString($plain);
+            } catch (DecryptException) {
+                return null;
+            }
+        }
+
+        return $plain !== '' ? $plain : null;
+    }
+
     public static function nikHash(string $nik): ?string
     {
         $plaintext = trim($nik);
