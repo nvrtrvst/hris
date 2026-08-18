@@ -625,4 +625,28 @@ class PegawaiController extends Controller
 
         return response()->json(['nik' => $pegawai->getNikPlaintext()]);
     }
+
+    /**
+     * Tampilkan username plaintext (akun mobile login).
+     * Gate view_sensitive_data — pola sama dengan nikAsli.
+     */
+    public function usernameAsli(Pegawai $pegawai)
+    {
+        Gate::authorize('view_sensitive_data');
+
+        $user = auth()->user();
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        Log::warning('Sensitive data access', [
+            'user_id' => $user?->id,
+            'pegawai_id' => $pegawai->id,
+            'field' => 'username',
+        ]);
+
+        $plaintext = $pegawai->user?->getUsernamePlaintext();
+
+        return response()->json(['username' => $plaintext]);
+    }
 }

@@ -92,6 +92,31 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
         }
     };
 
+    // ── Username asli (akun mobile login, via endpoint ber-audit) ──
+    const [usernameRevealed, setUsernameRevealed] = useState(false);
+    const [usernameAsli, setUsernameAsli] = useState(null);
+    const [usernameLoading, setUsernameLoading] = useState(false);
+    const [usernameError, setUsernameError] = useState(null);
+
+    const toggleUsername = async () => {
+        if (!canViewSensitive) return;
+        if (usernameAsli) {
+            setUsernameRevealed((v) => !v);
+            return;
+        }
+        setUsernameLoading(true);
+        setUsernameError(null);
+        try {
+            const { data } = await window.axios.get(route('pegawai.username-asli', pegawai.id));
+            setUsernameAsli(data.username);
+            setUsernameRevealed(true);
+        } catch {
+            setUsernameError('Tidak dapat menampilkan username.');
+        } finally {
+            setUsernameLoading(false);
+        }
+    };
+
     // ── Upload dokumen ──
     const [showUpload, setShowUpload] = useState(false);
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
@@ -249,7 +274,33 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                 {pegawai.user ? (
                                     <div className="mt-1.5 space-y-1 text-sm text-text-primary">
                                         <p><span className="font-semibold text-info">Email:</span> {pegawai.user.email}</p>
-                                        <p><span className="font-semibold text-info">Username:</span> {pegawai.user.username || '-'}</p>
+                                        <p className="inline-flex items-center gap-1">
+                                            <span className="font-semibold text-info">Username:</span>{' '}
+                                            {usernameRevealed && usernameAsli
+                                                ? usernameAsli
+                                                : (pegawai.user.username || '').startsWith('eyJ')
+                                                    ? '••••••'
+                                                    : pegawai.user.username || '-'}
+                                            {canViewSensitive && (
+                                                <button
+                                                    type="button"
+                                                    onClick={toggleUsername}
+                                                    disabled={usernameLoading}
+                                                    className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded text-info hover:bg-info/10 disabled:opacity-50"
+                                                    title={usernameRevealed ? 'Sembunyikan username' : 'Tampilkan username asli'}
+                                                    aria-label={usernameRevealed ? 'Sembunyikan username' : 'Tampilkan username asli'}
+                                                >
+                                                    {usernameLoading ? (
+                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                    ) : usernameRevealed ? (
+                                                        <EyeOff className="h-3.5 w-3.5" />
+                                                    ) : (
+                                                        <Eye className="h-3.5 w-3.5" />
+                                                    )}
+                                                </button>
+                                            )}
+                                            {usernameError && <span className="text-rose-600 text-[11px]">{usernameError}</span>}
+                                        </p>
                                         <p className="text-[11px] text-text-muted">Login pakai email atau username di portal mobile.</p>
                                     </div>
                                 ) : (

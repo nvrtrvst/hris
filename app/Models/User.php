@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 use Spatie\Permission\Traits\HasRoles;
@@ -78,5 +79,34 @@ class User extends Authenticatable
             ->where(fn ($q) => $q->whereIn('approver_l1_jabatan_id', $jabatanIds)
                 ->orWhereIn('approver_l2_jabatan_id', $jabatanIds))
             ->exists();
+    }
+
+    /**
+     * Username plaintext — DB bisa simpan ciphertext (Laravel encrypted) tanpa cast.
+     * Peel satu lapis ekstra jika hasil decrypt masih berbentuk JWT-shaped.
+     */
+    public function getUsernamePlaintext(): ?string
+    {
+        $raw = $this->getRawOriginal('username');
+        if (! is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        try {
+            $plain = Crypt::decryptString($raw);
+        } catch (\Exception) {
+            return $raw;
+        }
+
+        // Double-encrypt legacy: peel lapis kedua
+        if (is_string($plain) && preg_match('/^eyJ[A-Za-z0-9+\/=]+$/', $plain)) {
+            try {
+                $plain = Crypt::decryptString($plain);
+            } catch (\Exception) {
+                //
+            }
+        }
+
+        return is_string($plain) ? $plain : $raw;
     }
 }

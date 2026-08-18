@@ -83,6 +83,11 @@ Route::middleware('auth:web_admin')->group(function () {
         ->middleware('throttle:30,1')
         ->name('pegawai.nik-asli');
 
+    // Pegawai — Username plaintext (akun mobile login, gate view_sensitive_data)
+    Route::get('pegawai/{pegawai}/username-asli', [PegawaiController::class, 'usernameAsli'])
+        ->middleware('throttle:30,1')
+        ->name('pegawai.username-asli');
+
     // Dokumen pegawai — upload/download/hapus (file private, unduh terproteksi)
     Route::post('pegawai/{pegawai}/dokumen', [PegawaiDokumenController::class, 'store'])
         ->middleware('throttle:30,1')
