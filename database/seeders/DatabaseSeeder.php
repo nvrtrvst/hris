@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             JabatanSeeder::class,
             MataPelajaranSeeder::class,
             MassivePegawaiSeeder::class,
+            NonGuruPegawaiSeeder::class,
             KomponenGajiSeeder::class,
         ]);
     }
