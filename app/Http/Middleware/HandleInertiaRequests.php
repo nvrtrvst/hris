@@ -48,10 +48,13 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         if ($user) {
-            $relations = ['pegawai'];
-            if ($request->getHost() === config('domains.mobile') || $request->is('mobile') || $request->is('mobile/*')) {
-                $relations['pegawai.units'] = fn ($query) => $query->select('unit_sekolah.id', 'nama', 'singkatan', 'logo');
-            }
+            // Pegawai selalu dimuat (badge/pegawai_complete), unit & jabatan primer
+            // dibutuhkan halaman profil web & mobile.
+            $relations = [
+                'pegawai',
+                'pegawai.units' => fn ($query) => $query->select('unit_sekolah.id', 'nama', 'singkatan', 'logo'),
+                'pegawai.jabatans',
+            ];
             $user->load($relations);
         }
 

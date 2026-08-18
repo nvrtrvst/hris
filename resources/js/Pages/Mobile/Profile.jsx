@@ -5,37 +5,11 @@ import { Card, Toggle } from '@/Components/MobileUI';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { initPush, disablePush } from '@/push';
-import ComboSelect from '@/Components/ComboSelect';
 import {
     Pencil, ChevronDown, User, Mail, Phone, Building2, BadgeCheck,
     CalendarDays, CalendarClock, GraduationCap, KeyRound, ShieldAlert, LogOut, Check,
-    MapPin, IdCard, BellRing, Landmark, CreditCard, BookOpen, Users, Home, Baby, Briefcase,
+    MapPin, IdCard, BellRing,
 } from 'lucide-react';
-
-const inputClass = 'block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100';
-const labelClass = 'mb-1 block text-xs font-bold text-gray-600';
-const labelErr = (errors, key) => (errors[key] ? <p className="mt-1 text-xs text-red-500">{errors[key]}</p> : null);
-
-const jkLabel = (v) => (v === 'L' ? 'Laki-laki' : v === 'P' ? 'Perempuan' : v);
-const kepegLabel = { tetap: 'Tetap', kontrak: 'Kontrak', honorer: 'Honorer', gtt: 'GTT' };
-
-const kepegOptions = [
-    { value: 'tetap', label: 'Tetap' },
-    { value: 'kontrak', label: 'Kontrak' },
-    { value: 'honorer', label: 'Honorer' },
-    { value: 'gtt', label: 'GTT' },
-];
-const pendidikanOptions = [
-    { value: 'SD/Sederajat', label: 'SD/Sederajat' }, { value: 'SMP/Sederajat', label: 'SMP/Sederajat' },
-    { value: 'SMA/SMK', label: 'SMA/SMK' }, { value: 'D1', label: 'D1' }, { value: 'D2', label: 'D2' },
-    { value: 'D3', label: 'D3' }, { value: 'D4', label: 'D4' }, { value: 'S1', label: 'S1' },
-    { value: 'S2', label: 'S2' }, { value: 'S3', label: 'S3' },
-];
-const bankOptions = [
-    { value: 'Bank Mandiri', label: 'Bank Mandiri' }, { value: 'BRI', label: 'BRI' }, { value: 'BNI', label: 'BNI' },
-    { value: 'BTN', label: 'BTN' }, { value: 'BSI', label: 'BSI' }, { value: 'Bank BJB', label: 'Bank BJB' },
-    { value: 'Bank Jatim', label: 'Bank Jatim' }, { value: 'Bank Muamalat', label: 'Bank Muamalat' }, { value: 'Lainnya', label: 'Lainnya' },
-];
 
 function Field({ icon: Icon, label, value }) {
     if (value === null || value === undefined || value === '') return null;
@@ -129,28 +103,9 @@ export default function MobileProfile({ status }) {
     };
 
     const editForm = useForm({
-        nama_lengkap: pegawai?.nama_lengkap || '',
+        name: user?.name || '',
         email: user?.email || '',
-        tempat_lahir: pegawai?.tempat_lahir || '',
-        tanggal_lahir: pegawai?.tanggal_lahir || '',
-        jenis_kelamin: pegawai?.jenis_kelamin || '',
-        agama: pegawai?.agama || '',
-        status_pernikahan: pegawai?.status_pernikahan || '',
-        jumlah_tanggungan: pegawai?.jumlah_tanggungan ?? 0,
-        alamat_ktp: pegawai?.alamat_ktp || '',
-        alamat_domisili: pegawai?.alamat_domisili || '',
         no_hp: pegawai?.no_hp || '',
-        no_hp_darurat: pegawai?.no_hp_darurat || '',
-        status_kepegawaian: pegawai?.status_kepegawaian || '',
-        tanggal_mulai_kerja: pegawai?.tanggal_mulai_kerja || '',
-        tanggal_akhir_kontrak: pegawai?.tanggal_akhir_kontrak || '',
-        pendidikan_terakhir: pegawai?.pendidikan_terakhir || '',
-        pendidikan_jurusan: pegawai?.pendidikan_jurusan || '',
-        nama_bank: pegawai?.nama_bank || '',
-        no_rekening: pegawai?.no_rekening || '',
-        npwp: pegawai?.npwp || '',
-        no_bpjs_kesehatan: pegawai?.no_bpjs_kesehatan || '',
-        no_bpjs_ketenagakerjaan: pegawai?.no_bpjs_ketenagakerjaan || '',
     });
     const passForm = useForm({
         current_password: '',
@@ -160,7 +115,7 @@ export default function MobileProfile({ status }) {
 
     const submitEdit = (e) => {
         e.preventDefault();
-        editForm.patch(route('presensi.profile.data.update'), {
+        editForm.patch(route('presensi.profile.update'), {
             preserveScroll: true,
             onSuccess: () => setEditOpen(false),
         });
@@ -235,32 +190,17 @@ export default function MobileProfile({ status }) {
                     </div>
                 )}
 
-                {/* INFO CARD — semua data pribadi */}
+                {/* INFO CARD */}
                 <Card className="divide-y divide-slate-50 p-0">
-                    <Field icon={IdCard} label="NIK" value={pegawai?.nik_masked} />
                     <Field icon={IdCard} label="NIP" value={pegawai?.nip} />
                     <Field icon={Building2} label="Unit Sekolah" value={primaryUnit?.nama} />
                     <Field icon={User} label="Jabatan" value={primaryJabatan?.nama} />
-                    <Field
-                        icon={Baby}
-                        label="Tempat, Tanggal Lahir"
-                        value={[pegawai?.tempat_lahir, pegawai?.tanggal_lahir
-                            ? format(parseISO(pegawai.tanggal_lahir), 'd MMMM yyyy', { locale: idLocale })
-                            : null].filter(Boolean).join(', ') || null}
-                    />
-                    <Field icon={User} label="Jenis Kelamin" value={jkLabel(pegawai?.jenis_kelamin)} />
-                    <Field icon={BadgeCheck} label="Agama" value={pegawai?.agama} />
-                    <Field icon={BadgeCheck} label="Status Pernikahan" value={pegawai?.status_pernikahan} />
-                    <Field icon={Users} label="Jumlah Tanggungan" value={pegawai?.jumlah_tanggungan != null ? `${pegawai.jumlah_tanggungan} orang` : null} />
-                    <Field icon={Home} label="Alamat KTP" value={pegawai?.alamat_ktp} />
-                    <Field icon={Home} label="Alamat Domisili" value={pegawai?.alamat_domisili} />
                     <Field icon={Phone} label="No. HP" value={pegawai?.no_hp} />
-                    <Field icon={Phone} label="No. HP Darurat" value={pegawai?.no_hp_darurat} />
                     <Field icon={Mail} label="Email" value={user?.email} />
-                    <Field icon={Briefcase} label="Status Kepegawaian" value={kepegLabel[pegawai?.status_kepegawaian] || pegawai?.status_kepegawaian} />
+                    <Field icon={GraduationCap} label="Pendidikan" value={pegawai?.pendidikan_terakhir} />
                     <Field
                         icon={CalendarDays}
-                        label="Mulai Kerja"
+                        label="Bergabung Sejak"
                         value={pegawai?.tanggal_mulai_kerja
                             ? format(parseISO(pegawai.tanggal_mulai_kerja), 'd MMMM yyyy', { locale: idLocale })
                             : null}
@@ -272,145 +212,38 @@ export default function MobileProfile({ status }) {
                             value={`${format(parseISO(pegawai.tanggal_akhir_kontrak), 'd MMMM yyyy', { locale: idLocale })} · sisa ${Math.max(0, Math.ceil((new Date(pegawai.tanggal_akhir_kontrak) - new Date()) / (1000 * 60 * 60 * 24)))} hari`}
                         />
                     )}
-                    <Field icon={GraduationCap} label="Pendidikan" value={[pegawai?.pendidikan_terakhir, pegawai?.pendidikan_jurusan].filter(Boolean).join(' — ') || null} />
-                    <Field icon={Landmark} label="Bank" value={pegawai?.nama_bank} />
-                    <Field icon={CreditCard} label="No. Rekening" value={pegawai?.no_rekening} />
-                    <Field icon={ShieldAlert} label="NPWP" value={pegawai?.npwp} />
-                    <Field icon={ShieldAlert} label="BPJS Kesehatan" value={pegawai?.no_bpjs_kesehatan} />
-                    <Field icon={ShieldAlert} label="BPJS Ketenagakerjaan" value={pegawai?.no_bpjs_ketenagakerjaan} />
                 </Card>
 
-                {/* EDIT PROFILE — data lengkap */}
-                <Section title="Edit Data Diri" icon={Pencil} open={editOpen} onToggle={() => setEditOpen((v) => !v)}>
+                {/* EDIT PROFILE */}
+                <Section title="Edit Profil" icon={Pencil} open={editOpen} onToggle={() => setEditOpen((v) => !v)}>
                     <form onSubmit={submitEdit} className="space-y-3 pt-2">
-                        <p className="text-xs text-slate-500">NIK dikelola admin. Kosongkan field yang tidak ingin diubah.</p>
                         <div>
-                            <label className={labelClass}>Nama Lengkap</label>
-                            <input value={editForm.data.nama_lengkap} onChange={(e) => editForm.setData('nama_lengkap', e.target.value)} className={inputClass} />
-                            {labelErr(editForm.errors, 'nama_lengkap')}
-                        </div>
-                        <div>
-                            <label className={labelClass}>Email (login)</label>
-                            <input type="email" value={editForm.data.email} onChange={(e) => editForm.setData('email', e.target.value)} className={inputClass} />
-                            {labelErr(editForm.errors, 'email')}
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className={labelClass}>Tempat Lahir</label>
-                                <input value={editForm.data.tempat_lahir} onChange={(e) => editForm.setData('tempat_lahir', e.target.value)} className={inputClass} />
-                                {labelErr(editForm.errors, 'tempat_lahir')}
-                            </div>
-                            <div>
-                                <label className={labelClass}>Tanggal Lahir</label>
-                                <input type="date" value={editForm.data.tanggal_lahir} onChange={(e) => editForm.setData('tanggal_lahir', e.target.value)} className={inputClass} />
-                                {labelErr(editForm.errors, 'tanggal_lahir')}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className={labelClass}>Jenis Kelamin</label>
-                                <ComboSelect value={editForm.data.jenis_kelamin} onChange={(v) => editForm.setData('jenis_kelamin', v)} options={[{ value: 'L', label: 'Laki-laki' }, { value: 'P', label: 'Perempuan' }]} />
-                                {labelErr(editForm.errors, 'jenis_kelamin')}
-                            </div>
-                            <div>
-                                <label className={labelClass}>Agama</label>
-                                <ComboSelect value={editForm.data.agama} onChange={(v) => editForm.setData('agama', v)} options={['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'].map((x) => ({ value: x, label: x }))} />
-                                {labelErr(editForm.errors, 'agama')}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className={labelClass}>Status Pernikahan</label>
-                                <ComboSelect value={editForm.data.status_pernikahan} onChange={(v) => editForm.setData('status_pernikahan', v)} options={['Belum Menikah', 'Menikah', 'Cerai Hidup', 'Cerai Mati'].map((x) => ({ value: x, label: x }))} />
-                                {labelErr(editForm.errors, 'status_pernikahan')}
-                            </div>
-                            <div>
-                                <label className={labelClass}>Jumlah Tanggungan</label>
-                                <input type="number" min="0" value={editForm.data.jumlah_tanggungan} onChange={(e) => editForm.setData('jumlah_tanggungan', e.target.value)} className={inputClass} />
-                                {labelErr(editForm.errors, 'jumlah_tanggungan')}
-                            </div>
+                            <label className="mb-1 block text-xs font-bold text-gray-600">Nama Lengkap</label>
+                            <input
+                                value={editForm.data.name}
+                                onChange={(e) => editForm.setData('name', e.target.value)}
+                                className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                            />
+                            {editForm.errors.name && <p className="mt-1 text-xs text-red-500">{editForm.errors.name}</p>}
                         </div>
                         <div>
-                            <label className={labelClass}>Alamat KTP</label>
-                            <textarea rows="2" value={editForm.data.alamat_ktp} onChange={(e) => editForm.setData('alamat_ktp', e.target.value)} className={inputClass} />
-                            {labelErr(editForm.errors, 'alamat_ktp')}
+                            <label className="mb-1 block text-xs font-bold text-gray-600">Email</label>
+                            <input
+                                type="email"
+                                value={editForm.data.email}
+                                onChange={(e) => editForm.setData('email', e.target.value)}
+                                className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                            />
+                            {editForm.errors.email && <p className="mt-1 text-xs text-red-500">{editForm.errors.email}</p>}
                         </div>
                         <div>
-                            <label className={labelClass}>Alamat Domisili</label>
-                            <textarea rows="2" value={editForm.data.alamat_domisili} onChange={(e) => editForm.setData('alamat_domisili', e.target.value)} className={inputClass} />
-                            {labelErr(editForm.errors, 'alamat_domisili')}
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className={labelClass}>No. HP</label>
-                                <input value={editForm.data.no_hp} onChange={(e) => editForm.setData('no_hp', e.target.value)} className={inputClass} />
-                                {labelErr(editForm.errors, 'no_hp')}
-                            </div>
-                            <div>
-                                <label className={labelClass}>No. HP Darurat</label>
-                                <input value={editForm.data.no_hp_darurat} onChange={(e) => editForm.setData('no_hp_darurat', e.target.value)} className={inputClass} />
-                                {labelErr(editForm.errors, 'no_hp_darurat')}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className={labelClass}>Status Kepegawaian</label>
-                                <ComboSelect value={editForm.data.status_kepegawaian} onChange={(v) => editForm.setData('status_kepegawaian', v)} options={kepegOptions} />
-                                {labelErr(editForm.errors, 'status_kepegawaian')}
-                            </div>
-                            <div>
-                                <label className={labelClass}>Mulai Kerja</label>
-                                <input type="date" value={editForm.data.tanggal_mulai_kerja} onChange={(e) => editForm.setData('tanggal_mulai_kerja', e.target.value)} className={inputClass} />
-                                {labelErr(editForm.errors, 'tanggal_mulai_kerja')}
-                            </div>
-                        </div>
-                        {['honorer', 'kontrak', 'gtt'].includes(editForm.data.status_kepegawaian) && (
-                            <div>
-                                <label className={labelClass}>Akhir Kontrak</label>
-                                <input type="date" value={editForm.data.tanggal_akhir_kontrak} onChange={(e) => editForm.setData('tanggal_akhir_kontrak', e.target.value)} className={inputClass} />
-                                {labelErr(editForm.errors, 'tanggal_akhir_kontrak')}
-                            </div>
-                        )}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className={labelClass}>Pendidikan Terakhir</label>
-                                <ComboSelect value={editForm.data.pendidikan_terakhir} onChange={(v) => editForm.setData('pendidikan_terakhir', v)} options={pendidikanOptions} />
-                                {labelErr(editForm.errors, 'pendidikan_terakhir')}
-                            </div>
-                            <div>
-                                <label className={labelClass}>Jurusan</label>
-                                <input value={editForm.data.pendidikan_jurusan} onChange={(e) => editForm.setData('pendidikan_jurusan', e.target.value)} className={inputClass} placeholder="Misal: Pendidikan Matematika" />
-                                {labelErr(editForm.errors, 'pendidikan_jurusan')}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className={labelClass}>Nama Bank</label>
-                                <ComboSelect value={editForm.data.nama_bank} onChange={(v) => editForm.setData('nama_bank', v)} options={bankOptions} />
-                                {labelErr(editForm.errors, 'nama_bank')}
-                            </div>
-                            <div>
-                                <label className={labelClass}>No. Rekening</label>
-                                <input value={editForm.data.no_rekening} onChange={(e) => editForm.setData('no_rekening', e.target.value)} className={inputClass} />
-                                {labelErr(editForm.errors, 'no_rekening')}
-                            </div>
-                        </div>
-                        <div>
-                            <label className={labelClass}>NPWP</label>
-                            <input value={editForm.data.npwp} onChange={(e) => editForm.setData('npwp', e.target.value)} className={inputClass} />
-                            {labelErr(editForm.errors, 'npwp')}
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className={labelClass}>BPJS Kesehatan</label>
-                                <input value={editForm.data.no_bpjs_kesehatan} onChange={(e) => editForm.setData('no_bpjs_kesehatan', e.target.value)} className={inputClass} />
-                                {labelErr(editForm.errors, 'no_bpjs_kesehatan')}
-                            </div>
-                            <div>
-                                <label className={labelClass}>BPJS Ketenagakerjaan</label>
-                                <input value={editForm.data.no_bpjs_ketenagakerjaan} onChange={(e) => editForm.setData('no_bpjs_ketenagakerjaan', e.target.value)} className={inputClass} />
-                                {labelErr(editForm.errors, 'no_bpjs_ketenagakerjaan')}
-                            </div>
+                            <label className="mb-1 block text-xs font-bold text-gray-600">No. HP</label>
+                            <input
+                                value={editForm.data.no_hp}
+                                onChange={(e) => editForm.setData('no_hp', e.target.value)}
+                                className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                            />
+                            {editForm.errors.no_hp && <p className="mt-1 text-xs text-red-500">{editForm.errors.no_hp}</p>}
                         </div>
                         <button
                             type="submit"

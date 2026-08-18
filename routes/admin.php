@@ -40,6 +40,8 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Update parsial data pegawai dari halaman profil web (diri sendiri).
+    Route::patch('/profile/data', [ProfileController::class, 'updatePegawaiData'])->name('profile.data.update');
 
     Route::get('/lengkapi-data', [ProfileController::class, 'editPegawai'])->name('lengkapi-data');
     Route::post('/lengkapi-data', [ProfileController::class, 'updatePegawai'])->name('lengkapi-data.store');

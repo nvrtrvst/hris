@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DeleteUserForm from './Partials/DeleteUserForm';
+import PegawaiDataCard from './Partials/PegawaiDataCard';
 import ProfileHero from './Partials/ProfileHero';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
@@ -33,6 +34,8 @@ export default function Edit({ mustVerifyEmail, status }) {
                         </aside>
 
                         <main className="space-y-6 lg:col-span-2">
+                            <PegawaiDataCard />
+
                             <div className="card p-5 sm:p-7">
                                 <UpdateProfileInformationForm
                                     mustVerifyEmail={mustVerifyEmail}
