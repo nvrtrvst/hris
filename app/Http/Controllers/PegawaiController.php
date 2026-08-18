@@ -26,10 +26,13 @@ class PegawaiController extends Controller
 {
     public function downloadTemplate()
     {
-        return Excel::download(new PegawaiTemplateExport, 'template_pegawai.xlsx')
-            // Mencegah browser memakai file template lama dari cache — dropdown baru
-            // tidak akan terlihat kalau yang terunduh masih versi lama.
-            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response = Excel::download(new PegawaiTemplateExport, 'template_pegawai.xlsx');
+
+        // Mencegah browser memakai file template lama dari cache — dropdown baru
+        // tidak akan terlihat kalau yang terunduh masih versi lama.
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+
+        return $response;
     }
 
     public function import(Request $request)
