@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Constants\PegawaiConstants;
 use App\Exports\PegawaiTemplateExport;
 use App\Models\Jabatan;
 use App\Models\Pegawai;
@@ -69,14 +68,18 @@ class PegawaiTemplateImportTest extends TestCase
         $this->assertNotNull($list, 'Sheet tersembunyi DaftarPegawai harus ada');
         $this->assertSame(Worksheet::SHEETSTATE_HIDDEN, $list->getSheetState());
 
-        // Referensi antar-sheet (bukan list inline yang sering tidak muncul di Excel/WPS)
-        $lastA = Jabatan::count() + 1;
-        $lastB = count(PegawaiConstants::PENDIDIKAN_TERAKHIR) + 1;
-        $lastC = count(PegawaiConstants::STATUS_KEPEGAWAIAN) + 1;
+        // Dropdown memakai defined name (paling kompatibel) + showDropDown=true
+        // (writer membalik: true -> atribut "0" -> panah TAMPIL di Excel).
+        $this->assertNotNull($ss->getNamedRange('DAFTAR_JABATAN'));
+        $this->assertNotNull($ss->getNamedRange('DAFTAR_PENDIDIKAN'));
+        $this->assertNotNull($ss->getNamedRange('DAFTAR_STATUS'));
 
-        $this->assertSame("DaftarPegawai!\$A\$2:\$A\${$lastA}", $sheet->getDataValidation('N2')->getFormula1());
-        $this->assertSame("DaftarPegawai!\$B\$2:\$B\${$lastB}", $sheet->getDataValidation('M2')->getFormula1());
-        $this->assertSame("DaftarPegawai!\$C\$2:\$C\${$lastC}", $sheet->getDataValidation('K2')->getFormula1());
+        $this->assertSame('DAFTAR_JABATAN', $sheet->getDataValidation('N2')->getFormula1());
+        $this->assertSame('DAFTAR_PENDIDIKAN', $sheet->getDataValidation('M2')->getFormula1());
+        $this->assertSame('DAFTAR_STATUS', $sheet->getDataValidation('K2')->getFormula1());
+        $this->assertTrue($sheet->getDataValidation('N2')->getShowDropDown());
+        $this->assertTrue($sheet->getDataValidation('M2')->getShowDropDown());
+        $this->assertTrue($sheet->getDataValidation('K2')->getShowDropDown());
 
         // Isi sheet tersembunyi sesuai sumber kebenaran
         $this->assertSame(Jabatan::orderBy('nama')->first()->nama, $list->getCell('A2')->getValue());

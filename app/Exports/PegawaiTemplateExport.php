@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
+use PhpOffice\PhpSpreadsheet\NamedRange;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
@@ -102,13 +103,29 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 foreach (PegawaiConstants::STATUS_KEPEGAWAIAN as $i => $s) {
                     $listSheet->setCellValue('C'.($i + 2), $s);
                 }
-                $sheet->getParent()->addSheet($listSheet);
+                $spreadsheet = $sheet->getParent();
+                $spreadsheet->addSheet($listSheet);
+
+                $lastA = $jabatanNames->count() + 1;
+                $lastB = count(PegawaiConstants::PENDIDIKAN_TERAKHIR) + 1;
+                $lastC = count(PegawaiConstants::STATUS_KEPEGAWAIAN) + 1;
+
+                // Defined name (named range) — cara paling kompatibel antar aplikasi
+                // spreadsheet (Excel, LibreOffice, WPS). Referensi langsung ke sheet
+                // tersembunyi kadang diabaikan sebagian aplikasi.
+                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_JABATAN', $listSheet, "\$A\$2:\$A\${$lastA}"));
+                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_PENDIDIKAN', $listSheet, "\$B\$2:\$B\${$lastB}"));
+                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_STATUS', $listSheet, "\$C\$2:\$C\${$lastC}"));
 
                 $listValidation = function (string $formula, string $errorTitle, string $error) {
                     $validation = new DataValidation;
                     $validation->setType(DataValidation::TYPE_LIST);
                     $validation->setFormula1($formula);
                     $validation->setAllowBlank(false);
+                    // PENTING: properti showDropDown terbalik dengan OOXML. Writer menulis
+                    // 'showDropDown="1"' saat properti false — dan '1' artinya panah
+                    // dropdown DISEMBUNYIKAN di Excel. Jadi true = dropdown tampil.
+                    $validation->setShowDropDown(true);
                     $validation->setShowErrorMessage(true);
                     $validation->setErrorTitle($errorTitle);
                     $validation->setError($error);
@@ -116,14 +133,10 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                     return $validation;
                 };
 
-                $lastA = $jabatanNames->count() + 1;
-                $lastB = count(PegawaiConstants::PENDIDIKAN_TERAKHIR) + 1;
-                $lastC = count(PegawaiConstants::STATUS_KEPEGAWAIAN) + 1;
-
                 // Nama Jabatan (N), Pendidikan Terakhir (M), Status Kepegawaian (K).
-                $sheet->setDataValidation('N2:N500', $listValidation("DaftarPegawai!\$A\$2:\$A\${$lastA}", 'Jabatan tidak valid', 'Pilih jabatan dari daftar yang tersedia.'));
-                $sheet->setDataValidation('M2:M500', $listValidation("DaftarPegawai!\$B\$2:\$B\${$lastB}", 'Pendidikan tidak valid', 'Pilih jenjang pendidikan dari daftar yang tersedia.'));
-                $sheet->setDataValidation('K2:K500', $listValidation("DaftarPegawai!\$C\$2:\$C\${$lastC}", 'Status tidak valid', 'Pilih status kepegawaian dari daftar yang tersedia.'));
+                $sheet->setDataValidation('N2:N500', $listValidation('DAFTAR_JABATAN', 'Jabatan tidak valid', 'Pilih jabatan dari daftar yang tersedia.'));
+                $sheet->setDataValidation('M2:M500', $listValidation('DAFTAR_PENDIDIKAN', 'Pendidikan tidak valid', 'Pilih jenjang pendidikan dari daftar yang tersedia.'));
+                $sheet->setDataValidation('K2:K500', $listValidation('DAFTAR_STATUS', 'Status tidak valid', 'Pilih status kepegawaian dari daftar yang tersedia.'));
             },
         ];
     }
