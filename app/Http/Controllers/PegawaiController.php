@@ -37,6 +37,8 @@ class PegawaiController extends Controller
 
     public function import(Request $request)
     {
+        $this->authorizePegawaiMutation();
+
         $user = auth()->user();
         $rules = [
             'file' => 'required|mimes:xlsx,xls,csv|max:5120',
@@ -87,7 +89,15 @@ class PegawaiController extends Controller
         $query = Pegawai::with($with);
 
         $user = auth()->user();
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+        if ($user && $this->isPimpinanReadOnly($user)) {
+            // Role pimpinan: HANYA bawahan langsung (aturan kontrak & pengawasan).
+            $userPegawaiId = $user->pegawai?->id;
+            if (! $userPegawaiId) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where('atasan_langsung_id', $userPegawaiId);
+            }
+        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $query->whereHas('units', function ($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
             });
@@ -219,6 +229,8 @@ class PegawaiController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizePegawaiMutation();
+
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
@@ -291,6 +303,9 @@ class PegawaiController extends Controller
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
             abort(403, 'Akses ditolak.');
+        }
+        if ($user && $this->isPimpinanReadOnly($user) && $pegawai->atasan_langsung_id !== $user->pegawai?->id) {
+            abort(403, 'Akses ditolak. Pimpinan hanya dapat melihat bawahannya.');
         }
 
         // Show.jsx menampilkan sisa_cuti — eager-load + append eksplisit (P2).
@@ -369,6 +384,8 @@ class PegawaiController extends Controller
 
     public function update(Request $request, string $id)
     {
+        $this->authorizePegawaiMutation();
+
         $pegawai = Pegawai::findOrFail($id);
 
         if (! $pegawai->user_id) {
@@ -492,6 +509,29 @@ class PegawaiController extends Controller
         return redirect()->route('pegawai.show', $pegawai->id)->with('message', 'Data Pegawai berhasil diperbarui.');
     }
 
+    /**
+     * Role pimpinan (pembaca/pengawas): boleh lihat, TIDAK boleh mengubah data.
+     * Superadmin & admin_unit tidak terpengaruh. Dipakai untuk scope & blok mutasi.
+     */
+    private function isPimpinanReadOnly(?User $user): bool
+    {
+        return $user
+            && $user->hasRole('pimpinan')
+            && ! $user->hasRole('admin_unit')
+            && ! $user->can('view_all_units');
+    }
+
+    /**
+     * Blokir mutasi pegawai untuk role pimpinan (read-only).
+     */
+    private function authorizePegawaiMutation(): void
+    {
+        $user = auth()->user();
+        if ($this->isPimpinanReadOnly($user)) {
+            abort(403, 'Role pimpinan hanya dapat melihat data (read-only).');
+        }
+    }
+
     public function destroy(Request $request, string $id)
     {
         $pegawai = Pegawai::findOrFail($id);
@@ -544,6 +584,8 @@ class PegawaiController extends Controller
      */
     public function updateKeuangan(Request $request, $id)
     {
+        $this->authorizePegawaiMutation();
+
         $pegawai = Pegawai::findOrFail($id);
 
         $user = auth()->user();

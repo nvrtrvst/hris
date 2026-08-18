@@ -60,5 +60,15 @@ class RolePermissionSeeder extends Seeder
 
         $rolePegawai = Role::firstOrCreate(['name' => 'pegawai', 'guard_name' => 'web']);
         $rolePegawai->syncPermissions([]);
+
+        // Role PEMBACA / pengawas (read-only): Kepala Sekolah, Kepala TU, Ketua
+        // Yayasan, atau peran lain (mis. HR) yang butuh memantau data bawahan
+        // TANPA mengelola. Kontrak & data pegawai otomatis ter-scope ke bawahan
+        // langsung via atasan_langsung_id di controller.
+        $rolePimpinan = Role::firstOrCreate(['name' => 'pimpinan', 'guard_name' => 'web']);
+        $rolePimpinan->syncPermissions([
+            'view_dashboard',
+            'view_pegawai',
+        ]);
     }
 }
