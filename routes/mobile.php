@@ -78,6 +78,7 @@ Route::middleware('auth:web_mobile')->group(function () {
         ]);
     })->name('presensi.profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('presensi.profile.update');
+    Route::patch('/profile/data', [ProfileController::class, 'updatePegawaiData'])->name('presensi.profile.data.update');
     Route::put('/password', [PasswordController::class, 'update'])->name('presensi.password.update');
 
     Route::get('/lengkapi-data', [ProfileController::class, 'editPegawai'])->name('presensi.lengkapi-data');

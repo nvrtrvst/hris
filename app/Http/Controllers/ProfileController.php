@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PegawaiProfileUpdateRequest;
 use App\Http\Requests\PegawaiSelfUpdateRequest;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -45,6 +46,41 @@ class ProfileController extends Controller
     /**
      * Delete the user's account.
      */
+    /**
+     * Update parsial data pribadi dari halaman profil (setelah onboarding).
+     * Hanya field yang dikirim yang diubah; string kosong = biarkan apa adanya.
+     */
+    public function updatePegawaiData(PegawaiProfileUpdateRequest $request): RedirectResponse
+    {
+        $pegawai = $request->user()?->pegawai;
+
+        if (! $pegawai) {
+            return redirect()->back()->with('error', 'Data pegawai tidak ditemukan.');
+        }
+
+        $data = array_filter($request->validated(), fn ($v) => $v !== null && $v !== '');
+
+        if ($data !== []) {
+            // Nama & email login tinggal di tabel users (bukan pegawai).
+            $userData = array_intersect_key($data, array_flip(['nama_lengkap', 'email']));
+            if ($userData !== []) {
+                $mapUser = ['nama_lengkap' => 'name'];
+                $userUpdate = [];
+                foreach ($userData as $key => $value) {
+                    $userUpdate[$mapUser[$key] ?? $key] = $value;
+                }
+                $request->user()?->update($userUpdate);
+            }
+
+            $pegawai->update(array_diff_key($data, array_flip(['email'])));
+        }
+
+        $isMobile = $request->is('mobile*') || auth('web_mobile')->check();
+
+        return Redirect::route($isMobile ? 'presensi.profile.edit' : 'profile.edit')
+            ->with('message', 'Data berhasil disimpan.');
+    }
+
     public function destroy(Request $request): RedirectResponse
     {
         $request->validate([
