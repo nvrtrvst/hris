@@ -254,7 +254,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         { label: 'Perlu Review', value: s.perlu_review, Icon: ShieldAlert, iconBg: 'bg-red-100', iconCls: 'text-red-600' },
     ];
 
-    const filterSelect = 'select-field text-xs h-9 w-full md:w-auto md:min-w-[150px]';
+    // flex-1 + min-w/basis: tiap kontrol mengisi penuh baris, baris terakhir
+    // ikut meregang sampai ujung kanan (tidak ada lahan kosong seperti grid).
+    const filterSelect = 'select-field text-xs h-9 flex-1 min-w-[150px] basis-44';
 
     return (
         <AuthenticatedLayout
@@ -297,9 +299,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     {/* Filter bar */}
                     <div className="card p-5">
                         {/* Row 1: Search + Quick Filters */}
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                        <div className="flex flex-wrap items-center gap-3">
                             {isAdmin && (
-                                <div className="relative lg:col-span-2">
+                                <div className="relative min-w-[240px] flex-1 basis-72">
                                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                     <input
                                         type="text"
@@ -331,7 +333,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                         {/* Row 2: Extended Filters (admin only) */}
                         {isAdmin && (
-                            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                            <div className="mt-3 flex flex-wrap items-center gap-3">
                                 <select className={filterSelect} value={jadwalFilter} onChange={(e) => {
                                     setJadwalFilter(e.target.value);
                                     if (e.target.value === 'sedang_berlangsung') {
