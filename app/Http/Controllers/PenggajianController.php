@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\TransferBankExport;
+use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Models\KomponenGaji;
 use App\Models\Pegawai;
 use App\Models\Penggajian;
@@ -20,6 +21,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class PenggajianController extends Controller
 {
+    use ScopesPimpinan;
+
     public function __construct(
         private readonly PresensiAggregator $presensiAggregator,
     ) {}
@@ -32,7 +35,10 @@ class PenggajianController extends Controller
         $isAdmin = $user && $user->can('view_payroll');
         $query = Penggajian::with(['pegawai.units:id,singkatan,nama']);
 
-        if (! $isAdmin) {
+        if ($this->isPimpinanReadOnly($user)) {
+            // Pimpinan (kepsek/kepala TU/ketua yayasan): HANYA penggajian bawahan langsung.
+            $this->scopePimpinanBawahan($query, $user);
+        } elseif (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
             if ($pegawai) {
                 $query->where('pegawai_id', $pegawai->id);

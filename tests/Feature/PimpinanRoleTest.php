@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Jabatan;
+use App\Models\Jadwal;
+use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -112,5 +115,74 @@ class PimpinanRoleTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('Dashboard')
                 ->has('kontrakBerakhir', 1)
                 ->where('kontrakBerakhir.0.nama_lengkap', 'Guru Bawahan'));
+    }
+
+    public function test_pimpinan_presensi_index_scoped_to_bawahan(): void
+    {
+        $kepsek = $this->makePegawai('Kepsek SD');
+        $bawahan = $this->makePegawai('Guru Bawahan', $kepsek);
+        $orangLain = $this->makePegawai('Guru Bukan Bawahan');
+
+        Presensi::create([
+            'pegawai_id' => $bawahan->id,
+            'unit_sekolah_id' => $this->sd->id,
+            'tanggal' => now()->toDateString(),
+            'jam_masuk' => '07:00:00',
+            'status' => 'hadir',
+        ]);
+        Presensi::create([
+            'pegawai_id' => $orangLain->id,
+            'unit_sekolah_id' => $this->sd->id,
+            'tanggal' => now()->toDateString(),
+            'jam_masuk' => '07:00:00',
+            'status' => 'hadir',
+        ]);
+
+        $user = $this->makePimpinan($kepsek);
+
+        $this->actingAs($user)
+            ->get(route('presensi.index'))
+            ->assertInertia(fn ($page) => $page->component('Presensi/Index')
+                ->has('presensis.data', 1)
+                ->where('presensis.data.0.pegawai.nama_lengkap', 'Guru Bawahan'));
+    }
+
+    public function test_pimpinan_jadwal_index_scoped_to_bawahan(): void
+    {
+        $kepsek = $this->makePegawai('Kepsek SD');
+        $bawahan = $this->makePegawai('Guru Bawahan', $kepsek);
+        $orangLain = $this->makePegawai('Guru Bukan Bawahan');
+
+        $mapel = MataPelajaran::firstOrCreate(['nama' => 'Matematika']);
+        Jadwal::create([
+            'pegawai_id' => $bawahan->id,
+            'unit_sekolah_id' => $this->sd->id,
+            'mata_pelajaran_id' => $mapel->id,
+            'hari' => 'Senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '08:00:00',
+            'jenis_jadwal' => 'reguler',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 'Ganjil',
+        ]);
+        Jadwal::create([
+            'pegawai_id' => $orangLain->id,
+            'unit_sekolah_id' => $this->sd->id,
+            'mata_pelajaran_id' => $mapel->id,
+            'hari' => 'Senin',
+            'jam_mulai' => '09:00:00',
+            'jam_selesai' => '10:00:00',
+            'jenis_jadwal' => 'reguler',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 'Ganjil',
+        ]);
+
+        $user = $this->makePimpinan($kepsek);
+
+        $this->actingAs($user)
+            ->get(route('jadwal.index'))
+            ->assertInertia(fn ($page) => $page->component('Jadwal/Index')
+                ->has('jadwals', 1)
+                ->where('jadwals.0.pegawai.nama_lengkap', 'Guru Bawahan'));
     }
 }

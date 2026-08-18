@@ -69,6 +69,10 @@ class RolePermissionSeeder extends Seeder
         $rolePimpinan->syncPermissions([
             'view_dashboard',
             'view_pegawai',
+            // Presensi & jadwal bawahan (pengawasan) — scope di controller via
+            // trait ScopesPimpinan (hanya bawahan langsung, bukan semua unit).
+            'view_presensi',
+            'view_jadwal',
         ]);
     }
 }

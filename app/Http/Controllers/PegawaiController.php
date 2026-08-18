@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Constants\PegawaiConstants;
 use App\Exports\PegawaiExport;
 use App\Exports\PegawaiTemplateExport;
+use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Imports\PegawaiImport;
 use App\Models\Jabatan;
 use App\Models\KomponenGaji;
@@ -24,6 +25,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class PegawaiController extends Controller
 {
+    use ScopesPimpinan;
+
     public function downloadTemplate()
     {
         $response = Excel::download(new PegawaiTemplateExport, 'template_pegawai.xlsx');
@@ -507,18 +510,6 @@ class PegawaiController extends Controller
         }
 
         return redirect()->route('pegawai.show', $pegawai->id)->with('message', 'Data Pegawai berhasil diperbarui.');
-    }
-
-    /**
-     * Role pimpinan (pembaca/pengawas): boleh lihat, TIDAK boleh mengubah data.
-     * Superadmin & admin_unit tidak terpengaruh. Dipakai untuk scope & blok mutasi.
-     */
-    private function isPimpinanReadOnly(?User $user): bool
-    {
-        return $user
-            && $user->hasRole('pimpinan')
-            && ! $user->hasRole('admin_unit')
-            && ! $user->can('view_all_units');
     }
 
     /**

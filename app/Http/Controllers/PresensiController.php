@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\PayrollLockHelper;
+use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Jobs\ProcessPresensiFoto;
 use App\Models\AuditPresensi;
 use App\Models\Jadwal;
@@ -21,6 +22,7 @@ use Illuminate\Validation\ValidationException;
 class PresensiController extends Controller
 {
     use CalculatesDistance;
+    use ScopesPimpinan;
 
     public function index(Request $request)
     {
@@ -37,7 +39,10 @@ class PresensiController extends Controller
         $isAdmin = $user && $user->can('view_presensi');
         $query = Presensi::with(['unitSekolah', 'pegawai', 'jadwal.mataPelajaran']);
 
-        if (! $isAdmin) {
+        if ($this->isPimpinanReadOnly($user)) {
+            // Pimpinan (kepsek/kepala TU/ketua yayasan): HANYA presensi bawahan langsung.
+            $this->scopePimpinanBawahan($query, $user);
+        } elseif (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
             if ($pegawai) {
                 $query->where('pegawai_id', $pegawai->id);

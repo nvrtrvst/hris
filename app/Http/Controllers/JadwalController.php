@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Http;
 
 class JadwalController extends Controller
 {
+    use ScopesPimpinan;
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -23,7 +26,10 @@ class JadwalController extends Controller
 
         $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'mataPelajaran:id,nama']);
 
-        if (! $isAdmin) {
+        if ($this->isPimpinanReadOnly($user)) {
+            // Pimpinan (kepsek/kepala TU/ketua yayasan): HANYA jadwal bawahan langsung.
+            $this->scopePimpinanBawahan($query, $user);
+        } elseif (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
             if ($pegawai) {
                 $query->where('pegawai_id', $pegawai->id);
