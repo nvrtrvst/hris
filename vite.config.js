@@ -10,4 +10,10 @@ export default defineConfig({
         }),
         react(),
     ],
+    build: {
+        // Hapus chunk lama setiap build agar browser tidak pernah bisa memuat
+        // bundle usang yang mereferensikan hook/API yang sudah tidak ada
+        // (mis. Index-*.js lama yang menimbulkan ReferenceError).
+        emptyOutDir: true,
+    },
 });
