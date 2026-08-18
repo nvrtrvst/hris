@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exports\PegawaiTemplateExport;
 use App\Models\Jabatan;
 use App\Models\Pegawai;
 use App\Models\UnitSekolah;
@@ -11,6 +12,9 @@ use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
 class PegawaiTemplateImportTest extends TestCase
@@ -50,6 +54,23 @@ class PegawaiTemplateImportTest extends TestCase
         $response->assertOk();
         $this->assertStringContainsString('spreadsheet', $response->headers->get('content-type'));
         $this->assertStringContainsString('attachment', $response->headers->get('content-disposition'));
+    }
+
+    public function test_template_memiliki_dropdown_status_kepegawaian_dan_pendidikan(): void
+    {
+        Excel::store(new PegawaiTemplateExport, 'tpl_check.xlsx', 'local');
+        $sheet = IOFactory::load(Storage::disk('local')->path('tpl_check.xlsx'))->getSheet(0);
+        Storage::disk('local')->delete('tpl_check.xlsx');
+
+        $statusDv = $sheet->getDataValidation('K2');
+        $this->assertNotNull($statusDv, 'Kolom K (Status Kepegawaian) harus punya dropdown');
+        $this->assertStringContainsString('tetap', $statusDv->getFormula1());
+        $this->assertStringContainsString('gtt', $statusDv->getFormula1());
+
+        $pendidikanDv = $sheet->getDataValidation('M2');
+        $this->assertNotNull($pendidikanDv, 'Kolom M (Pendidikan Terakhir) harus punya dropdown');
+        $this->assertStringContainsString('S1', $pendidikanDv->getFormula1());
+        $this->assertStringContainsString('S3', $pendidikanDv->getFormula1());
     }
 
     public function test_import_menolak_jabatan_yang_tidak_ada_dan_menampilkan_daftar_tersedia(): void

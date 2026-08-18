@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Constants\PegawaiConstants;
 use App\Models\Jabatan;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -25,9 +26,9 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
             'Status Pernikahan',
             'No HP',
             'Alamat KTP',
-            'Status Kepegawaian (tetap/kontrak/honorer/gtt)',
+            'Status Kepegawaian (dropdown)',
             'Tanggal Mulai Kerja (YYYY-MM-DD)',
-            'Pendidikan Terakhir',
+            'Pendidikan Terakhir (dropdown)',
             'Nama Jabatan (pilih dari dropdown)',
         ];
     }
@@ -48,7 +49,7 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 'Jl. Contoh Alamat No. 123',
                 'tetap',
                 '2020-01-01',
-                'S1 Pendidikan',
+                'S1',
                 'Guru Mata Pelajaran',
             ],
             [
@@ -64,7 +65,7 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 'Jl. Contoh Alamat No. 456',
                 'kontrak',
                 '2023-01-01',
-                'SMK Akuntansi',
+                'SMK/Sederajat',
                 'Kasir',
             ],
         ];
@@ -101,6 +102,22 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 $validation->setError('Pilih jabatan dari daftar yang tersedia.');
 
                 $sheet->setDataValidation('N2:N500', $validation);
+
+                // Dropdown Status Kepegawaian (K) & Pendidikan Terakhir (M) —
+                // daftar pendek, cukup inline tanpa sheet tersembunyi.
+                $statusValidation = new DataValidation;
+                $statusValidation->setType(DataValidation::TYPE_LIST);
+                $statusValidation->setFormula1('"'.implode(',', PegawaiConstants::STATUS_KEPEGAWAIAN).'"');
+                $statusValidation->setAllowBlank(false);
+                $statusValidation->setShowErrorMessage(true);
+                $sheet->setDataValidation('K2:K500', $statusValidation);
+
+                $pendidikanValidation = new DataValidation;
+                $pendidikanValidation->setType(DataValidation::TYPE_LIST);
+                $pendidikanValidation->setFormula1('"'.implode(',', PegawaiConstants::PENDIDIKAN_TERAKHIR).'"');
+                $pendidikanValidation->setAllowBlank(false);
+                $pendidikanValidation->setShowErrorMessage(true);
+                $sheet->setDataValidation('M2:M500', $pendidikanValidation);
             },
         ];
     }

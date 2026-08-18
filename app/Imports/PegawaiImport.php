@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Constants\PegawaiConstants;
 use App\Models\Jabatan;
 use App\Models\Pegawai;
 use App\Models\User;
@@ -64,7 +65,7 @@ class PegawaiImport implements ToCollection
             '*.7' => 'required|string|max:255', // Status Pernikahan
             '*.8' => 'required|string|max:20', // No HP
             '*.9' => 'required|string', // Alamat KTP
-            '*.10' => 'required|in:tetap,kontrak,honorer,gtt', // Status Kepegawaian
+            '*.10' => 'required|in:'.implode(',', PegawaiConstants::STATUS_KEPEGAWAIAN), // Status Kepegawaian
             '*.11' => 'required|date', // Tanggal Mulai Kerja
             '*.12' => 'required|string|max:255', // Pendidikan Terakhir
             '*.13' => 'required|string|max:255', // Nama Jabatan
