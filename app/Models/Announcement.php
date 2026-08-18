@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\DB;
 
 class Announcement extends Model
 {
@@ -49,5 +51,57 @@ class Announcement extends Model
     public function scopePublished(Builder $query): Builder
     {
         return $query->whereNotNull('published_at')->where('published_at', '<=', now());
+    }
+
+    /**
+     * Pegawai yang sudah menandai pengumuman ini terbaca (pivot announcement_pegawai).
+     */
+    public function readers(): BelongsToMany
+    {
+        return $this->belongsToMany(Pegawai::class)->withPivot('read_at')->withTimestamps();
+    }
+
+    /**
+     * Hanya pengumuman yang BELUM dibaca pegawai tertentu (badge count).
+     */
+    public function scopeUnreadFor(Builder $query, ?Pegawai $pegawai): Builder
+    {
+        if (! $pegawai) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereDoesntHave('readers', fn ($q) => $q->where('pegawai.id', $pegawai->id));
+    }
+
+    /**
+     * Tandai satu pengumuman terbaca oleh pegawai (upsert pivot).
+     */
+    public function markReadBy(Pegawai $pegawai): void
+    {
+        $this->readers()->syncWithoutDetaching([$pegawai->id => ['read_at' => now()]]);
+    }
+
+    /**
+     * Tandai banyak pengumuman terbaca sekaligus — 1 query upsert, tanpa N+1.
+     */
+    public static function markReadBatch(array $ids, Pegawai $pegawai): void
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+        if ($ids === []) {
+            return;
+        }
+
+        $now = now();
+        DB::table('announcement_pegawai')->upsert(
+            array_map(fn ($id) => [
+                'announcement_id' => $id,
+                'pegawai_id' => $pegawai->id,
+                'read_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], $ids),
+            ['announcement_id', 'pegawai_id'],
+            ['read_at', 'updated_at']
+        );
     }
 }

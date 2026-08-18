@@ -181,6 +181,12 @@ class MobileController extends Controller
             ->orderByDesc('published_at')
             ->get();
 
+        // Semua pengumuman yang tampil otomatis ditandai terbaca (1 query upsert,
+        // tanpa N+1) — badge selanjutnya hanya menghitung yang belum dibaca.
+        if ($pegawai && $pengumuman->isNotEmpty()) {
+            Announcement::markReadBatch($pengumuman->pluck('id')->all(), $pegawai);
+        }
+
         return inertia('Mobile/Pengumuman', [
             'pengumuman' => $pengumuman,
         ]);

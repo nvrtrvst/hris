@@ -57,12 +57,12 @@ class HandleInertiaRequests extends Middleware
 
         $pegawai = $user?->pegawai;
 
-        // Jumlah pengumuman yang tampil untuk pegawai (badge ikon megaphone di mobile).
+        // Jumlah pengumuman BELUM DIBACA untuk pegawai (badge ikon megaphone di mobile).
         // Dihitung hanya saat user punya relasi pegawai — admin (tanpa pegawai) = 0.
         $announcementCount = 0;
         if ($pegawai) {
             $unitId = $pegawai->units->first()?->id;
-            $announcementCount = Announcement::published()->forUnit($unitId)->count();
+            $announcementCount = Announcement::published()->forUnit($unitId)->unreadFor($pegawai)->count();
         }
 
         return [
