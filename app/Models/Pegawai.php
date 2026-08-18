@@ -64,10 +64,13 @@ class Pegawai extends Model
     /**
      * Muat data cuti + append accessor sisa_cuti/cuti_terpakai.
      * Panggil dari controller yang menampilkan sisa cuti di FE.
+     *
+     * @param  \Closure|null  $scope  Scope kolom/where utk pengajuanIzins
+     *                                (mis. hanya kolom yg dipakai accessor).
      */
-    public function loadCutiInfo(): static
+    public function loadCutiInfo(?\Closure $scope = null): static
     {
-        $this->load('pengajuanIzins');
+        $this->load(['pengajuanIzins' => $scope ?: fn ($q) => $q]);
         $this->append(['sisa_cuti', 'cuti_terpakai']);
 
         return $this;

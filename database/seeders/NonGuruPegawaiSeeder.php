@@ -32,48 +32,56 @@ class NonGuruPegawaiSeeder extends Seeder
     private const NIK_PREFIX = '3273900000000'; // 13 digit + 3 digit index = 16 digit NIK
 
     /**
-     * [unitSingkatan, nama_lengkap, jenis_kelamin, namaJabatan, statusKepegawaian]
+     * [kode(1..N), unitSingkatan, nama_lengkap, jenis_kelamin, namaJabatan, statusKepegawaian]
+     *
+     * `kode` adalah ID STABIL — menentukan NIK/email/NIP. Jangan diubah urutannya
+     * setelah data ter-seed; tambah entri baru dengan kode berikutnya agar
+     * idempotensi (firstOrCreate by nik_hash) tetap benar.
      */
     private const TENDIK = [
+        // Yayasan (kantor pusat)
+        [1, 'YAYASAN', 'Ayu Puspitasari', 'P', 'Kasir', 'tetap'],
+        [2, 'YAYASAN', 'Hendra Wijaya', 'L', 'Tenaga Administrasi (TU)', 'tetap'],
+
         // LPQ
-        ['LPQ', 'Rina Kurniasari', 'P', 'Operator / Pranata Komputer', 'honorer'],
+        [3, 'LPQ', 'Rina Kurniasari', 'P', 'Operator / Pranata Komputer', 'honorer'],
 
         // TK
-        ['TK', 'Siti Maryam', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
+        [4, 'TK', 'Siti Maryam', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
 
         // SD
-        ['SD', 'Dewi Anggraini', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
-        ['SD', 'Fajar Ramadhan', 'L', 'Operator / Pranata Komputer', 'honorer'],
-        ['SD', 'Nur Hidayah', 'P', 'Pustakawan', 'honorer'],
-        ['SD', 'Supriyadi', 'L', 'Petugas Kebersihan', 'honorer'],
+        [5, 'SD', 'Dewi Anggraini', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
+        [6, 'SD', 'Fajar Ramadhan', 'L', 'Operator / Pranata Komputer', 'honorer'],
+        [7, 'SD', 'Nur Hidayah', 'P', 'Pustakawan', 'honorer'],
+        [8, 'SD', 'Supriyadi', 'L', 'Petugas Kebersihan', 'honorer'],
 
         // SMP
-        ['SMP', 'Endang Lestari', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
-        ['SMP', 'Sri Wahyuni', 'P', 'Bendahara', 'tetap'],
-        ['SMP', 'Agus Setiawan', 'L', 'Operator / Pranata Komputer', 'tetap'],
-        ['SMP', 'Rahmawati', 'P', 'Pustakawan', 'honorer'],
-        ['SMP', 'Dedi Kurniawan', 'L', 'Laboran', 'honorer'],
-        ['SMP', 'Bambang Sutrisno', 'L', 'Satpam / Petugas Keamanan', 'honorer'],
-        ['SMP', 'Joko Prasetyo', 'L', 'Pesuruh / Office Boy', 'honorer'],
+        [9, 'SMP', 'Endang Lestari', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
+        [10, 'SMP', 'Sri Wahyuni', 'P', 'Bendahara', 'tetap'],
+        [11, 'SMP', 'Agus Setiawan', 'L', 'Operator / Pranata Komputer', 'tetap'],
+        [12, 'SMP', 'Rahmawati', 'P', 'Pustakawan', 'honorer'],
+        [13, 'SMP', 'Dedi Kurniawan', 'L', 'Laboran', 'honorer'],
+        [14, 'SMP', 'Bambang Sutrisno', 'L', 'Satpam / Petugas Keamanan', 'honorer'],
+        [15, 'SMP', 'Joko Prasetyo', 'L', 'Pesuruh / Office Boy', 'honorer'],
 
         // SMA
-        ['SMA', 'Yuni Astuti', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
-        ['SMA', 'Fitri Handayani', 'P', 'Bendahara', 'tetap'],
-        ['SMA', 'Rizky Pratama', 'L', 'Operator / Pranata Komputer', 'honorer'],
-        ['SMA', 'Hj. Nurjanah', 'P', 'Kepala Perpustakaan', 'tetap'],
-        ['SMA', 'Hendra Gunawan', 'L', 'Laboran', 'honorer'],
-        ['SMA', 'Teguh Santoso', 'L', 'Satpam / Petugas Keamanan', 'honorer'],
-        ['SMA', 'Karyono', 'L', 'Tukang Kebun', 'honorer'],
+        [16, 'SMA', 'Yuni Astuti', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
+        [17, 'SMA', 'Fitri Handayani', 'P', 'Bendahara', 'tetap'],
+        [18, 'SMA', 'Rizky Pratama', 'L', 'Operator / Pranata Komputer', 'honorer'],
+        [19, 'SMA', 'Hj. Nurjanah', 'P', 'Kepala Perpustakaan', 'tetap'],
+        [20, 'SMA', 'Hendra Gunawan', 'L', 'Laboran', 'honorer'],
+        [21, 'SMA', 'Teguh Santoso', 'L', 'Satpam / Petugas Keamanan', 'honorer'],
+        [22, 'SMA', 'Karyono', 'L', 'Tukang Kebun', 'honorer'],
 
         // SMK
-        ['SMK', 'Lilis Suryani', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
-        ['SMK', 'Ratna Dewi', 'P', 'Bendahara', 'tetap'],
-        ['SMK', 'Arif Hidayat', 'L', 'Operator / Pranata Komputer', 'honorer'],
-        ['SMK', 'Siti Aminah', 'P', 'Pustakawan', 'honorer'],
-        ['SMK', 'Yusuf Maulana', 'L', 'Laboran', 'honorer'],
-        ['SMK', 'Slamet Riyadi', 'L', 'Satpam / Petugas Keamanan', 'honorer'],
-        ['SMK', 'Wahyu Nugroho', 'L', 'Pesuruh / Office Boy', 'honorer'],
-        ['SMK', 'Tutik Wulandari', 'P', 'Petugas Kebersihan', 'honorer'],
+        [23, 'SMK', 'Lilis Suryani', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
+        [24, 'SMK', 'Ratna Dewi', 'P', 'Bendahara', 'tetap'],
+        [25, 'SMK', 'Arif Hidayat', 'L', 'Operator / Pranata Komputer', 'honorer'],
+        [26, 'SMK', 'Siti Aminah', 'P', 'Pustakawan', 'honorer'],
+        [27, 'SMK', 'Yusuf Maulana', 'L', 'Laboran', 'honorer'],
+        [28, 'SMK', 'Slamet Riyadi', 'L', 'Satpam / Petugas Keamanan', 'honorer'],
+        [29, 'SMK', 'Wahyu Nugroho', 'L', 'Pesuruh / Office Boy', 'honorer'],
+        [30, 'SMK', 'Tutik Wulandari', 'P', 'Petugas Kebersihan', 'honorer'],
     ];
 
     public function run(): void
@@ -92,8 +100,8 @@ class NonGuruPegawaiSeeder extends Seeder
         $index = 0;
         $created = 0;
 
-        foreach (self::TENDIK as [$singkatan, $nama, $jk, $namaJabatan, $kepegawaian]) {
-            $index++;
+        foreach (self::TENDIK as [$kode, $singkatan, $nama, $jk, $namaJabatan, $kepegawaian]) {
+            $index = (int) $kode;
             $unit = $units[$singkatan] ?? null;
             if (! $unit) {
                 $this->command?->warn("Unit {$singkatan} tidak ditemukan — lewati {$nama}.");

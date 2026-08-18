@@ -10,6 +10,8 @@ class UnitSekolahSeeder extends Seeder
     public function run(): void
     {
         $units = [
+            // Kantor pusat yayasan — punya pegawai sendiri (kasir, staf TU, dll).
+            ['nama' => 'Yayasan', 'singkatan' => 'YAYASAN', 'latitude' => -6.199000, 'longitude' => 106.816000, 'radius_meter' => 50],
             ['nama' => 'LPQ', 'singkatan' => 'LPQ', 'latitude' => -6.200000, 'longitude' => 106.816666, 'radius_meter' => 50],
             ['nama' => 'TK', 'singkatan' => 'TK', 'latitude' => -6.201000, 'longitude' => 106.817000, 'radius_meter' => 50],
             ['nama' => 'SD', 'singkatan' => 'SD', 'latitude' => -6.202000, 'longitude' => 106.818000, 'radius_meter' => 50],

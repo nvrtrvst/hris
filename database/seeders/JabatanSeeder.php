@@ -34,6 +34,7 @@ class JabatanSeeder extends Seeder
             // D. Tenaga Administrasi
             ['nama' => 'Tenaga Administrasi (TU)', 'is_guru' => false],
             ['nama' => 'Bendahara', 'is_guru' => false],
+            ['nama' => 'Kasir', 'is_guru' => false],
             ['nama' => 'Operator / Pranata Komputer', 'is_guru' => false],
 
             // E. Tenaga Kependidikan lainnya

@@ -208,7 +208,18 @@ class PegawaiController extends Controller
 
     public function show(string $id)
     {
-        $pegawai = Pegawai::with(['user', 'units', 'jabatans', 'mapels', 'dokumen', 'riwayat', 'atasanLangsung'])->findOrFail($id);
+        // Eager-load dipersempit (kolom yang dipakai Show.jsx saja) + riwayat
+        // dibatasi 30 terbaru agar payload ringan dan timeline tidak membengkak
+        // seiring bertambahnya perubahan data.
+        $pegawai = Pegawai::with([
+            'user' => fn ($q) => $q->select('id', 'email', 'username'),
+            'units',
+            'jabatans',
+            'mapels',
+            'dokumen',
+            'riwayat' => fn ($q) => $q->latest('id')->limit(30),
+            'atasanLangsung' => fn ($q) => $q->select('id', 'nama_lengkap', 'foto'),
+        ])->findOrFail($id);
 
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
@@ -216,7 +227,8 @@ class PegawaiController extends Controller
         }
 
         // Show.jsx menampilkan sisa_cuti — eager-load + append eksplisit (P2).
-        $pegawai->loadCutiInfo();
+        // Select kolom yang dipakai accessor saja (bukan seluruh baris izin).
+        $pegawai->loadCutiInfo(fn ($q) => $q->select(['id', 'pegawai_id', 'jenis_izin', 'status', 'tanggal_mulai', 'tanggal_selesai']));
 
         return inertia('Pegawai/Show', [
             'pegawai' => $pegawai,
