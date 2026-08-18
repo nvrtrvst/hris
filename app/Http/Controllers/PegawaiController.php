@@ -159,6 +159,8 @@ class PegawaiController extends Controller
         return inertia('Pegawai/Create', [
             'unitSekolahs' => $unitSekolahs,
             'jabatans' => $jabatans,
+            'statusKepegawaian' => PegawaiConstants::STATUS_KEPEGAWAIAN,
+            'pendidikanTerakhir' => PegawaiConstants::PENDIDIKAN_TERAKHIR,
         ]);
     }
 
@@ -284,6 +286,8 @@ class PegawaiController extends Controller
             'unitSekolahs' => $unitSekolahs,
             'jabatans' => $jabatans,
             'mapels' => $mapels,
+            'statusKepegawaian' => PegawaiConstants::STATUS_KEPEGAWAIAN,
+            'pendidikanTerakhir' => PegawaiConstants::PENDIDIKAN_TERAKHIR,
         ]);
     }
 

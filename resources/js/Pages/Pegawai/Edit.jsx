@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, BadgeCheck, Camera, Loader2, Save, Trash2, User, X as XIcon } from 'lucide-react';
 import { MapelSection } from '@/Pages/Pegawai/Partials/MapelSection';
 import { UnitAssignmentSection } from '@/Pages/Pegawai/Partials/UnitAssignmentSection';
+import { statusKepegawaianLabel } from '@/Utils/pegawaiMeta';
 
 const inputClass = 'input-field';
 const selectClass = 'select-field';
@@ -36,7 +37,7 @@ function SectionCard({ Icon, title, description, children }) {
     );
 }
 
-export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) {
+export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, statusKepegawaian, pendidikanTerakhir }) {
     const canViewSensitive = auth.permissions?.includes('view_sensitive_data');
     const { data, setData, post, processing, errors } = useForm({
         _method: 'put',
@@ -108,6 +109,16 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
     };
     const addMapel = () => setData('mapels', [...data.mapels, { mata_pelajaran_id: '', unit_sekolah_id: '' }]);
     const removeMapel = (index) => setData('mapels', data.mapels.filter((_, i) => i !== index));
+
+    // Opsi pendidikan dari PegawaiConstants. Nilai lama yang tidak ada di daftar
+    // tetap disertakan agar pegawai dengan data legacy bisa diedit tanpa dipaksa ganti.
+    const pendidikanOptions = useMemo(() => {
+        const current = pegawai.pendidikan_terakhir;
+        if (current && !(pendidikanTerakhir || []).includes(current)) {
+            return [current, ...(pendidikanTerakhir || [])];
+        }
+        return pendidikanTerakhir || [];
+    }, [pendidikanTerakhir, pegawai.pendidikan_terakhir]);
 
     const submit = (e) => {
         e.preventDefault();
@@ -236,10 +247,9 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                         <SectionCard Icon={BadgeCheck} title="Status Kepegawaian">
                             <Field label="Status Kepegawaian" error={errors.status_kepegawaian}>
                                 <select value={data.status_kepegawaian} onChange={(e) => setData('status_kepegawaian', e.target.value)} className={selectClass}>
-                                    <option value="tetap">Tetap</option>
-                                    <option value="kontrak">Kontrak</option>
-                                    <option value="honorer">Honorer</option>
-                                    <option value="gtt">GTT (Guru Tidak Tetap)</option>
+                                    {(statusKepegawaian || []).map((s) => (
+                                        <option key={s} value={s}>{statusKepegawaianLabel(s)}</option>
+                                    ))}
                                 </select>
                             </Field>
                             <Field label="Wajib Masuk Kantor" error={errors.wajib_kantor}>
@@ -270,9 +280,13 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels }) 
                                     onChange={(e) => setData('tanggal_mulai_kerja', e.target.value)} className={inputClass} />
                             </Field>
                             <Field label="Pendidikan Terakhir" required error={errors.pendidikan_terakhir}>
-                                <input type="text" value={data.pendidikan_terakhir}
+                                <select value={data.pendidikan_terakhir}
                                     onChange={(e) => setData('pendidikan_terakhir', e.target.value)}
-                                    className={inputClass} placeholder="Contoh: S1 Pendidikan Agama Islam" />
+                                    className={selectClass}>
+                                    {pendidikanOptions.map((p) => (
+                                        <option key={p} value={p}>{p}</option>
+                                    ))}
+                                </select>
                             </Field>
                         </SectionCard>
 

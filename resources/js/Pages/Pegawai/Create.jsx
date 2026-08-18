@@ -2,6 +2,7 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Briefcase, Info, Loader2, Mail, Phone, Save, User } from 'lucide-react';
+import { statusKepegawaianLabel } from '@/Utils/pegawaiMeta';
 
 const inputClass = 'input-field';
 const selectClass = 'select-field';
@@ -27,7 +28,7 @@ const SectionCard = ({ Icon, title, children }) => (
     </div>
 );
 
-export default function Create({ auth, unitSekolahs, jabatans }) {
+export default function Create({ auth, unitSekolahs, jabatans, statusKepegawaian }) {
     const { data, setData, post, processing, errors } = useForm({
         nama_lengkap: '',
         email: '',
@@ -101,10 +102,9 @@ export default function Create({ auth, unitSekolahs, jabatans }) {
                             <div className="sm:col-span-2">
                                 <Field label="Status Kepegawaian" required error={errors.status_kepegawaian}>
                                     <select value={data.status_kepegawaian} onChange={(e) => setData('status_kepegawaian', e.target.value)} className={selectClass}>
-                                        <option value="tetap">Tetap</option>
-                                        <option value="kontrak">Kontrak</option>
-                                        <option value="honorer">Honorer</option>
-                                        <option value="gtt">GTT (Guru Tidak Tetap)</option>
+                                        {(statusKepegawaian || []).map((s) => (
+                                            <option key={s} value={s}>{statusKepegawaianLabel(s)}</option>
+                                        ))}
                                     </select>
                                 </Field>
                             </div>
