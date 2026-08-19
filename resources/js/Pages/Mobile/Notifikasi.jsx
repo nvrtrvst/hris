@@ -7,11 +7,15 @@ import { Bell, CheckCheck, Search, Archive, ArchiveRestore, ChevronRight } from 
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
-/** Map notification data.type → route name for mobile navigation. */
+/** Map notification data.type → route name + params for mobile navigation. */
 function getNotificationRoute(n) {
     const type = n.data?.type;
-    if (type === 'status_izin') return 'presensi.izin.index';
-    if (type === 'izin_baru') return 'presensi.izin.index';
+    if ((type === 'status_izin' || type === 'izin_baru') && n.data?.pengajuan_id) {
+        return { name: 'presensi.izin.show', params: n.data.pengajuan_id };
+    }
+    if (type === 'status_izin' || type === 'izin_baru') {
+        return { name: 'presensi.izin.index', params: null };
+    }
     return null;
 }
 
@@ -85,11 +89,14 @@ export default function Notifikasi({ auth, notifications, filters }) {
             ) : (
                 <div className="space-y-2">
                     {notifications.data.map((n) => {
-                        const routeName = getNotificationRoute(n);
+                        const routeInfo = getNotificationRoute(n);
                         const handleClick = () => {
-                            if (routeName) {
+                            if (routeInfo) {
                                 if (!n.read_at) markRead(n.id);
-                                router.visit(route(routeName));
+                                router.visit(routeInfo.params
+                                    ? route(routeInfo.name, routeInfo.params)
+                                    : route(routeInfo.name)
+                                );
                             } else if (!n.read_at) {
                                 markRead(n.id);
                             }
@@ -98,11 +105,11 @@ export default function Notifikasi({ auth, notifications, filters }) {
                             <Card key={n.id} press={false} className={`py-3.5 px-4 ${!n.read_at ? 'border-primary/30 bg-primary/[0.02]' : ''}`}>
                                 <div className="flex items-start justify-between gap-2">
                                     <div
-                                        className={`min-w-0 flex-1 ${routeName ? 'cursor-pointer' : ''}`}
+                                        className={`min-w-0 flex-1 ${routeInfo ? 'cursor-pointer' : ''}`}
                                         onClick={handleClick}
-                                        role={routeName ? 'button' : undefined}
-                                        tabIndex={routeName ? 0 : undefined}
-                                        onKeyDown={routeName ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); } : undefined}
+                                        role={routeInfo ? 'button' : undefined}
+                                        tabIndex={routeInfo ? 0 : undefined}
+                                        onKeyDown={routeInfo ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); } : undefined}
                                     >
                                         <p className={`text-sm ${!n.read_at ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
                                             {n.data?.message || n.data?.pegawai_nama || 'Notifikasi'}
@@ -110,7 +117,7 @@ export default function Notifikasi({ auth, notifications, filters }) {
                                         <p className="mt-0.5 text-xs text-slate-400">{n.created_at ? format(parseISO(n.created_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}</p>
                                     </div>
                                     <div className="flex shrink-0 items-center gap-1.5">
-                                        {routeName && (
+                                        {routeInfo && (
                                             <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-300" />
                                         )}
                                         {view === 'all' && !n.read_at && (

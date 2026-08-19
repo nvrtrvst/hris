@@ -38,6 +38,20 @@ class MobileIzinController extends Controller
         ]);
     }
 
+    public function show(PengajuanIzin $pengajuan)
+    {
+        $pegawai = $this->getPegawai();
+        if (! $pegawai || $pengajuan->pegawai_id !== $pegawai->id) {
+            abort(404);
+        }
+
+        $pengajuan->load('pegawai');
+
+        return Inertia::render('Mobile/Izin/Show', [
+            'pengajuan' => $pengajuan,
+        ]);
+    }
+
     public function create()
     {
         $pegawai = $this->getPegawai();

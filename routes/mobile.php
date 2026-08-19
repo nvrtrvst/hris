@@ -44,6 +44,7 @@ Route::middleware('auth:web_mobile')->group(function () {
 
     // Rute Izin Mobile
     Route::get('/izin', [MobileIzinController::class, 'index'])->name('presensi.izin.index');
+    Route::get('/izin/{pengajuan}', [MobileIzinController::class, 'show'])->name('presensi.izin.show');
     Route::get('/izin/create', [MobileIzinController::class, 'create'])->name('presensi.izin.create');
     Route::post('/izin', [MobileIzinController::class, 'store'])
         ->middleware('throttle:10,1')->name('presensi.izin.store');

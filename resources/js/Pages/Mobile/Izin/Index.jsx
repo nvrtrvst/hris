@@ -1,10 +1,10 @@
 import React from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Badge, FAB, Empty } from '@/Components/MobileUI';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { FileText, Plus, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { FileText, Plus, Clock, CheckCircle, XCircle, ChevronRight } from 'lucide-react';
 
 export default function Index({ auth, pengajuan }) {
     const { flash } = usePage().props;
@@ -41,8 +41,14 @@ export default function Index({ auth, pengajuan }) {
                         const st = getStatus(item.status);
                         return (
                             <Card key={item.id} className="py-4">
-                                <div className="flex items-start justify-between">
-                                    <div>
+                                <div
+                                    className="flex cursor-pointer items-start justify-between gap-2"
+                                    onClick={() => router.visit(route('presensi.izin.show', item.id))}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') router.visit(route('presensi.izin.show', item.id)); }}
+                                >
+                                    <div className="min-w-0 flex-1">
                                         <Badge tone="indigo">{jenisLabel[item.jenis_izin] || item.jenis_izin}</Badge>
                                         <p className="mt-2 text-sm font-bold text-slate-800">
                                             {format(new Date(item.tanggal_mulai), 'd MMM yyyy', { locale: id })}
@@ -50,7 +56,10 @@ export default function Index({ auth, pengajuan }) {
                                         </p>
                                         <p className="mt-0.5 text-sm text-slate-500">{item.alasan}</p>
                                     </div>
-                                    <Badge tone={st.tone} icon={st.icon}>{st.label}</Badge>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                        <Badge tone={st.tone} icon={st.icon}>{st.label}</Badge>
+                                        <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-300" />
+                                    </div>
                                 </div>
                                 {item.status === 'ditolak' && item.alasan_penolakan && (
                                     <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 p-3">
