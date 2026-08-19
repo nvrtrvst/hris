@@ -12,6 +12,28 @@
         overscroll-behavior-y: contain;
         -webkit-tap-highlight-color: transparent;
     }
+
+    /* iOS Safari auto-zoom prevention: font-size < 16px triggers zoom.
+       Force inputs/selects/textareas to 16px on mobile viewport.
+       Desktop (>640px) tetap pakai ukuran Tailwind asli. */
+    @media (max-width: 640px) {
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="search"],
+        input[type="tel"],
+        input[type="url"],
+        input[type="number"],
+        input[type="date"],
+        input[type="datetime-local"],
+        input[type="month"],
+        input[type="time"],
+        input[type="week"],
+        select,
+        textarea {
+            font-size: 16px !important;
+        }
+    }
 }
 
 @layer components {
