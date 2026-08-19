@@ -119,8 +119,9 @@ class PengajuanIzinController extends Controller
                     abort(403, 'Anda bukan atasan L1 untuk pengajuan ini.');
                 }
 
-                // Superadmin approve → set sebagai approver_l1 supaya nama muncul
-                if ($isSuperadmin && ! $pengajuan->approver_l1_id) {
+                // Superadmin approve → overwrite approver_l1 ke superadmin
+                // (karena superadmin yang benar-benar approve, bukan atasan asli)
+                if ($isSuperadmin) {
                     $pengajuan->approver_l1_id = $user->id;
                 }
                 $pengajuan->approved_at_l1 = now();
@@ -142,8 +143,8 @@ class PengajuanIzinController extends Controller
                     abort(403, 'Anda bukan atasan L2 untuk pengajuan ini.');
                 }
 
-                // Superadmin approve → set sebagai approver_l2 supaya nama muncul
-                if ($isSuperadmin && ! $pengajuan->approver_l2_id) {
+                // Superadmin approve → overwrite approver_l2 ke superadmin
+                if ($isSuperadmin) {
                     $pengajuan->approver_l2_id = $user->id;
                 }
                 $pengajuan->approval_stage = 'approved';
