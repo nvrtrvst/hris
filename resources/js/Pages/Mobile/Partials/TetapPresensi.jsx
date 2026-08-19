@@ -189,7 +189,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     useEffect(() => {
         if (showLive && videoRef.current && streamRef.current) {
             videoRef.current.srcObject = streamRef.current;
-            videoRef.current.play().catch(() => {});
+            videoRef.current.play().catch(() => { });
         }
     }, [showLive]);
 
@@ -272,7 +272,8 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             else { console.error('[TetapPresensi]', err); setError('Tidak dapat terhubung ke server.'); }
         } finally {
             setIsSubmitting(false);
-        }        }, [capturedPhoto, currentPosition, geoBlocked, geofence, posA, posAwal, motionSamples]);
+        }
+    }, [capturedPhoto, currentPosition, geoBlocked, geofence, posA, posAwal, motionSamples]);
 
     const handleTap = useCallback(async (jadwalId) => {
         setTapLoading(jadwalId);
@@ -621,7 +622,6 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                     >
                         {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : `Kirim ${phase === FOTO_PAGI ? 'foto pagi' : 'foto sore'}`}
                     </button>
-                    <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">Foto, waktu, dan koordinat dikirim sebagai bukti presensi.</p>
                 </>
             )}
 

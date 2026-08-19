@@ -15,6 +15,14 @@
 }
 
 @layer components {
+    /* Wrapper mobile PWA: tinggi penuh viewport. 100vh fallback universal,
+       100dvh dinamis (toolbar Safari), -webkit-fill-available utk iOS < 15.4. */
+    .mobile-root {
+        min-height: 100vh;
+        min-height: 100dvh;
+        min-height: -webkit-fill-available;
+    }
+
     /* Posisi toast "Versi baru tersedia": mobile full-width di atas dengan
        safe-area status bar PWA; desktop (sm+) kanan-atas. Dipisah dari
        Tailwind karena nilai env() + max() tidak diparse oleh vite plugin. */

@@ -144,7 +144,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     useEffect(() => {
         if (showLive && videoRef.current && streamRef.current) {
             videoRef.current.srcObject = streamRef.current;
-            videoRef.current.play().catch(() => {});
+            videoRef.current.play().catch(() => { });
         }
     }, [showLive]);
 
@@ -291,18 +291,18 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const placeString = geoInfoLoading
         ? 'Mendeteksi alamat\u2026'
         : placeParts.length
-          ? placeParts.join(', ')
-          : 'Lokasi belum tersedia';
+            ? placeParts.join(', ')
+            : 'Lokasi belum tersedia';
 
     const mapTileUrl = currentPosition
         ? (() => {
-              const zoom = 16;
-              const tiles = 2 ** zoom;
-              const x = Math.floor(((currentPosition.longitude + 180) / 360) * tiles);
-              const latitude = (currentPosition.latitude * Math.PI) / 180;
-              const y = Math.floor(((1 - Math.log(Math.tan(latitude) + 1 / Math.cos(latitude)) / Math.PI) / 2) * tiles);
-              return MAP_TILE_URL.replace('{z}', String(zoom)).replace('{x}', String(x)).replace('{y}', String(y));
-          })()
+            const zoom = 16;
+            const tiles = 2 ** zoom;
+            const x = Math.floor(((currentPosition.longitude + 180) / 360) * tiles);
+            const latitude = (currentPosition.latitude * Math.PI) / 180;
+            const y = Math.floor(((1 - Math.log(Math.tan(latitude) + 1 / Math.cos(latitude)) / Math.PI) / 2) * tiles);
+            return MAP_TILE_URL.replace('{z}', String(zoom)).replace('{x}', String(x)).replace('{y}', String(y));
+        })()
         : null;
 
     if (pegawai.status_kepegawaian === 'tetap') {
@@ -312,7 +312,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 <div className="mb-5">
                     <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Presensi harian</p>
                     <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Verifikasi kehadiran</h1>
-                    <p className="mt-1 text-sm leading-relaxed text-slate-600">Foto pagi & sore, tap hadir per jadwal.</p>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">Presensi pagi & sore, slide kehadiran per jadwal.</p>
                 </div>
                 <TetapPresensi
                     pegawai={pegawai}
@@ -421,12 +421,12 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                             )}
                         </>
                     ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => photoInputRef.current?.click()}
-                                    disabled={geoBlocked || !currentPosition}
-                                    className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-950 px-6 text-center text-slate-300 transition-colors active:bg-slate-900 disabled:opacity-40"
-                                >
+                        <button
+                            type="button"
+                            onClick={() => photoInputRef.current?.click()}
+                            disabled={geoBlocked || !currentPosition}
+                            className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-950 px-6 text-center text-slate-300 transition-colors active:bg-slate-900 disabled:opacity-40"
+                        >
                             <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-200">
                                 <Camera className="h-6 w-6" />
                             </div>
@@ -593,7 +593,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             >
                 {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isLembur ? 'Kirim bukti lembur' : isTeaching ? (teachingDone ? 'Sudah presensi masuk' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}
             </button>
-            <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">Foto, waktu, dan koordinat dikirim sebagai bukti presensi.</p>
 
             <canvas ref={canvasRef} className="hidden" />
         </MobileLayout>
