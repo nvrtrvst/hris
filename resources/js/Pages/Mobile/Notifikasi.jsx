@@ -3,9 +3,17 @@ import { Head, router } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Empty } from '@/Components/MobileUI';
 import Pagination from '@/Components/Pagination';
-import { Bell, CheckCheck, Search, Archive, ArchiveRestore } from 'lucide-react';
+import { Bell, CheckCheck, Search, Archive, ArchiveRestore, ChevronRight } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+
+/** Map notification data.type → route name for mobile navigation. */
+function getNotificationRoute(n) {
+    const type = n.data?.type;
+    if (type === 'status_izin') return 'presensi.izin.index';
+    if (type === 'izin_baru') return 'presensi.izin.index';
+    return null;
+}
 
 export default function Notifikasi({ auth, notifications, filters }) {
     const [search, setSearch] = useState(filters?.search || '');
@@ -76,28 +84,48 @@ export default function Notifikasi({ auth, notifications, filters }) {
                 <Empty icon={Bell} title={search ? 'Tidak ada hasil' : view === 'archived' ? 'Tidak ada arsip' : 'Tidak ada notifikasi'} subtitle={search ? 'Coba kata kunci lain.' : 'Notifikasi akan muncul di sini.'} />
             ) : (
                 <div className="space-y-2">
-                    {notifications.data.map((n) => (
-                        <Card key={n.id} press={false} className={`py-3.5 px-4 ${!n.read_at ? 'border-primary/30 bg-primary/[0.02]' : ''}`}>
-                            <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0 flex-1">
-                                    <p className={`text-sm ${!n.read_at ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
-                                        {n.data?.message || n.data?.pegawai_nama || 'Notifikasi'}
-                                    </p>
-                                    <p className="mt-0.5 text-xs text-slate-400">{n.created_at ? format(parseISO(n.created_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}</p>
+                    {notifications.data.map((n) => {
+                        const routeName = getNotificationRoute(n);
+                        const handleClick = () => {
+                            if (routeName) {
+                                if (!n.read_at) markRead(n.id);
+                                router.visit(route(routeName));
+                            } else if (!n.read_at) {
+                                markRead(n.id);
+                            }
+                        };
+                        return (
+                            <Card key={n.id} press={false} className={`py-3.5 px-4 ${!n.read_at ? 'border-primary/30 bg-primary/[0.02]' : ''}`}>
+                                <div className="flex items-start justify-between gap-2">
+                                    <div
+                                        className={`min-w-0 flex-1 ${routeName ? 'cursor-pointer' : ''}`}
+                                        onClick={handleClick}
+                                        role={routeName ? 'button' : undefined}
+                                        tabIndex={routeName ? 0 : undefined}
+                                        onKeyDown={routeName ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); } : undefined}
+                                    >
+                                        <p className={`text-sm ${!n.read_at ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
+                                            {n.data?.message || n.data?.pegawai_nama || 'Notifikasi'}
+                                        </p>
+                                        <p className="mt-0.5 text-xs text-slate-400">{n.created_at ? format(parseISO(n.created_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}</p>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-1.5">
+                                        {routeName && (
+                                            <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-300" />
+                                        )}
+                                        {view === 'all' && !n.read_at && (
+                                            <button onClick={() => markRead(n.id)} className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-primary">Tandai baca</button>
+                                        )}
+                                        {view === 'all' ? (
+                                            <button onClick={() => archive(n.id)} title="Arsipkan" aria-label="Arsipkan notifikasi" className="rounded-lg bg-slate-100 p-2 text-slate-500 active:bg-slate-200"><Archive className="h-4 w-4" /></button>
+                                        ) : (
+                                            <button onClick={() => restore(n.id)} title="Kembalikan" aria-label="Kembalikan notifikasi" className="rounded-lg bg-emerald-50 p-2 text-emerald-600"><ArchiveRestore className="h-4 w-4" /></button>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-1.5">
-                                    {view === 'all' && !n.read_at && (
-                                        <button onClick={() => markRead(n.id)} className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-primary">Tandai baca</button>
-                                    )}
-                                    {view === 'all' ? (
-                                        <button onClick={() => archive(n.id)} title="Arsipkan" aria-label="Arsipkan notifikasi" className="rounded-lg bg-slate-100 p-2 text-slate-500 active:bg-slate-200"><Archive className="h-4 w-4" /></button>
-                                    ) : (
-                                        <button onClick={() => restore(n.id)} title="Kembalikan" aria-label="Kembalikan notifikasi" className="rounded-lg bg-emerald-50 p-2 text-emerald-600"><ArchiveRestore className="h-4 w-4" /></button>
-                                    )}
-                                </div>
-                            </div>
-                        </Card>
-                    ))}
+                            </Card>
+                        );
+                    })}
                 </div>
             )}
 
