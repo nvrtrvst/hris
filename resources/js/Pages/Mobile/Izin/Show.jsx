@@ -119,14 +119,14 @@ export default function Show({ auth, pengajuan }) {
                             {/* Disetujui oleh L1 */}
                             {pengajuan.approved_at_l1 && (
                                 <p className="mt-0.5 text-xs text-slate-500">
-                                    Disetujui L1: {pengajuan.approver_l1?.name || 'Atasan'}
+                                    Disetujui oleh {pengajuan.approver_l1?.name || 'Atasan'}
                                     <span className="ml-1 text-slate-400">· {format(new Date(pengajuan.approved_at_l1), 'd MMM yyyy, HH:mm', { locale: id })}</span>
                                 </p>
                             )}
                             {/* Disetujui oleh L2 */}
                             {pengajuan.approved_at_l2 && (
                                 <p className="mt-0.5 text-xs text-slate-500">
-                                    Disetujui L2: {pengajuan.approver_l2?.name || 'Atasan'}
+                                    Disetujui oleh {pengajuan.approver_l2?.name || 'Atasan'}
                                     <span className="ml-1 text-slate-400">· {format(new Date(pengajuan.approved_at_l2), 'd MMM yyyy, HH:mm', { locale: id })}</span>
                                 </p>
                             )}
