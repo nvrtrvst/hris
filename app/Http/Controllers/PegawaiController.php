@@ -212,7 +212,7 @@ class PegawaiController extends Controller
         } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             // Admin unit: jabatan & unit yang dipakai di unit ini saja
             $jabatans = Jabatan::select('id', 'nama')
-                ->whereHas('pegawai', fn ($q) => $q->wherePivot('unit_sekolah_id', $user->unit_sekolah_id))
+                ->whereHas('pegawai', fn ($q) => $q->where('pegawai_unit.unit_sekolah_id', $user->unit_sekolah_id))
                 ->orderBy('nama')->get();
         } else {
             $jabatans = Jabatan::select('id', 'nama')->orderBy('nama')->get();
@@ -244,7 +244,7 @@ class PegawaiController extends Controller
             $unitSekolahs = UnitSekolah::select('id', 'nama')->where('id', $user->unit_sekolah_id)->get();
             // Jabatan: hanya yg dipakai di unit ini
             $jabatans = Jabatan::select('id', 'nama')
-                ->whereHas('pegawai', fn ($q) => $q->wherePivot('unit_sekolah_id', $user->unit_sekolah_id))
+                ->whereHas('pegawai', fn ($q) => $q->where('pegawai_unit.unit_sekolah_id', $user->unit_sekolah_id))
                 ->orderBy('nama')->get();
         } else {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->orderBy('nama')->get();
@@ -371,7 +371,7 @@ class PegawaiController extends Controller
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->where('id', $user->unit_sekolah_id)->get();
             $jabatans = Jabatan::select('id', 'nama')
-                ->whereHas('pegawai', fn ($q) => $q->wherePivot('unit_sekolah_id', $user->unit_sekolah_id))
+                ->whereHas('pegawai', fn ($q) => $q->where('pegawai_unit.unit_sekolah_id', $user->unit_sekolah_id))
                 ->orderBy('nama')->get();
         } else {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->orderBy('nama')->get();
