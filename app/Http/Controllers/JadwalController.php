@@ -62,7 +62,13 @@ class JadwalController extends Controller
             ->get();
 
         $kelasLabels = $jadwals->pluck('kelas_label')->filter()->unique()->sort()->values();
-        $units = UnitSekolah::all(['id', 'nama', 'singkatan']);
+
+        // Scope unit dropdown — admin_unit/pimpinan hanya lihat unit sendiri
+        $unitsQuery = UnitSekolah::query()->select(['id', 'nama', 'singkatan']);
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $unitsQuery->where('id', $user->unit_sekolah_id);
+        }
+        $units = $unitsQuery->get();
         $mapel = MataPelajaran::all(['id', 'nama']);
 
         // Get Pegawai for Matrix Rows — HANYA kolom yang dibutuhkan frontend
