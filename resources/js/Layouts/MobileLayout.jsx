@@ -85,11 +85,11 @@ export default function MobileLayout({ user, header, children }) {
                 </div>
             )}
 
-            <main className="flex-1 overflow-y-auto overscroll-contain px-4 pb-8 pt-5" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <main className="flex-1 overflow-y-auto overscroll-contain px-4 pb-24 pt-5" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {children}
             </main>
 
-            <nav className="border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md" aria-label="Navigasi utama">
+            <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md" aria-label="Navigasi utama">
                 <div className="flex h-16 items-stretch justify-between px-1">
                     {navItems.map((item) => {
                         const active = item.match(url);
