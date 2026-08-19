@@ -86,14 +86,18 @@ class PengajuanIzinController extends Controller
         ]);
     }
 
-    public function approve($id)
+    public function approve(Request $request, $id)
     {
         $user = auth()->user();
         if (! $user || (! $user->can('view_izin') && ! $user->isApprover())) {
             abort(403, 'Akses ditolak.');
         }
 
-        $pengajuan = DB::transaction(function () use ($id, $user) {
+        $request->validate([
+            'catatan_approval' => 'nullable|string|max:500',
+        ]);
+
+        $pengajuan = DB::transaction(function () use ($id, $user, $request) {
             $pengajuan = PengajuanIzin::with('pegawai')->lockForUpdate()->findOrFail($id);
 
             if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
@@ -116,6 +120,9 @@ class PengajuanIzinController extends Controller
                 }
 
                 $pengajuan->approved_at_l1 = now();
+                if ($request->filled('catatan_approval')) {
+                    $pengajuan->catatan_approval = $request->catatan_approval;
+                }
 
                 if ($pengajuan->approver_l2_id && $pengajuan->approver_l2_id !== $pengajuan->approver_l1_id) {
                     $pengajuan->approval_stage = 'pending_l2';
@@ -134,6 +141,9 @@ class PengajuanIzinController extends Controller
                 $pengajuan->approval_stage = 'approved';
                 $pengajuan->status = 'disetujui';
                 $pengajuan->approved_at_l2 = now();
+                if ($request->filled('catatan_approval')) {
+                    $pengajuan->catatan_approval = $request->catatan_approval;
+                }
                 $this->generatePresensi($pengajuan);
                 $pengajuan->save();
             }

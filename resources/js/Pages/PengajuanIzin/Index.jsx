@@ -25,19 +25,22 @@ export default function Index({ auth, pengajuans, filters, stats }) {
     const [activeTab, setActiveTab] = useState(filters?.tab || 'l1');
 
     const { data, setData, post, processing, errors, reset } = useForm({
-        alasan_penolakan: ''
+        alasan_penolakan: '',
+        catatan_approval: '',
     });
 
     const openModal = (item, type) => {
         setSelectedItem(item);
         setModalType(type);
         reset();
+        setData('catatan_approval', '');
     };
 
     const closeModal = () => {
         setSelectedItem(null);
         setTimeout(() => setModalType(null), 300);
         reset();
+        setData('catatan_approval', '');
     };
 
     const submitAction = (e) => {
@@ -495,21 +498,32 @@ export default function Index({ auth, pengajuans, filters, stats }) {
 
                             <form onSubmit={submitAction}>
                                 {modalType === 'approve' && (
-                                    <div className={`rounded-card p-4 mb-6 ${
-                                        selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
-                                            ? 'bg-warning-light border border-warning/30'
-                                            : 'bg-success-light border border-success/30'
-                                    }`}>
-                                        <p className={`text-sm ${
+                                    <>
+                                        <div className={`rounded-card p-4 mb-4 ${
                                             selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
-                                                ? 'text-warning' : 'text-success'
+                                                ? 'bg-warning-light border border-warning/30'
+                                                : 'bg-success-light border border-success/30'
                                         }`}>
-                                            {selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
-                                                ? 'Anda akan menyetujui sebagai atasan L1. Pengajuan akan diteruskan ke atasan L2 untuk persetujuan akhir.'
-                                                : 'Anda yakin ingin menyetujui pengajuan ini? Sistem akan meng-generate data absensi secara otomatis.'
-                                            }
-                                        </p>
-                                    </div>
+                                            <p className={`text-sm ${
+                                                selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
+                                                    ? 'text-warning' : 'text-success'
+                                            }`}>
+                                                {selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
+                                                    ? 'Anda akan menyetujui sebagai atasan L1. Pengajuan akan diteruskan ke atasan L2 untuk persetujuan akhir.'
+                                                    : 'Anda yakin ingin menyetujui pengajuan ini? Sistem akan meng-generate data absensi secara otomatis.'}
+                                            </p>
+                                        </div>
+                                        <div className="mb-6">
+                                            <label className="form-label text-sm font-semibold">Catatan Persetujuan <span className="text-text-muted">(opsional)</span></label>
+                                            <textarea
+                                                value={data.catatan_approval}
+                                                onChange={e => setData('catatan_approval', e.target.value)}
+                                                className="input-field w-full"
+                                                rows="2"
+                                                placeholder="Tambahkan catatan untuk pegawai..."
+                                            ></textarea>
+                                        </div>
+                                    </>
                                 )}
 
                                 {modalType === 'reject' && (

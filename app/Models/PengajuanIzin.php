@@ -18,6 +18,7 @@ class PengajuanIzin extends Model
         'alasan',
         'bukti_foto',
         'alasan_penolakan',
+        'catatan_approval',
     ];
 
     protected $guarded = [
@@ -50,5 +51,20 @@ class PengajuanIzin extends Model
     public function pegawai()
     {
         return $this->belongsTo(Pegawai::class);
+    }
+
+    public function approverL1()
+    {
+        return $this->belongsTo(User::class, 'approver_l1_id');
+    }
+
+    public function approverL2()
+    {
+        return $this->belongsTo(User::class, 'approver_l2_id');
+    }
+
+    public function rejectedByUser()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 }

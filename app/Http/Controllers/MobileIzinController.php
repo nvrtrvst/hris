@@ -45,7 +45,12 @@ class MobileIzinController extends Controller
             abort(404);
         }
 
-        $pengajuan->load('pegawai');
+        $pengajuan->load([
+            'pegawai',
+            'approverL1' => fn ($q) => $q->select('id', 'name'),
+            'approverL2' => fn ($q) => $q->select('id', 'name'),
+            'rejectedByUser' => fn ($q) => $q->select('id', 'name'),
+        ]);
 
         return Inertia::render('Mobile/Izin/Show', [
             'pengajuan' => $pengajuan,

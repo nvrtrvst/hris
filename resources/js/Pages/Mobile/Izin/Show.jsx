@@ -116,17 +116,37 @@ export default function Show({ auth, pengajuan }) {
                             }`}>
                                 Pengajuan {st.label}
                             </p>
+                            {/* Disetujui oleh L1 */}
                             {pengajuan.approved_at_l1 && (
                                 <p className="mt-0.5 text-xs text-slate-500">
-                                    Disetujui: {format(new Date(pengajuan.approved_at_l1), 'd MMM yyyy, HH:mm', { locale: id })}
+                                    Disetujui L1: {pengajuan.approver_l1?.name || 'Atasan'}
+                                    <span className="ml-1 text-slate-400">· {format(new Date(pengajuan.approved_at_l1), 'd MMM yyyy, HH:mm', { locale: id })}</span>
                                 </p>
                             )}
+                            {/* Disetujui oleh L2 */}
+                            {pengajuan.approved_at_l2 && (
+                                <p className="mt-0.5 text-xs text-slate-500">
+                                    Disetujui L2: {pengajuan.approver_l2?.name || 'Atasan'}
+                                    <span className="ml-1 text-slate-400">· {format(new Date(pengajuan.approved_at_l2), 'd MMM yyyy, HH:mm', { locale: id })}</span>
+                                </p>
+                            )}
+                            {/* Catatan atasan */}
+                            {pengajuan.catatan_approval && (
+                                <div className="mt-2 rounded-xl bg-white/80 p-3 ring-1 ring-emerald-100">
+                                    <p className="text-xs font-bold text-emerald-700">Catatan Atasan:</p>
+                                    <p className="mt-0.5 text-sm text-emerald-600">{pengajuan.catatan_approval}</p>
+                                </div>
+                            )}
+                            {/* Ditolak */}
                             {pengajuan.status === 'ditolak' && pengajuan.alasan_penolakan && (
                                 <div className="mt-2 rounded-xl bg-white/80 p-3 ring-1 ring-rose-100">
                                     <p className="flex items-center gap-1 text-xs font-bold text-rose-700">
                                         <AlertTriangle className="h-3 w-3" /> Alasan Penolakan
                                     </p>
                                     <p className="mt-1 text-sm text-rose-600">{pengajuan.alasan_penolakan}</p>
+                                    {pengajuan.rejected_by_user && (
+                                        <p className="mt-1 text-xs text-rose-400">Ditolak oleh {pengajuan.rejected_by_user.name}</p>
+                                    )}
                                 </div>
                             )}
                         </div>

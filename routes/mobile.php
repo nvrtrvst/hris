@@ -42,10 +42,10 @@ Route::middleware('auth:web_mobile')->group(function () {
     Route::post('/notifikasi/{id}/archive', [NotificationController::class, 'archive'])->middleware('throttle:60,1')->name('presensi.notifikasi.archive');
     Route::post('/notifikasi/{id}/restore', [NotificationController::class, 'restore'])->middleware('throttle:60,1')->name('presensi.notifikasi.restore');
 
-    // Rute Izin Mobile
+    // Rute Izin Mobile — /create SEBELUM /{pengajuan} supaya gak ketangkap wildcard
     Route::get('/izin', [MobileIzinController::class, 'index'])->name('presensi.izin.index');
-    Route::get('/izin/{pengajuan}', [MobileIzinController::class, 'show'])->name('presensi.izin.show');
     Route::get('/izin/create', [MobileIzinController::class, 'create'])->name('presensi.izin.create');
+    Route::get('/izin/{pengajuan}', [MobileIzinController::class, 'show'])->name('presensi.izin.show');
     Route::post('/izin', [MobileIzinController::class, 'store'])
         ->middleware('throttle:10,1')->name('presensi.izin.store');
 
