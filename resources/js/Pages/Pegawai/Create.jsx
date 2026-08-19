@@ -28,6 +28,12 @@ const SectionCard = ({ Icon, title, children }) => (
     </div>
 );
 
+const roleOptions = [
+    { value: 'pegawai', label: 'Pegawai' },
+    { value: 'admin_unit', label: 'Admin Unit (Kepala Sekolah / Kepala TU)' },
+    { value: 'pimpinan', label: 'Pimpinan (Read-Only)' },
+];
+
 export default function Create({ auth, unitSekolahs, jabatans, statusKepegawaian }) {
     const { data, setData, post, processing, errors } = useForm({
         nama_lengkap: '',
@@ -36,6 +42,7 @@ export default function Create({ auth, unitSekolahs, jabatans, statusKepegawaian
         no_hp: '',
         unit_sekolah_id: '',
         jabatan_id: '',
+        role: 'pegawai',
         status_kepegawaian: 'tetap',
     });
 
@@ -77,6 +84,13 @@ export default function Create({ auth, unitSekolahs, jabatans, statusKepegawaian
                             </Field>
                             <Field label="Password" error={errors.password} hint="Kosongkan untuk auto-generate">
                                 <input type="password" value={data.password} onChange={(e) => setData('password', e.target.value)} className={inputClass} placeholder="••••••••" />
+                            </Field>
+                            <Field label="Role Akses" required error={errors.role}>
+                                <select value={data.role} onChange={(e) => setData('role', e.target.value)} className={selectClass}>
+                                    {roleOptions.map((r) => (
+                                        <option key={r.value} value={r.value}>{r.label}</option>
+                                    ))}
+                                </select>
                             </Field>
                             <Field label="No. HP" required error={errors.no_hp}>
                                 <div className="relative">
