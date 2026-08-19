@@ -20,7 +20,7 @@ export default function MobileLayout({ user, header, children }) {
     const unitInitial = unitLabel.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || 'YYS';
 
     return (
-        <div className="mobile-root mx-auto flex max-w-md flex-col bg-[#f4f7f5] font-sans font-antialiased text-slate-900 shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
+        <div className="mobile-root mx-auto max-w-md bg-[#f4f7f5] font-sans font-antialiased text-slate-900 shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
             <header className="sticky top-0 z-20 border-b border-emerald-950/10 bg-primary px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
                 <div className="flex min-h-11 items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -85,7 +85,7 @@ export default function MobileLayout({ user, header, children }) {
                 </div>
             )}
 
-            <main className="flex-1 overflow-y-auto overscroll-contain px-4 pb-24 pt-5" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <main className="px-4 pb-24 pt-5">
                 {children}
             </main>
 

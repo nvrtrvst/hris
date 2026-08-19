@@ -37,13 +37,13 @@
 }
 
 @layer components {
-    /* Wrapper mobile PWA: tinggi TETAP viewport.
-       Nav diposisikan fixed di bawah — bukan flex child — supaya
-       Chrome Android tetap bisa scroll <main> via touch. */
+    /* Wrapper mobile PWA: tinggi penuh viewport.
+       Page scroll natural (bukan flex child scroll), nav fixed di
+       viewport bawah — reliable cross-browser termasuk Chrome Android. */
     .mobile-root {
-        height: 100vh;
-        height: 100dvh;
-        height: -webkit-fill-available;
+        min-height: 100vh;
+        min-height: 100dvh;
+        min-height: -webkit-fill-available;
     }
 
     /* Posisi toast "Versi baru tersedia": mobile full-width di atas dengan
