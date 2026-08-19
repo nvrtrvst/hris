@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Pagination from '@/Components/Pagination';
 import StatCard from '@/Components/StatCard';
-import { Archive, ArchiveRestore, Bell, CheckCheck, Inbox, MailOpen, Search } from 'lucide-react';
+import { Archive, ArchiveRestore, Bell, CheckCheck, ChevronRight, Inbox, MailOpen, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 
@@ -34,6 +34,14 @@ export default function NotificationsIndex({ auth, notifications, filters, flash
         { key: 'all', label: `Masuk (${notifications.total ?? notifications.data?.length ?? 0})` },
         { key: 'archived', label: 'Diarsipkan' },
     ];
+
+    /** Map notification data.type → admin route. */
+    const getNotificationRoute = (n) => {
+        const type = n.data?.type;
+        if (type === 'status_izin') return route('pengajuan-izin.index');
+        if (type === 'izin_baru') return route('pengajuan-izin.index');
+        return null;
+    };
 
     const total = notifications?.total ?? notifications.data?.length ?? 0;
 
@@ -99,10 +107,26 @@ export default function NotificationsIndex({ auth, notifications, filters, flash
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            {notifications.data.map((n) => (
+                            {notifications.data.map((n) => {
+                            const targetUrl = getNotificationRoute(n);
+                            const handleClick = () => {
+                                if (targetUrl) {
+                                    if (!n.read_at) markRead(n.id);
+                                    router.visit(targetUrl);
+                                } else if (!n.read_at) {
+                                    markRead(n.id);
+                                }
+                            };
+                            return (
                                 <div key={n.id} className={`card p-4 transition-all hover:shadow-card ${!n.read_at ? 'border-primary/30 bg-primary/[0.02]' : ''}`}>
                                     <div className="flex items-start justify-between gap-2">
-                                        <div className="min-w-0 flex-1">
+                                        <div
+                                            className={`min-w-0 flex-1 ${targetUrl ? 'cursor-pointer' : ''}`}
+                                            onClick={handleClick}
+                                            role={targetUrl ? 'button' : undefined}
+                                            tabIndex={targetUrl ? 0 : undefined}
+                                            onKeyDown={targetUrl ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); } : undefined}
+                                        >
                                             <p className={`text-sm ${!n.read_at ? 'font-bold text-text-primary' : 'text-text-secondary'}`}>
                                                 {n.data?.message || n.data?.pegawai_nama || 'Notifikasi'}
                                             </p>
@@ -111,6 +135,9 @@ export default function NotificationsIndex({ auth, notifications, filters, flash
                                             </p>
                                         </div>
                                         <div className="flex shrink-0 items-center gap-1.5">
+                                            {targetUrl && (
+                                                <ChevronRight className="h-4 w-4 flex-shrink-0 text-border" />
+                                            )}
                                             {view === 'all' && !n.read_at && (
                                                 <button onClick={() => markRead(n.id)}
                                                     className="rounded-lg bg-surface px-2 py-1 text-[10px] font-bold text-primary transition-colors hover:bg-primary/10">
@@ -131,7 +158,8 @@ export default function NotificationsIndex({ auth, notifications, filters, flash
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            );
+                        })}
                         </div>
                     )}
 
