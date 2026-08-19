@@ -49,7 +49,6 @@ class SeedJabatanDapodik extends Command
 
             if (! $exists) {
                 DB::table('jabatan')->insert([
-                    'id' => $j['id'],
                     'nama' => $j['nama'],
                     'created_at' => now(),
                     'updated_at' => now(),
