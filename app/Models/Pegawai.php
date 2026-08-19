@@ -285,7 +285,18 @@ class Pegawai extends Model
                 return Carbon::parse($izin->tanggal_mulai)->year === $year;
             })
             ->sum(function ($izin) {
-                return Carbon::parse($izin->tanggal_mulai)->diffInDays(Carbon::parse($izin->tanggal_selesai)) + 1;
+                // Hitung hanya hari kerja (Senin–Jumat)
+                $start = Carbon::parse($izin->tanggal_mulai);
+                $end = Carbon::parse($izin->tanggal_selesai);
+                $count = 0;
+                $current = $start->copy();
+                while ($current->lte($end)) {
+                    if ($current->isWeekday()) {
+                        $count++;
+                    }
+                    $current->addDay();
+                }
+                return $count;
             });
     }
 

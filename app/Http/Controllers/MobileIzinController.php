@@ -91,12 +91,30 @@ class MobileIzinController extends Controller
             return back()->withErrors(['bukti_foto' => 'Surat keterangan dokter / bukti foto wajib dilampirkan untuk pengajuan Sakit.']);
         }
 
+        // ── Validasi overlap: cegah pengajuan untuk tanggal yg sudah ada pengajuan pending/disetujui ──
+        $existingIzin = PengajuanIzin::where('pegawai_id', $pegawai->id)
+            ->whereIn('status', ['pending', 'disetujui'])
+            ->where(function ($q) use ($request) {
+                $q->whereBetween('tanggal_mulai', [$request->tanggal_mulai, $request->tanggal_selesai])
+                    ->orWhereBetween('tanggal_selesai', [$request->tanggal_mulai, $request->tanggal_selesai])
+                    ->orWhere(function ($q2) use ($request) {
+                        $q2->where('tanggal_mulai', '<=', $request->tanggal_mulai)
+                            ->where('tanggal_selesai', '>=', $request->tanggal_selesai);
+                    });
+            })
+            ->first();
+
+        if ($existingIzin) {
+            $label = $existingIzin->status === 'disetujui' ? 'sudah disetujui' : 'sedang diproses';
+            return back()->withErrors(['tanggal_mulai' => 'Anda sudah memiliki pengajuan '.$existingIzin->jenis_izin.' untuk tanggal tersebut ('.$label.').']);
+        }
+
         if ($request->jenis_izin === 'cuti') {
-            // sisa_cuti dipakai utk validasi — eager-load pengajuanIzins + append eksplisit (P2).
+            // sisa_cuti: hitung hanya hari kerja (Senin-Jumat)
             $pegawai->loadCutiInfo();
-            $requestedDays = Carbon::parse($request->tanggal_mulai)->diffInDays(Carbon::parse($request->tanggal_selesai)) + 1;
+            $requestedDays = $this->countWeekdays($request->tanggal_mulai, $request->tanggal_selesai);
             if ($requestedDays > $pegawai->sisa_cuti) {
-                return back()->withErrors(['alasan' => 'Sisa cuti Anda tidak mencukupi. Anda mengajukan '.$requestedDays.' hari, sedangkan sisa cuti: '.$pegawai->sisa_cuti.' hari.']);
+                return back()->withErrors(['alasan' => 'Sisa cuti Anda tidak mencukupi. Anda mengajukan '.$requestedDays.' hari kerja, sedangkan sisa cuti: '.$pegawai->sisa_cuti.' hari.']);
             }
         }
 
@@ -104,7 +122,7 @@ class MobileIzinController extends Controller
         $checkDate = Carbon::parse($request->tanggal_mulai);
         $endDate = Carbon::parse($request->tanggal_selesai);
         while ($checkDate->lte($endDate)) {
-            if (PayrollLockHelper::isPeriodLocked($pegawai->id, $checkDate)) {
+            if ($checkDate->isWeekday() && PayrollLockHelper::isPeriodLocked($pegawai->id, $checkDate)) {
                 return back()->withErrors(['tanggal_mulai' => 'Periode penggajian untuk bulan '.$checkDate->format('m-Y').' sudah dikunci. Tidak bisa mengajukan izin untuk tanggal tersebut.']);
             }
             $checkDate->addDay();
@@ -183,5 +201,23 @@ class MobileIzinController extends Controller
         foreach ($targets->unique('id') as $target) {
             NotificationHelper::sendSafely($target, new IzinBaru($pengajuan));
         }
+    }
+
+    /**
+     * Hitung jumlah hari kerja (Senin–Jumat) dalam rentang tanggal.
+     */
+    private function countWeekdays(string $start, string $end): int
+    {
+        $startDate = Carbon::parse($start);
+        $endDate = Carbon::parse($end);
+        $count = 0;
+        $current = $startDate->copy();
+        while ($current->lte($endDate)) {
+            if ($current->isWeekday()) {
+                $count++;
+            }
+            $current->addDay();
+        }
+        return $count;
     }
 }
