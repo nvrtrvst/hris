@@ -286,11 +286,13 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                             <div className="min-w-0">
                                                                 <div className="text-sm font-bold text-primary truncate max-w-[200px]">{pegawai.nama_lengkap}</div>
                                                                 <div className="mt-0.5 flex items-center gap-1 text-[11px] text-text-secondary">
-                                                                    {pegawai.nip ? (
-                                                                        <span className="inline-flex items-center gap-0.5"><Briefcase className="h-2.5 w-2.5" />{pegawai.nip}</span>
-                                                                    ) : pegawai.nik_masked ? (
-                                                                        <span className="inline-flex items-center gap-0.5"><IdCard className="h-2.5 w-2.5" />{pegawai.nik_masked}</span>
-                                                                    ) : null}
+                                                                    <span className="inline-flex items-center gap-0.5">
+                                                                        {pegawai.nip ? (
+                                                                            <><Briefcase className="h-2.5 w-2.5" />{pegawai.nip}</>
+                                                                        ) : (
+                                                                            <><IdCard className="h-2.5 w-2.5" />—</>
+                                                                        )}
+                                                                    </span>
                                                                 </div>
                                                             </div>
                                                         </div>
