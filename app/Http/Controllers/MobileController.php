@@ -6,6 +6,7 @@ use App\Constants\PresensiMessages;
 use App\Jobs\ProcessPresensiFoto;
 use App\Models\Announcement;
 use App\Models\Jadwal;
+use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Services\AttestationService;
 use App\Services\SpoofDetector;
@@ -195,6 +196,7 @@ class MobileController extends Controller
     public function jadwal()
     {
         $pegawai = $this->getPegawai();
+        $pegawai->load('units');
 
         $jadwals = $this->rememberJadwal('mobile.jadwal.'.$pegawai->id, 900, function () use ($pegawai) {
             return Jadwal::with(['unitSekolah', 'mataPelajaran'])
@@ -205,9 +207,56 @@ class MobileController extends Controller
                 ->groupBy('hari');
         });
 
+        // Presensi hari ini untuk status ringkasan
+        $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
+        $hariIniIndo = $hariMap[Carbon::now()->format('l')];
+
+        $presensiHariIni = Presensi::with('jadwal.mataPelajaran')
+            ->where('pegawai_id', $pegawai->id)
+            ->where('tanggal', Carbon::today()->toDateString())
+            ->get();
+
+        // Jadwal hari ini (untuk tampilan quick view)
+        $jadwalHariIni = $jadwals[$hariIniIndo] ?? collect();
+
+        // Bawahan langsung — presensi hari ini (untuk pimpinan)
+        $bawahanPresensi = collect();
+        $user = auth()->user();
+        if ($user && $user->hasRole('pimpinan')) {
+            $bawahanIds = Pegawai::where('atasan_langsung_id', $pegawai->id)
+                ->where('status_aktif', 'aktif')
+                ->pluck('id');
+            if ($bawahanIds->isNotEmpty()) {
+                $bawahanList = Pegawai::whereIn('id', $bawahanIds)
+                    ->with([
+                        'user' => fn ($q) => $q->select('id', 'name'),
+                        'units' => fn ($q) => $q->select('unit_sekolah.id', 'unit_sekolah.nama'),
+                    ])
+                    ->get();
+                $todayPresensi = Presensi::whereIn('pegawai_id', $bawahanIds)
+                    ->where('tanggal', Carbon::today()->toDateString())
+                    ->get()
+                    ->groupBy('pegawai_id');
+                $bawahanPresensi = $bawahanList->map(fn ($p) => [
+                    'id' => $p->id,
+                    'nama' => $p->nama_lengkap,
+                    'unit' => $p->units->first()?->nama ?? '',
+                    'presensi' => ($todayPresensi[$p->id] ?? collect())->map(fn ($pr) => [
+                        'jam_masuk' => $pr->jam_masuk,
+                        'jam_keluar' => $pr->jam_keluar,
+                        'status' => $pr->status,
+                        'is_lembur' => $pr->is_lembur,
+                    ])->values(),
+                ]);
+            }
+        }
+
         return inertia('Mobile/Jadwal', [
             'pegawai' => $pegawai,
             'jadwalPerHari' => $jadwals,
+            'presensiHariIni' => $presensiHariIni,
+            'jadwalHariIni' => $jadwalHariIni,
+            'bawahanPresensi' => $bawahanPresensi,
         ]);
     }
 
