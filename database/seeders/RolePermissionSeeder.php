@@ -27,6 +27,7 @@ class RolePermissionSeeder extends Seeder
             // Pegawai
             'view_pegawai',
             'view_jadwal',
+            'manage_jadwal', // tambah/edit/generate/hapus jadwal (admin_unit & staf yang ditunjuk)
             'view_presensi',
             'view_izin',
             'view_payroll',
@@ -52,6 +53,7 @@ class RolePermissionSeeder extends Seeder
             'view_dashboard',
             'view_pegawai',
             'view_jadwal',
+            'manage_jadwal',
             'view_presensi',
             'view_izin',
             'view_payroll',

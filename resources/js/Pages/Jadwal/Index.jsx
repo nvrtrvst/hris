@@ -104,8 +104,8 @@ const JadwalLiveBadge = ({ jadwal, presensi, now }) => {
     );
 };
 
-export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, stats = {}, filters = {}, presensiHariIni = [] }) {
-    const isAdmin = auth.permissions?.includes('view_jadwal');
+export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, stats = {}, filters = {}, presensiHariIni = [], canMutateJadwal = false }) {
+    const isAdmin = auth.permissions?.includes('view_jadwal') || auth.permissions?.includes('manage_jadwal');
     const { flash = {}, errors = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
     const now = useNowEveryMinute();
@@ -371,15 +371,19 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     <button type="button" onClick={() => window.print()} className="btn-secondary btn-sm flex items-center gap-1.5">
                                         <Printer className="h-3.5 w-3.5" /> Cetak PDF
                                     </button>
-                                    <button type="button" onClick={() => setShowGenerateModal(true)} className="btn-primary btn-sm bg-accent text-primary-800 hover:bg-yellow-500 flex items-center gap-1.5">
-                                        <Sparkles className="h-3.5 w-3.5" /> Generate Otomatis
-                                    </button>
+                                    {canMutateJadwal && (
+                                        <button type="button" onClick={() => setShowGenerateModal(true)} className="btn-primary btn-sm bg-accent text-primary-800 hover:bg-yellow-500 flex items-center gap-1.5">
+                                            <Sparkles className="h-3.5 w-3.5" /> Generate Otomatis
+                                        </button>
+                                    )}
                                     <button type="button" onClick={() => setShowRekapModal(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
                                         <CalendarRange className="h-3.5 w-3.5" /> Rekap Kelas
                                     </button>
-                                    <Link href={route('jadwal.create')} className="btn-primary btn-sm flex items-center gap-1.5">
-                                        <Plus className="h-3.5 w-3.5" /> Tambah Jadwal
-                                    </Link>
+                                    {canMutateJadwal && (
+                                        <Link href={route('jadwal.create')} className="btn-primary btn-sm flex items-center gap-1.5">
+                                            <Plus className="h-3.5 w-3.5" /> Tambah Jadwal
+                                        </Link>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -542,8 +546,9 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                                 now={now}
                                                                             />
 
-                                                                            {/* Action Overlay */}
-                                                                            <div className="absolute inset-0 bg-primary/90 opacity-0 group-hover/card:opacity-100 flex items-center justify-center gap-2 rounded-lg transition-opacity backdrop-blur-sm print:hidden">
+                                            {/* Action Overlay */}
+                                            {canMutateJadwal && (
+                                            <div className="absolute inset-0 bg-primary/90 opacity-0 group-hover/card:opacity-100 flex items-center justify-center gap-2 rounded-lg transition-opacity backdrop-blur-sm print:hidden">
                                                                                 <button
                                                                                     type="button"
                                                                                     onClick={() => router.get(route('jadwal.edit', jadwal.id))}
@@ -579,6 +584,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                                     <Trash2 className="h-4 w-4" />
                                                                                 </button>
                                                                             </div>
+                                            )}
                                                                         </div>
                                                                     );
                                                                 }) : (

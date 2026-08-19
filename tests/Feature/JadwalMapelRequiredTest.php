@@ -74,7 +74,7 @@ class JadwalMapelRequiredTest extends TestCase
             'pegawai_id' => $pegawai->id,
             'unit_sekolah_id' => $unit->id,
             'kelas_label' => '7 - A',
-            'hari' => 'Senin',
+            'hari' => ['Senin'],
             'jam_mulai' => '08:00',
             'jam_selesai' => '09:00',
             'jenis_jadwal' => 'mengajar',

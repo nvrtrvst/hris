@@ -1203,7 +1203,7 @@ class RouteSmokeTest extends TestCase
                 'unit_sekolah_id' => $this->unit->id,
                 'kelas_label' => '7 - B',
                 'mata_pelajaran_id' => $this->mapel->id,
-                'hari' => 'Sabtu',
+                'hari' => ['Sabtu'],
                 'jam_mulai' => '13:00',
                 'jam_selesai' => '14:30',
                 'jenis_jadwal' => 'mengajar',

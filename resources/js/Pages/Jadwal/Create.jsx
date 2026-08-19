@@ -10,7 +10,7 @@ export default function Create({ auth, pegawais, units, mapel }) {
         unit_sekolah_id: '',
         kelas_label: '',
         mata_pelajaran_id: '',
-        hari: 'Senin',
+        hari: ['Senin'],
         jam_mulai: '',
         jam_selesai: '',
         jenis_jadwal: 'mengajar',
@@ -151,13 +151,24 @@ export default function Create({ auth, pegawais, units, mapel }) {
                                 <div>
                                     <h3 className="section-title text-text-primary border-b border-border pb-2 mb-4 mt-8">Waktu Pelaksanaan</h3>
                                     <div className="form-grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div>
+                                        <div className="md:col-span-3">
                                             <label className="form-label">Hari <span className="text-red-500">*</span></label>
-                                            <select value={data.hari} onChange={e => setData('hari', e.target.value)} className="select-field">
-                                                {['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].map(h => (
-                                                    <option key={h} value={h}>{h}</option>
-                                                ))}
-                                            </select>
+                                            <div className="flex flex-wrap gap-2">
+                                                {['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].map(h => {
+                                                    const active = data.hari.includes(h);
+                                                    return (
+                                                        <button
+                                                            key={h}
+                                                            type="button"
+                                                            onClick={() => setData('hari', active ? data.hari.filter(x => x !== h) : [...data.hari, h])}
+                                                            className={`px-3 py-1.5 rounded-full border text-sm transition-all cursor-pointer ${active ? 'bg-primary text-white border-primary' : 'bg-surface border-border text-text-secondary hover:border-primary/50'}`}
+                                                        >
+                                                            {h}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <p className="form-hint mt-1">Pilih satu atau lebih hari untuk jadwal berulang mingguan.</p>
                                             {errors.hari && <p className="form-error">{errors.hari}</p>}
                                         </div>
                                         <div>
