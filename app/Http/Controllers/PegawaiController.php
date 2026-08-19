@@ -243,12 +243,12 @@ class PegawaiController extends Controller
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->where('id', $user->unit_sekolah_id)->get();
             // Jabatan: hanya yg dipakai di unit ini
-            $jabatans = Jabatan::select('id', 'nama')
+            $jabatans = Jabatan::select('id', 'nama', 'hierarchy_level')
                 ->whereHas('pegawai', fn ($q) => $q->where('pegawai_unit.unit_sekolah_id', $user->unit_sekolah_id))
                 ->orderBy('nama')->get();
         } else {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->orderBy('nama')->get();
-            $jabatans = Jabatan::select('id', 'nama')->orderBy('nama')->get();
+            $jabatans = Jabatan::select('id', 'nama', 'hierarchy_level')->orderBy('nama')->get();
         }
 
         return inertia('Pegawai/Create', [
@@ -370,20 +370,24 @@ class PegawaiController extends Controller
 
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->where('id', $user->unit_sekolah_id)->get();
-            $jabatans = Jabatan::select('id', 'nama')
+            $jabatans = Jabatan::select('id', 'nama', 'hierarchy_level')
                 ->whereHas('pegawai', fn ($q) => $q->where('pegawai_unit.unit_sekolah_id', $user->unit_sekolah_id))
                 ->orderBy('nama')->get();
         } else {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->orderBy('nama')->get();
-            $jabatans = Jabatan::select('id', 'nama')->orderBy('nama')->get();
+            $jabatans = Jabatan::select('id', 'nama', 'hierarchy_level')->orderBy('nama')->get();
         }
         $mapels = MataPelajaran::select('id', 'nama')->orderBy('nama')->get();
 
-        // Kandidat atasan langsung: superadmin boleh semua, admin unit hanya
-        // pegawai di unitnya sendiri (jangan termasuk diri sendiri).
+        // Kandidat atasan langsung: hanya pegawai dengan jabatan hierarchy LEBIH TINGGI.
+        // Ambil hierarchy_level pegawai yg sedang diedit
+        $pegawaiHierarchy = $jabatans->firstWhere('id', $pegawai->jabatans->first()?->pivot->jabatan_id)?->hierarchy_level ?? 99;
         $atasanQuery = Pegawai::query()
-            ->with(['units' => fn ($q) => $q->withPivot('jabatan_id', 'is_primary')])
-            ->where('status_aktif', 'aktif');
+            ->with(['units' => fn ($q) => $q->withPivot('jabatan_id', 'is_primary'), 'jabatans'])
+            ->where('status_aktif', 'aktif')
+            ->whereHas('jabatans', function ($q) use ($pegawaiHierarchy) {
+                $q->where('jabatan.hierarchy_level', '<', $pegawaiHierarchy);
+            });
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $atasanQuery->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $user->unit_sekolah_id));
         }

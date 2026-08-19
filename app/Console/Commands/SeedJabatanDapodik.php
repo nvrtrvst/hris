@@ -8,59 +8,66 @@ use Illuminate\Support\Facades\DB;
 class SeedJabatanDapodik extends Command
 {
     protected $signature = 'jabatan:seed-dapodik';
-    protected $description = 'Seed jabatan referensi Dapodik yang belum ada di tabel jabatan';
+    protected $description = 'Seed jabatan referensi Dapodik + hierarchy_level';
 
     public function handle(): int
     {
+        // hierarchy_level: 0=paling tinggi, 99=default
         $jabatans = [
-            ['id' => 1, 'nama' => 'Kepala Sekolah'],
-            ['id' => 2, 'nama' => 'Wakil Kepala Sekolah'],
-            ['id' => 3, 'nama' => 'Guru Mata Pelajaran'],
-            ['id' => 4, 'nama' => 'Guru Kelas'],
-            ['id' => 5, 'nama' => 'Guru BK'],
-            ['id' => 6, 'nama' => 'Wali Kelas'],
-            ['id' => 7, 'nama' => 'Tenaga Administrasi'],
-            ['id' => 8, 'nama' => 'Operator / Pranata Komputer'],
-            ['id' => 9, 'nama' => 'Pustakawan'],
-            ['id' => 10, 'nama' => 'Satpam'],
-            ['id' => 11, 'nama' => 'Petugas Kebersihan'],
-            ['id' => 12, 'nama' => 'Tenaga Administrasi (TU)'],
-            ['id' => 13, 'nama' => 'Bendahara'],
-            ['id' => 14, 'nama' => 'Laboran'],
-            ['id' => 15, 'nama' => 'Satpam / Petugas Keamanan'],
-            ['id' => 16, 'nama' => 'Pesuruh / Office Boy'],
-            ['id' => 17, 'nama' => 'Kepala Perpustakaan'],
-            ['id' => 18, 'nama' => 'Tukang Kebun'],
-            ['id' => 19, 'nama' => 'Kepala Laboratorium'],
-            ['id' => 20, 'nama' => 'Kasir'],
-            ['id' => 21, 'nama' => 'Terapis'],
-            ['id' => 22, 'nama' => 'Guru Mata Pelajaran'],
-            ['id' => 23, 'nama' => 'Ketua Yayasan'],
-            ['id' => 24, 'nama' => 'Kepala Tata Usaha'],
+            ['nama' => 'Kepala Sekolah',               'hierarchy_level' => 1],
+            ['nama' => 'Wakil Kepala Sekolah',          'hierarchy_level' => 2],
+            ['nama' => 'Ketua Yayasan',                 'hierarchy_level' => 0],
+            ['nama' => 'Kepala Tata Usaha',             'hierarchy_level' => 3],
+            ['nama' => 'Kepala Perpustakaan',           'hierarchy_level' => 3],
+            ['nama' => 'Kepala Laboratorium',           'hierarchy_level' => 3],
+            ['nama' => 'Bendahara',                     'hierarchy_level' => 4],
+            ['nama' => 'Operator / Pranata Komputer',   'hierarchy_level' => 4],
+            ['nama' => 'Wali Kelas',                    'hierarchy_level' => 5],
+            ['nama' => 'Guru Mata Pelajaran',           'hierarchy_level' => 5],
+            ['nama' => 'Guru Kelas',                    'hierarchy_level' => 5],
+            ['nama' => 'Guru BK',                       'hierarchy_level' => 5],
+            ['nama' => 'Pustakawan',                    'hierarchy_level' => 6],
+            ['nama' => 'Laboran',                       'hierarchy_level' => 6],
+            ['nama' => 'Tenaga Administrasi',           'hierarchy_level' => 6],
+            ['nama' => 'Tenaga Administrasi (TU)',      'hierarchy_level' => 6],
+            ['nama' => 'Kasir',                         'hierarchy_level' => 6],
+            ['nama' => 'Terapis',                       'hierarchy_level' => 6],
+            ['nama' => 'Satpam',                        'hierarchy_level' => 7],
+            ['nama' => 'Satpam / Petugas Keamanan',     'hierarchy_level' => 7],
+            ['nama' => 'Petugas Kebersihan',            'hierarchy_level' => 7],
+            ['nama' => 'Pesuruh / Office Boy',          'hierarchy_level' => 7],
+            ['nama' => 'Tukang Kebun',                  'hierarchy_level' => 7],
         ];
 
         $inserted = 0;
+        $updated = 0;
         $skipped = 0;
 
         foreach ($jabatans as $j) {
-            $exists = DB::table('jabatan')
-                ->where('nama', $j['nama'])
-                ->exists();
+            $existing = DB::table('jabatan')->where('nama', $j['nama'])->first();
 
-            if (! $exists) {
+            if (! $existing) {
                 DB::table('jabatan')->insert([
                     'nama' => $j['nama'],
+                    'hierarchy_level' => $j['hierarchy_level'],
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-                $this->info("INSERTED: {$j['nama']}");
+                $this->info("INSERTED: {$j['nama']} (level {$j['hierarchy_level']})");
                 $inserted++;
+            } elseif ($existing->hierarchy_level != $j['hierarchy_level']) {
+                DB::table('jabatan')->where('id', $existing->id)->update([
+                    'hierarchy_level' => $j['hierarchy_level'],
+                    'updated_at' => now(),
+                ]);
+                $this->info("UPDATED: {$j['nama']} level {$existing->hierarchy_level} -> {$j['hierarchy_level']}");
+                $updated++;
             } else {
                 $skipped++;
             }
         }
 
-        $this->info("Done. Inserted: {$inserted}, Skipped: {$skipped}");
+        $this->info("Done. Inserted: {$inserted}, Updated: {$updated}, Skipped: {$skipped}");
 
         return Command::SUCCESS;
     }
