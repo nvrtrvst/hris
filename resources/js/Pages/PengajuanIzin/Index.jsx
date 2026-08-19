@@ -466,6 +466,15 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                                     </>
                                                 )}
                                             </div>
+                                            {/* Disetujui oleh */}
+                                            {selectedItem.approved_at_l1 && (
+                                                <p className="mt-2 text-xs text-text-muted">
+                                                    Disetujui oleh {selectedItem.approver_l1?.name || 'Atasan'}
+                                                    {selectedItem.approved_at_l2 && (
+                                                        <>, {selectedItem.approver_l2?.name || 'Atasan'}</>
+                                                    )}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex-1 space-y-4">

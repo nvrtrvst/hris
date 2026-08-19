@@ -26,7 +26,12 @@ class PengajuanIzinController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $query = PengajuanIzin::with('pegawai');
+        $query = PengajuanIzin::with([
+            'pegawai',
+            'approverL1' => fn ($q) => $q->select('id', 'name'),
+            'approverL2' => fn ($q) => $q->select('id', 'name'),
+            'rejectedByUser' => fn ($q) => $q->select('id', 'name'),
+        ]);
         $tab = $request->input('tab', 'semua');
 
         if ($tab === 'l1') {
