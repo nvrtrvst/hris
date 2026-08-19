@@ -316,6 +316,9 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <InfoRow label="Pendidikan Terakhir">{pegawai.pendidikan_terakhir || '—'}</InfoRow>
                                 <InfoRow label="Mulai Bekerja">{fmtDate(pegawai.tanggal_mulai_kerja)}</InfoRow>
+                                <InfoRow label="Dibuat oleh">
+                                    {pegawai.created_by?.name ? `${pegawai.created_by.name} • ${fmtDate(pegawai.created_at)}` : fmtDate(pegawai.created_at)}
+                                </InfoRow>
                                 <InfoRow label="Jatah Cuti Tahunan">{pegawai.jatah_cuti_tahunan ?? 12} hari</InfoRow>
                                 {canViewKontrak && pegawai.tanggal_akhir_kontrak && <InfoRow label="Akhir Kontrak">{fmtDate(pegawai.tanggal_akhir_kontrak)}</InfoRow>}
                             </div>

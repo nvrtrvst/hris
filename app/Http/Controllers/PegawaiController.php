@@ -312,6 +312,7 @@ class PegawaiController extends Controller
         // seiring bertambahnya perubahan data.
         $pegawai = Pegawai::with([
             'user' => fn ($q) => $q->select('id', 'email', 'username'),
+            'createdBy' => fn ($q) => $q->select('id', 'name'),
             'units' => fn ($q) => $q->select('unit_sekolah.id', 'unit_sekolah.nama'),
             'jabatans' => fn ($q) => $q->select('jabatan.id', 'jabatan.nama'),
             'mapels' => fn ($q) => $q->select('mata_pelajaran.id', 'mata_pelajaran.nama'),

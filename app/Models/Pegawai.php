@@ -54,6 +54,7 @@ class Pegawai extends Model
         'no_bpjs_ketenagakerjaan',
         'jatah_cuti_tahunan',
         'wajib_kantor',
+        'created_by',
     ];
 
     // P2: sisa_cuti/cuti_terpakai TIDAK di-appends global — accessor-nya query DB
@@ -195,6 +196,11 @@ class Pegawai extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function atasanLangsung(): BelongsTo

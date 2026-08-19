@@ -11,7 +11,11 @@ class PegawaiObserver
      */
     public function created(Pegawai $pegawai): void
     {
-        //
+        // Update query-builder: bypass events & cast agar saving-hook NIK (nik_hash)
+        // tidak ikut jalan ulang dan merusak hash/cipher NIK yang baru disimpan.
+        if (! $pegawai->created_by && auth()->check()) {
+            Pegawai::query()->whereKey($pegawai->getKey())->update(['created_by' => auth()->id()]);
+        }
     }
 
     /**
