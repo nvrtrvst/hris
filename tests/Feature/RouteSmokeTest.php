@@ -440,6 +440,12 @@ class RouteSmokeTest extends TestCase
 
     private User $mobileUser;
 
+    private User $payrollOperator;
+
+    private Pegawai $payrollOperatorPegawai;
+
+    private Jabatan $payrollOperatorJabatan;
+
     private string $photoPath;
 
     private string $adminNotifId;
@@ -517,6 +523,35 @@ class RouteSmokeTest extends TestCase
         ]);
         $this->pegawai->units()->attach($this->unit->id, ['jabatan_id' => $this->jabatan->id, 'is_primary' => true]);
         $this->pegawai->mapels()->attach($this->mapel->id, ['unit_sekolah_id' => $this->unit->id]);
+
+        // Operator payroll = jabatan dgn flag is_payroll_operator (bendahara).
+        // Admin unit TIDAK lagi pegang view_payroll/manage_payroll (seeder),
+        // jadi route mutasi payroll diuji pakai operator ini.
+        // Dibuat SETELAH $this->pegawai agar `Pegawai::first()` (Presensi/Create)
+        // tetap mengembalikan pegawai utama yang punya jadwal + presensi.
+        $this->payrollOperatorJabatan = Jabatan::create(['nama' => 'Bendahara', 'is_guru' => false, 'is_payroll_operator' => true]);
+
+        $this->payrollOperator = User::factory()->create(['role' => 'pegawai']);
+        $this->payrollOperator->assignRole('pegawai');
+
+        $this->payrollOperatorPegawai = Pegawai::create([
+            'user_id' => $this->payrollOperator->id,
+            'nik' => '9988776655443322',
+            'nama_lengkap' => 'Bendahara Smoke Test',
+            'tempat_lahir' => 'Bandung',
+            'tanggal_lahir' => '1988-01-01',
+            'jenis_kelamin' => 'L',
+            'agama' => 'Islam',
+            'status_pernikahan' => 'kawin',
+            'jumlah_tanggungan' => 2,
+            'alamat_ktp' => 'Jl. Smoke No. 2',
+            'no_hp' => '081200000002',
+            'status_kepegawaian' => 'tetap',
+            'tanggal_mulai_kerja' => '2015-01-01',
+            'status_aktif' => 'aktif',
+            'pendidikan_terakhir' => 'S1',
+        ]);
+        $this->payrollOperatorPegawai->units()->attach($this->unit->id, ['jabatan_id' => $this->payrollOperatorJabatan->id, 'is_primary' => true]);
 
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIni = $hariMap[now()->format('l')];
@@ -1088,7 +1123,7 @@ class RouteSmokeTest extends TestCase
             return $this->mobileUser;
         }
 
-        // Route yang sengaja membatasi superadmin (hanya admin unit):
+        // Route yang sengaja membatasi superadmin (hanya payroll operator):
         // export-bank, destroy payroll, destroy_period, finalize worksheet.
         if (in_array($name, [
             'penggajian.export-bank',
@@ -1096,7 +1131,7 @@ class RouteSmokeTest extends TestCase
             'penggajian.destroy_period',
             'penggajian.run.worksheet_finalize',
         ], true)) {
-            return $this->adminUnit;
+            return $this->payrollOperator;
         }
 
         return $this->superadmin;

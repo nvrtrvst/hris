@@ -10,6 +10,7 @@ use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
 use App\Models\SkalaMasaBakti;
 use App\Models\UnitSekolah;
+use App\Models\User;
 use App\Services\PresensiAggregator;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -32,7 +33,7 @@ class PenggajianController extends Controller
         $request->validate(['status' => 'nullable|in:draft,finalized,paid']);
 
         $user = auth()->user();
-        $isAdmin = $user && $user->can('view_payroll');
+        $isAdmin = $user && $this->isPayrollAdmin($user);
         $query = Penggajian::with(['pegawai.units:id,singkatan,nama']);
 
         if ($this->isPimpinanReadOnly($user)) {
@@ -45,10 +46,8 @@ class PenggajianController extends Controller
             } else {
                 $query->where('id', -1);
             }
-        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $query->whereHas('pegawai', function ($q) use ($user) {
-                $q->forUnit($user->unit_sekolah_id);
-            });
+        } elseif ($user && ! $user->can('view_all_units')) {
+            $this->scopePayrollQuery($query, $user);
         }
 
         if ($request->filled('periode_bulan')) {
@@ -93,7 +92,7 @@ class PenggajianController extends Controller
     public function createDraft(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user && $user->can('view_payroll');
+        $isAdmin = $user && $this->isPayrollAdmin($user);
         if (! $isAdmin) {
             abort(403, 'Akses ditolak.');
         }
@@ -110,9 +109,13 @@ class PenggajianController extends Controller
         // [FIX] N+1: Eager load komponenGaji dan jadwals.unitSekolah
         $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'units', 'jadwals.unitSekolah']);
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $query->whereHas('units', function ($q) use ($user) {
-                $q->where('unit_sekolah.id', $user->unit_sekolah_id);
+        if ($user && ! $user->can('view_all_units')) {
+            $unitIds = $this->payrollUnitScope($user);
+            if (empty($unitIds)) {
+                abort(403, 'Akses ditolak.');
+            }
+            $query->whereHas('units', function ($q) use ($unitIds) {
+                $q->whereIn('unit_sekolah.id', $unitIds);
             });
         }
 
@@ -128,7 +131,7 @@ class PenggajianController extends Controller
         $isCurrentMonth = ((int) $today->year === (int) $year && (int) $today->month === (int) $month);
         $attendanceCutoff = $isCurrentMonth ? $today : $periodeEnd;
 
-        $unitScope = ($user && $user->unit_sekolah_id && ! $user->can('view_all_units'))
+        $unitScope = ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $user->isPayrollOperator())
             ? $user->unit_sekolah_id
             : null;
 
@@ -252,12 +255,16 @@ class PenggajianController extends Controller
     {
         $periode = $month.'-'.$year;
 
-        $penggajians = Penggajian::with(['pegawai.units:id,nama,singkatan', 'details'])
+        $query = Penggajian::with(['pegawai.units:id,nama,singkatan', 'details'])
             ->where('periode_bulan', $periode)
-            ->where('status', 'draft')
-            ->get();
+            ->where('status', 'draft');
 
-        return response()->json($penggajians);
+        $user = auth()->user();
+        if ($user && ! $user->can('view_all_units')) {
+            $this->scopePayrollQuery($query, $user);
+        }
+
+        return response()->json($query->get());
     }
 
     public function saveWorksheet(Request $request, $month, $year)
@@ -274,6 +281,11 @@ class PenggajianController extends Controller
             $penggajian = Penggajian::findOrFail($request->penggajian_id);
             if ($penggajian->status !== 'draft') {
                 throw new \Exception('Hanya status draft yang bisa diubah.');
+            }
+
+            $user = auth()->user();
+            if ($user && ! $user->can('view_all_units') && ! $this->userCanAccessPegawai($penggajian->pegawai_id)) {
+                throw new \Exception('Akses ditolak.');
             }
 
             // Hapus semua detail lama
@@ -347,10 +359,16 @@ class PenggajianController extends Controller
 
         DB::beginTransaction();
         try {
-            Penggajian::where('periode_bulan', $periode)
+            $query = Penggajian::where('periode_bulan', $periode)
                 ->where('status', 'draft')
-                ->lockForUpdate()
-                ->update(['status' => 'finalized']);
+                ->lockForUpdate();
+
+            $user = auth()->user();
+            if ($user && ! $user->can('view_all_units')) {
+                $this->scopePayrollQuery($query, $user);
+            }
+
+            $query->update(['status' => 'finalized']);
 
             DB::commit();
 
@@ -365,7 +383,7 @@ class PenggajianController extends Controller
     public function finalizePeriod(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user && $user->can('view_payroll');
+        $isAdmin = $user && $this->isPayrollAdmin($user);
         if (! $isAdmin) {
             abort(403, 'Akses ditolak.');
         }
@@ -378,11 +396,7 @@ class PenggajianController extends Controller
 
         $query = Penggajian::where('periode_bulan', $request->periode_bulan)->where('status', 'draft');
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $query->whereHas('pegawai', function ($q) use ($user) {
-                $q->forUnit($user->unit_sekolah_id);
-            });
-        }
+        $this->scopePayrollQuery($query, $user);
 
         $updated = $query->update(['status' => 'finalized']);
 
@@ -413,11 +427,7 @@ class PenggajianController extends Controller
         $user = auth()->user();
         $query = Penggajian::where('periode_bulan', $request->periode_bulan)->where('status', 'draft');
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $query->whereHas('pegawai', function ($q) use ($user) {
-                $q->forUnit($user->unit_sekolah_id);
-            });
-        }
+        $this->scopePayrollQuery($query, $user);
 
         $deleted = $query->delete();
 
@@ -446,11 +456,11 @@ class PenggajianController extends Controller
     {
         $user = auth()->user();
         $isSuperadmin = $user && $user->can('view_all_units');
-        $isAdminUnit = $user && $user->unit_sekolah_id && ! $user->can('view_all_units');
+        $isPayrollAdmin = $user && $this->isPayrollAdmin($user);
         $penggajian = Penggajian::with(['pegawai.jabatans', 'pegawai.units', 'details'])->findOrFail($id);
 
-        if ($isAdminUnit) {
-            if (! $penggajian->pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
+        if ($isPayrollAdmin && ! $isSuperadmin) {
+            if (! $this->userCanAccessPegawai($penggajian->pegawai_id)) {
                 abort(403, 'Akses ditolak.');
             }
         } elseif (! $isSuperadmin) {
@@ -470,13 +480,17 @@ class PenggajianController extends Controller
     {
         $penggajian = Penggajian::with(['pegawai.units', 'pegawai.jabatans', 'details'])->findOrFail($id);
 
-        // Verifikasi akses: hanya admin unit/pegawai sendiri/superadmin
+        // Verifikasi akses: hanya payroll operator/admin unit/pegawai sendiri/superadmin
         $user = auth()->user();
         if (! $user) {
             abort(403);
         }
         if (! $user->can('view_all_units')) {
-            if ($user->unit_sekolah_id) {
+            if ($user->isPayrollOperator()) {
+                if (! $this->userCanAccessPegawai($penggajian->pegawai_id)) {
+                    abort(403);
+                }
+            } elseif ($user->unit_sekolah_id) {
                 if (! $penggajian->pegawai?->belongsToUnit($user->unit_sekolah_id)) {
                     abort(403);
                 }
@@ -833,20 +847,67 @@ class PenggajianController extends Controller
 
     /**
      * Authorize user untuk aksi payroll modification (finalize, destroy, markPaid).
-     * Harus punya permission 'view_payroll' dan BUKAN superadmin (view_all_units).
+     * Harus payroll admin (operator jabatan / admin unit lama) dan BUKAN superadmin
+     * (view_all_units) — superadmin hanya memantau, tidak boleh mengunci/mengubah.
      *
      * @throws AuthorizationException
      */
     private function authorizePayrollModification(): void
     {
         $user = auth()->user();
-        if (! $user || ! $user->can('view_payroll')) {
+        if (! $user || ! $this->isPayrollAdmin($user)) {
             abort(403, 'Akses ditolak.');
         }
 
         if ($user->can('view_all_units')) {
             abort(403, 'Hanya Admin Unit yang berhak.');
         }
+    }
+
+    /**
+     * User adalah payroll admin: punya permission `view_payroll` (superadmin)
+     * atau jabatan operator payroll (`is_payroll_operator`).
+     */
+    private function isPayrollAdmin(?User $user): bool
+    {
+        return $user && ($user->can('view_payroll') || $user->isPayrollOperator());
+    }
+
+    /**
+     * Unit yang bisa dikelola user utk payroll.
+     * - superadmin: [] (tanpa scope)
+     * - operator payroll: unit dari pivot pegawai_unit (bisa multi-unit)
+     * - admin unit legacy: unit_sekolah_id
+     */
+    private function payrollUnitScope(User $user): array
+    {
+        if ($user->can('view_all_units')) {
+            return [];
+        }
+
+        if ($user->isPayrollOperator()) {
+            return $user->payrollUnitIds();
+        }
+
+        return $user->unit_sekolah_id ? [$user->unit_sekolah_id] : [];
+    }
+
+    /**
+     * Scope query Penggajian ke unit yang dikelola user (bukan superadmin).
+     */
+    private function scopePayrollQuery($query, User $user): void
+    {
+        $unitIds = $this->payrollUnitScope($user);
+
+        if (empty($unitIds)) {
+            $query->where('id', -1);
+
+            return;
+        }
+
+        $query->whereHas('pegawai', function ($q) use ($unitIds) {
+            $q->whereHas('units', fn ($q2) => $q2->whereIn('unit_sekolah.id', $unitIds));
+        });
     }
 
     /**
@@ -866,7 +927,8 @@ class PenggajianController extends Controller
             return true;
         }
 
-        if (! $user->unit_sekolah_id) {
+        $unitIds = $this->payrollUnitScope($user);
+        if (empty($unitIds)) {
             return false;
         }
 
@@ -874,6 +936,6 @@ class PenggajianController extends Controller
             ? $pegawaiId
             : Pegawai::find($pegawaiId);
 
-        return $pegawai && $pegawai->belongsToUnit($user->unit_sekolah_id);
+        return $pegawai && $pegawai->units()->whereIn('unit_sekolah.id', $unitIds)->exists();
     }
 }

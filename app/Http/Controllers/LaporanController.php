@@ -16,12 +16,16 @@ class LaporanController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $isAdmin = $user && $user->can('view_dashboard');
+        $isAdmin = $user && ($user->can('view_dashboard') || $user->can('view_payroll') || $user->isPayrollOperator());
         if (! $isAdmin) {
             abort(403, 'Akses Ditolak. Anda tidak memiliki izin melihat modul laporan.');
         }
 
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+        if ($user && $user->can('view_all_units')) {
+            $units = UnitSekolah::all();
+        } elseif ($user && $user->isPayrollOperator()) {
+            $units = UnitSekolah::whereIn('id', $user->payrollUnitIds())->get();
+        } elseif ($user && $user->unit_sekolah_id) {
             $units = UnitSekolah::where('id', $user->unit_sekolah_id)->get();
         } else {
             $units = UnitSekolah::all();

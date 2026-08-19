@@ -34,6 +34,7 @@ export default function Index({ auth, jabatans, stats, flash }) {
     const { data, setData, post, put, processing, errors, reset } = useForm({
         nama: '',
         is_guru: false,
+        is_payroll_operator: false,
         approver_l1_jabatan_id: '',
         approver_l2_jabatan_id: '',
     });
@@ -49,6 +50,7 @@ export default function Index({ auth, jabatans, stats, flash }) {
         setData({
             nama: j.nama,
             is_guru: j.is_guru,
+            is_payroll_operator: j.is_payroll_operator ?? false,
             approver_l1_jabatan_id: j.approver_l1_jabatan_id ?? '',
             approver_l2_jabatan_id: j.approver_l2_jabatan_id ?? '',
         });
@@ -140,6 +142,11 @@ export default function Index({ auth, jabatans, stats, flash }) {
                                                         Non-Guru
                                                     </span>
                                                 )}
+                                                {j.is_payroll_operator && (
+                                                    <span className="ml-1.5 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                                                        Payroll
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4">
                                                 <div className="flex flex-col gap-1">
@@ -205,6 +212,16 @@ export default function Index({ auth, jabatans, stats, flash }) {
                             <div>
                                 <span className="form-label text-xs">Jabatan Guru</span>
                                 <p className="form-hint">Centang jika jabatan ini termasuk tenaga pendidik (guru).</p>
+                            </div>
+                        </label>
+
+                        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-surface p-4">
+                            <input type="checkbox" checked={data.is_payroll_operator}
+                                onChange={(e) => setData('is_payroll_operator', e.target.checked)}
+                                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+                            <div>
+                                <span className="form-label text-xs">Operator Payroll</span>
+                                <p className="form-hint">Centang untuk memberi akses menjalankan payroll (Run/Riwayat/Laporan) untuk unit jabatan ini.</p>
                             </div>
                         </label>
 

@@ -75,6 +75,7 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $user ? $user->getAllPermissions()->pluck('name') : [],
                 'roles' => $user ? $user->roles->pluck('name') : [],
                 'is_approver' => $user ? $user->isApprover() : false,
+                'is_payroll_operator' => $user ? $user->isPayrollOperator() : false,
                 'pegawai_complete' => $pegawai ? $pegawai->isDataComplete() : true,
                 'unread_notifications' => $user ? $user->unreadNotifications()->count() : 0,
                 'announcement_count' => $announcementCount,

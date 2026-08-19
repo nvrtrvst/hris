@@ -56,8 +56,9 @@ class RolePermissionSeeder extends Seeder
             'manage_jadwal',
             'view_presensi',
             'view_izin',
-            'view_payroll',
-            'manage_payroll',
+            // Payroll TIDAK lagi di role admin_unit — dialihkan ke jabatan
+            // dgn flag `is_payroll_operator` (mis. Bendahara). Akses payroll
+            // = operator jabatan (semua) + superadmin (view saja).
         ]);
 
         $rolePegawai = Role::firstOrCreate(['name' => 'pegawai', 'guard_name' => 'web']);

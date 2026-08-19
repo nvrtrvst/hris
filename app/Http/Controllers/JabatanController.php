@@ -32,6 +32,7 @@ class JabatanController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:255|unique:jabatan,nama',
             'is_guru' => 'boolean',
+            'is_payroll_operator' => 'boolean',
             'approver_l1_jabatan_id' => 'nullable|exists:jabatan,id|different:approver_l2_jabatan_id',
             'approver_l2_jabatan_id' => 'nullable|exists:jabatan,id|different:approver_l1_jabatan_id',
         ]);
@@ -47,6 +48,7 @@ class JabatanController extends Controller
         $validated = $request->validate([
             'nama' => ['required', 'string', 'max:255', Rule::unique('jabatan', 'nama')->ignore($jabatan->id)],
             'is_guru' => 'boolean',
+            'is_payroll_operator' => 'boolean',
             'approver_l1_jabatan_id' => 'nullable|exists:jabatan,id|different:approver_l2_jabatan_id',
             'approver_l2_jabatan_id' => 'nullable|exists:jabatan,id|different:approver_l1_jabatan_id',
         ]);

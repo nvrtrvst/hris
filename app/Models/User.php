@@ -82,6 +82,25 @@ class User extends Authenticatable
     }
 
     /**
+     * Payroll operator = jabatan ditandai `is_payroll_operator` (mis. Bendahara).
+     * Scope unit-nya via pivot pegawai_unit (bisa multi-unit), bukan unit_sekolah_id.
+     */
+    public function isPayrollOperator(): bool
+    {
+        return (bool) $this->pegawai?->jabatans()
+            ->where('jabatan.is_payroll_operator', true)
+            ->exists();
+    }
+
+    /**
+     * Unit yang dikelola operator payroll (dari pivot pegawai_unit).
+     */
+    public function payrollUnitIds(): array
+    {
+        return $this->pegawai?->units()->pluck('unit_sekolah.id')->all() ?? [];
+    }
+
+    /**
      * Username plaintext — DB bisa simpan ciphertext (Laravel encrypted) tanpa cast.
      * Peel satu lapis ekstra jika hasil decrypt masih berbentuk JWT-shaped.
      */

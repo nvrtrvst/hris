@@ -55,7 +55,7 @@ const StatCard = ({ label, value, sub, Icon, iconBg, iconCls }) => (
 const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka || 0);
 
 export default function Index({ auth, penggajians, stats = {}, periodeOptions = [], filters = {} }) {
-    const isAdmin = auth.permissions?.includes('view_payroll');
+    const isAdmin = auth.permissions?.includes('view_payroll') || auth.is_payroll_operator;
     const isAdminUnit = isAdmin && !auth.permissions?.includes('view_all_units');
     const { flash = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
