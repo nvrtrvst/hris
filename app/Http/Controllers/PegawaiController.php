@@ -242,14 +242,11 @@ class PegawaiController extends Controller
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->where('id', $user->unit_sekolah_id)->get();
-            // Jabatan: hanya yg dipakai di unit ini
-            $jabatans = Jabatan::select('id', 'nama', 'hierarchy_level')
-                ->whereHas('pegawai', fn ($q) => $q->where('pegawai_unit.unit_sekolah_id', $user->unit_sekolah_id))
-                ->orderBy('nama')->get();
         } else {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->orderBy('nama')->get();
-            $jabatans = Jabatan::select('id', 'nama', 'hierarchy_level')->orderBy('nama')->get();
         }
+        // Jabatan = data referensi global, selalu tampilkan semua saat create
+        $jabatans = Jabatan::select('id', 'nama', 'hierarchy_level')->orderBy('nama')->get();
 
         return inertia('Pegawai/Create', [
             'unitSekolahs' => $unitSekolahs,
