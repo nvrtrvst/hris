@@ -209,11 +209,19 @@ class PegawaiController extends Controller
                     ->pluck('pegawai_unit.jabatan_id')
                 : collect();
             $jabatans = Jabatan::select('id', 'nama')->whereIn('id', $bawahanJabatanIds)->orderBy('nama')->get();
+        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            // Admin unit: jabatan & unit yang dipakai di unit ini saja
+            $jabatans = Jabatan::select('id', 'nama')
+                ->whereHas('pegawai', fn ($q) => $q->wherePivot('unit_sekolah_id', $user->unit_sekolah_id))
+                ->orderBy('nama')->get();
         } else {
             $jabatans = Jabatan::select('id', 'nama')->orderBy('nama')->get();
         }
 
         $unitSekolahs = UnitSekolah::select('id', 'nama')->orderBy('nama')->get();
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $unitSekolahs->where('id', $user->unit_sekolah_id);
+        }
         $mataPelajarans = MataPelajaran::select('id', 'nama')->orderBy('nama')->get();
 
         return inertia('Pegawai/Index', [
@@ -234,10 +242,14 @@ class PegawaiController extends Controller
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->where('id', $user->unit_sekolah_id)->get();
+            // Jabatan: hanya yg dipakai di unit ini
+            $jabatans = Jabatan::select('id', 'nama')
+                ->whereHas('pegawai', fn ($q) => $q->wherePivot('unit_sekolah_id', $user->unit_sekolah_id))
+                ->orderBy('nama')->get();
         } else {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->orderBy('nama')->get();
+            $jabatans = Jabatan::select('id', 'nama')->orderBy('nama')->get();
         }
-        $jabatans = Jabatan::select('id', 'nama')->orderBy('nama')->get();
 
         return inertia('Pegawai/Create', [
             'unitSekolahs' => $unitSekolahs,
@@ -358,10 +370,13 @@ class PegawaiController extends Controller
 
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->where('id', $user->unit_sekolah_id)->get();
+            $jabatans = Jabatan::select('id', 'nama')
+                ->whereHas('pegawai', fn ($q) => $q->wherePivot('unit_sekolah_id', $user->unit_sekolah_id))
+                ->orderBy('nama')->get();
         } else {
             $unitSekolahs = UnitSekolah::select('id', 'nama')->orderBy('nama')->get();
+            $jabatans = Jabatan::select('id', 'nama')->orderBy('nama')->get();
         }
-        $jabatans = Jabatan::select('id', 'nama')->orderBy('nama')->get();
         $mapels = MataPelajaran::select('id', 'nama')->orderBy('nama')->get();
 
         // Kandidat atasan langsung: superadmin boleh semua, admin unit hanya
