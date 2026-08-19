@@ -2,7 +2,6 @@ import { Link, usePage } from '@inertiajs/react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
-import useSwipeNav from '@/Utils/useSwipeNav';
 import { Bell, Megaphone } from 'lucide-react';
 
 const navItems = [
@@ -19,10 +18,6 @@ export default function MobileLayout({ user, header, children }) {
     const primaryUnit = user?.pegawai?.units?.find((unit) => unit.pivot?.is_primary) ?? user?.pegawai?.units?.[0];
     const unitLabel = primaryUnit?.singkatan || primaryUnit?.nama || 'Yayasan';
     const unitInitial = unitLabel.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || 'YYS';
-
-    // Swipe antar menu utama; dikecualikan di halaman Absen (area kamera).
-    const isAbsen = route().current('presensi.absen');
-    const swipeNav = useSwipeNav({ items: navItems, enabled: !isAbsen });
 
     return (
         <div className="mx-auto min-h-[100dvh] max-w-md bg-[#f4f7f5] pb-24 font-sans font-antialiased text-slate-900 shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
@@ -90,7 +85,7 @@ export default function MobileLayout({ user, header, children }) {
                 </div>
             )}
 
-            <main className="px-4 pb-8 pt-5" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }} {...swipeNav}>
+            <main className="px-4 pb-8 pt-5" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {children}
             </main>
 
