@@ -37,12 +37,13 @@
 }
 
 @layer components {
-    /* Wrapper mobile PWA: tinggi penuh viewport. 100vh fallback universal,
-       100dvh dinamis (toolbar Safari), -webkit-fill-available utk iOS < 15.4. */
+    /* Wrapper mobile PWA: tinggi TETAP viewport (bukan min-height)
+       agar flex layout bisa kunci nav di bawah & main scroll sendiri. */
     .mobile-root {
-        min-height: 100vh;
-        min-height: 100dvh;
-        min-height: -webkit-fill-available;
+        height: 100vh;
+        height: 100dvh;
+        height: -webkit-fill-available;
+        overflow: hidden;
     }
 
     /* Posisi toast "Versi baru tersedia": mobile full-width di atas dengan

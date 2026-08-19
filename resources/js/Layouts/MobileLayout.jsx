@@ -85,7 +85,7 @@ export default function MobileLayout({ user, header, children }) {
                 </div>
             )}
 
-            <main className="flex-1 px-4 pb-8 pt-5" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <main className="flex-1 overflow-y-auto overscroll-contain px-4 pb-8 pt-5" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {children}
             </main>
 
