@@ -13,6 +13,11 @@ class PresensiPhotoController extends Controller
         $disk = config('filesystems.presensi_disk', 'presensi');
         $fullPath = ltrim($path, '/');
 
+        // Defense-in-depth: tolak path traversal sebelum cek kepemilikan mana pun.
+        if (str_contains($fullPath, '..')) {
+            abort(403, 'Path tidak valid.');
+        }
+
         if (! Storage::disk($disk)->exists($fullPath)) {
             abort(404);
         }
@@ -21,6 +26,12 @@ class PresensiPhotoController extends Controller
 
         if (! $user) {
             abort(401);
+        }
+
+        // Foto profil milik user yang sedang login (admin unit & pegawai) →
+        // izinkan langsung tanpa regex path (foto pegawai disimpan tanpa prefix {id}_).
+        if ($user->pegawai && $fullPath === $user->pegawai->foto) {
+            return Storage::disk($disk)->response($fullPath);
         }
 
         if ($user->can('view_presensi')) {
@@ -46,7 +57,7 @@ class PresensiPhotoController extends Controller
         }
 
         $prefix = '/'.$pegawai->id.'_';
-        if (! str_contains($fullPath, $prefix)) {
+        if ($fullPath !== $pegawai->foto && ! str_contains($fullPath, $prefix)) {
             abort(403, 'Akses ditolak.');
         }
 

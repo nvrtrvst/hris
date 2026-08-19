@@ -196,9 +196,25 @@ class PegawaiController extends Controller
 
         $pegawais = $query->paginate(10)->withQueryString();
 
-        $unitSekolahs = UnitSekolah::all();
-        $mataPelajarans = MataPelajaran::all();
-        $jabatans = Jabatan::orderBy('nama')->get();
+        $isPimpinan = $this->isPimpinanReadOnly($user);
+
+        // Pimpinan: filter opsi jabatan hanya jabatan yang dimiliki bawahan langsung.
+        if ($isPimpinan) {
+            $userPegawaiId = $user->pegawai?->id;
+            $bawahanJabatanIds = $userPegawaiId
+                ? Pegawai::where('atasan_langsung_id', $userPegawaiId)
+                    ->where('status_aktif', 'aktif')
+                    ->join('pegawai_unit', 'pegawai.id', '=', 'pegawai_unit.pegawai_id')
+                    ->distinct()
+                    ->pluck('pegawai_unit.jabatan_id')
+                : collect();
+            $jabatans = Jabatan::select('id', 'nama')->whereIn('id', $bawahanJabatanIds)->orderBy('nama')->get();
+        } else {
+            $jabatans = Jabatan::select('id', 'nama')->orderBy('nama')->get();
+        }
+
+        $unitSekolahs = UnitSekolah::select('id', 'nama')->orderBy('nama')->get();
+        $mataPelajarans = MataPelajaran::select('id', 'nama')->orderBy('nama')->get();
 
         return inertia('Pegawai/Index', [
             'pegawais' => $pegawais,
@@ -206,6 +222,7 @@ class PegawaiController extends Controller
             'filters' => $request->only(['search', 'unit_sekolah_id', 'mata_pelajaran_id', 'jabatan_id', 'jenis_filter']),
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'userUnitId' => $user->unit_sekolah_id,
+            'isPimpinan' => $isPimpinan,
             'unitSekolahs' => $unitSekolahs,
             'mataPelajarans' => $mataPelajarans,
             'jabatans' => $jabatans,
@@ -216,11 +233,11 @@ class PegawaiController extends Controller
     {
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $unitSekolahs = UnitSekolah::where('id', $user->unit_sekolah_id)->get();
+            $unitSekolahs = UnitSekolah::select('id', 'nama')->where('id', $user->unit_sekolah_id)->get();
         } else {
-            $unitSekolahs = UnitSekolah::all();
+            $unitSekolahs = UnitSekolah::select('id', 'nama')->orderBy('nama')->get();
         }
-        $jabatans = Jabatan::all();
+        $jabatans = Jabatan::select('id', 'nama')->orderBy('nama')->get();
 
         return inertia('Pegawai/Create', [
             'unitSekolahs' => $unitSekolahs,
@@ -295,10 +312,10 @@ class PegawaiController extends Controller
         // seiring bertambahnya perubahan data.
         $pegawai = Pegawai::with([
             'user' => fn ($q) => $q->select('id', 'email', 'username'),
-            'units',
-            'jabatans',
-            'mapels',
-            'dokumen',
+            'units' => fn ($q) => $q->select('unit_sekolah.id', 'unit_sekolah.nama'),
+            'jabatans' => fn ($q) => $q->select('jabatan.id', 'jabatan.nama'),
+            'mapels' => fn ($q) => $q->select('mata_pelajaran.id', 'mata_pelajaran.nama'),
+            'dokumen' => fn ($q) => $q->select('id', 'pegawai_id', 'nama_dokumen', 'jenis', 'created_at'),
             'riwayat' => fn ($q) => $q->latest('id')->limit(30),
             'atasanLangsung' => fn ($q) => $q->select('id', 'nama_lengkap', 'foto'),
         ])->findOrFail($id);
@@ -339,12 +356,12 @@ class PegawaiController extends Controller
         }
 
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $unitSekolahs = UnitSekolah::where('id', $user->unit_sekolah_id)->get();
+            $unitSekolahs = UnitSekolah::select('id', 'nama')->where('id', $user->unit_sekolah_id)->get();
         } else {
-            $unitSekolahs = UnitSekolah::all();
+            $unitSekolahs = UnitSekolah::select('id', 'nama')->orderBy('nama')->get();
         }
-        $jabatans = Jabatan::all();
-        $mapels = MataPelajaran::orderBy('nama')->get();
+        $jabatans = Jabatan::select('id', 'nama')->orderBy('nama')->get();
+        $mapels = MataPelajaran::select('id', 'nama')->orderBy('nama')->get();
 
         // Kandidat atasan langsung: superadmin boleh semua, admin unit hanya
         // pegawai di unitnya sendiri (jangan termasuk diri sendiri).
@@ -356,13 +373,15 @@ class PegawaiController extends Controller
         }
         $atasanCandidates = $atasanQuery->where('id', '!=', $pegawai->id)->get()
             ->map(function (Pegawai $p) use ($jabatans) {
-                $jabatanPrimer = $p->jabatanPrimer();
+                // N+1 fix: use pre-fetched $jabatans instead of jabatanPrimer() which calls DB per row.
                 $primaryUnit = $p->units->first(fn ($u) => ! empty($u->pivot->is_primary)) ?? $p->units->first();
+                $jabatanId = $primaryUnit?->pivot?->jabatan_id;
+                $jabatanNama = $jabatanId ? ($jabatans->firstWhere('id', $jabatanId)?->nama ?? '') : '';
 
                 return [
                     'id' => $p->id,
                     'nama_lengkap' => $p->nama_lengkap,
-                    'jabatan' => $jabatanPrimer ? ($jabatans->firstWhere('id', $jabatanPrimer->id)?->nama ?? '') : '',
+                    'jabatan' => $jabatanNama,
                     'unit' => $primaryUnit?->nama ?? '',
                 ];
             })->values();

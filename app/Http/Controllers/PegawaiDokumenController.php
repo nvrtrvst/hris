@@ -57,11 +57,24 @@ class PegawaiDokumenController extends Controller
 
         $file = $request->file('file');
 
-        // Nama file UUID + ekstensi dari MIME (bukan dari input user) —
-        // cegah path traversal & eksekusi file berbahaya.
+        // Format nama: {nama_pegawai}_{jenis}_{tanggal}_{nomor_urut}.ext
+        // Slug aman untuk filesystem — tidak ada special chars.
+        $namaSlug = Str::slug($pegawai->nama_lengkap, '_');
+        $jenisSlug = Str::slug($validated['jenis'], '_');
+        $tanggal = now()->format('Y-m-d');
+        $extension = $file->guessExtension();
+
+        // Nomor urut: hitung dokumen pegawai ini yang di-upload hari ini.
+        $existingToday = PegawaiDokumen::where('pegawai_id', $pegawai->id)
+            ->whereDate('created_at', today())
+            ->count();
+        $nomorUrut = str_pad($existingToday + 1, 3, '0', STR_PAD_LEFT);
+
+        $filename = "{$namaSlug}_{$jenisSlug}_{$tanggal}_{$nomorUrut}.{$extension}";
+
         $path = $file->storeAs(
             'dokumen/pegawai_'.$pegawai->id,
-            Str::uuid().'.'.$file->guessExtension(),
+            $filename,
             'local'
         );
 
@@ -90,8 +103,10 @@ class PegawaiDokumenController extends Controller
         abort_unless($disk->exists($dokumen->file_path), 404, 'File dokumen tidak ditemukan.');
 
         $extension = pathinfo($dokumen->file_path, PATHINFO_EXTENSION);
+        $namaPegawai = Str::slug($pegawai->nama_lengkap, '_');
+        $tglDownload = now()->format('Ymd');
 
-        return $disk->download($dokumen->file_path, $dokumen->nama_dokumen.'.'.$extension);
+        return $disk->download($dokumen->file_path, $dokumen->nama_dokumen.'-'.$namaPegawai.'-'.$tglDownload.'.'.$extension);
     }
 
     /**

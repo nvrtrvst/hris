@@ -18,13 +18,11 @@ function LoginField({ id, label, icon: Icon, error, suffix, ...props }) {
                     id={id}
                     aria-invalid={Boolean(error)}
                     aria-describedby={errorId}
-                    className={`min-h-14 w-full rounded-xl border bg-slate-50 py-3.5 pl-12 text-[15px] font-medium text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:bg-white focus:ring-4 ${
-                        suffix ? 'pr-14' : 'pr-4'
-                    } ${
-                        error
+                    className={`min-h-14 w-full rounded-xl border bg-slate-50 py-3.5 pl-12 text-[15px] font-medium text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:bg-white focus:ring-4 ${suffix ? 'pr-14' : 'pr-4'
+                        } ${error
                             ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-100'
                             : 'border-slate-200 focus:border-primary focus:ring-primary/10'
-                    }`}
+                        }`}
                     {...props}
                 />
                 {suffix}
@@ -57,9 +55,7 @@ export default function MobileLogin({ status }) {
             <section className="bg-primary px-5 pb-20 pt-[max(2rem,env(safe-area-inset-top))] text-white">
                 <div className="mx-auto max-w-sm">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
-                            <ApplicationLogo className="h-7 w-7 text-white" />
-                        </div>
+                        <ApplicationLogo className="h-14 w-14 shrink-0 text-white" />
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">Yayasan Nuurul Muttaqiin</p>
                             <p className="mt-0.5 text-base font-bold">Portal Pegawai</p>

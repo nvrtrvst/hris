@@ -1,4 +1,4 @@
-import { ShieldCheck, Mail, BadgeCheck } from 'lucide-react';
+import { Mail, BadgeCheck, Briefcase } from 'lucide-react';
 
 function initials(name) {
     if (!name) return '?';
@@ -13,6 +13,12 @@ function initials(name) {
 export default function ProfileHero({ user }) {
     const verified = !!user?.email_verified_at;
 
+    const jabatan =
+        user?.pegawai?.jabatans?.find((j) => j.pivot?.is_primary === 1)?.nama ||
+        user?.pegawai?.jabatans?.[0]?.nama;
+
+    const foto = user?.pegawai?.foto_url;
+
     return (
         <section className="relative overflow-hidden rounded-card bg-gradient-to-br from-primary via-primary-light to-primary-dark text-white shadow-elevated">
             <div
@@ -26,15 +32,23 @@ export default function ProfileHero({ user }) {
 
             <div className="relative px-6 py-8 sm:px-10 sm:py-10">
                 <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-card bg-white/10 ring-2 ring-white/20 backdrop-blur">
-                        <span className="text-2xl font-bold tracking-tight">
-                            {initials(user?.name)}
-                        </span>
-                    </div>
+                    {foto ? (
+                        <img
+                            src={foto}
+                            alt={user?.name}
+                            className="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-white/20"
+                        />
+                    ) : (
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-card bg-white/10 ring-2 ring-white/20 backdrop-blur">
+                            <span className="text-2xl font-bold tracking-tight">
+                                {initials(user?.name)}
+                            </span>
+                        </div>
+                    )}
 
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                            <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
+                            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl break-words">
                                 {user?.name ?? 'Pengguna'}
                             </h1>
                             {verified && (
@@ -49,10 +63,10 @@ export default function ProfileHero({ user }) {
                                 <Mail className="h-3.5 w-3.5" />
                                 {user?.email ?? '-'}
                             </span>
-                            {user?.roles?.length > 0 && (
+                            {jabatan && (
                                 <span className="inline-flex items-center gap-1.5">
-                                    <ShieldCheck className="h-3.5 w-3.5" />
-                                    {user.roles.join(', ')}
+                                    <Briefcase className="h-3.5 w-3.5" />
+                                    {jabatan}
                                 </span>
                             )}
                         </div>

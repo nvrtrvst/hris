@@ -50,7 +50,7 @@ const UserAvatar = ({ pegawai }) => (
     )
 );
 
-export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSekolahs, mataPelajarans, jabatans }) {
+export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSekolahs, mataPelajarans, jabatans, isPimpinan = false }) {
     const isAdminUnit = auth.roles?.includes('admin_unit');
     const { flash = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
@@ -208,7 +208,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                 <option value="pendidik">Pendidik (Guru)</option>
                                 <option value="kependidikan">Tenaga Kependidikan</option>
                             </select>
-                            {!isAdminUnit && (
+                            {!isAdminUnit && !isPimpinan && (
                                 <select
                                     className={filterSelect}
                                     value={unitSekolahId}
@@ -234,18 +234,20 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                 <option value="">Semua Jabatan</option>
                                 {jabatans && jabatans.map((j) => <option key={j.id} value={j.id}>{j.nama}</option>)}
                             </select>
-                            <select
-                                className={filterSelect}
-                                value={mataPelajaranId}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    setMataPelajaranId(val);
-                                    applyFilters({ mata_pelajaran_id: val, search });
-                                }}
-                            >
-                                <option value="">Semua Mapel</option>
-                                {mataPelajarans && mataPelajarans.map((m) => <option key={m.id} value={m.id}>{m.nama}</option>)}
-                            </select>
+                            {!isPimpinan && (
+                                <select
+                                    className={filterSelect}
+                                    value={mataPelajaranId}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setMataPelajaranId(val);
+                                        applyFilters({ mata_pelajaran_id: val, search });
+                                    }}
+                                >
+                                    <option value="">Semua Mapel</option>
+                                    {mataPelajarans && mataPelajarans.map((m) => <option key={m.id} value={m.id}>{m.nama}</option>)}
+                                </select>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-2 border-t border-border/60 pt-4">

@@ -33,6 +33,26 @@ class IsolatePortalSession
             }
         }
 
+        // /presensi/photo/* dipakai lintas portal (admin + mobile). Di dev (host
+        // sama), tentukan portal dari cookie session yang BENAR-BENAR terkirim di
+        // request — bukan tebak dari path. Fallback ke Referer bila kedua cookie
+        // hadir sekaligus (user login di dua portal) atau tidak ada sama sekali.
+        if (! $isMobile && $request->is('presensi/photo/*')) {
+            $hasMobile = $request->cookies->has('hris_mobile_session');
+            $hasAdmin = $request->cookies->has('hris_mgmt_session');
+
+            if ($hasMobile && ! $hasAdmin) {
+                $isMobile = true;
+            } elseif ($hasAdmin && ! $hasMobile) {
+                $isMobile = false;
+            } else {
+                $referer = $request->header('Referer') ?: $request->header('Origin');
+                if ($referer && (str_contains($referer, '/mobile') || str_contains($referer, (string) $mobileDomain))) {
+                    $isMobile = true;
+                }
+            }
+        }
+
         if ($isMobile) {
             Config::set('session.cookie', 'hris_mobile_session');
             Config::set('session.path', '/');

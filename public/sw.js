@@ -1,6 +1,6 @@
 /* HRIS Yayasan — Service Worker */
 // Bump versi cache saat deploy: purges shell/HTML lama yang mereferensikan bundle usang.
-const CACHE_NAME = 'hris-mobile-v4';
+const CACHE_NAME = 'hris-mobile-v5';
 
 // Aset shell (fallback offline ringan — halaman Inertia tetap butuh jaringan untuk data).
 const SHELL_ASSETS = [
@@ -50,6 +50,15 @@ self.addEventListener('fetch', (event) => {
     }
 
     // Aset statis: cache-first.
+    // Foto protected (presensi/photo) selalu network-first — respons rusak dari
+    // cache lama tidak boleh disajikan.
+    if (request.url.includes('/presensi/photo/')) {
+        event.respondWith(
+            fetch(request).catch(() => caches.match(request))
+        );
+        return;
+    }
+
     event.respondWith(
         caches.match(request).then((hit) => hit || fetch(request))
     );

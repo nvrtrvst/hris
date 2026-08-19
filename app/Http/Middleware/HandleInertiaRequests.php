@@ -53,7 +53,7 @@ class HandleInertiaRequests extends Middleware
             $relations = [
                 'pegawai',
                 'pegawai.units' => fn ($query) => $query->select('unit_sekolah.id', 'nama', 'singkatan', 'logo'),
-                'pegawai.jabatans',
+                'pegawai.jabatans' => fn ($query) => $query->select('jabatan.id', 'nama'),
             ];
             $user->load($relations);
         }

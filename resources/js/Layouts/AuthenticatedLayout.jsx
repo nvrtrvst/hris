@@ -42,13 +42,13 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     if (!permissions.includes('view_presensi')) layananPribadi.push({ name: 'Presensi Pribadi', href: route('presensi.index'), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
     if (!permissions.includes('view_payroll')) layananPribadi.push({ name: 'Slip Gaji Pribadi', href: route('penggajian.index'), icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' });
     layananPribadi.push({ name: 'Notifikasi', href: route('notifications.index'), icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' });
-    
+
     if (layananPribadi.length > 0) {
         menuGroups.push({ title: 'Layanan Pribadi', items: layananPribadi });
     }
 
     const modulUtama = [];
-    if (permissions.includes('view_dashboard')) modulUtama.push({ name: 'Dashboard Admin', href: route('dashboard'), icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' });
+    if (permissions.includes('view_dashboard')) modulUtama.push({ name: 'Dashboard', href: route('dashboard'), icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' });
     if (permissions.includes('view_all_units')) modulUtama.push({ name: 'Perbandingan Unit', href: route('dashboard.perbandingan-unit'), icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' });
     if (permissions.includes('view_pegawai')) modulUtama.push({ name: 'Pegawai', href: route('pegawai.index'), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' });
     if (permissions.includes('view_jadwal')) modulUtama.push({ name: 'Jadwal', href: route('jadwal.index'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' });
@@ -74,10 +74,10 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     const modulAdmin = [];
     if (permissions.includes('manage_users')) modulAdmin.push({ name: 'Manajemen User', href: route('users.index'), icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' });
     if (permissions.includes('manage_users')) modulAdmin.push({ name: 'Manajemen Role', href: route('roles.index'), icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' });
-        if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Unit Sekolah', href: route('unit-sekolah.index'), icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' });
-        if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Mata Pelajaran', href: route('mata-pelajaran.index'), icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' });
-        if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Unit Sekolah', href: route('unit-sekolah.index'), icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' });
-        if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Jabatan', href: route('jabatan.index'), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' });
+    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Unit Sekolah', href: route('unit-sekolah.index'), icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' });
+    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Mata Pelajaran', href: route('mata-pelajaran.index'), icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' });
+    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Unit Sekolah', href: route('unit-sekolah.index'), icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' });
+    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Jabatan', href: route('jabatan.index'), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' });
     if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Backup DB', href: route('backup.index'), icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' });
 
     if (modulAdmin.length > 0) {
@@ -92,17 +92,15 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
 
     return (
         <div className="min-h-screen bg-surface flex flex-col md:flex-row font-sans print:bg-white">
-            
+
             {/* Sidebar Desktop */}
             <aside className={`hidden md:flex flex-col bg-primary text-white fixed left-0 top-0 h-full z-30 transition-all duration-300 ease-in-out border-r border-primary-800 print:hidden flex-shrink-0 ${isSidebarOpen ? 'w-64' : 'w-[72px]'}`}>
                 {/* Logo */}
-                <div className={`flex items-center h-16 border-b border-primary-800 px-4 flex-shrink-0 ${isSidebarOpen ? 'justify-start' : 'justify-center'}`}>
+                <div className={`flex items-center h-16 border-b border-primary-800 flex-shrink-0 ${isSidebarOpen ? 'justify-start px-4' : 'justify-center px-0'}`}>
                     <Link href={route('dashboard')} className={`flex items-center group ${isSidebarOpen ? 'gap-3' : ''}`}>
-                        <div className="bg-white/10 p-1.5 rounded-lg group-hover:bg-white/20 transition-colors flex-shrink-0">
-                            <ApplicationLogo className="w-6 h-6 text-accent" />
-                        </div>
+                        <ApplicationLogo className={`text-accent transition-all duration-300 flex-shrink-0 ${isSidebarOpen ? 'w-12 h-12' : 'w-9 h-9'}`} />
                         {isSidebarOpen && (
-                            <span className="text-base font-semibold tracking-tight text-white">HRIS <span className="text-accent">Yayasan</span></span>
+                            <span className="text-xl font-semibold tracking-tight text-white">HRIS <span className="text-accent">Yayasan</span></span>
                         )}
                     </Link>
                 </div>
@@ -113,45 +111,42 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                         const isExpanded = expandedGroups[group.title];
                         const isActive = group.items.some(m => url.startsWith(new URL(m.href).pathname));
                         return (
-                        <div key={index} className="space-y-0.5">
-                            {isSidebarOpen && (
-                                <button 
-                                    onClick={() => toggleGroup(group.title)}
-                                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md transition-colors ${
-                                        isActive ? 'text-accent' : 'text-gray-400 hover:text-gray-200'
-                                    }`}
-                                >
-                                    <span className="text-[10px] font-bold uppercase tracking-[0.12em]">{group.title}</span>
-                                    <svg className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-                            )}
-                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${isExpanded || !isSidebarOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                {group.items.map((menu, i) => {
-                                    const isLinkActive = url.startsWith(new URL(menu.href).pathname);
-                                    return (
-                                        <Link key={i} href={menu.href} title={menu.name}
-                                            className={`flex items-center rounded-lg transition-all duration-150 group ${
-                                                isSidebarOpen ? 'px-3 py-2 gap-3' : 'justify-center py-2.5'
-                                            } ${
-                                                isLinkActive
-                                                    ? 'bg-accent/10 text-accent font-medium'
-                                                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                            <div key={index} className="space-y-0.5">
+                                {isSidebarOpen && (
+                                    <button
+                                        onClick={() => toggleGroup(group.title)}
+                                        className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md transition-colors ${isActive ? 'text-accent' : 'text-gray-400 hover:text-gray-200'
                                             }`}
-                                        >
-                                            <svg className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
-                                                isLinkActive ? 'text-accent' : 'text-gray-500 group-hover:text-white'
-                                            } ${!isSidebarOpen && ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d={menu.icon} />
-                                            </svg>
-                                            {isSidebarOpen && <span className="text-sm whitespace-nowrap">{menu.name}</span>}
-                                        </Link>
-                                    );
-                                })}
+                                    >
+                                        <span className="text-[10px] font-bold uppercase tracking-[0.12em]">{group.title}</span>
+                                        <svg className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                )}
+                                <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${isExpanded || !isSidebarOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    {group.items.map((menu, i) => {
+                                        const isLinkActive = url.startsWith(new URL(menu.href).pathname);
+                                        return (
+                                            <Link key={i} href={menu.href} title={menu.name}
+                                                className={`flex items-center rounded-lg transition-all duration-150 group ${isSidebarOpen ? 'px-3 py-2 gap-3' : 'justify-center py-2.5'
+                                                    } ${isLinkActive
+                                                        ? 'bg-accent/10 text-accent font-medium'
+                                                        : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                                                    }`}
+                                            >
+                                                <svg className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${isLinkActive ? 'text-accent' : 'text-gray-500 group-hover:text-white'
+                                                    } ${!isSidebarOpen && ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d={menu.icon} />
+                                                </svg>
+                                                {isSidebarOpen && <span className="text-sm whitespace-nowrap">{menu.name}</span>}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                    )})}
+                        )
+                    })}
                 </div>
 
                 {/* User Profile Footer */}
@@ -159,20 +154,26 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                     <Dropdown>
                         <Dropdown.Trigger>
                             <button className={`flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors w-full ${!isSidebarOpen && 'justify-center'}`}>
-                                <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center font-semibold text-accent text-sm flex-shrink-0">
-                                    {user.name.charAt(0)}
-                                </div>
+                                {user.pegawai?.foto_url ? (
+                                    <img src={user.pegawai.foto_url} alt={user.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center font-semibold text-accent text-sm flex-shrink-0">
+                                        {user.name.charAt(0)}
+                                    </div>
+                                )}
                                 {isSidebarOpen && (
                                     <>
                                         <div className="text-left flex-1 min-w-0">
                                             <div className="font-medium text-white text-sm truncate">{user.name}</div>
-                                            <div className={`text-[11px] mt-px ${
-                                                role === 'superadmin' ? 'text-accent' :
+                                            <div className={`text-[11px] mt-px truncate ${role === 'superadmin' ? 'text-accent' :
                                                 role === 'admin_unit' ? 'text-success' :
-                                                'text-gray-400'
-                                            }`}>
-                                                {role === 'superadmin' ? 'Superadmin' :
-                                                 role === 'admin_unit' ? 'Admin Unit' : 'Pegawai'}
+                                                    'text-gray-400'
+                                                }`}>
+                                                {role === 'superadmin'
+                                                    ? 'Superadmin'
+                                                    : role === 'admin_unit'
+                                                        ? 'Admin Unit'
+                                                        : (user.pegawai?.jabatans?.[0]?.nama || 'Pegawai')}
                                             </div>
                                         </div>
                                         <svg className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,25 +216,26 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                     {displayGroups.map((group, groupIndex) => {
                         const isExpanded = expandedGroups[group.title];
                         return (
-                        <div key={groupIndex} className="mb-4">
-                            <button 
-                                onClick={() => toggleGroup(group.title)}
-                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
-                            >
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.12em]">{group.title}</span>
-                                <svg className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                {group.items.map((menu, i) => (
-                                    <ResponsiveNavLink key={i} href={menu.href} active={url.startsWith(new URL(menu.href).pathname)} className="text-white hover:bg-white/10 rounded-lg">
-                                        {menu.name}
-                                    </ResponsiveNavLink>
-                                ))}
+                            <div key={groupIndex} className="mb-4">
+                                <button
+                                    onClick={() => toggleGroup(group.title)}
+                                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+                                >
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.12em]">{group.title}</span>
+                                    <svg className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    {group.items.map((menu, i) => (
+                                        <ResponsiveNavLink key={i} href={menu.href} active={url.startsWith(new URL(menu.href).pathname)} className="text-white hover:bg-white/10 rounded-lg">
+                                            {menu.name}
+                                        </ResponsiveNavLink>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )})}
+                        )
+                    })}
                     <div className="pt-3 mt-4 border-t border-primary-800 space-y-1">
                         <div className="px-3 text-gray-400 text-sm font-medium">{user.name}</div>
                         <ResponsiveNavLink href={route('profile.edit')} className="text-white hover:text-accent rounded-lg">Profile</ResponsiveNavLink>
@@ -246,7 +248,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
             <div className={`flex-1 transition-all duration-300 min-h-screen flex flex-col print:!ml-0 md:pt-0 pt-14 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-[72px]'}`}>
                 {/* Top Header Bar */}
                 <header className="bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-border sticky top-0 z-20 flex items-center h-16 print:hidden">
-                    <button 
+                    <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                         className="hidden md:flex ml-4 p-2 text-text-muted hover:bg-gray-100 rounded-lg transition-colors"
                         aria-label={isSidebarOpen ? 'Persempit sidebar' : 'Perluas sidebar'}
