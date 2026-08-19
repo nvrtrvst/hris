@@ -48,7 +48,7 @@ export default function PegawaiKomponen({ auth, komponen, pegawais }) {
                 if (!q) return true;
 
                 return p.nama_lengkap.toLowerCase().includes(q)
-                    || (p.nik_masked || '').toLowerCase().includes(q);
+                    || (p.nip || '').toLowerCase().includes(q);
             });
     }, [pegawais, searchTerm, scopeFilter]);
 
@@ -209,7 +209,7 @@ export default function PegawaiKomponen({ auth, komponen, pegawais }) {
                                     <tbody className="divide-y divide-border bg-white">
                                         {rows.map((p) => (
                                             <tr key={p.id} className={`transition-colors hover:bg-surface ${!p.isSpesifik ? 'opacity-80' : ''}`}>
-                                                <td className="whitespace-nowrap px-6 py-3 font-mono text-xs text-text-muted">{p.nik_masked}</td>
+                                                <td className="whitespace-nowrap px-6 py-3 font-mono text-xs text-text-muted">{p.nip || '—'}</td>
                                                 <td className="whitespace-nowrap px-6 py-3">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm font-semibold text-text-primary">{p.nama_lengkap}</span>

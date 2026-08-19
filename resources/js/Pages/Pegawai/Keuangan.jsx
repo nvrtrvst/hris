@@ -61,7 +61,7 @@ export default function Keuangan({ auth, pegawai, komponens }) {
                                 <div className="min-w-0">
                                     <h3 className="text-xl font-extrabold text-primary">{pegawai.nama_lengkap}</h3>
                                     <p className="mt-0.5 flex items-center gap-1 text-xs text-text-secondary">
-                                        <User className="h-3 w-3" /> NIK: {pegawai.nik_masked || '-'}
+                                        <User className="h-3 w-3" /> NIP: {pegawai.nip || '—'}
                                     </p>
                                 </div>
                             </div>

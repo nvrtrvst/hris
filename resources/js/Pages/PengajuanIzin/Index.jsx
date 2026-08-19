@@ -328,7 +328,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                                     </div>
                                                     <div className="ml-4">
                                                         <div className="text-sm font-bold text-text-primary group-hover:text-primary transition-colors">{item.pegawai?.nama_lengkap}</div>
-                                                        <div className="text-xs text-text-muted font-mono mt-0.5">{item.pegawai?.nik_masked}</div>
+                                                        <div className="text-xs text-text-muted font-mono mt-0.5">{item.pegawai?.nip || '—'}</div>
                                                     </div>
                                                 </div>
                                             </td>

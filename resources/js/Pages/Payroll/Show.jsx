@@ -64,8 +64,8 @@ export default function Show({ auth, penggajian }) {
                                                 <td className="py-1 font-bold text-text-primary">: {penggajian.pegawai.nama_lengkap}</td>
                                             </tr>
                                             <tr>
-                                                <td className="py-1 text-text-secondary">NIK</td>
-                                                <td className="py-1 font-bold text-text-primary">: {penggajian.pegawai.nik_masked}</td>
+                                                <td className="py-1 text-text-secondary">NIP</td>
+                                                <td className="py-1 font-bold text-text-primary">: {penggajian.pegawai.nip || '—'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="py-1 text-text-secondary">Status</td>
