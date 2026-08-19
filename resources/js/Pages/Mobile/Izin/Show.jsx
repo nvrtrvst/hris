@@ -119,14 +119,14 @@ export default function Show({ auth, pengajuan }) {
                             {/* Disetujui oleh L1 */}
                             {pengajuan.approved_at_l1 && (
                                 <p className="mt-0.5 text-xs text-slate-500">
-                                    Disetujui oleh {pengajuan.approverL1?.name || 'Atasan'}
+                                    Disetujui oleh {pengajuan.approver_l1?.name || 'Atasan'}
                                     <span className="ml-1 text-slate-400">· {format(new Date(pengajuan.approved_at_l1), 'd MMM yyyy, HH:mm', { locale: id })}</span>
                                 </p>
                             )}
                             {/* Disetujui oleh L2 */}
                             {pengajuan.approved_at_l2 && (
                                 <p className="mt-0.5 text-xs text-slate-500">
-                                    Disetujui oleh {pengajuan.approverL2?.name || 'Atasan'}
+                                    Disetujui oleh {pengajuan.approver_l2?.name || 'Atasan'}
                                     <span className="ml-1 text-slate-400">· {format(new Date(pengajuan.approved_at_l2), 'd MMM yyyy, HH:mm', { locale: id })}</span>
                                 </p>
                             )}
@@ -144,8 +144,8 @@ export default function Show({ auth, pengajuan }) {
                                         <AlertTriangle className="h-3 w-3" /> Alasan Penolakan
                                     </p>
                                     <p className="mt-1 text-sm text-rose-600">{pengajuan.alasan_penolakan}</p>
-                                    {pengajuan.rejectedByUser && (
-                                        <p className="mt-1 text-xs text-rose-400">Ditolak oleh {pengajuan.rejectedByUser.name}</p>
+                                    {pengajuan.rejected_by_user && (
+                                        <p className="mt-1 text-xs text-rose-400">Ditolak oleh {pengajuan.rejected_by_user.name}</p>
                                     )}
                                 </div>
                             )}
