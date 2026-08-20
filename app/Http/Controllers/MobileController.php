@@ -782,7 +782,9 @@ class MobileController extends Controller
         }
         $trajectory[] = ['label' => 'b', 'lat' => (float) $request->latitude, 'lng' => (float) $request->longitude, 'accuracy' => $accuracy, 'captured_at' => $request->captured_at];
 
-        $motionSamples = $request->input('motion_samples');
+        $motionSamples = $request->filled('motion_samples')
+            ? json_decode((string) $request->input('motion_samples'), true)
+            : null;
         $trajResult = $spoofDetector->analyzeTrajectory($trajectory);
         $motionResult = $spoofDetector->analyzeMotion($motionSamples);
         $speedResult = $spoofDetector->analyzeSpeed($speed);
