@@ -6,6 +6,8 @@ import { ArrowRight, Calendar, Clock3, WifiOff, X, CheckCircle, XCircle, AlertTr
 
 const hariUrut = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
+const fmtJam = (t) => (t ? String(t).substring(0, 5) : '—');
+
 const statusConfig = {
     hadir: { label: 'Hadir', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: CheckCircle },
     telat: { label: 'Telat', color: 'text-amber-600', bg: 'bg-amber-50', icon: AlertTriangle },
@@ -125,9 +127,9 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, totalJadwal }) {
                                 <Card key={j.id} press={false} className="px-4 py-3">
                                     <div className="flex items-center gap-3">
                                         <div className="w-14 shrink-0 text-center leading-none">
-                                            <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{j.jam_mulai}</p>
+                                            <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{fmtJam(j.jam_mulai)}</p>
                                             <div className="mx-auto my-1 h-3 w-px bg-slate-200" />
-                                            <p className="font-mono text-[11px] tabular-nums text-slate-400">{j.jam_selesai}</p>
+                                            <p className="font-mono text-[11px] tabular-nums text-slate-400">{fmtJam(j.jam_selesai)}</p>
                                         </div>
                                         <div className={`h-10 w-1 shrink-0 rounded-full ${isLembur ? 'bg-amber-400' : 'bg-primary'}`} />
                                         <div className="min-w-0 flex-1">
@@ -388,9 +390,9 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
                                             className="flex min-h-[82px] w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
                                         >
                                             <div className="w-16 shrink-0 text-center leading-none">
-                                                <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{j.jam_mulai}</p>
+                                                <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{fmtJam(j.jam_mulai)}</p>
                                                 <div className="mx-auto my-1 h-3 w-px bg-slate-200" />
-                                                <p className="font-mono text-[11px] tabular-nums text-slate-400">{j.jam_selesai}</p>
+                                                <p className="font-mono text-[11px] tabular-nums text-slate-400">{fmtJam(j.jam_selesai)}</p>
                                             </div>
                                             <div className={`h-10 w-1 shrink-0 rounded-full ${isLembur ? 'bg-amber-400' : 'bg-primary'}`} />
                                             <div className="min-w-0 flex-1">
@@ -435,7 +437,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
                                 <p className="mt-1 text-sm text-slate-500">
                                     {selected.unit_sekolah?.nama || selected.unit_sekolah?.singkatan || ''}
                                 </p>
-                                <p className="mt-2 font-mono text-sm font-bold tabular-nums text-primary">{selected.jam_mulai} - {selected.jam_selesai}</p>
+                                 <p className="mt-2 font-mono text-sm font-bold tabular-nums text-primary">{fmtJam(selected.jam_mulai)} - {fmtJam(selected.jam_selesai)}</p>
                             </div>
                             <button type="button" onClick={() => setSelected(null)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 active:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" aria-label="Tutup detail jadwal">
                                 <X className="h-5 w-5" />

@@ -33,6 +33,7 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
             'Pendidikan Terakhir (dropdown)',
             'Nama Jabatan (pilih dari dropdown)',
             'Unit Sekolah (dropdown — kosongkan jika satu unit)',
+            'Email (wajib — untuk login pegawai)',
         ];
     }
 
@@ -55,6 +56,7 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 'S1',
                 'Guru Mata Pelajaran',
                 'SMP',
+                'budi.santoso@yayasan.com',
             ],
             [
                 '1234567890123457',
@@ -72,6 +74,7 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 'SMK/Sederajat',
                 'Kasir',
                 'SMA',
+                'siti.aminah@yayasan.com',
             ],
         ];
     }

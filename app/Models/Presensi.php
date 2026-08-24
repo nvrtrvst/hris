@@ -47,6 +47,10 @@ class Presensi extends Model
         'motion_suspect',
         'keterangan',
         'persentase_bayar_jam',
+        'is_tugas_luar',
+        'tugas_luar_status',
+        'tugas_luar_id',
+        'tujuan',
     ];
 
     protected $guarded = [
@@ -71,6 +75,8 @@ class Presensi extends Model
         'exif_meta' => 'array',
         'is_lembur' => 'boolean',
         'persentase_bayar_jam' => 'integer',
+        'is_tugas_luar' => 'boolean',
+        'foto_kegiatan' => 'array',
     ];
 
     public static function statusAt(string $actualTime, string $requiredTime, int $toleransiMenit = 0): string
@@ -80,7 +86,7 @@ class Presensi extends Model
         return $actualTime > $batasWaktu ? 'telat' : 'hadir';
     }
 
-    protected $appends = ['foto_masuk_url', 'foto_keluar_url'];
+    protected $appends = ['foto_masuk_url', 'foto_keluar_url', 'foto_kegiatan_urls'];
 
     public function getFotoMasukUrlAttribute(): ?string
     {
@@ -90,6 +96,24 @@ class Presensi extends Model
     public function getFotoKeluarUrlAttribute(): ?string
     {
         return FileHelper::fotoUrl($this->foto_keluar);
+    }
+
+    public function getFotoKegiatanUrlsAttribute(): array
+    {
+        $list = $this->foto_kegiatan ?? [];
+        if (! is_array($list)) {
+            return [];
+        }
+
+        return collect($list)
+            ->map(function ($item) {
+                $path = is_array($item) ? ($item['path'] ?? null) : $item;
+
+                return $path ? FileHelper::fotoUrl($path) : null;
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     public function pegawai(): BelongsTo
@@ -105,5 +129,15 @@ class Presensi extends Model
     public function unitSekolah(): BelongsTo
     {
         return $this->belongsTo(UnitSekolah::class);
+    }
+
+    public function tugasLuar(): BelongsTo
+    {
+        return $this->belongsTo(TugasLuar::class);
+    }
+
+    public function scopeTugasLuar($query)
+    {
+        return $query->where('is_tugas_luar', true);
     }
 }

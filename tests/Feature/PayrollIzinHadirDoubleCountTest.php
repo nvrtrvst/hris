@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\HariLibur;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
@@ -146,5 +147,101 @@ class PayrollIzinHadirDoubleCountTest extends TestCase
         // Kehadiran fisik menang: hari itu dihitung HADIR (1x tunjangan), TIDAK kena potongan izin.
         $this->assertSame(50000.0, (float) $details['Tunjangan Kehadiran'], 'Tunjangan kehadiran harus 1 hari (hadir).');
         $this->assertSame(0.0, (float) ($details['Potongan Izin'] ?? 0.0), 'Tidak boleh kena potongan izin saat hadir di tanggal sama.');
+    }
+
+    public function test_alpa_record_tidak_double_count(): void
+    {
+        $admin = $this->makeSuperadmin();
+        $unit = $this->makeUnit();
+        $pegawai = $this->makePegawai($unit);
+
+        Jadwal::create([
+            'pegawai_id' => $pegawai->id,
+            'unit_sekolah_id' => $unit->id,
+            'hari' => 'Senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '08:30:00',
+            'jenis_jadwal' => 'reguler',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+
+        KomponenGaji::query()->update(['is_active' => false]);
+        KomponenGaji::create(['nama' => 'Gaji Pokok', 'kode' => 'gaji_pokok', 'tipe' => 'pendapatan', 'jenis' => 'fixed', 'nilai_default' => 2000000, 'is_taxable' => true, 'is_active' => true]);
+        KomponenGaji::create(['nama' => 'Potongan Alpa', 'kode' => 'kehadiran_alpa', 'tipe' => 'potongan', 'jenis' => 'dinamis_kehadiran', 'nilai_default' => 30000, 'is_taxable' => false, 'is_active' => true]);
+
+        // 1 Juni 2026 = Senin. 1 record alpa (hasil FinalizeAlpa).
+        Presensi::create([
+            'pegawai_id' => $pegawai->id,
+            'unit_sekolah_id' => $unit->id,
+            'tanggal' => '2026-06-01',
+            'status' => 'alpa',
+            'keterangan' => 'Auto-mark alpa',
+        ]);
+
+        $this->actingAs($admin, 'web_admin')
+            ->post(route('penggajian.run.init'), ['month' => '06', 'year' => '2026'])
+            ->assertRedirect(route('penggajian.run.worksheet', ['month' => '06', 'year' => '2026']));
+
+        $penggajian = Penggajian::where('pegawai_id', $pegawai->id)
+            ->where('periode_bulan', '06-2026')
+            ->first();
+
+        $this->assertNotNull($penggajian, 'Penggajian Juni 2026 harus dibuat.');
+
+        $details = $penggajian->details()->pluck('nominal', 'nama_komponen');
+
+        // Juni 2026 punya 5 Senin (working days = 5). 1 di antaranya sudah record alpa,
+        // 4 sisanya no-show (gap). Total alpa = 5, BUKAN 6 (double-count lama: record+gab).
+        // Rate 30000 × 5 = 150000.
+        $this->assertSame(150000.0, (float) ($details['Potongan Alpa'] ?? 0.0), 'Alpa tidak boleh double-count (harus 5 hari × 30000).');
+    }
+
+    public function test_hari_libur_mengurangi_hari_kerja_alpa(): void
+    {
+        $admin = $this->makeSuperadmin();
+        $unit = $this->makeUnit();
+        $pegawai = $this->makePegawai($unit);
+
+        Jadwal::create([
+            'pegawai_id' => $pegawai->id,
+            'unit_sekolah_id' => $unit->id,
+            'hari' => 'Senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '08:30:00',
+            'jenis_jadwal' => 'reguler',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+
+        KomponenGaji::query()->update(['is_active' => false]);
+        KomponenGaji::create(['nama' => 'Gaji Pokok', 'kode' => 'gaji_pokok', 'tipe' => 'pendapatan', 'jenis' => 'fixed', 'nilai_default' => 2000000, 'is_taxable' => true, 'is_active' => true]);
+        KomponenGaji::create(['nama' => 'Potongan Alpa', 'kode' => 'kehadiran_alpa', 'tipe' => 'potongan', 'jenis' => 'dinamis_kehadiran', 'nilai_default' => 30000, 'is_taxable' => false, 'is_active' => true]);
+
+        // 1 Juni 2026 = Senin = hari libur nasional (Hari Lahir Pancasila).
+        // Pegawai TIDAK absen sama sekali → hari itu harus dikecualikan dari working days.
+        HariLibur::create([
+            'tanggal' => '2026-06-01',
+            'nama' => 'Hari Lahir Pancasila',
+            'tipe' => 'nasional',
+            'unit_sekolah_id' => null,
+        ]);
+
+        $this->actingAs($admin, 'web_admin')
+            ->post(route('penggajian.run.init'), ['month' => '06', 'year' => '2026'])
+            ->assertRedirect(route('penggajian.run.worksheet', ['month' => '06', 'year' => '2026']));
+
+        $penggajian = Penggajian::where('pegawai_id', $pegawai->id)
+            ->where('periode_bulan', '06-2026')
+            ->first();
+
+        $this->assertNotNull($penggajian, 'Penggajian Juni 2026 harus dibuat.');
+
+        $details = $penggajian->details()->pluck('nominal', 'nama_komponen');
+
+        // Juni 2026 punya 5 Senin, tapi 1 Juni libur → working days = 4.
+        // Tanpa presensi: 4 hari no-show = 4 alpa. Rate 30000 × 4 = 120000.
+        // (Sebelum fix: working days 5 → alpa 5 × 30000 = 150000, salah.)
+        $this->assertSame(120000.0, (float) ($details['Potongan Alpa'] ?? 0.0), 'Hari libur harus mengurangi working days (4 hari × 30000).');
     }
 }

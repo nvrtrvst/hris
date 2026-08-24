@@ -23,8 +23,11 @@ class PegawaiImport implements ToCollection
      * @param  int|null  $unitSekolahId  Unit default (dari pilihan modal).
      * @param  bool  $allowUnitOverride  Superadmin: kolom Unit di template bisa menimpa per baris.
      *                                   Admin unit: false, selalu dipaksa ke unitnya sendiri.
+     * @param  string|null  $defaultPassword  Password seragam untuk semua user hasil import.
+     *                                        Bila diisi, user wajib ganti password saat login pertama.
+     *                                        Bila null, password default = NIK (per baris).
      */
-    public function __construct($unitSekolahId, protected bool $allowUnitOverride = false)
+    public function __construct($unitSekolahId, protected bool $allowUnitOverride = false, protected ?string $defaultPassword = null)
     {
         $this->unitSekolahId = $unitSekolahId;
     }
@@ -56,6 +59,8 @@ class PegawaiImport implements ToCollection
             $row = collect($row)->map(fn ($v) => $v === null ? null : (string) $v);
             $row[4] = $this->parseDate($row[4]); // Tanggal Lahir
             $row[11] = $this->parseDate($row[11]); // Tanggal Mulai Kerja
+            $row = $row->pad(16, null); // pastikan kolom email (index 15) ada
+            $row[15] = empty(trim((string) ($row[15] ?? ''))) ? null : trim((string) $row[15]);
 
             return $row->toArray();
         })->values()->toArray();
@@ -76,10 +81,14 @@ class PegawaiImport implements ToCollection
             '*.12' => 'required|string|max:255', // Pendidikan Terakhir
             '*.13' => 'required|string|max:255', // Nama Jabatan
             '*.14' => 'nullable|string|max:255', // Unit Sekolah (opsional, fallback ke unit modal)
+            '*.15' => 'required|email|max:191|unique:users,email', // Email (wajib — login)
         ], [
             '*.0.required' => 'NIK wajib diisi pada baris :position.',
             '*.0.size' => 'NIK harus 16 digit pada baris :position.',
             '*.13.required' => 'Nama Jabatan wajib diisi pada baris :position.',
+            '*.15.required' => 'Email wajib diisi pada baris :position.',
+            '*.15.email' => 'Format email tidak valid pada baris :position.',
+            '*.15.unique' => 'Email sudah terdaftar pada baris :position.',
         ]);
 
         if ($validator->fails()) {
@@ -133,6 +142,22 @@ class PegawaiImport implements ToCollection
             $seen[$hash] = true;
         }
 
+        // Cek duplikat email dalam file. Rule `unique:users,email` hanya memeriksa DB,
+        // bukan antar-baris dalam satu batch — dedup manual cegah 500 saat insert kedua.
+        $seenEmails = [];
+        foreach ($data as $index => $row) {
+            $email = $row[15];
+            if ($email === null) {
+                continue;
+            }
+            $key = strtolower($email);
+            if (isset($seenEmails[$key])) {
+                $validator->errors()->add($index.'.15', 'Email sudah dipakai pada baris '.($seenEmails[$key] + 2).'.');
+            } else {
+                $seenEmails[$key] = $index;
+            }
+        }
+
         if ($validator->errors()->isNotEmpty()) {
             throw new ValidationException($validator);
         }
@@ -148,12 +173,15 @@ class PegawaiImport implements ToCollection
                 throw ValidationException::withMessages(['unit_sekolah_id' => 'Tidak ada unit untuk baris '.($index + 2).'. Pilih unit di form import atau isi kolom Unit Sekolah di template.']);
             }
 
+            // Password default: seragam (bila diisi) atau NIK per baris.
+            // Bila password seragam dipakai, paksa ganti saat login pertama (keamanan).
             $user = User::create([
                 'name' => $row[2],
-                'email' => $row[0].'@yayasan.com', // email berbasis NIK pasti unik
-                'password' => Hash::make($row[0]), // password default is NIK
+                'email' => $row[15], // wajib & unik (divalidasi di atas)
+                'password' => Hash::make($this->defaultPassword ?? $row[0]),
                 'role' => 'pegawai',
                 'unit_sekolah_id' => $unitId,
+                'force_password_change' => $this->defaultPassword !== null,
             ]);
             $user->assignRole('pegawai');
 

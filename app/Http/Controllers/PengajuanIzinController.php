@@ -100,6 +100,7 @@ class PengajuanIzinController extends Controller
 
         $request->validate([
             'catatan_approval' => 'nullable|string|max:500',
+            'dihitung_hadir_kcd' => 'nullable|boolean',
         ]);
 
         $pengajuan = DB::transaction(function () use ($id, $user, $request) {
@@ -159,6 +160,11 @@ class PengajuanIzinController extends Controller
                     $pengajuan->catatan_approval = $request->catatan_approval;
                 }
                 $this->generatePresensi($pengajuan);
+                $pengajuan->save();
+            }
+
+            if ($request->filled('dihitung_hadir_kcd')) {
+                $pengajuan->dihitung_hadir_kcd = $request->boolean('dihitung_hadir_kcd');
                 $pengajuan->save();
             }
 

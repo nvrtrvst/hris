@@ -3,6 +3,7 @@
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HariLiburController;
 use App\Http\Controllers\JabatanController;
 use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\KomponenGajiController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleManagementController;
 use App\Http\Controllers\SkalaMasaBaktiController;
+use App\Http\Controllers\TugasLuarController;
 use App\Http\Controllers\UnitSekolahController;
 use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
@@ -137,6 +139,12 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::post('presensi/{presensi}/reject-lembur', [PresensiController::class, 'rejectLembur'])
         ->middleware('throttle:60,1')
         ->name('presensi.rejectLembur');
+    Route::post('presensi/{presensi}/approve-tugas-luar', [PresensiController::class, 'approveTugasLuar'])
+        ->middleware('throttle:60,1')
+        ->name('presensi.approveTugasLuar');
+    Route::post('presensi/{presensi}/reject-tugas-luar', [PresensiController::class, 'rejectTugasLuar'])
+        ->middleware('throttle:60,1')
+        ->name('presensi.rejectTugasLuar');
     Route::get('presensi/{presensi}/audit', [PresensiController::class, 'audit'])
         ->name('presensi.audit');
     Route::get('presensi/{presensi}/review', [PresensiController::class, 'reviewDetail'])
@@ -152,6 +160,7 @@ Route::middleware('auth:web_admin')->group(function () {
     // tidak diimplementasikan; UI memakai modal di index). Menghindari GET → 500.
     Route::resource('komponen-gaji', KomponenGajiController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('throttle:60,1');
     Route::resource('skala-masa-bakti', SkalaMasaBaktiController::class)->only(['index', 'store', 'destroy'])->middleware('throttle:60,1');
+    Route::resource('tugas-luar', TugasLuarController::class)->only(['index', 'store', 'destroy'])->middleware('throttle:60,1');
 
     // Atur Nominal Spesifik per Pegawai (Manual / Import Excel)
     Route::get('komponen-gaji/{komponen_gaji}/pegawai', [PegawaiKomponenController::class, 'index'])->name('komponen-gaji.pegawai.index');
@@ -200,6 +209,15 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('laporan/penggajian', [LaporanController::class, 'exportPenggajian'])->name('laporan.penggajian');
     Route::get('laporan/lemburan', [LaporanController::class, 'exportLemburan'])->name('laporan.lemburan');
 
+    // Laporan KCD (daftar hadir bulanan untuk sertifikasi KCD)
+    Route::middleware('can:view_laporan_kcd')->group(function () {
+        Route::get('laporan/kcd', [LaporanController::class, 'kcdIndex'])->name('laporan.kcd');
+        Route::get('laporan/kcd/preview', [LaporanController::class, 'kcdPreview'])->name('laporan.kcd.preview');
+        Route::get('laporan/kcd/pdf', [LaporanController::class, 'kcdPdf'])
+            ->middleware('throttle:30,1')
+            ->name('laporan.kcd.pdf');
+    });
+
     // Rute slip gaji ditempatkan setelah rute admin agar tidak tabrakan dengan /penggajian/run.
     // whereNumber: cegah shadowing — '/penggajian/export-bank' tidak boleh masuk ke {id}.
     Route::get('penggajian/{id}', [PenggajianController::class, 'show'])->whereNumber('id')->name('penggajian.show');
@@ -238,6 +256,13 @@ Route::middleware('auth:web_admin')->group(function () {
             ->name('backup.download');
         Route::resource('mata-pelajaran', MataPelajaranController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('throttle:60,1');
         Route::resource('jabatan', JabatanController::class)->except(['show', 'create', 'edit'])->middleware('throttle:60,1');
+        Route::resource('hari-libur', HariLiburController::class)->except(['show'])->middleware('throttle:60,1');
+        Route::post('hari-libur/import', [HariLiburController::class, 'importLokal'])
+            ->middleware('throttle:10,1')
+            ->name('hari-libur.import');
+        Route::post('hari-libur/sync-api', [HariLiburController::class, 'syncApi'])
+            ->middleware('throttle:10,1')
+            ->name('hari-libur.sync-api');
     });
 });
 

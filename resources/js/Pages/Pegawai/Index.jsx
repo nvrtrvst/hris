@@ -70,6 +70,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
     const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
         file: null,
         unit_sekolah_id: isAdminUnit ? auth.user.unit_sekolah_id : '',
+        default_password: '',
     });
 
     const hasFilter = Boolean(search || unitSekolahId || mataPelajaranId || jabatanId || jenisFilter);
@@ -437,9 +438,22 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                 {importErrors[0] && <p className="form-error">Error pada baris data: Silakan periksa file Anda. {importErrors[0]}</p>}
                             </div>
 
+                            <div>
+                                <label className="form-label text-xs">Password Default (Opsional)</label>
+                                <input
+                                    type="text"
+                                    value={importData.default_password}
+                                    onChange={(e) => setImportData('default_password', e.target.value)}
+                                    placeholder="Kosong = pakai NIK masing-masing"
+                                    className="w-full rounded-button border border-border bg-white px-3 py-2 text-sm text-text-primary shadow-sm transition-colors placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                />
+                                {importErrors.default_password && <p className="form-error">{importErrors.default_password}</p>}
+                                <p className="mt-1 text-xs text-text-muted">Bila diisi, semua user hasil import mendapat password ini & wajib ganti saat login pertama. Min. 8 karakter.</p>
+                            </div>
+
                             <div className="flex items-start gap-2 rounded-lg border border-info/30 bg-info-light p-3 text-xs text-info">
                                 <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0" />
-                                <span>Pastikan file mengikuti format <strong>Template Excel</strong>. Kolom <strong>Nama Jabatan</strong>, <strong>Status Kepegawaian</strong>, <strong>Pendidikan Terakhir</strong>, dan <strong>Unit Sekolah</strong> sudah berupa dropdown. <strong>Unit Sekolah opsional</strong>: kosongkan jika semua pegawai di file ini masuk ke unit yang dipilih di atas (untuk import multi-unit, isi kolomnya per baris). Sistem menolak seluruh data jika ada satu baris saja yang salah format.</span>
+                                <span>Pastikan file mengikuti format <strong>Template Excel</strong>. Kolom <strong>Nama Jabatan</strong>, <strong>Status Kepegawaian</strong>, <strong>Pendidikan Terakhir</strong>, dan <strong>Unit Sekolah</strong> sudah berupa dropdown. <strong>Unit Sekolah opsional</strong>: kosongkan jika semua pegawai di file ini masuk ke unit yang dipilih di atas (untuk import multi-unit, isi kolomnya per baris). <strong>Email wajib diisi</strong> &amp; unik — dipakai pegawai untuk login. Sistem menolak seluruh data jika ada satu baris saja yang salah format.</span>
                             </div>
                         </div>
 

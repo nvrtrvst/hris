@@ -52,6 +52,9 @@ class UnitSekolahController extends Controller
             'toleransi_tap_menit' => 'nullable|integer|min:0|max:60',
             'jam_masuk_kantor' => 'required|date_format:H:i',
             'jam_pulang_kantor' => 'nullable|date_format:H:i',
+            'web' => 'nullable|string|max:255',
+            'telepon' => 'nullable|string|max:255',
+            'alamat' => 'nullable|string|max:1000',
         ]);
 
         $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;
@@ -95,6 +98,9 @@ class UnitSekolahController extends Controller
             'toleransi_tap_menit' => 'nullable|integer|min:0|max:60',
             'jam_masuk_kantor' => 'required|date_format:H:i',
             'jam_pulang_kantor' => 'nullable|date_format:H:i',
+            'web' => 'nullable|string|max:255',
+            'telepon' => 'nullable|string|max:255',
+            'alamat' => 'nullable|string|max:1000',
         ]);
 
         $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;

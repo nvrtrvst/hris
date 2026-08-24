@@ -11,7 +11,7 @@ class UnitSekolah extends Model
 {
     protected $table = 'unit_sekolah';
 
-    protected $fillable = ['nama', 'singkatan', 'logo', 'latitude', 'longitude', 'radius_meter', 'durasi_jp', 'max_jam_minggu', 'toleransi_menit', 'toleransi_tap_menit', 'jam_masuk_kantor', 'jam_pulang_kantor'];
+    protected $fillable = ['nama', 'singkatan', 'logo', 'latitude', 'longitude', 'radius_meter', 'durasi_jp', 'max_jam_minggu', 'toleransi_menit', 'toleransi_tap_menit', 'jam_masuk_kantor', 'jam_pulang_kantor', 'web', 'telepon', 'alamat'];
 
     protected $appends = ['logo_url'];
 

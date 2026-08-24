@@ -221,6 +221,30 @@ class PegawaiTemplateImportTest extends TestCase
         $this->assertSame($this->unit->id, $pegawai->units()->first()->id, 'Admin unit tidak boleh import ke unit lain');
     }
 
+    public function test_import_menolak_email_kosong_atau_invalid(): void
+    {
+        // Tanpa kolom Email (15 kolom)
+        $noEmail = "NIK,NIP,Nama Lengkap,Tempat Lahir,Tanggal Lahir,Jenis Kelamin,Agama,Status Pernikahan,No HP,Alamat KTP,Status Kepegawaian,Tanggal Mulai Kerja,Pendidikan Terakhir,Nama Jabatan,Unit Sekolah\n"
+            .'1234567890999998,,Budi Santoso,Jakarta,1990-01-01,L,Islam,Menikah,081234567890,Jl A,tetap,2020-01-01,SMA/SMK,Guru Mata Pelajaran,SMP'."\n";
+
+        $this->actingAs($this->superadmin, 'web_admin')->post(route('pegawai.import'), [
+            'unit_sekolah_id' => $this->unit->id,
+            'file' => UploadedFile::fake()->createWithContent('import.csv', $noEmail),
+        ])->assertSessionHasErrors();
+
+        // Email invalid
+        $badEmail = "NIK,NIP,Nama Lengkap,Tempat Lahir,Tanggal Lahir,Jenis Kelamin,Agama,Status Pernikahan,No HP,Alamat KTP,Status Kepegawaian,Tanggal Mulai Kerja,Pendidikan Terakhir,Nama Jabatan,Unit Sekolah,Email\n"
+            .'1234567890999999,,Budi Santoso,Jakarta,1990-01-01,L,Islam,Menikah,081234567890,Jl A,tetap,2020-01-01,SMA/SMK,Guru Mata Pelajaran,SMP,bukan-email'."\n";
+
+        $response = $this->actingAs($this->superadmin, 'web_admin')->post(route('pegawai.import'), [
+            'unit_sekolah_id' => $this->unit->id,
+            'file' => UploadedFile::fake()->createWithContent('import.csv', $badEmail),
+        ]);
+
+        $response->assertSessionHasErrors();
+        $this->assertStringContainsString('email', implode(' ', session('errors')->all()));
+    }
+
     private function makeUnit(string $nama): UnitSekolah
     {
         return UnitSekolah::create([
@@ -237,7 +261,7 @@ class PegawaiTemplateImportTest extends TestCase
 
     private function csv(string $nik, string $nama, string $jabatan, string $unit = ''): string
     {
-        $header = 'NIK,NIP,Nama Lengkap,Tempat Lahir,Tanggal Lahir,Jenis Kelamin,Agama,Status Pernikahan,No HP,Alamat KTP,Status Kepegawaian,Tanggal Mulai Kerja,Pendidikan Terakhir,Nama Jabatan,Unit Sekolah';
+        $header = 'NIK,NIP,Nama Lengkap,Tempat Lahir,Tanggal Lahir,Jenis Kelamin,Agama,Status Pernikahan,No HP,Alamat KTP,Status Kepegawaian,Tanggal Mulai Kerja,Pendidikan Terakhir,Nama Jabatan,Unit Sekolah,Email';
 
         $row = implode(',', [
             $nik,
@@ -255,6 +279,7 @@ class PegawaiTemplateImportTest extends TestCase
             'SMA/SMK',
             $jabatan,
             $unit,
+            $nik.'@yayasan.com',
         ]);
 
         return $header.PHP_EOL.$row;

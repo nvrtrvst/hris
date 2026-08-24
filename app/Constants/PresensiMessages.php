@@ -71,4 +71,11 @@ class PresensiMessages
     public const TAP_BELUM_DIMULAI = 'Jadwal belum dimulai.';
 
     public const TAP_SUDAH_BERAKHIR = 'Jadwal sudah berakhir. Batas tap: %s.';
+
+    // Tugas Luar
+    public const LABEL_TUGAS_LUAR = 'Tugas Luar';
+
+    public const TUJUAN_REQUIRED = 'Tujuan tugas luar wajib diisi.';
+
+    public const TUJUAN_LUAR_RADIUS = 'Tugas luar dikecualikan dari cek radius. Pastikan foto & akurasi valid.';
 }

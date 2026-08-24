@@ -5,8 +5,13 @@ namespace App\Http\Controllers;
 use App\Exports\LaporanLemburanExport;
 use App\Exports\LaporanPenggajianExport;
 use App\Exports\LaporanPresensiExport;
+use App\Http\Requests\KcdReportRequest;
 use App\Http\Requests\LaporanGenerateRequest;
+use App\Models\LaporanKcdCetak;
 use App\Models\UnitSekolah;
+use App\Services\KcdReportService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
@@ -95,5 +100,97 @@ class LaporanController extends Controller
             new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
             'Laporan_Lemburan_Potongan_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
+    }
+
+    public function kcdIndex()
+    {
+        $user = request()->user();
+
+        $units = $user->can('view_all_units')
+            ? UnitSekolah::orderBy('nama')->get(['id', 'nama'])
+            : UnitSekolah::where('id', $user->unit_sekolah_id)->get(['id', 'nama']);
+
+        return Inertia::render('Laporan/Kcd', [
+            'auth' => [
+                'user' => $user->only(['id', 'name', 'email']),
+                'permissions' => $user->getAllPermissions()->pluck('name'),
+                'roles' => $user->getRoleNames(),
+            ],
+            'units' => $units,
+        ]);
+    }
+
+    public function kcdPreview(KcdReportRequest $request)
+    {
+        $validated = $request->validated();
+
+        $unit = UnitSekolah::findOrFail($validated['unit_sekolah_id']);
+        $data = (new KcdReportService)->build($unit, $validated['periode'], $validated['minggu'] ?? null);
+
+        if (request()->user()->can('view_all_units')) {
+            $data['unit']['logo_path'] = $this->resolveYayasanLogoPath() ?? $data['unit']['logo_path'];
+        }
+
+        return response()->json($data);
+    }
+
+    public function kcdPdf(KcdReportRequest $request)
+    {
+        $validated = $request->validated();
+        $minggu = $validated['minggu'] ?? null;
+
+        $unit = UnitSekolah::findOrFail($validated['unit_sekolah_id']);
+        $data = (new KcdReportService)->build($unit, $validated['periode'], $minggu);
+
+        if (request()->user()->can('view_all_units')) {
+            $data['unit']['logo_path'] = $this->resolveYayasanLogoPath() ?? $data['unit']['logo_path'];
+        }
+
+        $period = Carbon::parse($validated['periode'].'-01');
+        $start = $period->copy()->startOfMonth()->toDateString();
+        $end = $period->copy()->endOfMonth()->toDateString();
+
+        $nomorCetak = LaporanKcdCetak::where('unit_sekolah_id', $unit->id)
+            ->where('periode_key', $validated['periode'])
+            ->where('minggu', $minggu)
+            ->count() + 1;
+
+        LaporanKcdCetak::create([
+            'user_id' => request()->user()->id,
+            'unit_sekolah_id' => $unit->id,
+            'periode_key' => $validated['periode'],
+            'minggu' => $minggu,
+            'start_date' => $start,
+            'end_date' => $end,
+            'nomor_cetak' => $nomorCetak,
+        ]);
+
+        $data['nomor_cetak'] = $nomorCetak;
+        $data['download_at'] = now()->format('d/m/Y H:i');
+        $data['download_by'] = request()->user()->name;
+
+        $suffix = $minggu ? '_M'.$minggu : '';
+
+        $pdf = Pdf::loadView('exports.pdf-kcd', $data)
+            ->setPaper('A4', 'landscape');
+
+        return $pdf->download('Laporan_KCD_'.$unit->singkatan.'_'.$validated['periode'].$suffix.'.pdf');
+    }
+
+    /**
+     * Resolve logo yayasan ke path file lokal untuk DOMPDF.
+     */
+    protected function resolveYayasanLogoPath(): ?string
+    {
+        $rel = config('kcd.yayasan_logo');
+        if (! $rel) {
+            return null;
+        }
+
+        $disk = config('filesystems.image_disk', 'public');
+        $root = config("filesystems.disks.$disk.root");
+        $path = rtrim($root, '/').'/'.ltrim($rel, '/');
+
+        return file_exists($path) ? $path : null;
     }
 }

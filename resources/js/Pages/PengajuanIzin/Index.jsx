@@ -27,6 +27,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         alasan_penolakan: '',
         catatan_approval: '',
+        dihitung_hadir_kcd: false,
     });
 
     const openModal = (item, type) => {
@@ -532,6 +533,17 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                                 placeholder="Tambahkan catatan untuk pegawai..."
                                             ></textarea>
                                         </div>
+                                        <label className="flex items-start gap-2.5 rounded-card border border-border bg-surface p-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={data.dihitung_hadir_kcd}
+                                                onChange={e => setData('dihitung_hadir_kcd', e.target.checked)}
+                                                className="mt-0.5 h-4 w-4 accent-[#0F3D3E]"
+                                            />
+                                            <span className="text-sm text-text-secondary">
+                                                Dihitung hadir untuk Laporan KCD <span className="text-text-muted">(izin/sakit ditampilkan sebagai HADIR berdasarkan jam kantor)</span>
+                                            </span>
+                                        </label>
                                     </>
                                 )}
 

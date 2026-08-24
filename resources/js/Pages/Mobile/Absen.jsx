@@ -5,6 +5,7 @@ import { Head, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Toggle } from '@/Components/MobileUI';
 import TetapPresensi from '@/Pages/Mobile/Partials/TetapPresensi';
+import BuktiKegiatan from '@/Pages/Mobile/Partials/BuktiKegiatan';
 import { useCamera } from '@/Hooks/useCamera';
 import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
@@ -15,6 +16,8 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
     const [isLembur, setIsLembur] = useState(false);
+    const [isTugasLuar, setIsTugasLuar] = useState(false);
+    const [tujuan, setTujuan] = useState('');
     const [jadwalId, setJadwalId] = useState(null);
     const [currentTime, setCurrentTime] = useState('');
     const [posA, setPosA] = useState(null);
@@ -37,7 +40,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const lemburUnit =
         pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
     const selectedJadwal = jadwals.find((j) => j.id === jadwalId);
-    const targetUnit = isLembur
+    const targetUnit = isTugasLuar || isLembur
         ? lemburUnit
         : selectedJadwal?.unit_sekolah ?? lemburUnit;
 
@@ -49,10 +52,15 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         ? (presensiHariIni || []).find((p) => p.jadwal_id === jadwalId)
         : null;
     const teachingDone = Boolean(teachingRecord?.jam_masuk);
+    const teachingOpen = Boolean(teachingRecord?.jam_masuk && !teachingRecord?.jam_keluar);
     const kantorOpen = Boolean(kantorRecord?.jam_masuk && !kantorRecord?.jam_keluar);
     const lemburOpen = Boolean(
         (presensiHariIni || []).find((p) => p.is_lembur && p.jam_masuk && !p.jam_keluar)
     );
+    const tugasLuarOpen = Boolean(
+        (presensiHariIni || []).find((p) => p.is_tugas_luar && p.jam_masuk && !p.jam_keluar)
+    );
+    const tugasLuarRecord = (presensiHariIni || []).find((p) => p.is_tugas_luar && p.jam_masuk);
 
     const geofence = useMemo(() => {
         if (!currentPosition || !targetUnit) return null;
@@ -75,11 +83,11 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         };
     }, [currentPosition, targetUnit]);
 
-    const geoBlocked = geofence && !geofence.inside;
+    const geoBlocked = geofence && !geofence.inside && !isTugasLuar;
     const geoReady = geofence !== null;
 
     const camera = useCamera({
-        canCapture: Boolean(currentPosition && geofence?.inside),
+        canCapture: Boolean(currentPosition && (geofence?.inside || isTugasLuar)),
         currentPosition,
         onWillCapture: (pos) => setPosA(pos),
     });
@@ -87,7 +95,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const {
         videoRef,
         canvasRef,
-        photoInputRef,
         streamRef,
         showLive,
         capturedPhoto,
@@ -96,7 +103,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         startCamera,
         capturePhoto,
         retakePhoto,
-        handleFileFallback,
         clearCamera,
     } = camera;
 
@@ -150,7 +156,18 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
 
     const pad = (n) => String(n).padStart(2, '0');
 
-    const toggleLembur = () => setIsLembur((prev) => !prev);
+    const toggleLembur = () => {
+        setIsLembur((prev) => !prev);
+        setIsTugasLuar(false);
+    };
+
+    const toggleTugasLuar = () => {
+        setIsTugasLuar((prev) => !prev);
+        if (!isTugasLuar) {
+            setIsLembur(false);
+            setJadwalId(null);
+        }
+    };
 
     const selectJadwal = (id) => setJadwalId(id);
 
@@ -169,19 +186,23 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             setError('Silakan ambil foto presensi terlebih dahulu.');
             return;
         }
-        if (!isLembur && !officeAttendance && jadwals.length > 0 && !jadwalId) {
+        if (!isLembur && !isTugasLuar && !officeAttendance && jadwals.length > 0 && !jadwalId) {
             setError('Silakan pilih jadwal presensi Anda.');
             return;
         }
-        if (isTeaching && teachingDone) {
-            setError('Anda sudah melakukan absen masuk untuk jadwal ini.');
+        if (isTeaching && teachingRecord?.jam_masuk && teachingRecord?.jam_keluar) {
+            setError('Anda sudah melakukan presensi lengkap untuk jadwal ini.');
             return;
         }
         if (!isLembur && officeAttendance && kantorRecord?.jam_keluar) {
             setError('Anda sudah melakukan presensi keluar.');
             return;
         }
-        if (!currentPosition && !isLembur) {
+        if (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) {
+            setError('Tujuan tugas luar wajib diisi.');
+            return;
+        }
+        if (!currentPosition && !isLembur && !isTugasLuar) {
             setError('Lokasi belum tersedia. Pastikan GPS aktif.');
             return;
         }
@@ -199,8 +220,11 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             _token: token,
             foto: capturedPhoto,
             is_lembur: isLembur,
-            jadwal_id: isLembur ? null : jadwalId,
-            tipe: isTeaching ? 'masuk' : isLembur ? (lemburOpen ? 'keluar' : 'masuk') : (kantorOpen ? 'keluar' : 'masuk'),
+            is_tugas_luar: isTugasLuar,
+            tujuan: isTugasLuar ? tujuan : null,
+            keterangan: null,
+            jadwal_id: isLembur || isTugasLuar ? null : jadwalId,
+            tipe: isTeaching ? (teachingOpen ? 'keluar' : 'masuk') : isLembur ? (lemburOpen ? 'keluar' : 'masuk') : isTugasLuar ? (tugasLuarOpen ? 'keluar' : 'masuk') : (kantorOpen ? 'keluar' : 'masuk'),
             latitude: currentPosition?.latitude ?? null,
             longitude: currentPosition?.longitude ?? null,
             accuracy: currentPosition?.accuracy ?? null,
@@ -369,7 +393,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </div>
             </div>
 
-            {!isLembur && jadwals.length > 0 && (
+            {!isLembur && !isTugasLuar && jadwals.length > 0 && (
                 <section className="mb-4" aria-labelledby="jadwal-heading">
                     <div className="mb-2 flex items-center justify-between">
                         <h2 id="jadwal-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Jadwal hari ini</h2>
@@ -396,7 +420,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </section>
             )}
 
-            {!isLembur && officeAttendance && (
+            {!isLembur && !isTugasLuar && officeAttendance && (
                 <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                     <p className="text-sm font-bold text-emerald-900">Kehadiran kantor</p>
                     <p className="mt-0.5 text-xs leading-relaxed text-emerald-800">Tidak ada jadwal mengajar hari ini. Presensi memakai unit primer dan jam masuk kantor.</p>
@@ -421,18 +445,13 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                             )}
                         </>
                     ) : (
-                        <button
-                            type="button"
-                            onClick={() => photoInputRef.current?.click()}
-                            disabled={geoBlocked || !currentPosition}
-                            className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-950 px-6 text-center text-slate-300 transition-colors active:bg-slate-900 disabled:opacity-40"
-                        >
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-950 px-6 text-center text-slate-300">
                             <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-200">
                                 <Camera className="h-6 w-6" />
                             </div>
                             <p className="text-sm font-medium">{locationError || 'Kamera tidak dapat diakses'}</p>
-                            <p className="text-xs text-slate-400">Ketuk untuk mengunggah foto dari galeri</p>
-                        </button>
+                            <p className="text-xs text-slate-400">Aktifkan kamera untuk presensi realtime.</p>
+                        </div>
                     )}
 
                     {!capturedPhoto && (
@@ -443,8 +462,12 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                         <span className="absolute right-3 top-3 rounded-lg bg-amber-500 px-2.5 py-1.5 text-xs font-bold text-amber-950">LEMBUR</span>
                     )}
 
+                    {isTugasLuar && !capturedPhoto && (
+                        <span className="absolute right-3 top-3 rounded-lg bg-sky-500 px-2.5 py-1.5 text-xs font-bold text-sky-950">TUGAS LUAR</span>
+                    )}
+
                     {currentPosition && !capturedPhoto && (
-                        <span className={`absolute right-3 ${isLembur ? 'top-12' : 'top-3'} rounded-lg bg-black/65 px-2.5 py-1.5 text-[10px] font-mono font-semibold text-white`}>
+                        <span className={`absolute right-3 ${isLembur || isTugasLuar ? 'top-12' : 'top-3'} rounded-lg bg-black/65 px-2.5 py-1.5 text-[10px] font-mono font-semibold text-white`}>
                             {currentPosition.latitude.toFixed(5)}, {currentPosition.longitude.toFixed(5)}
                         </span>
                     )}
@@ -469,7 +492,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                                     aria-label="Ambil foto presensi"
                                     className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-white bg-transparent transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100"
                                 >
-                                    <span className={`h-14 w-14 rounded-full ${isLembur ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                                    <span className={`h-14 w-14 rounded-full ${isLembur ? 'bg-amber-500' : isTugasLuar ? 'bg-sky-500' : 'bg-emerald-500'}`} />
                                 </button>
                             </div>
                             {showLive && !currentPosition && (
@@ -575,8 +598,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </div>
             )}
 
-            <input type="file" accept="image/*" capture="environment" ref={photoInputRef} className="hidden" onChange={handleFileFallback} />
-
             <Card press={false} className="mt-3 flex items-center justify-between py-3.5">
                 <div>
                     <p className="text-sm font-bold text-slate-900">Mode lembur</p>
@@ -585,13 +606,43 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 <Toggle checked={isLembur} onChange={toggleLembur} tone="amber" />
             </Card>
 
+            <Card press={false} className="mt-3 flex items-center justify-between py-3.5">
+                <div>
+                    <p className="text-sm font-bold text-slate-900">Mode tugas luar</p>
+                    <p className="mt-0.5 text-xs text-slate-500">Dikecualikan dari cek radius, perlu tujuan</p>
+                </div>
+                <Toggle checked={isTugasLuar} onChange={toggleTugasLuar} tone="sky" />
+            </Card>
+
+            {isTugasLuar && (
+                <div className="mt-3">
+                    <label htmlFor="tujuan" className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tujuan tugas luar</label>
+                    <input
+                        id="tujuan"
+                        type="text"
+                        value={tujuan}
+                        onChange={(e) => setTujuan(e.target.value)}
+                        placeholder="Contoh: Rapat dinas di Dinas Pendidikan"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-200"
+                    />
+                </div>
+            )}
+
+            {tugasLuarRecord && (
+                <BuktiKegiatan
+                    presensiId={tugasLuarRecord.id}
+                    initialUrls={tugasLuarRecord.foto_kegiatan_urls || []}
+                    currentPosition={currentPosition}
+                />
+            )}
+
             <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (!isLembur && !officeAttendance && !jadwals.length) || (isTeaching && teachingDone) || (!isLembur && officeAttendance && kantorRecord?.jam_keluar)}
-                className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isLembur ? 'bg-amber-500 text-amber-950' : 'bg-primary text-white'}`}
+                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) || (!isLembur && !isTugasLuar && !officeAttendance && !jadwals.length) || (isTeaching && teachingRecord?.jam_masuk && teachingRecord?.jam_keluar) || (!isLembur && officeAttendance && kantorRecord?.jam_keluar)}
+                className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isTugasLuar ? 'bg-sky-500 text-sky-950' : isLembur ? 'bg-amber-500 text-amber-950' : 'bg-primary text-white'}`}
             >
-                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isLembur ? 'Kirim bukti lembur' : isTeaching ? (teachingDone ? 'Sudah presensi masuk' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}
+                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isLembur ? 'Kirim bukti lembur' : isTugasLuar ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : isTeaching ? (teachingRecord?.jam_keluar ? 'Sudah presensi lengkap' : teachingOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}
             </button>
 
             <canvas ref={canvasRef} className="hidden" />

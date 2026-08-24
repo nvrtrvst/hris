@@ -31,6 +31,7 @@ class RolePermissionSeeder extends Seeder
             'view_presensi',
             'view_izin',
             'view_payroll',
+            'view_laporan_kcd',
             'manage_master_data', // unit sekolah, komponen gaji, dll
             'manage_users',
             'manage_roles',

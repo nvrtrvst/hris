@@ -3,11 +3,11 @@ import { useCallback, useRef, useState } from 'react';
 /**
  * Hook kamera bersama utk halaman presensi mobile.
  *
- * Mengelola: getUserMedia (selfie), pratinjau live, ambil foto bukti
- * (crop 3:4 + resize max 640px, JPEG q0.75 — sama dengan target resize
- * server di ImageUploadService (640px), sehingga resize server jadi no-op
- * dan beban CPU/RAM di jam sibuk (250 absen serentak) turun drastis),
- * fallback upload dari galeri.
+ * Mengelola: getUserMedia (kamera belakang, facingMode environment), pratinjau
+ * live, ambil foto bukti (crop 3:4 + resize max 640px, JPEG q0.75 — sama dengan
+ * target resize server di ImageUploadService (640px), sehingga resize server jadi
+ * no-op dan beban CPU/RAM di jam sibuk (250 absen serentak) turun drastis).
+ * TIDAK ada fallback galeri: foto HARUS realtime (anti-spoof replay).
  *
  * @param {object} opts
  * @param {boolean} opts.canCapture — true saat GPS siap & dalam radius (foto diblokir di luar itu)
@@ -24,12 +24,11 @@ export function useCamera({ canCapture = true, currentPosition = null, onWillCap
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const streamRef = useRef(null);
-    const photoInputRef = useRef(null);
 
     const startCamera = useCallback(async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } },
+                video: { facingMode: 'environment', width: { ideal: 720 }, height: { ideal: 960 } },
                 audio: false,
             });
             streamRef.current = stream;
@@ -102,30 +101,6 @@ export function useCamera({ canCapture = true, currentPosition = null, onWillCap
         startCamera();
     }, [startCamera]);
 
-    const handleFileFallback = useCallback((e) => {
-        if (!canCapture) return;
-        const file = e.target.files?.[0];
-        if (!file) return;
-        onWillCapture?.(currentPosition ? { ...currentPosition, captured_at: new Date().toISOString() } : null);
-
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const image = new Image();
-            image.onload = async () => {
-                setIsCapturing(true);
-                try {
-                    const dataUrl = await createEvidencePhoto(image, image.naturalWidth, image.naturalHeight);
-                    setCapturedPhoto(dataUrl);
-                } finally {
-                    setIsCapturing(false);
-                }
-            };
-            image.onerror = () => setCameraError('Foto tidak dapat diproses. Pilih file gambar lain.');
-            image.src = reader.result;
-        };
-        reader.readAsDataURL(file);
-    }, [canCapture, currentPosition, createEvidencePhoto, onWillCapture]);
-
     const clearCamera = useCallback(() => {
         stopCamera();
         setShowLive(false);
@@ -136,7 +111,6 @@ export function useCamera({ canCapture = true, currentPosition = null, onWillCap
     return {
         videoRef,
         canvasRef,
-        photoInputRef,
         streamRef,
         showLive,
         capturedPhoto,
@@ -146,7 +120,6 @@ export function useCamera({ canCapture = true, currentPosition = null, onWillCap
         stopCamera,
         capturePhoto,
         retakePhoto,
-        handleFileFallback,
         clearCamera,
     };
 }

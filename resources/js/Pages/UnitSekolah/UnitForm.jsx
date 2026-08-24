@@ -165,6 +165,26 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                 </div>
             </SectionCard>
 
+            {/* Kop Surat (Laporan KCD) */}
+            <SectionCard Icon={School} title="Kop Surat (Laporan KCD)"
+                description="Data ditampilkan di kop surat laporan presensi KCD. Opsional.">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field label="Website" error={errors.web}>
+                        <input type="text" value={data.web ?? ''}
+                            onChange={(e) => setData('web', e.target.value)} placeholder="cth. www.smpnm.sch.id" className={inputClass} />
+                    </Field>
+                    <Field label="Telepon" error={errors.telepon}>
+                        <input type="text" value={data.telepon ?? ''}
+                            onChange={(e) => setData('telepon', e.target.value)} placeholder="cth. (021) 1234567" className={inputClass} />
+                    </Field>
+                    <Field label="Alamat" error={errors.alamat} className="sm:col-span-2">
+                        <textarea value={data.alamat ?? ''}
+                            onChange={(e) => setData('alamat', e.target.value)} rows={2} placeholder="Alamat lengkap unit sekolah"
+                            className={inputClass} />
+                    </Field>
+                </div>
+            </SectionCard>
+
             {/* Actions */}
             <div className="card flex items-center justify-end gap-3 p-5">
                 <Link href={route('unit-sekolah.index')} className="btn-secondary">Batal</Link>

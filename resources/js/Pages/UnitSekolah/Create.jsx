@@ -18,6 +18,9 @@ export default function Create({ auth }) {
         max_jam_minggu: 30,
         jam_masuk_kantor: '07:30',
         jam_pulang_kantor: '15:00',
+        web: '',
+        telepon: '',
+        alamat: '',
     });
 
     const handleSubmit = (e) => {

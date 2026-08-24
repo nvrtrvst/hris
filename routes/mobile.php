@@ -6,6 +6,7 @@ use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileGajiController;
 use App\Http\Controllers\MobileIzinController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PushSubscriptionController;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -57,6 +58,9 @@ Route::middleware('auth:web_mobile')->group(function () {
         ->middleware('throttle:10,1')->name('presensi.absen.tetap');
     Route::post('/tap-jadwal', [MobileController::class, 'tapJadwal'])
         ->middleware('throttle:30,1')->name('presensi.absen.tap');
+
+    Route::post('/tugas-luar/{presensi}/bukti', [PresensiController::class, 'storeBuktiTugasLuar'])
+        ->middleware('throttle:10,1')->name('presensi.tugas-luar.bukti');
 
     // Web Push Subscription (notifikasi reminder presensi & status izin)
     Route::post('/push/subscribe', [PushSubscriptionController::class, 'subscribe'])

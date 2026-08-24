@@ -63,6 +63,254 @@ const LemburBadge = ({ status }) => {
     );
 };
 
+const TugasLuarBadge = ({ status }) => {
+    const map = {
+        pending: 'bg-sky-50 text-sky-700 border-sky-200',
+        disetujui: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        ditolak: 'bg-rose-50 text-rose-700 border-rose-200',
+    };
+
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${map[status] || map.pending}`}>
+            Tugas Luar {status || 'Pending'}
+        </span>
+    );
+};
+
+const TugasLuarCell = ({ p }) => (
+    <td className="px-4 py-3.5 whitespace-nowrap">
+        {p.is_tugas_luar ? (
+            <div>
+                <TugasLuarBadge status={p.tugas_luar_status} />
+                {p.tugas_luar_status === 'pending' && (
+                    <div className="mt-1.5 flex gap-1">
+                        <button
+                            onClick={() => router.post(route('presensi.approveTugasLuar', p.id), {}, { preserveState: true })}
+                            className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-emerald-600"
+                        >
+                            Setuju
+                        </button>
+                        <button
+                            onClick={() => router.post(route('presensi.rejectTugasLuar', p.id), {}, { preserveState: true })}
+                            className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-600"
+                        >
+                            Tolak
+                        </button>
+                    </div>
+                )}
+                {p.tujuan && (
+                    <p className="mt-1 max-w-[160px] text-[10px] leading-tight text-text-secondary">{p.tujuan}</p>
+                )}
+            </div>
+        ) : <span className="text-xs text-text-secondary">—</span>}
+    </td>
+);
+
+const buildGroups = (data) => {
+    const map = new Map();
+    for (const p of data) {
+        const key = `${p.pegawai_id}__${p.tanggal}`;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(p);
+    }
+
+    return Array.from(map.values());
+};
+
+const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openAudit, setConfirmStatus }) => {
+    const groups = buildGroups(data);
+
+    return groups.map((group) => {
+        const parent = group.find((g) => g.tipe_presensi === 'kantor' && !g.is_lembur && !g.is_tugas_luar) || group[0];
+        const children = group.filter((g) => g !== parent);
+        const key = `${parent.pegawai_id}__${parent.tanggal}`;
+        const isOpen = Boolean(expanded[key]);
+        const lembur = group.find((g) => g.is_lembur);
+        const tugasLuar = group.find((g) => g.is_tugas_luar);
+        const nama = parent.pegawai?.nama_lengkap || '-';
+
+        return (
+            <React.Fragment key={key}>
+                <tr className="group hover:bg-surface/70 transition-colors">
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                            <button type="button" onClick={() => setExpanded((s) => ({ ...s, [key]: !s[key] }))} className="rounded-md px-1 text-text-secondary transition-colors hover:text-primary" title={isOpen ? 'Tutup' : 'Buka'}>
+                                {isOpen ? '▾' : '▸'}
+                            </button>
+                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold ${avatarTone(nama)}`}>
+                                {initials(nama)}
+                            </span>
+                            <div className="min-w-0">
+                                <div className="text-sm font-bold text-primary truncate max-w-[180px]">{nama}</div>
+                                <div className="text-[11px] text-text-secondary truncate max-w-[180px]">{parent.unit_sekolah?.nama || '—'}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-primary">{format(parseDate(parent.tanggal), 'd MMM yyyy', { locale: id })}</div>
+                        <div className="text-[11px] text-text-secondary">{format(parseDate(parent.tanggal), 'EEEE', { locale: id })}</div>
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                        {children.length > 0
+                            ? <span className="text-xs font-semibold text-text-secondary">{children.length} sesi mengajar/tugas</span>
+                            : parent.is_tugas_luar
+                                ? <span className="text-xs font-semibold text-text-secondary">Tugas Luar</span>
+                                : <span className="text-xs text-text-secondary">Kantor</span>}
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                        {parent.jam_masuk
+                            ? <span className="font-mono text-sm font-bold text-primary">{parent.jam_masuk.substring(0, 5)}</span>
+                            : <span className="text-sm text-text-secondary">—</span>}
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                        {parent.jam_keluar
+                            ? <span className="font-mono text-sm font-bold text-primary">{parent.jam_keluar.substring(0, 5)}</span>
+                            : <span className="text-sm text-text-secondary">—</span>}
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                        <div className="flex flex-wrap gap-1.5">
+                            {parent.foto_masuk_url
+                                ? <a href={parent.foto_masuk_url} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border"><img src={parent.foto_masuk_url} alt="Masuk" className="h-full w-full object-cover" loading="lazy" /></a>
+                                : null}
+                            {parent.foto_keluar_url
+                                ? <a href={parent.foto_keluar_url} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border"><img src={parent.foto_keluar_url} alt="Keluar" className="h-full w-full object-cover" loading="lazy" /></a>
+                                : null}
+                            {(parent.foto_kegiatan_urls || []).map((u, i) => (
+                                <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border hover:ring-2 hover:ring-primary transition-shadow" title={`Bukti kegiatan ${i + 1}`}><img src={u} alt={`Bukti ${i + 1}`} className="h-full w-full object-cover" loading="lazy" /></a>
+                            ))}
+                        </div>
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                        {lembur ? <LemburBadge status={lembur.lembur_status} /> : <span className="text-xs text-text-secondary">—</span>}
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                        {tugasLuar ? <TugasLuarBadge status={tugasLuar.tugas_luar_status} /> : <span className="text-xs text-text-secondary">—</span>}
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                        {auth.permissions?.includes('manage_master_data') ? (
+                            <select
+                                className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[parent.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                                value={parent.status}
+                                onChange={(e) => setConfirmStatus({ id: parent.id, statusLama: parent.status, statusBaru: e.target.value })}
+                            >
+                                <option value="hadir">Hadir</option>
+                                <option value="telat">Telat</option>
+                                <option value="sakit">Sakit</option>
+                                <option value="izin">Izin</option>
+                                <option value="cuti">Cuti</option>
+                                <option value="alpa">Alpa</option>
+                            </select>
+                        ) : (
+                            <StatusBadge status={parent.status} />
+                        )}
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                            <button onClick={() => openAudit(parent)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                        </div>
+                    </td>
+                </tr>
+                {isOpen && children.map((c) => {
+                    const isTL = c.is_tugas_luar;
+
+                    return (
+                        <tr key={c.id} className="bg-surface/40">
+                            <td className="px-4 py-3 whitespace-nowrap pl-12">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{isTL ? 'Tugas Luar' : 'Mengajar'}</span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap"></td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                                {isTL ? (
+                                    <div className="text-xs leading-tight">
+                                        <div className="font-semibold text-primary">{c.tujuan || 'Tugas Luar'}</div>
+                                        <div className="text-text-secondary">{c.keterangan || '—'}</div>
+                                    </div>
+                                ) : c.jadwal ? (
+                                    <div className="text-xs leading-tight">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-primary">{c.jadwal.mata_pelajaran?.nama || 'Jadwal'}</span>
+                                            <JadwalStatusBadge p={c} now={now} />
+                                        </div>
+                                        <div className="text-text-secondary">{c.jadwal.kelas_label || '—'}</div>
+                                        <div className="font-mono text-[11px] text-text-secondary">{c.jadwal.jam_mulai?.substring(0, 5)}–{c.jadwal.jam_selesai?.substring(0, 5)}</div>
+                                    </div>
+                                ) : <span className="text-xs text-text-secondary">—</span>}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                                {c.jam_masuk
+                                    ? <span className="font-mono text-sm font-bold text-primary">{c.jam_masuk.substring(0, 5)}</span>
+                                    : <span className="text-sm text-text-secondary">—</span>}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                                {c.jam_keluar
+                                    ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 5)}</span>
+                                    : <span className="text-sm text-text-secondary">—</span>}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                                {isTL ? (
+                                    (c.foto_masuk_url || (c.foto_kegiatan_urls || []).length > 0) ? (
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {c.foto_masuk_url
+                                                ? <a href={c.foto_masuk_url} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border"><img src={c.foto_masuk_url} alt="Masuk" className="h-full w-full object-cover" loading="lazy" /></a>
+                                                : null}
+                                            {(c.foto_kegiatan_urls || []).map((u, i) => (
+                                                <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border hover:ring-2 hover:ring-primary transition-shadow" title={`Bukti kegiatan ${i + 1}`}><img src={u} alt={`Bukti ${i + 1}`} className="h-full w-full object-cover" loading="lazy" /></a>
+                                            ))}
+                                        </div>
+                                    ) : <span className="text-[11px] text-text-muted">tanpa foto</span>
+                                ) : <span className="text-[11px] text-text-muted">tanpa foto</span>}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                                {c.is_lembur ? <LemburBadge status={c.lembur_status} /> : <span className="text-xs text-text-secondary">—</span>}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                                {isTL ? (
+                                    <div>
+                                        <TugasLuarBadge status={c.tugas_luar_status} />
+                                        {c.tugas_luar_status === 'pending' && (
+                                            <div className="mt-1.5 flex gap-1">
+                                                <button onClick={() => router.post(route('presensi.approveTugasLuar', c.id), {}, { preserveState: true })} className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-emerald-600">Setuju</button>
+                                                <button onClick={() => router.post(route('presensi.rejectTugasLuar', c.id), {}, { preserveState: true })} className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-600">Tolak</button>
+                                            </div>
+                                        )}
+                                        {c.tujuan && <p className="mt-1 max-w-[160px] text-[10px] leading-tight text-text-secondary">{c.tujuan}</p>}
+                                    </div>
+                                ) : <span className="text-xs text-text-secondary">—</span>}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                                {auth.permissions?.includes('manage_master_data') ? (
+                                    <select
+                                        className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                                        value={c.status}
+                                        onChange={(e) => setConfirmStatus({ id: c.id, statusLama: c.status, statusBaru: e.target.value })}
+                                    >
+                                        <option value="hadir">Hadir</option>
+                                        <option value="telat">Telat</option>
+                                        <option value="sakit">Sakit</option>
+                                        <option value="izin">Izin</option>
+                                        <option value="cuti">Cuti</option>
+                                        <option value="alpa">Alpa</option>
+                                    </select>
+                                ) : (
+                                    <StatusBadge status={c.status} />
+                                )}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                    {c.lokasi_perlu_review && (
+                                        <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
+                                    )}
+                                    <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                                </div>
+                            </td>
+                        </tr>
+                    );
+                })}
+            </React.Fragment>
+        );
+    });
+};
+
 const StatCard = ({ label, value, Icon, iconBg, iconCls }) => (
     <div className="stat-card group hover:shadow-card-hover transition-shadow">
         <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg} transition-transform group-hover:scale-105`}>
@@ -155,6 +403,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [statusFilter, setStatusFilter] = React.useState(filters?.status_filter || '');
     const [jadwalFilter, setJadwalFilter] = React.useState(filters?.jadwal_filter || '');
     const [jenisFilter, setJenisFilter] = React.useState(filters?.jenis_filter || '');
+    const [viewMode, setViewMode] = React.useState('ringkas');
+    const [expanded, setExpanded] = React.useState({});
     const [search, setSearch] = React.useState(filters?.search || '');
 
     const [confirmStatus, setConfirmStatus] = React.useState(null);
@@ -392,6 +642,31 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         </div>
                     </div>
 
+                    {/* View mode + Tugas Luar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="inline-flex rounded-xl border border-border p-1">
+                            <button
+                                type="button"
+                                onClick={() => setViewMode('detail')}
+                                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${viewMode === 'detail' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
+                            >
+                                Detail
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setViewMode('ringkas')}
+                                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${viewMode === 'ringkas' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
+                            >
+                                Ringkas
+                            </button>
+                        </div>
+                        {isAdmin && (
+                            <Link href={route('tugas-luar.index')} className="btn-secondary btn-sm flex items-center gap-1.5">
+                                <CalendarDays className="h-3.5 w-3.5" /> Kelola Tugas Luar
+                            </Link>
+                        )}
+                    </div>
+
                     {/* ─── ADMIN: Table ─── */}
                     {isAdmin ? (
                         <div className="card p-0 overflow-hidden">
@@ -406,12 +681,15 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                             <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Keluar</th>
                                             <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Foto</th>
                                             <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lembur</th>
+                                            <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Tugas Luar</th>
                                             <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status</th>
                                             <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lokasi & Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody className={`divide-y divide-border/50 ${processing ? 'opacity-60 pointer-events-none transition-opacity' : ''}`}>
-                                        {presensis.data.map((p) => {
+                                        {presensis.data.length === 0 ? null : viewMode === 'ringkas' ? (
+                                            <RingkasBody data={presensis.data} auth={auth} now={now} expanded={expanded} setExpanded={setExpanded} openReview={openReview} openAudit={openAudit} setConfirmStatus={setConfirmStatus} />
+                                        ) : presensis.data.map((p) => {
                                             const durasi = kerjaDurasi(p.jam_masuk, p.jam_keluar);
                                             const flagReview = p.lokasi_perlu_review || p.posisi_mencurigakan || p.motion_suspect;
                                             const nama = p.pegawai?.nama_lengkap || '-';
@@ -508,6 +786,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             </div>
                                                         ) : <span className="text-xs text-text-secondary">—</span>}
                                                     </td>
+                                                    <TugasLuarCell p={p} />
                                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                                         {auth.permissions?.includes('manage_master_data') ? (
                                                             <select
@@ -552,7 +831,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         })}
                                         {presensis.data.length === 0 && (
                                             <tr>
-                                                <td colSpan="9" className="px-6 py-16">
+                                                <td colSpan="10" className="px-6 py-16">
                                                     <div className="flex flex-col items-center text-center">
                                                         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface">
                                                             <CalendarDays className="h-8 w-8 text-border" />
@@ -616,6 +895,19 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                             )}
                                         </div>
                                     )}
+
+                                    {(p.foto_kegiatan_urls || []).length > 0 && (
+                                        <div className="mt-3 border-t border-border pt-3">
+                                            <p className="mb-2 text-xs font-semibold text-text-secondary">Foto Kegiatan ({p.foto_kegiatan_urls.length})</p>
+                                            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                                                {p.foto_kegiatan_urls.map((u, i) => (
+                                                    <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="block h-16 w-full overflow-hidden rounded-lg border border-border">
+                                                        <img src={u} alt={`Bukti ${i + 1}`} className="h-full w-full object-cover" loading="lazy" />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             {presensis.data.length === 0 && (
@@ -677,6 +969,20 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     </div>
                                 </div>
                             )}
+
+                            {auditModal.presensi && (auditModal.presensi.foto_kegiatan_urls || []).length > 0 && (
+                                <div className="mb-5 rounded-lg bg-surface p-4">
+                                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-secondary">Foto Kegiatan ({auditModal.presensi.foto_kegiatan_urls.length})</p>
+                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                        {auditModal.presensi.foto_kegiatan_urls.map((u, i) => (
+                                            <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-border transition-shadow hover:ring-2 hover:ring-primary" title="Buka di tab baru">
+                                                <img src={u} alt={`Bukti ${i + 1}`} className="aspect-[3/4] w-full object-cover" loading="lazy" />
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {auditModal.loading ? (
                                 <div className="space-y-4 py-4">
                                     {[1, 2, 3].map((i) => (
@@ -813,6 +1119,19 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                             </div>
                                             <p className="mt-2 text-[11px] leading-relaxed text-text-secondary">Foto di-burn-in nama, unit, waktu (HH:mm:ss) dan koordinat saat pengambilan. EXIF GPS (jika tersedia) juga dibandingkan di bawah.</p>
                                         </div>
+
+                                        {(d.foto_kegiatan_urls || []).length > 0 && (
+                                            <div className="rounded-lg bg-surface p-4">
+                                                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-secondary">Foto Kegiatan ({d.foto_kegiatan_urls.length})</p>
+                                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                                    {d.foto_kegiatan_urls.map((u, i) => (
+                                                        <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-border transition-shadow hover:ring-2 hover:ring-primary" title="Buka di tab baru">
+                                                            <img src={u} alt={`Bukti ${i + 1}`} className="aspect-[3/4] w-full object-cover" loading="lazy" />
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="rounded-lg bg-surface p-4">
                                             <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-secondary">Data GPS</p>

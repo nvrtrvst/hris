@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\PresensiMessages;
 use App\Helpers\PayrollLockHelper;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Jobs\ProcessPresensiFoto;
@@ -10,6 +11,7 @@ use App\Models\Jadwal;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
+use App\Services\ImageUploadService;
 use App\Traits\CalculatesDistance;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -414,6 +416,142 @@ class PresensiController extends Controller
         return redirect()->back()->with('message', 'Lembur ditolak.');
     }
 
+    public function approveTugasLuar($id)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('view_presensi')) {
+            abort(403);
+        }
+
+        DB::transaction(function () use ($id, $user) {
+            $presensi = Presensi::with('pegawai')
+                ->lockForUpdate()
+                ->findOrFail($id);
+
+            if (! $presensi->is_tugas_luar || $presensi->tugas_luar_status !== 'pending') {
+                throw ValidationException::withMessages(['error' => 'Hanya tugas luar dengan status pending yang bisa disetujui.']);
+            }
+
+            if ($user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+                abort(403, 'Akses ditolak.');
+            }
+
+            if (PayrollLockHelper::isPeriodLocked($presensi->pegawai_id, $presensi->tanggal)) {
+                throw ValidationException::withMessages(['error' => 'Periode penggajian sudah dikunci.']);
+            }
+
+            $presensi->update(['tugas_luar_status' => 'disetujui']);
+
+            AuditPresensi::log($presensi->id, 'approve_tugas_luar', 'tugas_luar_status', 'pending', 'disetujui');
+        });
+
+        return redirect()->back()->with('message', 'Tugas luar berhasil disetujui.');
+    }
+
+    public function rejectTugasLuar($id)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('view_presensi')) {
+            abort(403);
+        }
+
+        DB::transaction(function () use ($id, $user) {
+            $presensi = Presensi::with('pegawai')
+                ->lockForUpdate()
+                ->findOrFail($id);
+
+            if (! $presensi->is_tugas_luar || $presensi->tugas_luar_status !== 'pending') {
+                throw ValidationException::withMessages(['error' => 'Hanya tugas luar dengan status pending yang bisa ditolak.']);
+            }
+
+            if ($user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+                abort(403, 'Akses ditolak.');
+            }
+
+            if (PayrollLockHelper::isPeriodLocked($presensi->pegawai_id, $presensi->tanggal)) {
+                throw ValidationException::withMessages(['error' => 'Periode penggajian sudah dikunci.']);
+            }
+
+            // status ada di $guarded -> set via properti (bypass mass-assignment guard).
+            $presensi->tugas_luar_status = 'ditolak';
+            $presensi->status = 'alpa';
+            $presensi->save();
+
+            AuditPresensi::log($presensi->id, 'reject_tugas_luar', 'tugas_luar_status', 'pending', 'ditolak');
+            AuditPresensi::log($presensi->id, 'reject_tugas_luar', 'status', 'hadir', 'alpa');
+        });
+
+        return redirect()->back()->with('message', 'Tugas luar ditolak.');
+    }
+
+    /**
+     * Simpan foto bukti kegiatan tugas luar (diambil saat dinas, mis. rapat).
+     * Opsional, bisa beberapa foto. Race-safe: baris presensi di-lock dalam
+     * transaksi sebelum append ke array foto_kegiatan (hindari lost update
+     * bila pegawai kirim beberapa foto berbarengan).
+     */
+    public function storeBuktiTugasLuar(Request $request, Presensi $presensi)
+    {
+        $user = auth()->user();
+        $pegawai = $user?->pegawai;
+        if (! $pegawai) {
+            abort(403);
+        }
+        if ($presensi->pegawai_id !== $pegawai->id || ! $presensi->is_tugas_luar) {
+            abort(403);
+        }
+
+        $request->validate([
+            'foto' => ['required', 'string', 'regex:/^data:image\/\w+;base64,/'],
+            'keterangan' => ['nullable', 'string', 'max:500'],
+            'latitude' => ['nullable', 'numeric'],
+            'longitude' => ['nullable', 'numeric'],
+            'accuracy' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        return DB::transaction(function () use ($request, $presensi, $pegawai) {
+            $locked = Presensi::lockForUpdate()->findOrFail($presensi->id);
+
+            $overlayData = [
+                'label' => 'BUKTI KEGIATAN',
+                'pegawai' => $pegawai->nama_lengkap,
+                'unit' => $locked->unitSekolah?->nama ?? '',
+                'time' => Carbon::now()->format('H:i:s').' WIB',
+                'date' => Carbon::now()->locale('id')->isoFormat('dddd, D MMMM YYYY'),
+                'coordinates' => ($request->latitude && $request->longitude)
+                    ? number_format((float) $request->latitude, 6).', '.number_format((float) $request->longitude, 6)
+                    : null,
+                'accuracy' => $request->accuracy ? number_format((float) $request->accuracy, 0).'m' : null,
+            ];
+
+            $path = app(ImageUploadService::class)->storeBase64(
+                $request->foto,
+                'presensi/tugas-luar',
+                $overlayData,
+                PresensiMessages::MAX_FOTO_BYTES,
+                ['id' => $pegawai->id, 'nama' => $pegawai->nama_lengkap]
+            );
+
+            $bukti = $locked->foto_kegiatan ?? [];
+            if (! is_array($bukti)) {
+                $bukti = [];
+            }
+            $bukti[] = [
+                'path' => $path,
+                'keterangan' => $request->keterangan,
+                'created_at' => Carbon::now()->toDateTimeString(),
+            ];
+            $locked->foto_kegiatan = $bukti;
+            $locked->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto kegiatan tersimpan.',
+                'foto_kegiatan_urls' => $locked->foto_kegiatan_urls,
+            ]);
+        });
+    }
+
     public function audit($id)
     {
         if (! auth()->user()?->can('view_presensi')) {
@@ -447,6 +585,7 @@ class PresensiController extends Controller
                 'foto_keluar_status' => $presensi->foto_keluar_status,
                 'foto_masuk_error' => $presensi->foto_masuk_error,
                 'foto_keluar_error' => $presensi->foto_keluar_error,
+                'foto_kegiatan_urls' => $presensi->foto_kegiatan_urls,
             ],
         ]);
     }
@@ -521,6 +660,7 @@ class PresensiController extends Controller
                 'motion_variance' => $motionVariance,
                 'ip_geo' => $presensi->ip_geo,
                 'exif_meta' => $presensi->exif_meta,
+                'foto_kegiatan_urls' => $presensi->foto_kegiatan_urls,
             ],
         ]);
     }

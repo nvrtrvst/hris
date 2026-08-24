@@ -45,6 +45,7 @@ class PegawaiController extends Controller
         $user = auth()->user();
         $rules = [
             'file' => 'required|mimes:xlsx,xls,csv|max:5120',
+            'default_password' => ['nullable', 'string', 'min:8'],
         ];
 
         if ($user && ! $user->can('view_all_units')) {
@@ -63,7 +64,7 @@ class PegawaiController extends Controller
         try {
             DB::transaction(function () use ($request, $unitId, $user) {
                 $allowOverride = $user && $user->can('view_all_units');
-                Excel::import(new PegawaiImport($unitId, $allowOverride), $request->file('file'));
+                Excel::import(new PegawaiImport($unitId, $allowOverride, $request->input('default_password')), $request->file('file'));
             });
 
             return back()->with('message', 'Data pegawai berhasil diimport.');

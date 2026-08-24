@@ -4,6 +4,7 @@ import { MAP_TILE_URL, MAP_ATTRIBUTION } from '@/Constants/AppConstants';
 import { Card, Toggle, Empty } from '@/Components/MobileUI';
 import SlideToConfirm from '@/Components/SlideToConfirm';
 import { useCamera } from '@/Hooks/useCamera';
+import BuktiKegiatan from '@/Pages/Mobile/Partials/BuktiKegiatan';
 import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, Clock } from 'lucide-react';
@@ -27,9 +28,14 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const [posA, setPosA] = useState(null);
     const [posAwal, setPosAwal] = useState(null);
     const [tappedIds, setTappedIds] = useState(() => new Set(
-        presensiHariIni.filter((p) => p.jadwal_id).map((p) => p.jadwal_id)
+        presensiHariIni.filter((p) => p.jadwal_id && p.jam_masuk).map((p) => p.jadwal_id)
+    ));
+    const [closedIds, setClosedIds] = useState(() => new Set(
+        presensiHariIni.filter((p) => p.jadwal_id && p.jam_keluar).map((p) => p.jadwal_id)
     ));
     const [tapLoading, setTapLoading] = useState(null);
+    const [isTugasLuar, setIsTugasLuar] = useState(false);
+    const [tujuan, setTujuan] = useState('');
 
     const errorRef = useRef(null);
 
@@ -97,6 +103,9 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
 
     const lemburUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
 
+    const tugasLuarOpen = useMemo(() => presensiHariIni.some((p) => p.is_tugas_luar && p.jam_masuk && !p.jam_keluar), [presensiHariIni]);
+const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_luar && p.jam_masuk), [presensiHariIni]);
+
     const geofence = useMemo(() => {
         if (!currentPosition || !lemburUnit) return null;
         const lat = parseFloat(lemburUnit.latitude);
@@ -107,7 +116,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         return { name: lemburUnit.nama_unit || lemburUnit.nama || 'Unit Sekolah', distance, radius, inside };
     }, [currentPosition, lemburUnit]);
 
-    const geoBlocked = geofence && !geofence.inside;
+    const geoBlocked = isTugasLuar ? false : (geofence && !geofence.inside);
     const geoReady = geofence !== null;
 
     const isInsideJadwal = useCallback((jadwal) => {
@@ -123,7 +132,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     }, [currentPosition, lemburUnit]);
 
     const camera = useCamera({
-        canCapture: Boolean(currentPosition && geofence?.inside),
+        canCapture: Boolean(currentPosition && (geofence?.inside || isTugasLuar)),
         currentPosition,
         onWillCapture: (pos) => setPosA(pos),
     });
@@ -131,7 +140,6 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const {
         videoRef,
         canvasRef,
-        photoInputRef,
         streamRef,
         showLive,
         capturedPhoto,
@@ -140,7 +148,6 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         startCamera,
         capturePhoto,
         retakePhoto,
-        handleFileFallback,
         clearCamera,
     } = camera;
 
@@ -174,7 +181,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         }, 1000);
         getCurrentPosition();
 
-        if (phase === FOTO_PAGI || phase === FOTO_SORE) {
+        if (phase === FOTO_PAGI || phase === FOTO_SORE || isTugasLuar) {
             startCamera();
         }
 
@@ -199,10 +206,8 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
 
         if (!capturedPhoto) { setError('Silakan ambil foto terlebih dahulu.'); return; }
         if (!currentPosition) { setError('Lokasi belum tersedia. Pastikan GPS aktif.'); return; }
-        if (geoBlocked) { setError(`Anda di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m).`); return; }
-        if (tipe === 'keluar' && untappedActive.length > 0) {
-            if (!confirm(`Ada ${untappedActive.length} jadwal aktif belum di-tap. Lanjutkan foto sore?`)) return;
-        }
+        if (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) { setError('Tujuan tugas luar wajib diisi.'); return; }
+        if (!isTugasLuar && geoBlocked) { setError(`Anda di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m).`); return; }
 
         setIsSubmitting(true);
         const now = new Date().toISOString();
@@ -210,6 +215,9 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
             foto: capturedPhoto,
             tipe,
+            is_tugas_luar: isTugasLuar,
+            tujuan: isTugasLuar ? tujuan : null,
+            keterangan: null,
             latitude: currentPosition?.latitude ?? null,
             longitude: currentPosition?.longitude ?? null,
             accuracy: currentPosition?.accuracy ?? null,
@@ -275,7 +283,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         }
     }, [capturedPhoto, currentPosition, geoBlocked, geofence, posA, posAwal, motionSamples]);
 
-    const handleTap = useCallback(async (jadwalId) => {
+    const handleTap = useCallback(async (jadwalId, tipe = 'masuk') => {
         setTapLoading(jadwalId);
         setError(null);
         setSuccessMessage(null);
@@ -286,7 +294,11 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             return;
         }
 
-        setTappedIds((prev) => new Set(prev).add(jadwalId));
+        if (tipe === 'keluar') {
+            setClosedIds((prev) => new Set(prev).add(jadwalId));
+        } else {
+            setTappedIds((prev) => new Set(prev).add(jadwalId));
+        }
         setSuccessMessage(null);
 
         try {
@@ -301,6 +313,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 body: JSON.stringify({
                     _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                     jadwal_id: jadwalId,
+                    tipe,
                     latitude: currentPosition.latitude,
                     longitude: currentPosition.longitude,
                     accuracy: currentPosition.accuracy,
@@ -311,21 +324,33 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             if (!res.ok) {
                 if (res.status === 419) throw { type: 'session_expired' };
                 const data = await res.json().catch(() => ({}));
-                setTappedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+                if (tipe === 'keluar') {
+                    setClosedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+                } else {
+                    setTappedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+                }
                 setError(data.message || 'Gagal tap jadwal.');
                 return;
             }
 
             const data = await res.json();
             if (data.success) {
-                setSuccessMessage(data.message || 'Kehadiran tercatat.');
+                setSuccessMessage(data.message || (tipe === 'keluar' ? 'Presensi pulang tercatat.' : 'Kehadiran tercatat.'));
                 setTimeout(() => setSuccessMessage(null), 2000);
             } else {
-                setTappedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+                if (tipe === 'keluar') {
+                    setClosedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+                } else {
+                    setTappedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+                }
                 setError(data.message || 'Gagal.');
             }
         } catch (err) {
-            setTappedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+            if (tipe === 'keluar') {
+                setClosedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+            } else {
+                setTappedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+            }
             if (err.type === 'session_expired') setError('Sesi habis.');
             else setError('Gagal terhubung ke server.');
         } finally {
@@ -377,6 +402,36 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 </div>
             </div>
 
+            <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
+                <div>
+                    <p className="text-sm font-bold text-slate-900">Mode tugas luar</p>
+                    <p className="mt-0.5 text-xs text-slate-500">Dikecualikan dari cek radius, perlu tujuan</p>
+                </div>
+                <Toggle checked={isTugasLuar} onChange={() => setIsTugasLuar((prev) => !prev)} tone="sky" />
+            </Card>
+
+            {isTugasLuar && (
+                <div className="mb-4">
+                    <label htmlFor="tujuan" className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tujuan tugas luar</label>
+                    <input
+                        id="tujuan"
+                        type="text"
+                        value={tujuan}
+                        onChange={(e) => setTujuan(e.target.value)}
+                        placeholder="Contoh: Rapat dinas di Dinas Pendidikan"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-200"
+                    />
+                </div>
+            )}
+
+            {tugasLuarRecord && (
+                <BuktiKegiatan
+                    presensiId={tugasLuarRecord.id}
+                    initialUrls={tugasLuarRecord.foto_kegiatan_urls || []}
+                    currentPosition={currentPosition}
+                />
+            )}
+
             {/* Jadwal section - always visible (hanya yg sudah waktunya) */}
             {jadwals.length > 0 && (
                 <section aria-labelledby="jadwal-heading" className="mb-4">
@@ -386,12 +441,13 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                     </div>
                     {phase === TAP_JADWAL && adaBerlangsung && !masihBisaTap && (
                         <div className="mb-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800">
-                            ⏳ Semua jadwal aktif sudah di-tap. Foto sore tersedia setelah jam mengajar selesai.
+                            Semua jadwal mengajar sudah terpenuhi. Presensi Foto pulang tersedia setelah jam mengajar selesai.
                         </div>
                     )}
                     <div className="space-y-2">
                         {activeJadwals.map((j) => {
                             const done = tappedIds.has(j.id);
+                            const closed = closedIds.has(j.id);
                             return (
                                 <div key={j.id} className={`rounded-xl border p-3 ${done ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
                                     <div className="mb-2 flex items-start justify-between gap-2">
@@ -401,25 +457,34 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                         </div>
                                         <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-primary">{j.jam_mulai?.slice(0, 5)}</span>
                                     </div>
-                                    {phase === TAP_JADWAL ? (
+                                    {!done && phase === TAP_JADWAL ? (
                                         <>
                                             <SlideToConfirm
                                                 onConfirm={() => handleTap(j.id)}
-                                                disabled={done || tapLoading !== null || !currentPosition || !isInsideJadwal(j)}
-                                                confirmed={done}
-                                                label={done ? 'Sudah di-tap' : `Tap ${j.mata_pelajaran?.nama || 'jadwal'}`}
+                                                disabled={tapLoading !== null || !currentPosition || !isInsideJadwal(j)}
+                                                confirmed={false}
+                                                label={`Tap ${j.mata_pelajaran?.nama || 'jadwal'}`}
                                             />
-                                            {!done && (!currentPosition || !isInsideJadwal(j)) && (
+                                            {(!currentPosition || !isInsideJadwal(j)) && (
                                                 <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
                                                     <MapPin className="h-3 w-3 shrink-0" />
                                                     {!currentPosition ? 'Tunggu GPS aktif…' : 'Di luar radius unit — geser tidak aktif'}
                                                 </p>
                                             )}
                                         </>
-                                    ) : done && (
+                                    ) : done && !closed ? (
+                                        <SlideToConfirm
+                                            onConfirm={() => handleTap(j.id, 'keluar')}
+                                            disabled={tapLoading !== null || !currentPosition || !isInsideJadwal(j)}
+                                            confirmed={false}
+                                            label={`Tap keluar ${j.mata_pelajaran?.nama || 'jadwal'}`}
+                                        />
+                                    ) : done && closed ? (
                                         <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
-                                            <CheckCircle className="h-4 w-4" /> Sudah di-tap
+                                            <CheckCircle className="h-4 w-4" /> Presensi mengajar lengkap
                                         </div>
+                                    ) : (
+                                        <p className="text-xs text-slate-400">Tap masuk tersedia saat jam mengajar.</p>
                                     )}
                                 </div>
                             );
@@ -428,7 +493,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 </section>
             )}
 
-            {(phase === FOTO_PAGI || phase === FOTO_SORE) && (
+            {(phase === FOTO_PAGI || phase === FOTO_SORE || isTugasLuar) && (
                 <>
                     <div className="mb-4 grid grid-cols-2 gap-2" aria-label="Status verifikasi">
                         <div className={`flex min-h-14 items-center gap-2.5 rounded-xl border px-3 py-2.5 ${geoReady && geofence.inside ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : geoBlocked ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white text-slate-600'}`}>
@@ -465,18 +530,13 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                     )}
                                 </>
                             ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => photoInputRef.current?.click()}
-                                    disabled={geoBlocked || !currentPosition}
-                                    className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-950 px-6 text-center text-slate-300 transition-colors active:bg-slate-900 disabled:opacity-40"
-                                >
+                                <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-950 px-6 text-center text-slate-300">
                                     <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-200">
                                         <Camera className="h-6 w-6" />
                                     </div>
                                     <p className="text-sm font-medium">{locationError || 'Kamera tidak dapat diakses'}</p>
-                                    <p className="text-xs text-slate-400">Ketuk untuk mengunggah foto dari galeri</p>
-                                </button>
+                                    <p className="text-xs text-slate-400">Aktifkan kamera untuk presensi realtime.</p>
+                                </div>
                             )}
 
                             {!capturedPhoto && (
@@ -612,15 +672,13 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                         </div>
                     )}
 
-                    <input type="file" accept="image/*" capture="environment" ref={photoInputRef} className="hidden" onChange={handleFileFallback} />
-
-                    <button
-                        type="button"
-                        onClick={() => handleSubmitFoto(phase === FOTO_PAGI ? 'masuk' : 'keluar')}
-                        disabled={isSubmitting || !capturedPhoto || !currentPosition || !geofence?.inside}
-                        className="mt-4 flex min-h-14 w-full items-center justify-center rounded-xl bg-primary px-5 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+            <button
+                type="button"
+                onClick={() => handleSubmitFoto(isTugasLuar ? (tugasLuarOpen ? 'keluar' : 'masuk') : (phase === FOTO_PAGI ? 'masuk' : 'keluar'))}
+                        disabled={isSubmitting || !capturedPhoto || !currentPosition || (!geofence?.inside && !isTugasLuar) || (isTugasLuar && !tugasLuarOpen && !tujuan.trim())}
+                        className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isTugasLuar ? 'bg-sky-500' : 'bg-primary'}`}
                     >
-                        {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : `Kirim ${phase === FOTO_PAGI ? 'foto pagi' : 'foto sore'}`}
+                        {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isTugasLuar ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : `Kirim ${phase === FOTO_PAGI ? 'foto pagi' : 'foto sore'}`}
                     </button>
                 </>
             )}

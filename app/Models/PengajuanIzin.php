@@ -19,6 +19,7 @@ class PengajuanIzin extends Model
         'bukti_foto',
         'alasan_penolakan',
         'catatan_approval',
+        'dihitung_hadir_kcd',
     ];
 
     protected $guarded = [

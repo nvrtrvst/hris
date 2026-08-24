@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\TransferBankExport;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
+use App\Models\HariLibur;
 use App\Models\KomponenGaji;
 use App\Models\Pegawai;
 use App\Models\Penggajian;
@@ -151,6 +152,11 @@ class PenggajianController extends Controller
         $lemburByPegawai = $presensiAgg['lembur'];
         $attendedJadwalByPegawai = $presensiAgg['attended_jadwal'];
 
+        // [OPT] Satu query ambil hari libur (nasional + unit pegawai) untuk seluruh run.
+        // Dipetakan ke weekday→count agar exclude libur O(1) per jadwal (hindari N+1).
+        $allUnitIds = $pegawais->flatMap->units->pluck('id')->filter()->unique()->toArray();
+        $holidayMap = $this->buildHolidayWeekdayMap($allUnitIds, $periodeStart, $attendanceCutoff);
+
         DB::beginTransaction();
         try {
             foreach ($pegawais as $pegawai) {
@@ -170,7 +176,7 @@ class PenggajianController extends Controller
                 }
 
                 $pegawaiKomponens = $pegawai->komponenGaji->keyBy('id');
-                $counts = $this->computeAttendance($pegawai, $attendanceByPegawai, $periodeStart, $attendanceCutoff);
+                $counts = $this->computeAttendance($pegawai, $attendanceByPegawai, $periodeStart, $attendanceCutoff, $holidayMap);
 
                 $totalPendapatan = '0.00';
                 $totalPotongan = '0.00';
@@ -184,7 +190,7 @@ class PenggajianController extends Controller
                         continue;
                     }
                     $nominal = round((float) $this->computeComponentNominal(
-                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDaysByPegawai, $attendedJadwalByPegawai
+                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDaysByPegawai, $attendedJadwalByPegawai, $holidayMap
                     ), 2);
 
                     if ($nominal > 0) {
@@ -559,9 +565,10 @@ class PenggajianController extends Controller
      * @param  Collection  $attendanceByPegawai  Data presensi grouping
      * @param  Carbon  $periodeStart  Awal periode penggajian
      * @param  Carbon  $attendanceCutoff  Batas cut-off presensi
+     * @param  array  $holidayMap  Map hari libur (buildHolidayWeekdayMap) untuk exclude libur
      * @return array<string,int> ['hadir'=>X, 'telat'=>Y, 'alpa'=>Z, 'sakit'=>A, 'izin'=>B, 'cuti'=>C]
      */
-    protected function computeAttendance(Pegawai $pegawai, $attendanceByPegawai, Carbon $periodeStart, Carbon $attendanceCutoff): array
+    protected function computeAttendance(Pegawai $pegawai, $attendanceByPegawai, Carbon $periodeStart, Carbon $attendanceCutoff, array $holidayMap = []): array
     {
         $pAtt = $attendanceByPegawai->get($pegawai->id, collect());
         $countHadir = (int) $pAtt->where('status', 'hadir')->sum('total');
@@ -571,15 +578,19 @@ class PenggajianController extends Controller
         $countIzin = (int) $pAtt->where('status', 'izin')->sum('total');
         $countCuti = (int) $pAtt->where('status', 'cuti')->sum('total');
 
-        // [FIX] Auto-alpha: hari kerja (dari jadwal, kecuali lembur) - (hadir/telat/izin/cuti disetujui)
+        // [FIX] Auto-alpha: hari kerja (dari jadwal, kecuali lembur) - (hadir/telat/izin/cuti/alpa terkonfirmasi)
+        // Hari libur (nasional + unit) di-exclude agar pegawai tak dihitung alpa di kalender merah.
         $workingDays = 0;
         foreach ($pegawai->jadwals as $jadwal) {
             if ($jadwal->jenis_jadwal === 'lembur') {
                 continue;
             }
-            $workingDays += $this->countWeekdayInRange($jadwal->hari, $periodeStart, $attendanceCutoff);
+            $workingDays += max(0, $this->countWeekdayInRange(
+                $jadwal->hari, $periodeStart, $attendanceCutoff,
+                $this->holidayCountFor($holidayMap, $jadwal->unit_sekolah_id, $jadwal->hari)
+            ));
         }
-        $presentOrLeave = $countHadir + $countTelat + $countSakit + $countIzin + $countCuti;
+        $presentOrLeave = $countHadir + $countTelat + $countSakit + $countIzin + $countCuti + $countAlpaManual;
         $countAlpa = $countAlpaManual + max(0, $workingDays - $presentOrLeave);
 
         return [
@@ -616,9 +627,10 @@ class PenggajianController extends Controller
      * @param  Collection|null  $sakitProrata  Total persen bayar per pegawai utk status sakit
      * @param  Collection|null  $presentDays  Jumlah hari kalender hadir/telat per pegawai (dedup per tanggal)
      * @param  Collection|null  $attendedJadwalByPegawai  Map pegawai_id => [jadwal_id => jumlah hadir]
+     * @param  array  $holidayMap  Map hari libur untuk exclude libur di sesi mengajar
      * @return float nominal komponen gaji
      */
-    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null, $presentDays = null, $attendedJadwalByPegawai = null): float
+    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null, $presentDays = null, $attendedJadwalByPegawai = null, array $holidayMap = []): float
     {
         $nominal = 0;
 
@@ -712,7 +724,10 @@ class PenggajianController extends Controller
 
                 $count = $syarat === 'hanya_hadir'
                     ? ($attendedJadwalIds[$jadwal->id] ?? 0)
-                    : $this->countWeekdayInRange($jadwal->hari, $periodeStart, $attendanceCutoff);
+                    : max(0, $this->countWeekdayInRange(
+                        $jadwal->hari, $periodeStart, $attendanceCutoff,
+                        $this->holidayCountFor($holidayMap, $jadwal->unit_sekolah_id, $jadwal->hari)
+                    ));
 
                 $totalHoursMonthly += $sessionHours * $count;
             }
@@ -817,8 +832,10 @@ class PenggajianController extends Controller
     /**
      * Hitung jumlah hari tertentu (nama Indonesia) dalam rentang tanggal [start, end].
      * Optimized: O(1) formula daripada loop O(n).
+     *
+     * @param  int  $exclude  Jumlah hari libur di weekday yg sama dalam rentang (dikurangi).
      */
-    protected function countWeekdayInRange(string $hari, Carbon $start, Carbon $end): int
+    protected function countWeekdayInRange(string $hari, Carbon $start, Carbon $end, int $exclude = 0): int
     {
         $map = [
             'Minggu' => 0, 'Senin' => 1, 'Selasa' => 2, 'Rabu' => 3,
@@ -842,7 +859,49 @@ class PenggajianController extends Controller
             }
         }
 
-        return $count;
+        return max(0, $count - $exclude);
+    }
+
+    /**
+     * Bangun map hari libur → count per weekday, dipisah nasional & per-unit.
+     * Satu query untuk seluruh run payroll (hindari N+1 per pegawai/jadwal).
+     *
+     * @param  array  $unitIds  Unit yang relevan (dari pegawai terpilih)
+     * @return array{static: array<string,int>, units: array<int, array<string,int>>}
+     */
+    protected function buildHolidayWeekdayMap(array $unitIds, Carbon $start, Carbon $end): array
+    {
+        $rows = HariLibur::whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
+            ->where(function ($q) use ($unitIds) {
+                $q->whereNull('unit_sekolah_id');
+                if ($unitIds) {
+                    $q->orWhereIn('unit_sekolah_id', $unitIds);
+                }
+            })
+            ->get(['tanggal', 'unit_sekolah_id']);
+
+        $idMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        $national = [];
+        $units = [];
+        foreach ($rows as $h) {
+            $wd = $idMap[(int) Carbon::parse($h->tanggal)->dayOfWeek];
+            if ($h->unit_sekolah_id === null) {
+                $national[$wd] = ($national[$wd] ?? 0) + 1;
+            } else {
+                $units[$h->unit_sekolah_id][$wd] = ($units[$h->unit_sekolah_id][$wd] ?? 0) + 1;
+            }
+        }
+
+        return ['national' => $national, 'units' => $units];
+    }
+
+    /**
+     * Jumlah hari libur (nasional + unit terkait) yang jatuh pada weekday & unit tertentu.
+     */
+    protected function holidayCountFor(array $holidayMap, ?int $unitId, string $hari): int
+    {
+        return (int) ($holidayMap['national'][$hari] ?? 0)
+            + (int) ($holidayMap['units'][$unitId][$hari] ?? 0);
     }
 
     /**

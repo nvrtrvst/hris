@@ -1,0 +1,457 @@
+[
+    {
+        "tanggal": "2024-01-01",
+        "nama": "Hari Tahun Baru",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-02-08",
+        "nama": "Isra Mikraj Nabi Muhammad",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-02-09",
+        "nama": "Tahun Baru Imlek",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2024-02-10",
+        "nama": "Tahun Baru Imlek",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-02-14",
+        "nama": "Hari Pemilihan",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-03-11",
+        "nama": "Hari Suci Nyepi (Tahun Baru Saka)",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-03-12",
+        "nama": "1 Ramadan",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2024-03-29",
+        "nama": "Wafat Isa Almasih",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-03-31",
+        "nama": "Hari Paskah",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-04-08",
+        "nama": "Idul Fitri",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2024-04-09",
+        "nama": "Idul Fitri",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2024-04-10",
+        "nama": "Hari Idul Fitri",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-04-11",
+        "nama": "Hari Idul Fitri",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-04-12",
+        "nama": "Idul Fitri",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2024-04-15",
+        "nama": "Idul Fitri",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2024-05-01",
+        "nama": "Hari Buruh Internasional / Pekerja",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-05-09",
+        "nama": "Kenaikan Isa Al Masih",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-05-10",
+        "nama": "Kenaikan Isa Al Masih",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2024-05-23",
+        "nama": "Hari Raya Waisak",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-05-24",
+        "nama": "Waisak",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2024-06-01",
+        "nama": "Hari Lahir Pancasila",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-06-17",
+        "nama": "Idul Adha (Lebaran Haji)",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-06-18",
+        "nama": "Idul Adha (Lebaran Haji)",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-07-07",
+        "nama": "Satu Muharam / Tahun Baru Hijriah",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-08-17",
+        "nama": "Hari Proklamasi Kemerdekaan R.I.",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-09-16",
+        "nama": "Maulid Nabi Muhammad",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-11-01",
+        "nama": "Diwali",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-12-24",
+        "nama": "Malam Natal",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-12-25",
+        "nama": "Hari Raya Natal",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2024-12-26",
+        "nama": "Natal (Hari Tinju)",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2024-12-31",
+        "nama": "Malam Tahun Baru",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-01-01",
+        "nama": "Hari Tahun Baru",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-01-27",
+        "nama": "Isra Mikraj Nabi Muhammad",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-01-28",
+        "nama": "Tahun Baru Imlek",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2025-01-29",
+        "nama": "Tahun Baru Imlek",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-03-01",
+        "nama": "1 Ramadan",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-03-28",
+        "nama": "Hari Suci Nyepi (Tahun Baru Saka)",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2025-03-29",
+        "nama": "Hari Suci Nyepi (Tahun Baru Saka)",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-03-31",
+        "nama": "Hari Idul Fitri",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-04-01",
+        "nama": "Hari Idul Fitri",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-04-02",
+        "nama": "Idul Fitri",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2025-04-03",
+        "nama": "Idul Fitri",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2025-04-04",
+        "nama": "Idul Fitri",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2025-04-07",
+        "nama": "Idul Fitri",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2025-04-18",
+        "nama": "Wafat Isa Almasih",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-04-20",
+        "nama": "Hari Paskah",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-05-01",
+        "nama": "Hari Buruh Internasional / Pekerja",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-05-12",
+        "nama": "Hari Raya Waisak",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-05-13",
+        "nama": "Waisak",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2025-05-29",
+        "nama": "Kenaikan Isa Al Masih",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-05-30",
+        "nama": "Kenaikan Isa Al Masih",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2025-06-01",
+        "nama": "Hari Lahir Pancasila",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-06-06",
+        "nama": "Idul Adha (Lebaran Haji)",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-06-09",
+        "nama": "Idul Adha (Lebaran Haji)",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-06-27",
+        "nama": "Satu Muharam / Tahun Baru Hijriah",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-08-17",
+        "nama": "Hari Proklamasi Kemerdekaan R.I.",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-08-18",
+        "nama": "Hari Proklamasi Kemerdekaan R.I. observed",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-09-05",
+        "nama": "Maulid Nabi Muhammad",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-10-21",
+        "nama": "Diwali",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-12-24",
+        "nama": "Malam Natal",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-12-25",
+        "nama": "Hari Raya Natal",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2025-12-26",
+        "nama": "Natal (Hari Tinju)",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2025-12-31",
+        "nama": "Malam Tahun Baru",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-01-01",
+        "nama": "Hari Tahun Baru",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-01-16",
+        "nama": "Isra Mikraj Nabi Muhammad",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-02-16",
+        "nama": "Tahun Baru Imlek",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2026-02-17",
+        "nama": "Tahun Baru Imlek",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-02-19",
+        "nama": "1 Ramadan",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-03-18",
+        "nama": "Hari Suci Nyepi (Tahun Baru Saka)",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2026-03-19",
+        "nama": "Hari Suci Nyepi (Tahun Baru Saka)",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-03-20",
+        "nama": "Idul Fitri",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2026-03-21",
+        "nama": "Hari Idul Fitri",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-03-22",
+        "nama": "Hari Idul Fitri",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-03-23",
+        "nama": "Idul Fitri",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2026-03-24",
+        "nama": "Idul Fitri",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2026-04-03",
+        "nama": "Wafat Isa Almasih",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-04-05",
+        "nama": "Hari Paskah",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-05-01",
+        "nama": "Hari Buruh Internasional / Pekerja",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-05-14",
+        "nama": "Kenaikan Isa Al Masih",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-05-15",
+        "nama": "Kenaikan Isa Al Masih",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2026-05-27",
+        "nama": "Idul Adha (Lebaran Haji)",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-05-28",
+        "nama": "Idul Adha (Lebaran Haji)",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-05-31",
+        "nama": "Hari Raya Waisak (belum pasti)",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-06-01",
+        "nama": "Hari Lahir Pancasila",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-06-16",
+        "nama": "Hari Kedua Muharram",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-06-17",
+        "nama": "Satu Muharam / Tahun Baru Hijriah",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-08-17",
+        "nama": "Hari Proklamasi Kemerdekaan R.I.",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-08-25",
+        "nama": "Maulid Nabi Muhammad",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-12-24",
+        "nama": "Natal (Malam Natal)",
+        "tipe": "cuti_bersama"
+    },
+    {
+        "tanggal": "2026-12-25",
+        "nama": "Hari Raya Natal",
+        "tipe": "nasional"
+    },
+    {
+        "tanggal": "2026-12-31",
+        "nama": "Malam Tahun Baru",
+        "tipe": "nasional"
+    }
+]
