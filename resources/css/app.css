@@ -274,6 +274,18 @@
         .select-field, .input-field {
             @apply text-sm;
         }
+        /* Tables on mobile: compact headers, smaller text */
+        table th {
+            @apply px-2 py-2 text-[10px] tracking-wide;
+        }
+        table td {
+            @apply px-2 py-2 text-xs;
+        }
+        /* Scroll hint for wide tables */
+        .overflow-x-auto {
+            -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+            mask-image: linear-gradient(to right, black 90%, transparent 100%);
+        }
     }
 
     .empty-state-icon {

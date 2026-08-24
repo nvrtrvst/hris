@@ -78,7 +78,7 @@ const TugasLuarBadge = ({ status }) => {
 };
 
 const TugasLuarCell = ({ p }) => (
-    <td className="px-4 py-3.5 whitespace-nowrap">
+    <td className="hidden lg:table-cell px-4 py-3.5 whitespace-nowrap">
         {p.is_tugas_luar ? (
             <div>
                 <TugasLuarBadge status={p.tugas_luar_status} />
@@ -150,7 +150,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         <div className="text-sm font-semibold text-primary">{format(parseDate(parent.tanggal), 'd MMM yyyy', { locale: id })}</div>
                         <div className="text-[11px] text-text-secondary">{format(parseDate(parent.tanggal), 'EEEE', { locale: id })}</div>
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    <td className="hidden sm:table-cell px-4 py-3.5 whitespace-nowrap">
                         {children.length > 0
                             ? <span className="text-xs font-semibold text-text-secondary">{children.length} sesi mengajar/tugas</span>
                             : parent.is_tugas_luar
@@ -167,7 +167,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             ? <span className="font-mono text-sm font-bold text-primary">{parent.jam_keluar.substring(0, 5)}</span>
                             : <span className="text-sm text-text-secondary">—</span>}
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    <td className="hidden md:table-cell px-4 py-3.5 whitespace-nowrap">
                         <div className="flex flex-wrap gap-1.5">
                             {parent.foto_masuk_url
                                 ? <a href={parent.foto_masuk_url} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border"><img src={parent.foto_masuk_url} alt="Masuk" className="h-full w-full object-cover" loading="lazy" /></a>
@@ -180,10 +180,10 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             ))}
                         </div>
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    <td className="hidden lg:table-cell px-4 py-3.5 whitespace-nowrap">
                         {lembur ? <LemburBadge status={lembur.lembur_status} /> : <span className="text-xs text-text-secondary">—</span>}
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    <td className="hidden lg:table-cell px-4 py-3.5 whitespace-nowrap">
                         {tugasLuar ? <TugasLuarBadge status={tugasLuar.tugas_luar_status} /> : <span className="text-xs text-text-secondary">—</span>}
                     </td>
                     <td className="px-4 py-3.5 whitespace-nowrap">
@@ -676,12 +676,12 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         <tr>
                                             <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Pegawai & Unit</th>
                                             <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Tanggal</th>
-                                            <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Jadwal</th>
+                                            <th className="hidden sm:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Jadwal</th>
                                             <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Masuk</th>
                                             <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Keluar</th>
-                                            <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Foto</th>
-                                            <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lembur</th>
-                                            <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Tugas Luar</th>
+                                            <th className="hidden md:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Foto</th>
+                                            <th className="hidden lg:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lembur</th>
+                                            <th className="hidden lg:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Tugas Luar</th>
                                             <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status</th>
                                             <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lokasi & Aksi</th>
                                         </tr>
@@ -711,7 +711,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                         <div className="text-sm font-semibold text-primary">{format(parseDate(p.tanggal), 'd MMM yyyy', { locale: id })}</div>
                                                         <div className="text-[11px] text-text-secondary">{format(parseDate(p.tanggal), 'EEEE', { locale: id })}</div>
                                                     </td>
-                                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    <td className="hidden sm:table-cell px-4 py-3.5 whitespace-nowrap">
                                                         {p.jadwal ? (
                                                             <div className="text-xs leading-tight">
                                                                 <div className="flex items-center gap-2">
@@ -745,7 +745,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             </div>
                                                         ) : <span className="text-sm text-text-secondary">—</span>}
                                                     </td>
-                                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    <td className="hidden md:table-cell px-4 py-3.5 whitespace-nowrap">
                                                         <div className="flex gap-1.5">
                                                             {p.foto_masuk_url ? (
                                                                 <a href={p.foto_masuk_url} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border hover:ring-2 hover:ring-primary transition-shadow" title="Foto masuk">
