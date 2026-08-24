@@ -133,7 +133,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                                             <Link key={i} href={menu.href} title={menu.name}
                                                 className={`flex items-center rounded-lg transition-all duration-150 group ${isSidebarOpen ? 'px-3 py-2 gap-3' : 'justify-center py-2.5'
                                                     } ${isLinkActive
-                                                        ? 'bg-accent/10 text-accent font-medium'
+                                                        ? 'bg-white/15 text-white font-semibold shadow-sm'
                                                         : 'text-gray-300 hover:bg-white/5 hover:text-white'
                                                     }`}
                                             >
@@ -242,11 +242,20 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                                     </svg>
                                 </button>
                                 <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                    {group.items.map((menu, i) => (
-                                        <ResponsiveNavLink key={i} href={menu.href} active={url.startsWith(new URL(menu.href).pathname)} className="text-white hover:bg-white/10 rounded-lg">
-                                            {menu.name}
-                                        </ResponsiveNavLink>
-                                    ))}
+                                    {group.items.map((menu, i) => {
+                                        const isActive = url.startsWith(new URL(menu.href).pathname);
+                                        return (
+                                            <Link key={i} href={menu.href}
+                                                className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                                                    isActive
+                                                        ? 'bg-white/15 text-white font-semibold shadow-sm'
+                                                        : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                                                }`}
+                                            >
+                                                {menu.name}
+                                            </Link>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )
