@@ -253,6 +253,29 @@
         @apply flex flex-col items-center justify-center py-16 text-center;
     }
 
+    /* Mobile admin optimizations */
+    @media (max-width: 640px) {
+        /* Stat cards: stack on very small screens */
+        .stat-card {
+            @apply p-3.5 gap-3;
+        }
+        .stat-card p:first-child {
+            @apply text-xl;
+        }
+        /* Modals: full-width on mobile */
+        .modal-content {
+            @apply max-w-full mx-2 rounded-xl;
+        }
+        /* Page title smaller on mobile */
+        .page-title {
+            @apply text-lg;
+        }
+        /* Filter selects: smaller on mobile */
+        .select-field, .input-field {
+            @apply text-sm;
+        }
+    }
+
     .empty-state-icon {
         @apply w-12 h-12 text-text-muted mb-4;
     }

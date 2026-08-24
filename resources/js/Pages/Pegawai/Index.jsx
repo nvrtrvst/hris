@@ -149,7 +149,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                     {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
 
                     {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                         <div>
                             <h3 className="text-xl font-bold text-primary">Daftar Pegawai</h3>
                             <p className="mt-1 text-sm text-text-secondary">Kelola data seluruh pegawai di lingkungan yayasan.</p>
@@ -186,7 +186,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
 
                     {/* Filter bar */}
                     <div className="card p-5">
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                             <div className="relative lg:col-span-2">
                                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                 <input
@@ -261,8 +261,57 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className={`card p-0 overflow-hidden transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
+                    {/* Mobile: Card list */}
+                    <div className={`md:hidden space-y-3 transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
+                        {pegawais.data.length > 0 ? (
+                            pegawais.data.map((pegawai) => {
+                                const kep = kepagawaianBadge(pegawai.status_kepegawaian);
+                                const unitNames = pegawai.units?.map(u => u.nama).join(', ') || '—';
+                                const jabatanNama = pegawai.jabatans?.[0]?.nama || '—';
+                                return (
+                                    <Link key={pegawai.id} href={route('pegawai.show', pegawai.id)} className="card block p-4 active:bg-surface/70 transition-colors">
+                                        <div className="flex items-start gap-3">
+                                            <UserAvatar pegawai={pegawai} />
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-bold text-primary truncate">{pegawai.nama_lengkap}</p>
+                                                        <p className="mt-0.5 text-[11px] text-text-secondary truncate">{pegawai.nip || '—'}</p>
+                                                    </div>
+                                                    <div className="flex shrink-0 items-center gap-1">
+                                                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${kep.badge}`}>{kep.label}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-text-secondary">
+                                                    <Building2 className="h-3 w-3 shrink-0 text-primary/50" />
+                                                    <span className="truncate">{unitNames} • {jabatanNama}</span>
+                                                </div>
+                                                <div className="mt-2 flex items-center justify-between">
+                                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${STATUS_AKTIF_BADGE(pegawai.status_aktif)}`}>
+                                                        <span className={`h-1 w-1 rounded-full ${pegawai.status_aktif === 'aktif' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                                                        {pegawai.status_aktif}
+                                                    </span>
+                                                    <div className="flex gap-1.5">
+                                                        <span className="btn-secondary btn-sm py-1 px-2"><Eye className="h-3 w-3" /> <span className="hidden xs:inline">Detail</span></span>
+                                                        <Link href={route('pegawai.edit', pegawai.id)} onClick={(e) => e.stopPropagation()} className="btn-secondary btn-sm py-1 px-2"><Pencil className="h-3 w-3" /> <span className="hidden xs:inline">Edit</span></Link>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                );
+                            })
+                        ) : (
+                            <div className="card px-6 py-12 text-center">
+                                <Users className="h-8 w-8 text-border mx-auto" />
+                                <p className="mt-3 text-sm font-bold text-primary">Data pegawai tidak ditemukan</p>
+                                <p className="mt-1 text-xs text-text-secondary">{hasFilter ? 'Coba ubah filter.' : 'Tambahkan pegawai pertama.'}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Desktop: Table */}
+                    <div className={`hidden md:block card p-0 overflow-hidden transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-border">
                                 <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">

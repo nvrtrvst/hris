@@ -214,7 +214,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                     )}
 
                     {/* Tabs */}
-                    <div className="card p-1 mb-6 inline-flex">
+                    <div className="card p-1 mb-6 inline-flex overflow-x-auto max-w-full">
                         {TABS.map((t) => (
                             <button
                                 key={t.key}
@@ -231,8 +231,8 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                     </div>
 
                     {/* Filter Section */}
-                    <div className="card p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="relative flex-1 max-w-md">
+                    <div className="card p-4 sm:p-5 mb-6 flex flex-col gap-3">
+                        <div className="relative w-full max-w-md">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <Search className="h-5 w-5 text-text-muted" />
                             </div>
@@ -244,7 +244,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
-                        <div className="filter-bar mb-0 flex-col md:flex-row gap-3">
+                        <div className="flex flex-wrap gap-2">
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <Filter className="h-4 w-4 text-text-muted" />
@@ -288,8 +288,64 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                         </div>
                     </div>
 
-                    {/* Table Section */}
-                    <div className="card-table">
+                    {/* Mobile: Card list */}
+                    <div className="md:hidden space-y-3 mb-6">
+                        {pengajuans.data.length === 0 ? (
+                            <div className="card px-6 py-12 text-center">
+                                <FileText className="w-10 h-10 text-border mx-auto mb-3" />
+                                <p className="text-sm font-bold text-primary">Tidak ada data</p>
+                            </div>
+                        ) : pengajuans.data.map((item) => (
+                            <div key={item.id} className="card p-4">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="flex-shrink-0 h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                                            {item.pegawai?.foto_url ? (
+                                                <img src={item.pegawai.foto_url} className="h-full w-full object-cover rounded-full" alt="" />
+                                            ) : (
+                                                <span className="text-primary font-bold text-xs">{item.pegawai?.nama_lengkap?.charAt(0) || 'P'}</span>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-primary truncate">{item.pegawai?.nama_lengkap}</p>
+                                            <p className="text-[11px] text-text-muted">{format(new Date(item.created_at), 'd MMM yyyy, HH:mm', { locale: idLocale })}</p>
+                                        </div>
+                                    </div>
+                                    <span className="badge badge-info uppercase shrink-0 text-[10px]">{item.jenis_izin}</span>
+                                </div>
+                                <div className="mt-2.5 flex items-center justify-between">
+                                    <div className="text-xs text-text-secondary">
+                                        {format(new Date(item.tanggal_mulai), 'd MMM', { locale: idLocale })}
+                                        {item.tanggal_mulai !== item.tanggal_selesai && (
+                                            <span> s.d {format(new Date(item.tanggal_selesai), 'd MMM', { locale: idLocale })}</span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        {getStatusBadge(item.status)}
+                                        {getStageBadge(item.approval_stage)}
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex justify-end gap-2 border-t border-border/50 pt-2.5">
+                                    <button onClick={() => openModal(item, 'detail')} className="btn-secondary btn-sm py-1 px-2.5">
+                                        <Info className="w-3.5 h-3.5" /> Detail
+                                    </button>
+                                    {(item.status === 'pending' && canActOn(item)) && (
+                                        <>
+                                            <button onClick={() => openModal(item, 'approve')} className="btn-sm py-1 px-2.5 bg-success-light text-success rounded-button font-medium hover:bg-success/20">
+                                                <CheckCircle className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button onClick={() => openModal(item, 'reject')} className="btn-sm py-1 px-2.5 bg-danger-light text-danger rounded-button font-medium hover:bg-danger/20">
+                                                <XCircle className="w-3.5 h-3.5" />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Desktop: Table */}
+                    <div className="hidden md:block card-table">
                         <div className="overflow-x-auto">
                             <table className="table-base">
                                 <thead className="bg-surface/50">

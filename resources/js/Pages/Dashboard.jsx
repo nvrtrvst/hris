@@ -262,9 +262,9 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                         <tr>
                                             <th className="px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Jam</th>
                                             <th className="px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Mapel</th>
-                                            <th className="px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Kelas</th>
+                                            <th className="hidden sm:table-cell px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Kelas</th>
                                             <th className="px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Guru</th>
-                                            <th className="px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Unit</th>
+                                            <th className="hidden md:table-cell px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Unit</th>
                                             <th className="px-4 py-3 text-center text-[11px] font-bold text-text-secondary uppercase tracking-wider">Ngajar</th>
                                             <th className="px-4 py-3 text-center text-[11px] font-bold text-text-secondary uppercase tracking-wider">Harian</th>
                                         </tr>
@@ -286,7 +286,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                     <td className="px-4 py-3">
                                                         <span className="font-medium text-text-primary">{j.mata_pelajaran?.nama || j.jenis_jadwal || '-'}</span>
                                                     </td>
-                                                    <td className="px-4 py-3 text-text-secondary">{j.kelas_label || '-'}</td>
+                                                    <td className="hidden sm:table-cell px-4 py-3 text-text-secondary">{j.kelas_label || '-'}</td>
                                                     <td className="px-4 py-3 whitespace-nowrap">
                                                         <div className="flex items-center gap-2">
                                                             <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold ${avatarTone(j.pegawai?.nama_lengkap)}`}>
@@ -295,7 +295,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                             <span className="font-semibold text-text-primary">{j.pegawai?.nama_lengkap || '-'}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-3 text-xs text-text-muted">{j.unit_sekolah?.singkatan || j.unit_sekolah?.nama || '-'}</td>
+                                                    <td className="hidden md:table-cell px-4 py-3 text-xs text-text-muted">{j.unit_sekolah?.singkatan || j.unit_sekolah?.nama || '-'}</td>
                                                     <td className="px-4 py-3 text-center">{ngajar ? <StatusBadge status={ngajar.status} /> : <span className="text-xs text-text-muted">—</span>}</td>
                                                     <td className="px-4 py-3 text-center">{harian ? <StatusBadge status={harian.status} /> : <span className="text-xs text-text-muted">—</span>}</td>
                                                 </tr>

@@ -201,19 +201,32 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                     </div>
                     <span className="text-base font-semibold">HRIS <span className="text-accent">Yayasan</span></span>
                 </Link>
-                <button onClick={() => setShowingNavigationDropdown(!showingNavigationDropdown)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {showingNavigationDropdown ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        ) : (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                <div className="flex items-center gap-1">
+                    <Link href={route('notifications.index')} className="relative p-2 rounded-lg hover:bg-white/10 transition-colors" title="Notifikasi">
+                        <Bell className="h-5 w-5" />
+                        {auth?.unread_notifications > 0 && (
+                            <span className="absolute -right-0.5 -top-0.5 flex min-h-[16px] min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold leading-none text-white ring-2 ring-primary">
+                                {auth?.unread_notifications > 99 ? '99+' : auth?.unread_notifications}
+                            </span>
                         )}
-                    </svg>
-                </button>
+                    </Link>
+                    <button onClick={() => setShowingNavigationDropdown(!showingNavigationDropdown)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            {showingNavigationDropdown ? (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            ) : (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                            )}
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {/* Mobile Drawer */}
-            <div className={`md:hidden fixed inset-0 bg-primary z-30 pt-14 transform transition-transform duration-300 ease-in-out print:hidden overflow-y-auto ${showingNavigationDropdown ? 'translate-x-0' : '-translate-x-full'}`}>
+            {showingNavigationDropdown && (
+                <div className="md:hidden fixed inset-0 bg-black/40 z-30" onClick={() => setShowingNavigationDropdown(false)} />
+            )}
+            <div className={`md:hidden fixed inset-y-0 left-0 w-72 bg-primary z-40 pt-14 transform transition-transform duration-300 ease-in-out print:hidden overflow-y-auto ${showingNavigationDropdown ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="p-4 space-y-1">
                     {displayGroups.map((group, groupIndex) => {
                         const isExpanded = expandedGroups[group.title];
