@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Route;
  *   presensi.nuurulmuttaqiin   → portal Mobile PWA (routes/mobile.php)
  */
 
+// Dynamic PWA manifest — detect start_url based on domain
+require __DIR__.'/manifest.php';
+
 // Global protected photo serve — satu route untuk kedua portal
 Route::get('presensi/photo/{path}', [PresensiPhotoController::class, 'show'])
     ->where('path', '.*')
