@@ -35,10 +35,18 @@ class PengajuanIzinController extends Controller
         $tab = $request->input('tab', 'semua');
 
         if ($tab === 'l1') {
-            $query->where(function ($q) use ($user) {
+            $headUnitIds = ApprovalHelper::headUnitIds($user);
+            $query->where(function ($q) use ($user, $headUnitIds) {
                 $q->where('approver_l1_id', $user->id);
                 if ($user->hasRole('superadmin')) {
                     $q->orWhereNull('approver_l1_id');
+                }
+                if ($headUnitIds) {
+                    $q->orWhereHas('pegawai', function ($pq) use ($headUnitIds) {
+                        $pq->whereHas('units', function ($uq) use ($headUnitIds) {
+                            $uq->where('is_primary', 1)->whereIn('unit_sekolah.id', $headUnitIds);
+                        });
+                    });
                 }
             })->where('approval_stage', 'pending_l1');
         } elseif ($tab === 'l2') {
@@ -84,6 +92,12 @@ class PengajuanIzinController extends Controller
 
         $pengajuans = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
+        $pengajuans->getCollection()->transform(function ($item) use ($user) {
+            $item->can_act = $this->canActOnItem($item, $user);
+
+            return $item;
+        });
+
         return Inertia::render('PengajuanIzin/Index', [
             'pengajuans' => $pengajuans,
             'filters' => $request->only(['search', 'status', 'tanggal', 'tab', 'jenis_filter']),
@@ -117,8 +131,10 @@ class PengajuanIzinController extends Controller
             }
 
             $isSuperadmin = $user->hasRole('superadmin');
-            $isL1 = $pengajuan->approver_l1_id === $user->id || $isSuperadmin;
-            $isL2 = $pengajuan->approver_l2_id === $user->id || $isSuperadmin;
+            $recordUnit = optional($pengajuan->pegawai->units()->wherePivot('is_primary', true)->first()
+                ?? $pengajuan->pegawai->units()->first())?->id;
+            $isL1 = $isSuperadmin || $pengajuan->approver_l1_id === $user->id || ApprovalHelper::isUnitHead($user, $recordUnit);
+            $isL2 = $isSuperadmin || $pengajuan->approver_l2_id === $user->id || ApprovalHelper::isUnitHead($user, $recordUnit);
 
             if ($pengajuan->approval_stage === 'pending_l1') {
                 if (! $isL1) {
@@ -211,8 +227,10 @@ class PengajuanIzinController extends Controller
             }
 
             $isSuperadmin = $user->hasRole('superadmin');
-            $isL1 = $pengajuan->approver_l1_id === $user->id || $isSuperadmin;
-            $isL2 = $pengajuan->approver_l2_id === $user->id || $isSuperadmin;
+            $recordUnit = optional($pengajuan->pegawai->units()->wherePivot('is_primary', true)->first()
+                ?? $pengajuan->pegawai->units()->first())?->id;
+            $isL1 = $isSuperadmin || $pengajuan->approver_l1_id === $user->id || ApprovalHelper::isUnitHead($user, $recordUnit);
+            $isL2 = $isSuperadmin || $pengajuan->approver_l2_id === $user->id || ApprovalHelper::isUnitHead($user, $recordUnit);
 
             if (! $isL1 && ! $isL2) {
                 abort(403, 'Anda tidak berhak menolak pengajuan ini.');
@@ -265,5 +283,23 @@ class PengajuanIzinController extends Controller
                 "Izin {$pengajuan->jenis_izin} {$date->format('Y-m-d')} (pengajuan #{$pengajuan->id})"
             );
         }
+    }
+
+    private function canActOnItem(PengajuanIzin $item, User $user): bool
+    {
+        if (! in_array($item->approval_stage, ['pending_l1', 'pending_l2'], true)) {
+            return false;
+        }
+
+        if ($user->hasRole('superadmin')) {
+            return true;
+        }
+
+        $unit = optional($item->pegawai->units()->wherePivot('is_primary', true)->first()
+            ?? $item->pegawai->units()->first())?->id;
+
+        return $item->approver_l1_id === $user->id
+            || $item->approver_l2_id === $user->id
+            || ApprovalHelper::isUnitHead($user, $unit);
     }
 }

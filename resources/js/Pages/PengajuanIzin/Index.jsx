@@ -142,14 +142,6 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         }
     };
 
-    const isSuperadmin = auth.permissions?.includes('manage_users');
-    const canActOn = (item) => {
-        if (!['pending_l1', 'pending_l2'].includes(item.approval_stage)) return false;
-        if (isSuperadmin) return true;
-        if (item.approval_stage === 'pending_l1') return item.approver_l1_id === auth.user.id;
-        if (item.approval_stage === 'pending_l2') return item.approver_l2_id === auth.user.id;
-        return false;
-    };
 
     return (
         <AuthenticatedLayout
@@ -329,7 +321,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                     <button onClick={() => openModal(item, 'detail')} className="btn-secondary btn-sm py-1 px-2.5">
                                         <Info className="w-3.5 h-3.5" /> Detail
                                     </button>
-                                    {(item.status === 'pending' && canActOn(item)) && (
+                                    {(item.status === 'pending' && item.can_act) && (
                                         <>
                                             <button onClick={() => openModal(item, 'approve')} className="btn-sm py-1 px-2.5 bg-success-light text-success rounded-button font-medium hover:bg-success/20">
                                                 <CheckCircle className="w-3.5 h-3.5" />
@@ -416,7 +408,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                                     <button onClick={() => openModal(item, 'detail')} className="btn-secondary btn-sm" title="Detail">
                                                         <Info className="w-4 h-4 mr-1" /> Detail
                                                     </button>
-                                                    {(item.status === 'pending' && canActOn(item)) && (
+                                                    {(item.status === 'pending' && item.can_act) && (
                                                         <>
                                                             <button onClick={() => openModal(item, 'approve')} className="btn-sm inline-flex items-center justify-center gap-2 font-medium bg-success-light text-success rounded-button hover:bg-success/20 focus:ring-2 focus:ring-success/40 disabled:opacity-50" title="Setujui">
                                                                 <CheckCircle className="w-4 h-4" />
