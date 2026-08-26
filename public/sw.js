@@ -1,6 +1,6 @@
 /* HRIS Yayasan — Service Worker */
 // Bump versi cache saat deploy: purges shell/HTML lama yang mereferensikan bundle usang.
-const CACHE_NAME = 'hris-mobile-v7';
+const CACHE_NAME = 'hris-mobile-v8';
 
 // Aset shell (fallback offline ringan — halaman Inertia tetap butuh jaringan untuk data).
 const SHELL_ASSETS = [
