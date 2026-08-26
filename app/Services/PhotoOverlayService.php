@@ -106,11 +106,11 @@ class PhotoOverlayService
         }
 
         $gap = 4;
-        $panelH = $pad * 2;
+        $panelH = $pad * 2 + $titleSz; // extra top padding agar label masuk dalam overlay
         foreach ($lines as [$sz, $txt, $col, $bold]) {
             $panelH += $sz + $gap;
         }
-        $panelH = min($panelH, (int) round($height * 0.42));
+        $panelH = min($panelH, (int) round($height * 0.45));
         $panelTop = $height - $panelH;
 
         $panel = imagecolorallocatealpha($img, 0, 0, 0, 80);
