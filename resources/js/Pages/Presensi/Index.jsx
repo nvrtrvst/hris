@@ -1169,12 +1169,39 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         )}
 
                                         <div className="rounded-lg bg-surface p-4">
-                                            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-secondary">Data GPS</p>
-                                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                                <div><span className="text-text-secondary">Akurasi:</span> <b className="text-primary">{d.akurasi_masuk ?? '-'}m</b></div>
-                                                <div><span className="text-text-secondary">Kecepatan:</span> <b className="text-primary">{d.kecepatan_masuk ?? '-'} m/s</b></div>
-                                                <div className="col-span-2"><span className="text-text-secondary">Koordinat:</span> <b className="font-mono text-primary">{d.latitude_masuk ?? '-'}, {d.longitude_masuk ?? '-'}</b></div>
-                                                {d.captured_at && <div className="col-span-2"><span className="text-text-secondary">Waktu capture:</span> <b className="text-primary">{new Date(d.captured_at).toLocaleString('id-ID')}</b></div>}
+                                            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Data GPS</p>
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-text-secondary">Akurasi</span>
+                                                    <b className="text-primary">{d.akurasi_masuk ?? '-'} m</b>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-text-secondary">Kecepatan</span>
+                                                    <b className="text-primary">{d.kecepatan_masuk ?? '-'} m/s</b>
+                                                </div>
+                                                <div className="col-span-2 flex items-center justify-between gap-2">
+                                                    <span className="text-text-secondary">Koordinat</span>
+                                                    {d.latitude_masuk != null && d.longitude_masuk != null ? (
+                                                        <a
+                                                            href={`https://www.google.com/maps?q=${d.latitude_masuk},${d.longitude_masuk}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            title="Buka di Google Maps"
+                                                            className="inline-flex items-center gap-1 font-mono text-primary underline decoration-dotted underline-offset-2 transition-colors hover:text-primary/80"
+                                                        >
+                                                            <MapPin className="h-3.5 w-3.5" />
+                                                            {d.latitude_masuk}, {d.longitude_masuk}
+                                                        </a>
+                                                    ) : (
+                                                        <b className="font-mono text-primary">-</b>
+                                                    )}
+                                                </div>
+                                                {d.captured_at && (
+                                                    <div className="col-span-2 flex items-center justify-between">
+                                                        <span className="text-text-secondary">Waktu Capture</span>
+                                                        <b className="text-primary">{format(new Date(d.captured_at), 'dd/MM/yyyy, HH.mm.ss', { locale: id })}</b>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
