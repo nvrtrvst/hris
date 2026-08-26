@@ -609,7 +609,7 @@ class MobileController extends Controller
             }
         }
 
-        $lokasiPerluReview = $mockSuspect || ($accuracy !== null && $accuracy < 10);
+        $lokasiPerluReview = $mockSuspect || ($accuracy !== null && $accuracy < 5);
         $capturedAt = $request->filled('captured_at') ? Carbon::parse($request->captured_at) : null;
 
         // Attestation verification (skip if token not provided — backward compat)
@@ -982,7 +982,7 @@ class MobileController extends Controller
             }
         }
 
-        $lokasiPerluReview = $mockSuspect || ($accuracy !== null && $accuracy < 10);
+        $lokasiPerluReview = $mockSuspect || ($accuracy !== null && $accuracy < 5);
         $capturedAt = $request->filled('captured_at') ? Carbon::parse($request->captured_at) : null;
         // Attestation verification
         if ($request->filled('attestation_token')) {
@@ -1158,7 +1158,7 @@ class MobileController extends Controller
                 $presensi->longitude_keluar = $request->longitude;
                 $presensi->jarak_keluar_meter = $distance;
                 $presensi->akurasi_keluar = $accuracy;
-                $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 10;
+                $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 5;
                 $presensi->save();
 
                 return $presensi->status;
@@ -1178,7 +1178,7 @@ class MobileController extends Controller
                     'tipe_presensi' => 'mengajar',
                 ]);
                 $presensi->is_lembur = false;
-                $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 10;
+                $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 5;
                 $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $jadwal->unitSekolah->toleransi_menit);
                 $presensi->save();
 

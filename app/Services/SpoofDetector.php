@@ -24,7 +24,7 @@ class SpoofDetector
 
     private const MAX_INDOOR_SPEED_STRICT = 10; // m/s (36 km/jam — mustahil di dalam gedung)
 
-    private const MOTION_ZERO_THRESHOLD = 0.001; // varians total akselerasi
+    private const MOTION_ZERO_THRESHOLD = 1e-6; // varians total akselerasi; cuma sinyal konstan persis (emulator tanpa sensor) yang ke-flag, bukan hp diam biasa
 
     private const IP_GEO_CACHE_TTL = 86400; // 24 jam per IP
 
