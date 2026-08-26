@@ -106,17 +106,17 @@ class PhotoOverlayService
         }
 
         $gap = 4;
-        $panelH = $pad * 2 + $titleSz; // extra top padding agar label masuk dalam overlay
+        $panelH = $pad * 2;
         foreach ($lines as [$sz, $txt, $col, $bold]) {
             $panelH += $sz + $gap;
         }
-        $panelH = min($panelH, (int) round($height * 0.45));
+        $panelH = min($panelH, (int) round($height * 0.42));
         $panelTop = $height - $panelH;
 
         $panel = imagecolorallocatealpha($img, 0, 0, 0, 80);
         imagefilledrectangle($img, 0, $panelTop, $width, $height, $panel);
 
-        $y = $panelTop + $pad;
+        $y = $panelTop + $pad + $titleSz;
         foreach ($lines as [$sz, $txt, $col, $bold]) {
             $font = $bold ? $this->fontBold : $this->fontRegular;
             $this->text($img, $sz, $pad, $y, $col, $font, $txt);
