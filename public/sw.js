@@ -1,12 +1,14 @@
 /* HRIS Yayasan — Service Worker */
 // Bump versi cache saat deploy: purges shell/HTML lama yang mereferensikan bundle usang.
-const CACHE_NAME = 'hris-mobile-v5';
+const CACHE_NAME = 'hris-mobile-v6';
 
 // Aset shell (fallback offline ringan — halaman Inertia tetap butuh jaringan untuk data).
 const SHELL_ASSETS = [
     '/',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
+    '/icons/icon-maskable-192.png',
+    '/icons/icon-maskable-512.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -82,7 +84,7 @@ self.addEventListener('push', (event) => {
         body: data.body || '',
         icon: data.icon || '/icons/icon-192.png',
         badge: data.badge || '/icons/icon-192.png',
-        data: { url: data.url || '/mobile' },
+        data: { url: data.url || '/' },
         vibrate: [100, 50, 100],
     };
 
@@ -91,7 +93,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    const target = (event.notification.data && event.notification.data.url) || '/mobile';
+    const target = (event.notification.data && event.notification.data.url) || '/';
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
             for (const client of clientList) {
