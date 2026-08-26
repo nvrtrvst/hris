@@ -155,4 +155,31 @@ class PresensiBlockedOnLeaveTest extends TestCase
         ]);
         Carbon::setTestNow();
     }
+
+    public function test_izin_disetujui_lewat_approve_masuk_diblokir(): void
+    {
+        Carbon::setTestNow('2026-08-26 08:00:00');
+        $pegawai = $this->makePegawai();
+
+        $izin = new PengajuanIzin();
+        $izin->pegawai_id = $pegawai->id;
+        $izin->jenis_izin = 'izin';
+        $izin->tanggal_mulai = '2026-08-26';
+        $izin->tanggal_selesai = '2026-08-26';
+        $izin->alasan = 'Izin tes alur approve';
+        $izin->status = 'pending';
+        $izin->approval_stage = 'pending_l1';
+        $izin->save();
+
+        $admin = User::factory()->create(['role' => 'superadmin']);
+        $admin->assignRole('superadmin');
+        $this->actingAs($admin, 'web_admin')
+            ->post(route('pengajuan-izin.approve', $izin->id), ['catatan_approval' => 'ok']);
+
+        $this->assertSame('disetujui', $izin->fresh()->status);
+
+        $res = $this->postPresensi($pegawai);
+        $res->assertStatus(422)->assertJsonValidationErrors('conflict');
+        Carbon::setTestNow();
+    }
 }
