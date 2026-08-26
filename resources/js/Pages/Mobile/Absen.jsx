@@ -660,7 +660,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </div>
             )}
 
-            {tugasLuarRecord && (
+            {tugasLuarOpen && tugasLuarRecord && (
                 <BuktiKegiatan
                     presensiId={tugasLuarRecord.id}
                     initialUrls={tugasLuarRecord.foto_kegiatan_urls || []}

@@ -430,7 +430,7 @@ const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_lua
                 </div>
             )}
 
-            {tugasLuarRecord && (
+            {tugasLuarOpen && tugasLuarRecord && (
                 <BuktiKegiatan
                     presensiId={tugasLuarRecord.id}
                     initialUrls={tugasLuarRecord.foto_kegiatan_urls || []}
