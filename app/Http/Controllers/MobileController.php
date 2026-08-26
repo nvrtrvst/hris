@@ -650,6 +650,7 @@ class MobileController extends Controller
         $geo = app(GeocodingService::class)->reverse($request->latitude, $request->longitude);
         $overlayData['kecamatan'] = $geo['kecamatan'] ?? null;
         $overlayData['kelurahan'] = $geo['kelurahan'] ?? null;
+        $overlayData['kabupaten'] = $geo['kabupaten'] ?? null;
 
         $tempName = Str::uuid()->toString().'.jpg';
         $tempPath = 'temp/'.$tempName;
@@ -1021,6 +1022,7 @@ class MobileController extends Controller
         $geo = app(GeocodingService::class)->reverse($request->latitude, $request->longitude);
         $overlayData['kecamatan'] = $geo['kecamatan'] ?? null;
         $overlayData['kelurahan'] = $geo['kelurahan'] ?? null;
+        $overlayData['kabupaten'] = $geo['kabupaten'] ?? null;
 
         $tempName = Str::uuid()->toString().'.jpg';
         $tempPath = 'temp/'.$tempName;

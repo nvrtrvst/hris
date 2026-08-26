@@ -218,7 +218,8 @@ class PhotoOverlayService
     {
         $kecamatan = $data['kecamatan'] ?? null;
         $kelurahan = $data['kelurahan'] ?? null;
-        if (! $kecamatan && ! $kelurahan) {
+        $kabupaten = $data['kabupaten'] ?? null;
+        if (! $kecamatan && ! $kelurahan && ! $kabupaten) {
             return null;
         }
 
@@ -229,8 +230,11 @@ class PhotoOverlayService
         if ($kelurahan) {
             $parts[] = 'Kel. '.$kelurahan;
         }
+        if ($kabupaten) {
+            $parts[] = 'Kab. '.$kabupaten;
+        }
 
-        return implode(' • ', $parts);
+        return implode(' | ', $parts);
     }
 
     private function textRight($img, float $size, int $rightX, int $y, $color, string $font, string $text): void

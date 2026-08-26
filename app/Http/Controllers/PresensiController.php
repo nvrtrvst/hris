@@ -529,6 +529,7 @@ class PresensiController extends Controller
             $geo = app(GeocodingService::class)->reverse($request->latitude, $request->longitude);
             $overlayData['kecamatan'] = $geo['kecamatan'] ?? null;
             $overlayData['kelurahan'] = $geo['kelurahan'] ?? null;
+            $overlayData['kabupaten'] = $geo['kabupaten'] ?? null;
 
             $path = app(ImageUploadService::class)->storeBase64(
                 $request->foto,

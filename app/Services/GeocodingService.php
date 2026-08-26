@@ -58,11 +58,12 @@ class GeocodingService
 
                 $address = $response->json('address', []);
 
-                // Prioritas: subdistrict (kecamatan) → village (kelurahan/desa)
+                // Prioritas: subdistrict (kecamatan) → village (kelurahan/desa) → city (kabupaten)
                 $kecamatan = $address['subdistrict'] ?? $address['city_district'] ?? null;
                 $kelurahan = $address['village'] ?? $address['hamlet'] ?? null;
+                $kabupaten = $address['city'] ?? $address['county'] ?? null;
 
-                return ['kecamatan' => $kecamatan, 'kelurahan' => $kelurahan];
+                return ['kecamatan' => $kecamatan, 'kelurahan' => $kelurahan, 'kabupaten' => $kabupaten];
             } catch (\Throwable $e) {
                 return $this->empty();
             }
@@ -74,6 +75,6 @@ class GeocodingService
      */
     private function empty(): array
     {
-        return ['kecamatan' => null, 'kelurahan' => null];
+        return ['kecamatan' => null, 'kelurahan' => null, 'kabupaten' => null];
     }
 }
