@@ -12,6 +12,7 @@ use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use App\Models\TugasLuar;
 use App\Services\AttestationService;
+use App\Services\GeocodingService;
 use App\Services\SpoofDetector;
 use App\Traits\CalculatesDistance;
 use App\Traits\ResolvesPegawai;
@@ -644,6 +645,9 @@ class MobileController extends Controller
             'coordinates' => number_format((float) $request->latitude, 6).', '.number_format((float) $request->longitude, 6),
             'accuracy' => number_format($accuracy, 0).'m',
         ];
+        $geo = app(GeocodingService::class)->reverse($request->latitude, $request->longitude);
+        $overlayData['kecamatan'] = $geo['kecamatan'] ?? null;
+        $overlayData['kelurahan'] = $geo['kelurahan'] ?? null;
 
         $tempName = Str::uuid()->toString().'.jpg';
         $tempPath = 'temp/'.$tempName;
@@ -1010,6 +1014,9 @@ class MobileController extends Controller
             'coordinates' => number_format((float) $request->latitude, 6).', '.number_format((float) $request->longitude, 6),
             'accuracy' => number_format($accuracy, 0).'m',
         ];
+        $geo = app(GeocodingService::class)->reverse($request->latitude, $request->longitude);
+        $overlayData['kecamatan'] = $geo['kecamatan'] ?? null;
+        $overlayData['kelurahan'] = $geo['kelurahan'] ?? null;
 
         $tempName = Str::uuid()->toString().'.jpg';
         $tempPath = 'temp/'.$tempName;

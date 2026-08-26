@@ -11,6 +11,7 @@ use App\Models\Jadwal;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
+use App\Services\GeocodingService;
 use App\Services\ImageUploadService;
 use App\Traits\CalculatesDistance;
 use Carbon\Carbon;
@@ -523,6 +524,9 @@ class PresensiController extends Controller
                     : null,
                 'accuracy' => $request->accuracy ? number_format((float) $request->accuracy, 0).'m' : null,
             ];
+            $geo = app(GeocodingService::class)->reverse($request->latitude, $request->longitude);
+            $overlayData['kecamatan'] = $geo['kecamatan'] ?? null;
+            $overlayData['kelurahan'] = $geo['kelurahan'] ?? null;
 
             $path = app(ImageUploadService::class)->storeBase64(
                 $request->foto,
