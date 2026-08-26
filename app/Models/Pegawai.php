@@ -223,6 +223,65 @@ class Pegawai extends Model
             : null;
     }
 
+    /**
+     * Auto-assign atasan langsung berdasarkan jabatan & unit.
+     * Hanya assign jika atasan_langsung_id masih NULL.
+     */
+    public function autoAssignAtasan(): void
+    {
+        if ($this->atasan_langsung_id !== null) {
+            return;
+        }
+
+        $this->loadMissing('units');
+        $jabatan = $this->jabatanPrimer();
+        $primaryUnit = $this->units->first(fn ($u) => ! empty($u->pivot->is_primary))
+            ?? $this->units->first();
+
+        if (! $primaryUnit || ! $jabatan) {
+            return;
+        }
+
+        // Cari ketua yayasan
+        $yayasanUnit = UnitSekolah::where('singkatan', 'YAYASAN')->first();
+        $ketuaYayasan = $yayasanUnit
+            ? $this->findJabatanPegawai($yayasanUnit->id, ['Ketua Yayasan', 'Kepala Yayasan'])
+            : null;
+
+        $unitId = $primaryUnit->id;
+        $namaJabatan = $jabatan->nama;
+
+        $atasan = match (true) {
+            in_array($namaJabatan, ['Ketua Yayasan', 'Kepala Yayasan'], true) => null,
+            $namaJabatan === 'Kepala Sekolah' => $ketuaYayasan,
+            $jabatan->is_guru || in_array($namaJabatan, ['Wakil Kepala Sekolah', 'Kepala Perpustakaan', 'Kepala Laboratorium', 'Kepala Tata Usaha'], true) => $this->findJabatanPegawai($unitId, ['Kepala Sekolah']),
+            default => $this->findJabatanPegawai($unitId, ['Kepala Tata Usaha'])
+                ?? $this->findJabatanPegawai($unitId, ['Kepala Sekolah'])
+                ?? $ketuaYayasan,
+        };
+
+        if ($atasan && (int) $atasan->id === (int) $this->id) {
+            return;
+        }
+
+        if ($atasan) {
+            $this->updateQuietly(['atasan_langsung_id' => $atasan->id]);
+        }
+    }
+
+    private function findJabatanPegawai(int $unitId, array $jabatanNames): ?self
+    {
+        return self::whereHas('units', function ($q) use ($unitId) {
+            $q->where('unit_sekolah.id', $unitId);
+        })
+            ->with('units')
+            ->get()
+            ->first(function ($p) use ($jabatanNames) {
+                $j = $p->jabatanPrimer();
+                return $j && in_array($j->nama, $jabatanNames, true);
+            });
+    }
+
     public function bawahan(): HasMany
     {
         return $this->hasMany(Pegawai::class, 'atasan_langsung_id');

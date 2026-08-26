@@ -16,6 +16,12 @@ class PegawaiObserver
         if (! $pegawai->created_by && auth()->check()) {
             Pegawai::query()->whereKey($pegawai->getKey())->update(['created_by' => auth()->id()]);
         }
+
+        // Auto-assign atasan langsung berdasarkan jabatan
+        if ($pegawai->atasan_langsung_id === null) {
+            $pegawai->load('units');
+            $pegawai->autoAssignAtasan();
+        }
     }
 
     /**
