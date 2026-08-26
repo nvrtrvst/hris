@@ -415,6 +415,18 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
     const hasFilter = Boolean(search || statusFilter || jadwalFilter || jenisFilter || unitId || lemburFilter || lokasiFilter || suspiciousFilter || startDate || endDate);
 
+    // Preset periode yang sedang aktif (cocokkan start/end dgn preset).
+    const today = new Date();
+    const todayStr = fmtDateInput(today);
+    const firstMonthStr = fmtDateInput(new Date(today.getFullYear(), today.getMonth(), 1));
+    const last7Str = fmtDateInput(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6));
+    const activePreset = startDate && endDate
+        ? (startDate === todayStr && endDate === todayStr ? 'hari'
+            : startDate === firstMonthStr && endDate === todayStr ? 'bulan'
+            : startDate === last7Str && endDate === todayStr ? '7hari'
+            : null)
+        : null;
+
     const buildParams = React.useCallback((overrides = {}) => ({
         start_date: startDate,
         end_date: endDate,
@@ -456,7 +468,12 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         } else {
             start.setDate(end.getDate());
         }
-        applyFilters({ start_date: fmtDateInput(start), end_date: fmtDateInput(end) });
+        const sd = fmtDateInput(start);
+        const ed = fmtDateInput(end);
+        // Update state supaya input tanggal & header ikut merefleksikan preset.
+        setStartDate(sd);
+        setEndDate(ed);
+        applyFilters({ start_date: sd, end_date: ed });
     };
 
     const resetFilters = () => {
@@ -614,21 +631,39 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             </div>
                         )}
 
-                        {/* Row 3: Date Range + Actions */}
-                        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <input type="date" className="input-field text-xs h-9" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                                <span className="text-xs text-text-secondary">–</span>
-                                <input type="date" className="input-field text-xs h-9" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                        {/* Row 3: Periode (preset + rentang custom) + Actions */}
+                        <div className="mt-4 flex flex-col gap-4 border-t border-border/60 pt-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-text-secondary">Periode</span>
+
+                                {/* Segmented preset control dengan state aktif */}
+                                <div className="inline-flex rounded-xl border border-border bg-surface p-1">
+                                    {[{ k: 'hari', label: 'Hari Ini' }, { k: '7hari', label: '7 Hari' }, { k: 'bulan', label: 'Bulan Ini' }].map((p) => {
+                                        const active = activePreset === p.k;
+                                        return (
+                                            <button
+                                                key={p.k}
+                                                type="button"
+                                                onClick={() => applyPreset(p.k)}
+                                                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${
+                                                    active ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:text-primary'
+                                                }`}
+                                            >
+                                                {p.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Rentang manual */}
+                                <div className="flex items-center gap-2">
+                                    <input type="date" className="input-field text-xs h-9" value={startDate} onChange={(e) => setStartDate(e.target.value)} aria-label="Tanggal mulai" />
+                                    <span className="text-xs text-text-secondary">–</span>
+                                    <input type="date" className="input-field text-xs h-9" value={endDate} onChange={(e) => setEndDate(e.target.value)} aria-label="Tanggal selesai" />
+                                </div>
                             </div>
-                            <div className="ml-1 flex flex-wrap gap-1.5">
-                                {[{ k: 'hari', label: 'Hari Ini' }, { k: '7hari', label: '7 Hari' }, { k: 'bulan', label: 'Bulan Ini' }].map((p) => (
-                                    <button key={p.k} type="button" onClick={() => applyPreset(p.k)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary hover:bg-primary-50">
-                                        {p.label}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="ml-auto flex items-center gap-2">
+
+                            <div className="flex items-center gap-2">
                                 {hasFilter && (
                                     <button type="button" onClick={resetFilters} className="btn-secondary btn-sm flex items-center gap-1.5">
                                         <RotateCcw className="h-3.5 w-3.5" /> Reset
