@@ -329,6 +329,11 @@ class TugasLuarTest extends TestCase
         $this->assertIsArray($fresh->foto_kegiatan);
         $this->assertCount(1, $fresh->foto_kegiatan);
         $this->assertSame('Foto rapat', $fresh->foto_kegiatan[0]['keterangan']);
+        $this->assertArrayHasKey('latitude', $fresh->foto_kegiatan[0]);
+        $this->assertArrayHasKey('longitude', $fresh->foto_kegiatan[0]);
+        $this->assertArrayHasKey('accuracy', $fresh->foto_kegiatan[0]);
+        $this->assertEquals(0.0, $fresh->foto_kegiatan[0]['latitude']);
+        $this->assertEquals(0.0, $fresh->foto_kegiatan[0]['longitude']);
     }
 
     public function test_bukti_kegiatan_bisa_lebih_dari_satu(): void

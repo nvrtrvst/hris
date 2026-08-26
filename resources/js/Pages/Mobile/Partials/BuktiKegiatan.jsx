@@ -22,6 +22,10 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
 
     const token = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
+    const posLabel = currentPosition
+        ? `${currentPosition.latitude.toFixed(6)}, ${currentPosition.longitude.toFixed(6)} · Akurasi ${currentPosition.accuracy?.toFixed(0)}m`
+        : null;
+
     const start = () => {
         setError(null);
         setSuccess(null);
@@ -118,9 +122,22 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
                         </div>
                     )}
 
+                    {posLabel && (
+                        <p className="px-1 text-center font-mono text-[10px] tabular-nums text-sky-700">{posLabel}</p>
+                    )}
+                    {!currentPosition && (
+                        <p className="px-1 text-center text-[10px] font-medium text-amber-600">GPS belum aktif — koordinat bukti tidak tercatat.</p>
+                    )}
+
                     {camera.capturedPhoto && (
                         <div>
                             <img src={camera.capturedPhoto} alt="Pratinjau bukti" className="block w-full rounded-xl" />
+                            {posLabel && (
+                                <p className="mt-2 font-mono text-[10px] tabular-nums text-sky-700">{posLabel}</p>
+                            )}
+                            {!currentPosition && (
+                                <p className="mt-2 text-[10px] font-medium text-amber-600">GPS belum aktif — koordinat bukti tidak tercatat.</p>
+                            )}
                             <input
                                 type="text"
                                 value={keterangan}

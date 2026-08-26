@@ -539,6 +539,9 @@ class PresensiController extends Controller
             $bukti[] = [
                 'path' => $path,
                 'keterangan' => $request->keterangan,
+                'latitude' => $request->latitude !== null ? (float) $request->latitude : null,
+                'longitude' => $request->longitude !== null ? (float) $request->longitude : null,
+                'accuracy' => $request->accuracy !== null ? (float) $request->accuracy : null,
                 'created_at' => Carbon::now()->toDateTimeString(),
             ];
             $locked->foto_kegiatan = $bukti;
