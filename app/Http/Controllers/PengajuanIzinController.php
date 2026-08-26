@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ApprovalHelper;
 use App\Helpers\NotificationHelper;
 use App\Helpers\PayrollLockHelper;
 use App\Models\AuditPresensi;
@@ -260,6 +261,10 @@ class PengajuanIzinController extends Controller
         $period = CarbonPeriod::create($pengajuan->tanggal_mulai, $pengajuan->tanggal_selesai);
         foreach ($period as $date) {
             if ($date->isWeekend()) {
+                continue;
+            }
+            // ponytail: pegawai tanpa unit tetap bisa diapprove tanpa 500 NOT NULL
+            if (! $unitId) {
                 continue;
             }
             if (PayrollLockHelper::isPeriodLocked($pengajuan->pegawai_id, $date)) {
