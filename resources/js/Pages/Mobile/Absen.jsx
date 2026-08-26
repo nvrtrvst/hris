@@ -459,7 +459,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             )}
 
             {/* Tugas Luar selesai */}
-            {isTugasLuar && tugasLuarDone && (
+            {tugasLuarDone && (
                 <Card press={false} className="border-emerald-200 bg-emerald-50 p-4 text-center">
                     <CheckCircle className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
                     <p className="text-sm font-bold text-emerald-900">Presensi tugas luar sudah lengkap</p>
