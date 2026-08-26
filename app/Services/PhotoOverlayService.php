@@ -115,7 +115,6 @@ class PhotoOverlayService
 
         $panel = imagecolorallocatealpha($img, 0, 0, 0, 80);
         imagefilledrectangle($img, 0, $panelTop, $width, $height, $panel);
-        imagefilledrectangle($img, 0, $panelTop, $width, $panelTop + 3, $labelColor);
 
         $y = $panelTop + $pad;
         foreach ($lines as [$sz, $txt, $col, $bold]) {
