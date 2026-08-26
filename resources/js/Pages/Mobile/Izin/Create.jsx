@@ -1,8 +1,33 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Badge } from '@/Components/MobileUI';
 import { ArrowLeft, Upload, Camera, Info } from 'lucide-react';
+
+const parseLocal = (value) => (value ? new Date(value + 'T00:00:00') : null);
+
+const countWeekdays = (start, end) => {
+    const s = parseLocal(start);
+    const e = parseLocal(end);
+    if (!s || !e || isNaN(s) || isNaN(e) || s > e) return 0;
+    let count = 0;
+    const cur = new Date(s);
+    while (cur <= e) {
+        const day = cur.getDay();
+        if (day !== 0 && day !== 6) count++;
+        cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+};
+
+const diffCalendarDays = (start, end) => {
+    const s = parseLocal(start);
+    const e = parseLocal(end);
+    if (!s || !e || isNaN(s) || isNaN(e) || s > e) return 0;
+    return Math.round((e - s) / 86400000) + 1;
+};
 
 export default function Create({ pegawai }) {
     const { data, setData, post, processing, errors } = useForm({
@@ -34,6 +59,11 @@ export default function Create({ pegawai }) {
     };
 
     const { auth } = usePage().props;
+
+    const hariKerja = useMemo(() => countWeekdays(data.tanggal_mulai, data.tanggal_selesai), [data.tanggal_mulai, data.tanggal_selesai]);
+    const totalHari = useMemo(() => diffCalendarDays(data.tanggal_mulai, data.tanggal_selesai), [data.tanggal_mulai, data.tanggal_selesai]);
+    const showPreview = data.jenis_izin === 'cuti' && data.tanggal_mulai && data.tanggal_selesai && parseLocal(data.tanggal_mulai) <= parseLocal(data.tanggal_selesai);
+    const melebihiCuti = showPreview && hariKerja > (pegawai.sisa_cuti ?? 0);
 
     const options = [
         { value: 'sakit', label: 'Sakit' },
@@ -107,6 +137,21 @@ export default function Create({ pegawai }) {
                             {errors.tanggal_selesai && <p className="mt-1 text-xs font-medium text-rose-600">{errors.tanggal_selesai}</p>}
                         </div>
                     </div>
+
+                    {showPreview && (
+                        <div className={`rounded-2xl border p-3 text-sm ${melebihiCuti ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-100 bg-emerald-50 text-emerald-800'}`}>
+                            <p className="font-semibold">
+                                {format(parseLocal(data.tanggal_mulai), 'd MMM', { locale: id })} – {format(parseLocal(data.tanggal_selesai), 'd MMM', { locale: id })}:
+                                {' '}{hariKerja} hari kerja
+                                {totalHari !== hariKerja && ` (dari ${totalHari} hari kalender, Sabtu–Minggu tidak dihitung)`}
+                            </p>
+                            <p className="mt-0.5">
+                                {melebihiCuti
+                                    ? `Melebihi sisa cuti Anda (${pegawai.sisa_cuti} hari).`
+                                    : `Akan mengurangi sisa cuti Anda (${pegawai.sisa_cuti} hari).`}
+                            </p>
+                        </div>
+                    )}
 
                     <div>
                         <label className="mb-1 block text-sm font-semibold text-slate-700">Alasan Lengkap</label>
