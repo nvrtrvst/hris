@@ -199,9 +199,9 @@ class PhotoOverlayService
         imagecopyresampled($finalMap, $mapImg, 0, 0, 0, 0, $mapSize, $mapSize, $cropW, $cropH);
         imagedestroy($mapImg);
 
-        // Position: pojok kanan bawah panel
+        // Position: pojok kanan bawah panel, menempel sisi kanan
         $width = imagesx($img);
-        $mapX = $width - $mapSize - max(10, (int) round($width * 0.02));
+        $mapX = $width - $mapSize;
         $mapY = $panelTop + (int) round(($panelH - $mapSize) / 2);
         $mapY = max($panelTop, min($mapY, $panelTop + $panelH - $mapSize));
 
