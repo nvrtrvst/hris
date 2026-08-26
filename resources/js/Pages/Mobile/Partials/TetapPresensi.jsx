@@ -89,7 +89,12 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         return jamSekarang > selesai + grace;
     }), [jadwals, tappedIds, jamSekarang]);
 
+    // Generic check: semua presensi hari ini sudah lengkap
+    const allRecordsComplete = presensiHariIni.length > 0
+        && presensiHariIni.every((p) => p.jam_masuk && p.jam_keluar);
+
     const phase = useMemo(() => {
+        if (allRecordsComplete) return SELESAI;
         if (!pagiRecord) return FOTO_PAGI;
         if (pagiRecord.jam_keluar) return SELESAI;
         // Foto sore hanya ketika tidak ada lagi jadwal yang berlangsung/menunggu
@@ -99,7 +104,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         if (jadwals.length === 0 && jamSekarang >= jamSore) return FOTO_SORE;
 
         return TAP_JADWAL;
-    }, [pagiRecord, semuaBeres, jadwals.length, jamSekarang]);
+    }, [allRecordsComplete, pagiRecord, semuaBeres, jadwals.length, jamSekarang]);
 
     const lemburUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
 
