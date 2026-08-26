@@ -85,11 +85,19 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const tugasLuarDone = Boolean(tugasLuarRecord?.jam_keluar);
     const tugasLuarOpen = Boolean(tugasLuarRecord && !tugasLuarDone);
 
-    // Kamera hanya muncul jika presensi aktif belum lengkap
+    // Kamera hanya muncul jika mode aktif belum lengkap
+    // Setelah redirect: cek semua record hari ini — kalau SEMUA sudah lengkap, kamera off
+    const allJadwalDone = (jadwals.length > 0)
+        ? jadwals.every((j) => {
+            const rec = (presensiHariIni || []).find((p) => p.jadwal_id === j.id);
+            return rec?.jam_masuk && rec?.jam_keluar;
+        })
+        : false;
     const presensiComplete = (isTeaching && teachingDone)
         || (isLembur && lemburDone)
         || (isTugasLuar && tugasLuarDone)
-        || (!isLembur && !isTugasLuar && !isTeaching && kantorDone);
+        || (!isLembur && !isTugasLuar && !isTeaching && kantorDone)
+        || allJadwalDone;
 
     const geofence = useMemo(() => {
         if (!currentPosition || !targetUnit) return null;
