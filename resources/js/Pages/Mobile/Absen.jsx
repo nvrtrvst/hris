@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 import { checkGeofence } from '@/Utils/geo';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '@/Constants/AppConstants';
 import { Head, usePage } from '@inertiajs/react';
