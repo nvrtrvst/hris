@@ -80,10 +80,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const lemburOpen = Boolean(
         (presensiHariIni || []).find((p) => p.is_lembur && p.jam_masuk && !p.jam_keluar)
     );
-    const tugasLuarOpen = Boolean(
-        (presensiHariIni || []).find((p) => p.is_tugas_luar && p.jam_masuk && !p.jam_keluar)
-    );
     const tugasLuarRecord = (presensiHariIni || []).find((p) => p.is_tugas_luar && p.jam_masuk);
+    const tugasLuarDone = Boolean(tugasLuarRecord?.jam_masuk && tugasLuarRecord?.jam_keluar);
+    const tugasLuarOpen = Boolean(tugasLuarRecord && !tugasLuarDone);
 
     const geofence = useMemo(() => {
         if (!currentPosition || !targetUnit) return null;
@@ -459,7 +458,17 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </div>
             )}
 
+            {/* Tugas Luar selesai */}
+            {isTugasLuar && tugasLuarDone && (
+                <Card press={false} className="border-emerald-200 bg-emerald-50 p-4 text-center">
+                    <CheckCircle className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
+                    <p className="text-sm font-bold text-emerald-900">Presensi tugas luar sudah lengkap</p>
+                    <p className="mt-1 text-xs text-emerald-700">Masuk: {tugasLuarRecord?.jam_masuk} · Keluar: {tugasLuarRecord?.jam_keluar}</p>
+                </Card>
+            )}
+
             {/* Camera */}
+            {!tugasLuarDone && (
             <Card press={false} className="overflow-hidden border-slate-300 p-0">
                 <div className={`relative w-full overflow-hidden ${capturedPhoto && !showLive ? 'bg-transparent' : 'bg-slate-950'} ${showLive ? 'aspect-[3/4]' : capturedPhoto ? '' : 'aspect-[4/5]'}`}>
                     {showLive ? (
@@ -566,6 +575,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     </div>
                 )}
             </Card>
+            )}
 
             {capturedPhoto && currentPosition && (
                 <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
@@ -673,10 +683,10 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) || (!isLembur && !isTugasLuar && !officeAttendance && !jadwals.length) || (isTeaching && teachingRecord?.jam_masuk && teachingRecord?.jam_keluar) || (!isLembur && officeAttendance && kantorRecord?.jam_keluar)}
+                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) || (!isLembur && !isTugasLuar && !officeAttendance && !jadwals.length) || (isTeaching && teachingRecord?.jam_masuk && teachingRecord?.jam_keluar) || (!isLembur && officeAttendance && kantorRecord?.jam_keluar) || tugasLuarDone}
                 className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isTugasLuar ? 'bg-sky-500 text-sky-950' : isLembur ? 'bg-amber-500 text-amber-950' : 'bg-primary text-white'}`}
             >
-                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isLembur ? 'Kirim bukti lembur' : isTugasLuar ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : isTeaching ? (teachingRecord?.jam_keluar ? 'Sudah presensi lengkap' : teachingOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}
+                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isLembur ? 'Kirim bukti lembur' : isTugasLuar ? (tugasLuarDone ? 'Sudah presensi lengkap' : tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : isTeaching ? (teachingRecord?.jam_keluar ? 'Sudah presensi lengkap' : teachingOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}
             </button>
 
             <canvas ref={canvasRef} className="hidden" />
