@@ -93,11 +93,10 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             return rec?.jam_masuk && rec?.jam_keluar;
         })
         : false;
-    const presensiComplete = (isTeaching && teachingDone)
-        || (isLembur && lemburDone)
-        || (isTugasLuar && tugasLuarDone)
-        || (!isLembur && !isTugasLuar && !isTeaching && kantorDone)
-        || allJadwalDone;
+    // Generic check: semua presensi hari ini sudah lengkap (mode apapun)
+    const allRecordsComplete = (presensiHariIni || []).length > 0
+        && (presensiHariIni || []).every((p) => p.jam_masuk && p.jam_keluar);
+    const presensiComplete = allRecordsComplete || allJadwalDone;
 
     const geofence = useMemo(() => {
         if (!currentPosition || !targetUnit) return null;
