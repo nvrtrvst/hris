@@ -479,6 +479,9 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                                 <User className="w-4 h-4 text-text-muted mr-2" />
                                                 <span className="text-text-primary font-bold">{selectedItem.pegawai?.nama_lengkap}</span>
                                             </div>
+                                            <p className="mt-1 text-[11px] text-text-secondary">
+                                                Sisa cuti: <span className="font-semibold text-primary">{selectedItem.pegawai?.sisa_cuti ?? 0} hari</span>
+                                            </p>
                                         </div>
                                         <div>
                                             <span className="section-title block mb-1">Jenis Pengajuan</span>

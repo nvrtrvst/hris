@@ -7,15 +7,14 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { avatarTone, initials } from '@/Utils/avatar';
 import { kepagawaianBadge, STATUS_AKTIF_BADGE } from '@/Utils/statusMeta';
 import {
-    Briefcase,
     Building2,
     CalendarClock,
     Download,
     Eye,
     FileSpreadsheet,
     GraduationCap,
-    IdCard,
     Loader2,
+    Mail,
     Pencil,
     Plus,
     RotateCcw,
@@ -276,7 +275,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-bold text-primary truncate">{pegawai.nama_lengkap}</p>
-                                                        <p className="mt-0.5 text-[11px] text-text-secondary truncate">{pegawai.nip || '—'}</p>
+                                                        <p className="mt-0.5 text-[11px] text-text-secondary truncate">{pegawai.user?.email || pegawai.nip || '—'}</p>
                                                     </div>
                                                     <div className="flex shrink-0 items-center gap-1">
                                                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${kep.badge}`}>{kep.label}</span>
@@ -336,12 +335,9 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                             <div className="min-w-0">
                                                                 <div className="text-sm font-bold text-primary truncate max-w-[200px]">{pegawai.nama_lengkap}</div>
                                                                 <div className="mt-0.5 flex items-center gap-1 text-[11px] text-text-secondary">
-                                                                    <span className="inline-flex items-center gap-0.5">
-                                                                        {pegawai.nip ? (
-                                                                            <><Briefcase className="h-2.5 w-2.5" />{pegawai.nip}</>
-                                                                        ) : (
-                                                                            <><IdCard className="h-2.5 w-2.5" />—</>
-                                                                        )}
+                                                                    <span className="inline-flex items-center gap-0.5 truncate">
+                                                                        <Mail className="h-2.5 w-2.5 shrink-0" />
+                                                                        {pegawai.user?.email || pegawai.nip || '—'}
                                                                     </span>
                                                                 </div>
                                                             </div>

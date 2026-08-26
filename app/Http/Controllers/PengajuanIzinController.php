@@ -28,7 +28,7 @@ class PengajuanIzinController extends Controller
         }
 
         $query = PengajuanIzin::with([
-            'pegawai',
+            'pegawai' => fn ($q) => $q->with(['pengajuanIzins' => fn ($iq) => $iq->select('id', 'pegawai_id', 'jenis_izin', 'status', 'tanggal_mulai', 'tanggal_selesai')]),
             'approverL1' => fn ($q) => $q->select('id', 'name'),
             'approverL2' => fn ($q) => $q->select('id', 'name'),
             'rejectedByUser' => fn ($q) => $q->select('id', 'name'),
@@ -95,6 +95,9 @@ class PengajuanIzinController extends Controller
 
         $pengajuans->getCollection()->transform(function ($item) use ($user) {
             $item->can_act = $this->canActOnItem($item, $user);
+            if ($item->pegawai) {
+                $item->pegawai->append(['sisa_cuti', 'cuti_terpakai']);
+            }
 
             return $item;
         });
