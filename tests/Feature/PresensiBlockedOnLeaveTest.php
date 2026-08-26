@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Jabatan;
 use App\Models\Pegawai;
-use App\Models\Presensi;
+use App\Models\PengajuanIzin;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Carbon\Carbon;
@@ -80,12 +80,14 @@ class PresensiBlockedOnLeaveTest extends TestCase
 
     private function seedLeave(Pegawai $pegawai, string $status): void
     {
-        $leave = new Presensi;
-        $leave->pegawai_id = $pegawai->id;
-        $leave->tanggal = '2026-08-26';
-        $leave->unit_sekolah_id = $this->unit->id;
-        $leave->status = $status;
-        $leave->save();
+        $izin = new PengajuanIzin;
+        $izin->pegawai_id = $pegawai->id;
+        $izin->jenis_izin = $status;
+        $izin->tanggal_mulai = '2026-08-26';
+        $izin->tanggal_selesai = '2026-08-26';
+        $izin->alasan = 'Izin tes otomatis';
+        $izin->status = 'disetujui';
+        $izin->save();
     }
 
     public function test_presensi_normal_hari_biasa_sukses(): void
