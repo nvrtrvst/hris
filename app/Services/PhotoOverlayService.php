@@ -199,15 +199,6 @@ class PhotoOverlayService
         imagecopyresampled($finalMap, $mapImg, 0, 0, 0, 0, $mapSize, $mapSize, $cropW, $cropH);
         imagedestroy($mapImg);
 
-        // Round corners — buat mask bulat
-        $mask = imagecreatetruecolor($mapSize, $mapSize);
-        $trans = imagecolorallocatealpha($mask, 0, 0, 0, 127);
-        imagefill($mask, 0, 0, $trans);
-        $opaque = imagecolorallocate($mask, 0, 0, 0);
-        imagefilledellipse($mask, $mapSize / 2, $mapSize / 2, $mapSize, $mapSize, $opaque);
-        imagecopy($finalMap, $mask, 0, 0, 0, 0, $mapSize, $mapSize);
-        imagedestroy($mask);
-
         // Position: pojok kanan bawah panel
         $width = imagesx($img);
         $mapX = $width - $mapSize - max(10, (int) round($width * 0.02));
