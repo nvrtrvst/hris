@@ -154,11 +154,16 @@ class PhotoOverlayService
         $mapSize = max(80, min($mapSize, 180));
 
         $tileUrl = 'https://tile.openstreetmap.org/'.$zoom.'/'.$tileX.'/'.$tileY.'.png';
-        $tileData = @file_get_contents($tileUrl, false, stream_context_create([
-            'http' => ['timeout' => 3, 'header' => "User-Agent: HRIS-Yayasan/1.0\r\n"],
-        ]));
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'HRIS-Yayasan/1.0 (presensi photo overlay)',
+            ])->timeout(5)->get($tileUrl);
+            $tileData = $response->successful() ? $response->body() : null;
+        } catch (\Throwable $e) {
+            $tileData = null;
+        }
 
-        if ($tileData === false) {
+        if (empty($tileData)) {
             return;
         }
 
