@@ -72,18 +72,11 @@ class PhotoOverlayService
         $isLembur = ! empty($data['is_lembur']);
         $labelColor = $isLembur ? $amber : $emerald;
 
-        // ── Badge atas: label + waktu (kesan "stempel" jelas) ──
-        $vpad = max(8, (int) round($width * 0.018));
-        $badgeH = $titleSz + $vpad * 2;
-        imagefilledrectangle($img, 0, 0, $width, $badgeH, $labelColor);
-        $labelText = $data['label'] ?? 'BUKTI PRESENSI';
-        $this->text($img, $titleSz, $pad, $vpad + $titleSz, $badgeText, $this->fontBold, $labelText);
-        if (! empty($data['time'])) {
-            $this->textRight($img, $titleSz, $width - $pad, $vpad + $titleSz, $badgeText, $this->fontBold, $data['time']);
-        }
-
-        // ── Panel bawah: hierarki rapi + alamat (kecamatan/kelurahan) ──
+        // ── Panel bawah: label + waktu + info ──
         $lines = [];
+        $labelText = $data['label'] ?? 'BUKTI PRESENSI';
+        $timeText = ! empty($data['time']) ? '  |  '.$data['time'] : '';
+        $lines[] = [$titleSz, $labelText.$timeText, $labelColor, true];
         $nameUnit = '';
         if (! empty($data['pegawai'])) {
             $nameUnit .= $data['pegawai'];
