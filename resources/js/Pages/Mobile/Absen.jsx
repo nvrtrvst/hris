@@ -665,6 +665,8 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     presensiId={tugasLuarRecord.id}
                     initialUrls={tugasLuarRecord.foto_kegiatan_urls || []}
                     currentPosition={currentPosition}
+                    onCameraOpen={() => clearCamera()}
+                    onCameraClose={() => startCamera()}
                 />
             )}
 

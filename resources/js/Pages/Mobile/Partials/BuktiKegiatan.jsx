@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useCamera } from '@/Hooks/useCamera';
 import { Camera, RefreshCw, Send, Loader2, SwitchCamera } from 'lucide-react';
 
-export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPosition = null }) {
+export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPosition = null, onCameraOpen, onCameraClose }) {
     const [urls, setUrls] = useState(initialUrls);
     const [keterangan, setKeterangan] = useState('');
     const [open, setOpen] = useState(false);
@@ -30,6 +30,7 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
         setError(null);
         setSuccess(null);
         setOpen(true);
+        onCameraOpen?.();
         camera.startCamera();
     };
 
@@ -63,6 +64,7 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
             setSuccess('Foto kegiatan tersimpan.');
             camera.clearCamera();
             setOpen(false);
+            onCameraClose?.();
             setKeterangan('');
         } catch (e) {
             setError(e.message);
@@ -178,6 +180,7 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
                         onClick={() => {
                             camera.clearCamera();
                             setOpen(false);
+                            onCameraClose?.();
                         }}
                         className="mt-2 w-full text-center text-xs text-slate-500"
                     >
