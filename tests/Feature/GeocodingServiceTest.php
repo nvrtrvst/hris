@@ -8,12 +8,20 @@ use Tests\TestCase;
 
 class GeocodingServiceTest extends TestCase
 {
-    private const SAMPLE = '{"latitude":-7.3132987,"localityLanguageRequested":"id","countryName":"Indonesia","principalSubdivision":"Jawa","city":"Cisurupan","locality":"Cisurupan","localityInfo":{"administrative":[{"name":"Indonesia","adminLevel":2},{"name":"Jawa","adminLevel":3},{"name":"Jawa Barat","adminLevel":4},{"name":"Garut","adminLevel":5}],"informative":[{"name":"Cisurupan","description":"kecamatan di Kabupaten Garut, Jawa Barat","order":9}]}}';
+    private const SAMPLE_NOMINATIM = [
+        'address' => [
+            'subdistrict' => 'Cisurupan',
+            'village' => null,
+            'city' => 'Garut',
+            'state' => 'Jawa Barat',
+            'country' => 'Indonesia',
+        ],
+    ];
 
-    public function test_parse_kecamatan_from_description(): void
+    public function test_parse_kecamatan_from_subdistrict(): void
     {
         Http::fake([
-            'api.bigdatacloud.net/*' => Http::response(json_decode(self::SAMPLE, true), 200),
+            'nominatim.openstreetmap.org/*' => Http::response(self::SAMPLE_NOMINATIM, 200),
         ]);
 
         $result = app(GeocodingService::class)->reverse(-7.31329870, 107.79306990);
@@ -24,14 +32,11 @@ class GeocodingServiceTest extends TestCase
 
     public function test_parse_kelurahan_when_present(): void
     {
-        $sample = json_decode(self::SAMPLE, true);
-        $sample['localityInfo']['informative'][] = [
-            'name' => 'Sukamukti',
-            'description' => 'kelurahan di Kecamatan Cisurupan, Garut',
-            'order' => 10,
-        ];
+        $sample = self::SAMPLE_NOMINATIM;
+        $sample['address']['village'] = 'Sukamukti';
+
         Http::fake([
-            'api.bigdatacloud.net/*' => Http::response($sample, 200),
+            'nominatim.openstreetmap.org/*' => Http::response($sample, 200),
         ]);
 
         $result = app(GeocodingService::class)->reverse(-7.31, 107.79);
@@ -43,7 +48,7 @@ class GeocodingServiceTest extends TestCase
     public function test_fail_open_on_http_error(): void
     {
         Http::fake([
-            'api.bigdatacloud.net/*' => Http::response(null, 500),
+            'nominatim.openstreetmap.org/*' => Http::response(null, 500),
         ]);
 
         $result = app(GeocodingService::class)->reverse(-7.3, 107.7);

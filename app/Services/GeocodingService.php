@@ -8,11 +8,8 @@ use Illuminate\Support\Facades\Http;
 /**
  * Reverse-geocode koordinat GPS -> kecamatan/kelurahan (Indonesia).
  *
- * Pakai BigDataCloud (gratis, tanpa API key — sama seperti geocode di
- * useGeolocation.js frontend). Admin-level di respons tidak seragam untuk
- * Indonesia (principalSubdivision malah berisi nama pulau), jadi kita parse
- * dari field `description` yang berbahasa Indonesia ("kecamatan di …",
- * "kelurahan di …", "desa di …").
+ * Pakai Nominatim (OpenStreetMap) — data kelurahan/desa lengkap untuk
+ * Indonesia. Gratis, tanpa API key, rate limit 1 req/detik.
  *
  * Fail-open: timeout/error -> null (overlay tetap jalan tanpa alamat).
  * Hasil di-cache per koordinat (pembulatan 4 desimal ≈ 11 m) 30 hari agar
@@ -22,9 +19,9 @@ class GeocodingService
 {
     private const TTL = 86400 * 30;
 
-    private const BASE = 'https://api.bigdatacloud.net/data/reverse-geocode-client';
+    private const BASE = 'https://nominatim.openstreetmap.org/reverse';
 
-    private const TIMEOUT = 3;
+    private const TIMEOUT = 5;
 
     /**
      * @return array{kecamatan:?string, kelurahan:?string}
@@ -45,19 +42,25 @@ class GeocodingService
 
         return Cache::remember($cacheKey, self::TTL, function () use ($latitude, $longitude) {
             try {
-                $response = Http::timeout(self::TIMEOUT)->get(self::BASE, [
-                    'latitude' => $latitude,
-                    'longitude' => $longitude,
-                    'localityLanguage' => 'id',
+                $response = Http::withHeaders([
+                    'User-Agent' => 'HRIS-Yayasan/1.0 (presensi photo overlay)',
+                ])->timeout(self::TIMEOUT)->get(self::BASE, [
+                    'lat' => $latitude,
+                    'lon' => $longitude,
+                    'format' => 'json',
+                    'addressdetails' => 1,
+                    'accept-language' => 'id',
                 ]);
 
                 if (! $response->successful()) {
                     return $this->empty();
                 }
 
-                $data = $response->json();
-                $kecamatan = $this->findByDescription($data, 'kecamatan');
-                $kelurahan = $this->findByDescription($data, 'kelurahan') ?? $this->findByDescription($data, 'desa');
+                $address = $response->json('address', []);
+
+                // Prioritas: subdistrict (kecamatan) → village (kelurahan/desa)
+                $kecamatan = $address['subdistrict'] ?? $address['city_district'] ?? null;
+                $kelurahan = $address['village'] ?? $address['hamlet'] ?? null;
 
                 return ['kecamatan' => $kecamatan, 'kelurahan' => $kelurahan];
             } catch (\Throwable $e) {
@@ -72,22 +75,5 @@ class GeocodingService
     private function empty(): array
     {
         return ['kecamatan' => null, 'kelurahan' => null];
-    }
-
-    private function findByDescription(array $data, string $keyword): ?string
-    {
-        $items = array_merge(
-            $data['localityInfo']['administrative'] ?? [],
-            $data['localityInfo']['informative'] ?? [],
-        );
-
-        foreach ($items as $item) {
-            $description = (string) ($item['description'] ?? '');
-            if ($description !== '' && stripos($description, $keyword) !== false && ! empty($item['name'])) {
-                return $item['name'];
-            }
-        }
-
-        return null;
     }
 }
