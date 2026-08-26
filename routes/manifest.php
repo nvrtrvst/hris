@@ -30,18 +30,6 @@ Route::get('/manifest.json', function () {
                 'type' => 'image/png',
                 'purpose' => 'any',
             ],
-            [
-                'src' => '/icons/icon-maskable-192.png',
-                'sizes' => '192x192',
-                'type' => 'image/png',
-                'purpose' => 'maskable',
-            ],
-            [
-                'src' => '/icons/icon-maskable-512.png',
-                'sizes' => '512x512',
-                'type' => 'image/png',
-                'purpose' => 'maskable',
-            ],
         ],
     ])->header('Content-Type', 'application/json')
       ->header('Cache-Control', 'no-cache, no-store, must-revalidate');
