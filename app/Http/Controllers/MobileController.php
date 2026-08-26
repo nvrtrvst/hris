@@ -686,6 +686,15 @@ class MobileController extends Controller
             $tanggal = Carbon::today()->toDateString();
             $presensiKey = $this->buildPresensiKey($isLembur, $tipePresensi, $request->jadwal_id, $tanggal, $isTugasLuar);
 
+            // Blokir presensi bila hari ini sudah tercatat sebagai izin/cuti/sakit
+            // (dari pengajuan izin yang disetujui). Cegah dobel record & dobel hitung payroll.
+            if (Presensi::where('pegawai_id', $pegawai->id)
+                ->where('tanggal', $tanggal)
+                ->whereIn('status', ['izin', 'cuti', 'sakit'])
+                ->exists()) {
+                throw ValidationException::withMessages(['conflict' => 'Tanggal ini sudah tercatat sebagai izin/cuti/sakit. Tidak dapat presensi.']);
+            }
+
             // Cari existing TANPA lock — uniknya dijamin unique index (pegawai_id, presensi_key).
             $presensi = $presensiKey !== null
                 ? Presensi::where('pegawai_id', $pegawai->id)->where('presensi_key', $presensiKey)->first()
@@ -1027,6 +1036,15 @@ class MobileController extends Controller
     {
         $pegawai = $this->getPegawai();
         abort_unless($pegawai->status_kepegawaian === 'tetap', 403, 'Hanya pegawai tetap.');
+
+        // Blokir tap bila hari ini sudah tercatat sebagai izin/cuti/sakit
+        // (dari pengajuan izin yang disetujui). Seragam dengan storeAbsenTransaction.
+        if (Presensi::where('pegawai_id', $pegawai->id)
+            ->where('tanggal', Carbon::today()->toDateString())
+            ->whereIn('status', ['izin', 'cuti', 'sakit'])
+            ->exists()) {
+            throw ValidationException::withMessages(['conflict' => 'Tanggal ini sudah tercatat sebagai izin/cuti/sakit. Tidak dapat presensi.']);
+        }
 
         $request->validate([
             'jadwal_id' => 'required|integer|min:1',

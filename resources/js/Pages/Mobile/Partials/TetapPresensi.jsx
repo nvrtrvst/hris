@@ -250,8 +250,13 @@ const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_lua
             if (!res.ok) {
                 if (res.status === 419) throw { type: 'session_expired' };
                 const data = await res.json().catch(() => ({}));
-                const errMap = { 413: 'Foto terlalu besar.', 422: data.message || 'Data tidak valid.', 429: 'Terlalu banyak permintaan. Tunggu.', 500: 'Server error.' };
-                setError(errMap[res.status] || data.message || 'Gagal.');
+                const errMap = { 413: 'Foto terlalu besar.', 429: 'Terlalu banyak permintaan. Tunggu.', 500: 'Server error.' };
+                let message = errMap[res.status] || data.message || 'Gagal.';
+                if (res.status === 422 && data.errors) {
+                    const first = Object.values(data.errors)[0];
+                    if (Array.isArray(first) && first.length) message = first[0];
+                }
+                setError(message);
                 return;
             }
 
@@ -329,7 +334,8 @@ const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_lua
                 } else {
                     setTappedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
                 }
-                setError(data.message || 'Gagal tap jadwal.');
+                const msg = (data.errors && Object.values(data.errors)[0]?.[0]) || data.message || 'Gagal tap jadwal.';
+                setError(msg);
                 return;
             }
 

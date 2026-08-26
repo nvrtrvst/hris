@@ -259,11 +259,15 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 const data = await res.json().catch(() => ({}));
                 const errMap = {
                     413: 'Foto terlalu besar. Perkecil ukuran foto atau gunakan koneksi WiFi.',
-                    422: data.message || 'Data tidak valid. Periksa kembali input Anda.',
                     429: 'Terlalu banyak permintaan. Tunggu beberapa saat, lalu coba lagi.',
                     500: 'Server error. Coba lagi nanti.',
                 };
-                setError(errMap[res.status] || data.message || 'Gagal mengirim presensi.');
+                let message = errMap[res.status] || data.message || 'Gagal mengirim presensi.';
+                if (res.status === 422 && data.errors) {
+                    const first = Object.values(data.errors)[0];
+                    if (Array.isArray(first) && first.length) message = first[0];
+                }
+                setError(message);
                 return;
             }
             const contentType = res.headers.get('content-type') || '';

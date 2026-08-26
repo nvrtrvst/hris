@@ -176,7 +176,7 @@ class PegawaiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = $this->pegawaiQuery($request);
+        $query = $this->pegawaiQuery($request, ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'user:id,email,username']);
         $user = auth()->user();
 
         // Stats ringkasan: 1 query agregat + 1 count ringan (kontrak berakhir)
