@@ -64,12 +64,7 @@ class MobileController extends Controller
             ->where('tanggal', Carbon::today()->toDateString())
             ->first();
 
-        $izinHariIni = PengajuanIzin::where('pegawai_id', $pegawai->id)
-            ->where('status', 'disetujui')
-            ->whereIn('jenis_izin', ['izin', 'cuti', 'sakit'])
-            ->whereDate('tanggal_mulai', '<=', Carbon::today()->toDateString())
-            ->whereDate('tanggal_selesai', '>=', Carbon::today()->toDateString())
-            ->first();
+        $izinHariIni = $this->izinHariIniUntuk($pegawai);
 
         $presensiTerbaru = Presensi::with('unitSekolah')
             ->where('pegawai_id', $pegawai->id)
@@ -436,13 +431,48 @@ class MobileController extends Controller
             ->where('tanggal', Carbon::today()->toDateString())
             ->get();
 
+        $izinHariIni = $this->izinHariIniUntuk($pegawai);
+
         return inertia('Mobile/Absen', [
             'pegawai' => $pegawai,
             'jadwals' => $jadwalHariIni,
             'presensiHariIni' => $presensiHariIni,
+            'izinHariIni' => $izinHariIni,
             'officeAttendance' => $pegawai->wajib_kantor && ($jadwalHariIni?->isEmpty() ?? false),
             'attestation_token' => $this->attestationService->issue(),
         ]);
+    }
+
+    /**
+     * Izin/cuti/sakit yang disetujui dan mencakup hari ini (sumber otoritatif),
+     * atau null bila pegawai tidak sedang izin. Cek via pengajuan_izins —
+     * baris Presensi turunan dari generatePresensi bisa skip weekend / period
+     * terkunci / pegawai tanpa unit, jadi tidak dipakai sebagai acuan.
+     */
+    private function izinHariIniUntuk(Pegawai $pegawai): ?PengajuanIzin
+    {
+        $tanggal = Carbon::today()->toDateString();
+
+        return PengajuanIzin::where('pegawai_id', $pegawai->id)
+            ->where('status', 'disetujui')
+            ->whereIn('jenis_izin', ['izin', 'cuti', 'sakit'])
+            ->whereDate('tanggal_mulai', '<=', $tanggal)
+            ->whereDate('tanggal_selesai', '>=', $tanggal)
+            ->first();
+    }
+
+    /**
+     * Lempar ValidationException bila pegawai sedang izin/cuti/sakit yang
+     * disetujui hari ini. Dipanggil SEBELUM validasi lokasi/geofence agar
+     * blokirnya langsung (pesan izin, bukan "di luar radius").
+     */
+    private function assertTidakSedangIzin(Pegawai $pegawai): void
+    {
+        if ($this->izinHariIniUntuk($pegawai) !== null) {
+            throw ValidationException::withMessages([
+                'conflict' => 'Tanggal ini sudah tercatat sebagai izin/cuti/sakit. Tidak dapat presensi.',
+            ]);
+        }
     }
 
     public function storeAbsen(Request $request)
@@ -474,6 +504,7 @@ class MobileController extends Controller
         ]);
 
         $pegawai = $this->getPegawai();
+        $this->assertTidakSedangIzin($pegawai);
         $isLembur = (bool) $request->input('is_lembur', false);
         $isTugasLuar = (bool) $request->input('is_tugas_luar', false);
         if ($isLembur && $request->filled('jadwal_id')) {
@@ -695,18 +726,6 @@ class MobileController extends Controller
             $tanggal = Carbon::today()->toDateString();
             $presensiKey = $this->buildPresensiKey($isLembur, $tipePresensi, $request->jadwal_id, $tanggal, $isTugasLuar);
 
-            // Blokir presensi bila hari ini masih dalam pengajuan izin/cuti/sakit yang disetujui.
-            // Cek sumber otoritatif (pengajuan_izins), bukan baris Presensi turunan —
-            // generatePresensi bisa skip weekend / period terkunci / pegawai tanpa unit.
-            if (PengajuanIzin::where('pegawai_id', $pegawai->id)
-                ->where('status', 'disetujui')
-                ->whereIn('jenis_izin', ['izin', 'cuti', 'sakit'])
-                ->whereDate('tanggal_mulai', '<=', $tanggal)
-                ->whereDate('tanggal_selesai', '>=', $tanggal)
-                ->exists()) {
-                throw ValidationException::withMessages(['conflict' => 'Tanggal ini sudah tercatat sebagai izin/cuti/sakit. Tidak dapat presensi.']);
-            }
-
             // Cari existing TANPA lock — uniknya dijamin unique index (pegawai_id, presensi_key).
             $presensi = $presensiKey !== null
                 ? Presensi::where('pegawai_id', $pegawai->id)->where('presensi_key', $presensiKey)->first()
@@ -893,6 +912,7 @@ class MobileController extends Controller
     public function storeAbsenTetap(Request $request)
     {
         $pegawai = $this->getPegawai();
+        $this->assertTidakSedangIzin($pegawai);
         abort_unless($pegawai->status_kepegawaian === 'tetap', 403, 'Hanya pegawai tetap.');
 
         $request->validate([
@@ -1049,18 +1069,9 @@ class MobileController extends Controller
         $pegawai = $this->getPegawai();
         abort_unless($pegawai->status_kepegawaian === 'tetap', 403, 'Hanya pegawai tetap.');
 
-        // Blokir tap bila hari ini masih dalam pengajuan izin/cuti/sakit yang disetujui.
-        // Cek sumber otoritatif (pengajuan_izins), bukan baris Presensi turunan —
-        // generatePresensi bisa skip weekend / period terkunci / pegawai tanpa unit.
-        $tanggal = Carbon::today()->toDateString();
-        if (PengajuanIzin::where('pegawai_id', $pegawai->id)
-            ->where('status', 'disetujui')
-            ->whereIn('jenis_izin', ['izin', 'cuti', 'sakit'])
-            ->whereDate('tanggal_mulai', '<=', $tanggal)
-            ->whereDate('tanggal_selesai', '>=', $tanggal)
-            ->exists()) {
-            throw ValidationException::withMessages(['conflict' => 'Tanggal ini sudah tercatat sebagai izin/cuti/sakit. Tidak dapat presensi.']);
-        }
+        // Blokir tap bila pegawai sedang izin/cuti/sakit yang disetujui —
+        // dicek SEBELUM geofence agar pesan izin, bukan "di luar radius".
+        $this->assertTidakSedangIzin($pegawai);
 
         $request->validate([
             'jadwal_id' => 'required|integer|min:1',

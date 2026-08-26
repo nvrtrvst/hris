@@ -11,7 +11,7 @@ import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck } from 'lucide-react';
 
-export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false }) {
+export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false, izinHariIni = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
@@ -22,6 +22,27 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const [currentTime, setCurrentTime] = useState('');
     const [posA, setPosA] = useState(null);
     const [posAwal, setPosAwal] = useState(null);
+
+    const sedangIzin = Boolean(izinHariIni);
+    const izinLabel = izinHariIni ? ({ izin: 'Izin', cuti: 'Cuti', sakit: 'Sakit' }[izinHariIni.jenis_izin] || 'Izin') : null;
+
+    const renderIzinBlock = () => (
+        <MobileLayout user={auth.user}>
+            <Head title="Presensi" />
+            <div className="mb-5">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Presensi harian</p>
+                <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Verifikasi kehadiran</h1>
+            </div>
+            <div role="status" className="flex flex-col items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-8 text-center">
+                <ShieldCheck className="h-10 w-10 text-sky-500" />
+                <p className="text-base font-bold text-sky-900">Presensi dinonaktifkan</p>
+                <p className="max-w-xs text-sm leading-relaxed text-sky-800">
+                    Anda sedang {izinLabel} hari ini ({format(new Date(izinHariIni.tanggal_mulai), 'd MMM', { locale: id })} – {format(new Date(izinHariIni.tanggal_selesai), 'd MMM', { locale: id })}).
+                    Kehadiran otomatis tercatat sebagai {izinLabel.toLowerCase()}.
+                </p>
+            </div>
+        </MobileLayout>
+    );
 
     const errorRef = useRef(null);
 
@@ -132,6 +153,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     }, [currentPosition, posAwal]);
 
     useEffect(() => {
+        if (sedangIzin) return;
         startCamera();
         setCurrentTime(new Date().toLocaleTimeString('id-ID', { hour12: false }));
         const clock = setInterval(() => {
@@ -332,6 +354,10 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             return MAP_TILE_URL.replace('{z}', String(zoom)).replace('{x}', String(x)).replace('{y}', String(y));
         })()
         : null;
+
+    if (sedangIzin) {
+        return renderIzinBlock();
+    }
 
     if (pegawai.status_kepegawaian === 'tetap') {
         return (

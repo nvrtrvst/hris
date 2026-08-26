@@ -161,7 +161,7 @@ class PresensiBlockedOnLeaveTest extends TestCase
         Carbon::setTestNow('2026-08-26 08:00:00');
         $pegawai = $this->makePegawai();
 
-        $izin = new PengajuanIzin();
+        $izin = new PengajuanIzin;
         $izin->pegawai_id = $pegawai->id;
         $izin->jenis_izin = 'izin';
         $izin->tanggal_mulai = '2026-08-26';
@@ -180,6 +180,27 @@ class PresensiBlockedOnLeaveTest extends TestCase
 
         $res = $this->postPresensi($pegawai);
         $res->assertStatus(422)->assertJsonValidationErrors('conflict');
+        Carbon::setTestNow();
+    }
+
+    public function test_izin_dicek_sebelum_geofence(): void
+    {
+        Carbon::setTestNow('2026-08-26 08:00:00');
+        $pegawai = $this->makePegawai();
+        $this->seedLeave($pegawai, 'izin');
+
+        // Koordinat sangat jauh dari unit (pasti gagal geofence bila dicek duluan).
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.store'), [
+                'tipe' => 'masuk',
+                'foto' => $this->fotoBase64(),
+                'latitude' => 0,
+                'longitude' => 0,
+                'accuracy' => 15,
+            ]);
+
+        $res->assertStatus(422)->assertJsonValidationErrors('conflict');
+        $this->assertStringContainsString('izin/cuti/sakit', $res->json('errors.conflict.0'));
         Carbon::setTestNow();
     }
 }
