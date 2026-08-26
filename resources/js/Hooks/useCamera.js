@@ -13,13 +13,16 @@ import { useCallback, useRef, useState } from 'react';
  * @param {boolean} opts.canCapture — true saat GPS siap & dalam radius (foto diblokir di luar itu)
  * @param {object|null} opts.currentPosition — posisi GPS saat ini (utk posisi-A anti-spoof)
  * @param {function} [opts.onWillCapture] — callback saat foto diambil, menerima posisi-A snapshot
+ * @param {string} [opts.facingMode='user'] — 'user' (depan, selfie presensi) atau 'environment' (belakang).
+ *        Dinas luar pakai 'environment' + switchCamera() utk ganti depan/belakang.
  * @returns {object} refs + state + handlers
  */
-export function useCamera({ canCapture = true, currentPosition = null, onWillCapture = null }) {
+export function useCamera({ canCapture = true, currentPosition = null, onWillCapture = null, facingMode = 'user' }) {
     const [showLive, setShowLive] = useState(false);
     const [capturedPhoto, setCapturedPhoto] = useState(null);
     const [cameraError, setCameraError] = useState(null);
     const [isCapturing, setIsCapturing] = useState(false);
+    const [facing, setFacing] = useState(facingMode);
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
@@ -28,7 +31,7 @@ export function useCamera({ canCapture = true, currentPosition = null, onWillCap
     const startCamera = useCallback(async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 720 }, height: { ideal: 960 } },
+                video: { facingMode: facing, width: { ideal: 720 }, height: { ideal: 960 } },
                 audio: false,
             });
             streamRef.current = stream;
@@ -37,6 +40,27 @@ export function useCamera({ canCapture = true, currentPosition = null, onWillCap
             setShowLive(false);
             setCameraError((prev) => prev || 'Kamera tidak dapat diakses. Gunakan tombol di bawah untuk unggah foto.');
         }
+    }, [facing]);
+
+    const switchCamera = useCallback(() => {
+        setFacing((prev) => {
+            const next = prev === 'user' ? 'environment' : 'user';
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach((t) => t.stop());
+                streamRef.current = null;
+            }
+            setShowLive(false);
+            navigator.mediaDevices.getUserMedia({
+                video: { facingMode: next, width: { ideal: 720 }, height: { ideal: 960 } },
+                audio: false,
+            }).then((stream) => {
+                streamRef.current = stream;
+                setShowLive(true);
+            }).catch(() => {
+                setCameraError((p) => p || 'Gagal mengganti kamera. Pastikan izin kamera aktif.');
+            });
+            return next;
+        });
     }, []);
 
     const stopCamera = useCallback(() => {
@@ -116,10 +140,12 @@ export function useCamera({ canCapture = true, currentPosition = null, onWillCap
         capturedPhoto,
         cameraError,
         isCapturing,
+        facing,
         startCamera,
         stopCamera,
         capturePhoto,
         retakePhoto,
         clearCamera,
+        switchCamera,
     };
 }

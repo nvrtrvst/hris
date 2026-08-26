@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useCamera } from '@/Hooks/useCamera';
-import { Camera, RefreshCw, Send, Loader2 } from 'lucide-react';
+import { Camera, RefreshCw, Send, Loader2, SwitchCamera } from 'lucide-react';
 
 export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPosition = null }) {
     const [urls, setUrls] = useState(initialUrls);
@@ -10,7 +10,7 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
-    const camera = useCamera({ canCapture: true, currentPosition });
+    const camera = useCamera({ canCapture: true, currentPosition, facingMode: 'environment' });
 
     // Ikat stream ke <video> saat live — wajib, kalau tidak preview hitam.
     useEffect(() => {
@@ -18,7 +18,7 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
             camera.videoRef.current.srcObject = camera.streamRef.current;
             camera.videoRef.current.play().catch(() => {});
         }
-    }, [camera.showLive]);
+    }, [camera.showLive, camera.facing]);
 
     const token = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -98,6 +98,15 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
                     {camera.showLive && !camera.capturedPhoto && (
                         <div className="relative overflow-hidden rounded-xl bg-slate-950">
                             <video ref={camera.videoRef} autoPlay playsInline className="block aspect-[3/4] w-full bg-slate-950 object-cover" />
+                            <button
+                                type="button"
+                                onClick={camera.switchCamera}
+                                title={camera.facing === 'user' ? 'Kamera depan — tap utk belakang' : 'Kamera belakang — tap utk depan'}
+                                className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1.5 text-xs font-semibold text-white"
+                            >
+                                <SwitchCamera className="h-4 w-4" />
+                                {camera.facing === 'user' ? 'Depan' : 'Belakang'}
+                            </button>
                             <button
                                 type="button"
                                 onClick={camera.capturePhoto}
