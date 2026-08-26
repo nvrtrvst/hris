@@ -124,7 +124,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
     const [unitFilter, setUnitFilter] = useState(filters.unit_sekolah_id || '');
     const [kelasFilter, setKelasFilter] = useState(filters.kelas_label || '');
     const [searchName, setSearchName] = useState(filters.search || '');
-    const [jenisFilter, setJenisFilter] = useState(filters.jenis_filter || '');
+    const [jenisFilter, setJenisFilter] = useState(filters.jenis_filter || 'pendidik');
     const [showRekapModal, setShowRekapModal] = useState(false);
     const [viewMode, setViewMode] = useState('matrix');
     const [expandedGuru, setExpandedGuru] = useState(null);
@@ -189,7 +189,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         return m;
     }, [presensiHariIni]);
 
-    const hasFilter = Boolean(searchName || unitFilter || kelasFilter || jenisFilter);
+    const hasFilter = Boolean(searchName || unitFilter || kelasFilter || (jenisFilter && jenisFilter !== 'pendidik'));
 
     // Ref filter terbaru — cegah stale closure saat debounce search tertunda
     // lalu user mengganti unit/kelas sebelum timer jalan.
@@ -350,7 +350,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
                                 </select>
                                 <select className={filterSelect} value={jenisFilter} onChange={handleJenisFilterChange}>
-                                    <option value="">Semua Jenis</option>
+                                    <option value="semua">Semua Jenis</option>
                                     <option value="pendidik">Pendidik (Guru)</option>
                                     <option value="kependidikan">Tenaga Kependidikan</option>
                                 </select>

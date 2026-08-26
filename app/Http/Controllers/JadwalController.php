@@ -50,10 +50,15 @@ class JadwalController extends Controller
             $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', "%{$search}%"));
         }
 
-        // Filter jenis pegawai (Dapodik-style)
-        if ($request->jenis_filter === 'pendidik') {
+        // Filter jenis pegawai (Dapodik-style). Default KOSONG = pendidik
+        // (jadwal mengajar = papan guru; TU tak punya jadwal). 'semua' = tampilkan semua.
+        $jenis = $request->input('jenis_filter');
+        if ($jenis === '' || $jenis === null) {
+            $jenis = 'pendidik';
+        }
+        if ($jenis === 'pendidik') {
             $query->whereHas('pegawai.jabatans', fn ($q) => $q->where('is_guru', true));
-        } elseif ($request->jenis_filter === 'kependidikan') {
+        } elseif ($jenis === 'kependidikan') {
             $query->whereHas('pegawai', fn ($q) => $q->whereDoesntHave('jabatans', fn ($q2) => $q2->where('is_guru', true)));
         }
 
@@ -97,10 +102,14 @@ class JadwalController extends Controller
             $pegawaiQuery->where('nama_lengkap', 'like', "%{$search}%");
         }
 
-        // Filter jenis pegawai (Dapodik-style) untuk matrix rows
-        if ($request->jenis_filter === 'pendidik') {
+        // Filter jenis pegawai (Dapodik-style) untuk matrix rows. Default = pendidik.
+        $jenisPeg = $request->input('jenis_filter');
+        if ($jenisPeg === '' || $jenisPeg === null) {
+            $jenisPeg = 'pendidik';
+        }
+        if ($jenisPeg === 'pendidik') {
             $pegawaiQuery->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
-        } elseif ($request->jenis_filter === 'kependidikan') {
+        } elseif ($jenisPeg === 'kependidikan') {
             $pegawaiQuery->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
         }
 
