@@ -31,29 +31,29 @@ class ApprovalHelper
             return ['l1_id' => null, 'l2_id' => null, 'has_l1' => false, 'has_l2' => false];
         }
 
-        $primaryJabatan = $pegawai->jabatans()
-            ->with('approverL1', 'approverL2')
-            ->wherePivot('unit_sekolah_id', $primaryUnit->id)
-            ->first();
+        // L1 = atasan langsung (pegawai.atasan_langsung_id, diisi AtasanHierarchySeeder).
+        // Rantai: guru -> Kepala Sekolah -> Ketua Yayasan.
+        $l1User = optional($pegawai->atasanLangsung)->user;
+        $l1Id = $l1User?->id;
+        $hasL1 = $l1User !== null;
 
-        if (! $primaryJabatan) {
-            return ['l1_id' => null, 'l2_id' => null, 'has_l1' => false, 'has_l2' => false];
+        // Fallback jabatan-config (bila atasan langsung kosong).
+        if (! $l1Id) {
+            $primaryJabatan = $pegawai->jabatans()
+                ->with('approverL1', 'approverL2')
+                ->wherePivot('unit_sekolah_id', $primaryUnit->id)
+                ->first();
+
+            if ($primaryJabatan?->approver_l1_jabatan_id) {
+                $l1User = self::findApproverInUnit($primaryUnit->id, $primaryJabatan->approver_l1_jabatan_id);
+                $l1Id = $l1User?->id;
+                $hasL1 = $l1User !== null;
+            }
         }
 
-        // has_l1 = L1 terkonfigurasi (approver_l1_jabatan_id) DAN approver-nya
-        // ditemukan di unit. Fallback admin unit di bawah TIDAK menandai has_l1,
-        // sehingga notifikasi tahu kapan harus fallback ke admin unit + superadmin.
-        $l1Approver = $primaryJabatan->approver_l1_jabatan_id
-            ? self::findApproverInUnit($primaryUnit->id, $primaryJabatan->approver_l1_jabatan_id)
-            : null;
-
-        $l2Approver = $primaryJabatan->approver_l2_jabatan_id
-            ? self::findApproverInUnit($primaryUnit->id, $primaryJabatan->approver_l2_jabatan_id)
-            : null;
-
-        $l1Id = $l1Approver?->id;
-
-        // Fallback: jika L1 tidak ditemukan (approver nonaktif/tidak ada), cari admin unit sebagai L1
+        // Fallback admin unit: dijadikan approver L1 (biar bisa approve) TAPI tidak
+        // menandai has_l1 -> notifikasi tetap broadcast ke admin_unit + superadmin
+        // (sesuai behaviour lama, menjamin superadmin tetap ke-notify).
         if (! $l1Id) {
             $adminUnit = User::where('unit_sekolah_id', $primaryUnit->id)
                 ->role('admin_unit')
@@ -63,17 +63,15 @@ class ApprovalHelper
             }
         }
 
-        $l2Id = $l2Approver?->id;
-
-        if ($l1Id && $l2Id && $l1Id === $l2Id) {
-            $l2Id = null;
-        }
+        // L2 sengaja null untuk sekarang (single-level: kepsek langsung final).
+        // Aktifkan nanti: $l2User = optional($pegawai->atasanLangsung?->atasanLangsung)?->user; $l2Id = $l2User?->id;
+        $l2Id = null;
 
         return [
             'l1_id' => $l1Id,
             'l2_id' => $l2Id,
-            'has_l1' => $l1Approver !== null,
-            'has_l2' => $primaryJabatan->approver_l2_jabatan_id !== null,
+            'has_l1' => $hasL1,
+            'has_l2' => false,
         ];
     }
 }
