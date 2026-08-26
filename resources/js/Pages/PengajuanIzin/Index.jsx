@@ -541,6 +541,14 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                                 </p>
                                             </div>
                                         )}
+                                        {selectedItem.catatan_approval && (
+                                            <div>
+                                                <span className="section-title block mb-1">Catatan Persetujuan</span>
+                                                <p className="text-text-secondary bg-white p-3 rounded-card border border-border text-sm leading-relaxed">
+                                                    {selectedItem.catatan_approval}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
