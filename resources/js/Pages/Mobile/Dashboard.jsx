@@ -8,6 +8,7 @@ import {
     CalendarDays,
     CheckCircle2,
     Clock3,
+    Lock,
     LogIn,
     LogOut,
     MapPin,
@@ -17,6 +18,7 @@ const statusTone = {
     hadir: 'emerald',
     telat: 'amber',
     izin: 'sky',
+    cuti: 'violet',
     sakit: 'sky',
     alpa: 'rose',
 };
@@ -25,8 +27,15 @@ const statusLabel = {
     hadir: 'Hadir',
     telat: 'Terlambat',
     izin: 'Izin',
+    cuti: 'Cuti',
     sakit: 'Sakit',
     alpa: 'Alpa',
+};
+
+const izinLabel = {
+    izin: 'Izin',
+    cuti: 'Cuti',
+    sakit: 'Sakit',
 };
 
 function time(value) {
@@ -39,7 +48,7 @@ function toMinutes(hms) {
     return parseInt(p[0], 10) * 60 + parseInt(p[1] || 0, 10);
 }
 
-export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = [], jadwalsHariIni = [] }) {
+export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null, presensiSeminggu = [], jadwalsHariIni = [] }) {
     const { flash = {} } = usePage().props;
     const today = format(new Date(), 'EEEE, d MMMM yyyy', { locale: id });
     const primaryUnit = pegawai?.units?.find((unit) => unit.pivot?.is_primary) ?? pegawai?.units?.[0];
@@ -62,7 +71,10 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
         : null;
     const belumPulang = !isMengajar && primary?.jam_masuk && !primary?.jam_keluar;
     const currentStatus = isMengajar ? mengajarStatus : primary?.status;
-    const statusDisplay = belumPulang ? 'Belum pulang' : currentStatus ? statusLabel[currentStatus] || currentStatus : 'Belum presensi';
+    const statusForCard = izinHariIni ? izinHariIni.jenis_izin : currentStatus;
+    const statusDisplay = izinHariIni
+        ? (izinLabel[izinHariIni.jenis_izin] || 'Izin')
+        : belumPulang ? 'Belum pulang' : currentStatus ? statusLabel[currentStatus] || currentStatus : 'Belum presensi';
 
     return (
         <MobileLayout user={auth.user}>
@@ -85,6 +97,13 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
             {flash.message && <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
             {flash.error && <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
 
+            {izinHariIni && (
+                <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-800">
+                    <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>Anda sedang {izinLabel[izinHariIni.jenis_izin] || 'izin'} hari ini ({format(new Date(izinHariIni.tanggal_mulai), 'd MMM', { locale: id })} – {format(new Date(izinHariIni.tanggal_selesai), 'd MMM', { locale: id })}). Presensi dinonaktifkan.</span>
+                </div>
+            )}
+
             <section aria-labelledby="today-status" className="overflow-hidden rounded-2xl bg-primary text-white shadow-[0_10px_28px_-18px_rgba(15,61,62,0.75)]">
                 <div className="border-b border-white/10 px-5 py-4">
                     <div className="flex items-center justify-between gap-3">
@@ -92,8 +111,8 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-100">Status hari ini</p>
                             <h2 id="today-status" className="mt-1 text-xl font-bold text-white">{statusDisplay}</h2>
                         </div>
-                        <Badge tone={belumPulang ? 'amber' : statusTone[currentStatus] || 'slate'} icon={belumPulang ? Clock3 : currentStatus ? CheckCircle2 : Clock3} className={!currentStatus ? 'bg-white/10 text-white' : belumPulang ? 'bg-white/10 text-white' : ''}>
-                            {isMengajar ? (currentStatus ? statusLabel[currentStatus] || currentStatus : 'Belum masuk') : primary?.jam_keluar ? 'Selesai' : primary?.jam_masuk ? (belumPulang ? 'Belum pulang' : 'Sedang bekerja') : 'Belum masuk'}
+                        <Badge tone={izinHariIni ? (statusTone[statusForCard] || 'slate') : belumPulang ? 'amber' : statusTone[currentStatus] || 'slate'} icon={belumPulang ? Clock3 : statusForCard ? CheckCircle2 : Clock3} className={!statusForCard ? 'bg-white/10 text-white' : belumPulang ? 'bg-white/10 text-white' : ''}>
+                            {izinHariIni ? (izinLabel[izinHariIni.jenis_izin] || 'Izin') : isMengajar ? (currentStatus ? statusLabel[currentStatus] || currentStatus : 'Belum masuk') : primary?.jam_keluar ? 'Selesai' : primary?.jam_masuk ? (belumPulang ? 'Belum pulang' : 'Sedang bekerja') : 'Belum masuk'}
                         </Badge>
                     </div>
                 </div>
@@ -135,10 +154,17 @@ export default function Dashboard({ auth, pegawai, presensi, presensiSeminggu = 
                     </div>
                 </div>
 
-                <Link href={route('presensi.absen')} className="mx-4 mb-4 flex min-h-12 items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-bold text-primary transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30">
-                    {!isMengajar && primary?.jam_masuk && !primary?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi'}
-                    <ArrowRight className="h-5 w-5" />
-                </Link>
+                {izinHariIni ? (
+                    <div className="mx-4 mb-4 flex min-h-12 cursor-not-allowed items-center justify-between rounded-xl bg-white/40 px-4 py-3 text-sm font-bold text-white/60">
+                        Presensi dinonaktifkan
+                        <Lock className="h-5 w-5" />
+                    </div>
+                ) : (
+                    <Link href={route('presensi.absen')} className="mx-4 mb-4 flex min-h-12 items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-bold text-primary transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30">
+                        {!isMengajar && primary?.jam_masuk && !primary?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi'}
+                        <ArrowRight className="h-5 w-5" />
+                    </Link>
+                )}
             </section>
 
             <section aria-labelledby="today-jadwal" className="mt-5 overflow-hidden rounded-2xl bg-primary text-white shadow-[0_10px_28px_-18px_rgba(15,61,62,0.75)]">

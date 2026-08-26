@@ -64,6 +64,13 @@ class MobileController extends Controller
             ->where('tanggal', Carbon::today()->toDateString())
             ->first();
 
+        $izinHariIni = PengajuanIzin::where('pegawai_id', $pegawai->id)
+            ->where('status', 'disetujui')
+            ->whereIn('jenis_izin', ['izin', 'cuti', 'sakit'])
+            ->whereDate('tanggal_mulai', '<=', Carbon::today()->toDateString())
+            ->whereDate('tanggal_selesai', '>=', Carbon::today()->toDateString())
+            ->first();
+
         $presensiTerbaru = Presensi::with('unitSekolah')
             ->where('pegawai_id', $pegawai->id)
             ->where('tanggal', '>=', Carbon::today()->subDays(3)->toDateString())
@@ -82,6 +89,7 @@ class MobileController extends Controller
         return inertia('Mobile/Dashboard', [
             'pegawai' => $pegawai,
             'presensi' => $presensiHariIni,
+            'izinHariIni' => $izinHariIni,
             'presensiSeminggu' => $presensiTerbaru,
             'jadwalsHariIni' => $jadwalsHariIni,
         ]);
