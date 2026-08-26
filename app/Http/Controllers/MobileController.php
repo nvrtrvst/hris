@@ -644,6 +644,8 @@ class MobileController extends Controller
             'date' => $now->locale('id')->isoFormat('dddd, D MMMM YYYY'),
             'coordinates' => number_format((float) $request->latitude, 6).', '.number_format((float) $request->longitude, 6),
             'accuracy' => number_format($accuracy, 0).'m',
+            'latitude' => (float) $request->latitude,
+            'longitude' => (float) $request->longitude,
         ];
         $geo = app(GeocodingService::class)->reverse($request->latitude, $request->longitude);
         $overlayData['kecamatan'] = $geo['kecamatan'] ?? null;
@@ -1013,6 +1015,8 @@ class MobileController extends Controller
             'date' => $now->locale('id')->isoFormat('dddd, D MMMM YYYY'),
             'coordinates' => number_format((float) $request->latitude, 6).', '.number_format((float) $request->longitude, 6),
             'accuracy' => number_format($accuracy, 0).'m',
+            'latitude' => (float) $request->latitude,
+            'longitude' => (float) $request->longitude,
         ];
         $geo = app(GeocodingService::class)->reverse($request->latitude, $request->longitude);
         $overlayData['kecamatan'] = $geo['kecamatan'] ?? null;

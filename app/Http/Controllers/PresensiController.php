@@ -523,6 +523,8 @@ class PresensiController extends Controller
                     ? number_format((float) $request->latitude, 6).', '.number_format((float) $request->longitude, 6)
                     : null,
                 'accuracy' => $request->accuracy ? number_format((float) $request->accuracy, 0).'m' : null,
+                'latitude' => $request->latitude ? (float) $request->latitude : null,
+                'longitude' => $request->longitude ? (float) $request->longitude : null,
             ];
             $geo = app(GeocodingService::class)->reverse($request->latitude, $request->longitude);
             $overlayData['kecamatan'] = $geo['kecamatan'] ?? null;

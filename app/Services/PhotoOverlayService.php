@@ -122,6 +122,100 @@ class PhotoOverlayService
             $this->text($img, $sz, $pad, $y, $col, $font, $txt);
             $y += $sz + $gap;
         }
+
+        // Map thumbnail di pojok kanan panel
+        $this->renderMap($img, $data, $panelTop, $panelH);
+    }
+
+    /**
+     * Render peta kecil OSM di pojok kanan bawah panel overlay.
+     */
+    private function renderMap($img, array $data, int $panelTop, int $panelH): void
+    {
+        if (empty($data['latitude']) || empty($data['longitude'])) {
+            return;
+        }
+
+        $lat = (float) $data['latitude'];
+        $lng = (float) $data['longitude'];
+        $zoom = 16;
+        $tileSize = 256;
+
+        // lat/lng → tile x,y (float)
+        $n = pow(2, $zoom);
+        $xt = ($lng + 180) / 360 * $n;
+        $yt = (1 - log(tan(deg2rad($lat)) + 1 / cos(deg2rad($lat))) / M_PI) / 2 * $n;
+
+        $tileX = (int) floor($xt);
+        $tileY = (int) floor($yt);
+
+        // Fetch 3×3 tiles around center untuk area lebih lebar
+        $mapSize = (int) round(imagesx($img) * 0.30);
+        $mapSize = max(80, min($mapSize, 180));
+
+        $tileUrl = 'https://tile.openstreetmap.org/'.$zoom.'/'.$tileX.'/'.$tileY.'.png';
+        $tileData = @file_get_contents($tileUrl, false, stream_context_create([
+            'http' => ['timeout' => 3, 'header' => "User-Agent: HRIS-Yayasan/1.0\r\n"],
+        ]));
+
+        if ($tileData === false) {
+            return;
+        }
+
+        $tileImg = @imagecreatefromstring($tileData);
+        if ($tileImg === false) {
+            return;
+        }
+
+        // Crop tile ke posisi fraction
+        $fx = ($xt - $tileX) * $tileSize;
+        $fy = ($yt - $tileY) * $tileSize;
+
+        $cropW = (int) round($tileSize * 0.6);
+        $cropH = (int) round($tileSize * 0.6);
+        $cropX = max(0, min((int) ($fx - $cropW / 2), $tileSize - $cropW));
+        $cropY = max(0, min((int) ($fy - $cropH / 2), $tileSize - $cropH));
+
+        $mapImg = imagecreatetruecolor($cropW, $cropH);
+        imagecopyresampled($mapImg, $tileImg, 0, 0, $cropX, $cropY, $cropW, $cropH, $cropW, $cropH);
+        imagedestroy($tileImg);
+
+        // Draw marker di tengah
+        $dotR = max(4, (int) round($mapSize * 0.04));
+        $dotX = (int) round($cropW * (($fx - $cropX) / $cropW));
+        $dotY = (int) round($cropH * (($fy - $cropY) / $cropH));
+        $red = imagecolorallocate($mapImg, 239, 68, 68);
+        imagefilledellipse($mapImg, $dotX, $dotY, $dotR * 2, $dotR * 2, $red);
+        $white2 = imagecolorallocate($mapImg, 255, 255, 255);
+        imagefilledellipse($mapImg, $dotX, $dotY, $dotR, $dotR, $white2);
+
+        // Resize ke mapSize
+        $finalMap = imagecreatetruecolor($mapSize, $mapSize);
+        imagecopyresampled($finalMap, $mapImg, 0, 0, 0, 0, $mapSize, $mapSize, $cropW, $cropH);
+        imagedestroy($mapImg);
+
+        // Round corners — buat mask bulat
+        $mask = imagecreatetruecolor($mapSize, $mapSize);
+        $trans = imagecolorallocatealpha($mask, 0, 0, 0, 127);
+        imagefill($mask, 0, 0, $trans);
+        $opaque = imagecolorallocate($mask, 0, 0, 0);
+        imagefilledellipse($mask, $mapSize / 2, $mapSize / 2, $mapSize, $mapSize, $opaque);
+        imagecopy($finalMap, $mask, 0, 0, 0, 0, $mapSize, $mapSize);
+        imagedestroy($mask);
+
+        // Position: pojok kanan bawah panel
+        $width = imagesx($img);
+        $mapX = $width - $mapSize - max(10, (int) round($width * 0.02));
+        $mapY = $panelTop + (int) round(($panelH - $mapSize) / 2);
+        $mapY = max($panelTop, min($mapY, $panelTop + $panelH - $mapSize));
+
+        // White border
+        $border = 2;
+        $white3 = imagecolorallocate($img, 255, 255, 255);
+        imagefilledrectangle($img, $mapX - $border, $mapY - $border, $mapX + $mapSize + $border, $mapY + $mapSize + $border, $white3);
+
+        imagecopy($img, $finalMap, $mapX, $mapY, 0, 0, $mapSize, $mapSize);
+        imagedestroy($finalMap);
     }
 
     private function buildAlamat(array $data): ?string
