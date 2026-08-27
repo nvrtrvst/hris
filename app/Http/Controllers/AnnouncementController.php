@@ -47,7 +47,7 @@ class AnnouncementController extends Controller
             'is_pinned' => 'nullable|boolean',
             'published_at' => 'nullable|date',
             'image' => 'nullable|image|mimes:jpeg,png,webp|max:2048',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip|max:5120',
+            'file' => 'nullable|file|extensions:pdf,doc,docx,xls,xlsx,ppt,pptx,zip|max:5120',
         ]);
 
         $imagePath = null;
@@ -121,7 +121,7 @@ class AnnouncementController extends Controller
             'is_pinned' => 'nullable|boolean',
             'published_at' => 'nullable|date',
             'image' => 'nullable|image|mimes:jpeg,png,webp|max:2048',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip|max:5120',
+            'file' => 'nullable|file|extensions:pdf,doc,docx,xls,xlsx,ppt,pptx,zip|max:5120',
         ]);
 
         $data = [

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Pagination from '@/Components/Pagination';
 import StatCard from '@/Components/StatCard';
@@ -49,6 +49,7 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
 
     const total = announcements?.total ?? announcements?.data?.length ?? 0;
     const items = announcements.data || announcements || [];
+    const serverErrors = usePage().props.errors || {};
 
     return (
         <AuthenticatedLayout header={<h2 className="page-title">Pengumuman</h2>}>
@@ -82,6 +83,11 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
                             <h4 className="text-sm font-extrabold uppercase tracking-wide text-primary">
                                 {editing ? 'Edit Pengumuman' : 'Buat Pengumuman Baru'}
                             </h4>
+                            {Object.keys(serverErrors).length > 0 && (
+                                <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
+                                    {Object.values(serverErrors).map((m, i) => (<div key={i}>{m}</div>))}
+                                </div>
+                            )}
                             <div>
                                 <label className="form-label text-xs">Judul <span className="text-danger">*</span></label>
                                 <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
