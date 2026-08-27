@@ -6,6 +6,7 @@ import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
 import { Search, Filter, CheckCircle, XCircle, Clock, Info, User, FileText, Calendar, AlertCircle, ChevronRight, CalendarCheck2, Inbox, Users } from 'lucide-react';
+import ThreadChat from '@/Components/ThreadChat';
 
 const TABS = [
     { key: 'l1', label: 'Approval L1' },
@@ -563,6 +564,14 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                         </div>
                                     </div>
                                 )}
+
+                                <ThreadChat
+                                    pengajuanId={selectedItem.id}
+                                    isLocked={selectedItem.approval_stage === 'approved' || selectedItem.approval_stage === 'rejected'}
+                                    currentUserId={auth.user.id}
+                                    commentsRoute="pengajuan-izin.comments"
+                                    replyRoute="pengajuan-izin.reply"
+                                />
                             </div>
 
                             <form onSubmit={submitAction}>

@@ -5,6 +5,7 @@ import { Card, Badge } from '@/Components/MobileUI';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { ArrowLeft, Clock, CheckCircle, XCircle, Calendar, FileText, AlertTriangle } from 'lucide-react';
+import ThreadChat from '@/Components/ThreadChat';
 
 const jenisLabel = { sakit: 'Sakit', izin: 'Izin', cuti: 'Cuti' };
 
@@ -168,6 +169,17 @@ export default function Show({ auth, pengajuan }) {
                     </div>
                 </Card>
             )}
+
+            {/* Thread Chat */}
+            <Card className="mb-4">
+                <ThreadChat
+                    pengajuanId={pengajuan.id}
+                    isLocked={pengajuan.approval_stage === 'approved' || pengajuan.approval_stage === 'rejected'}
+                    currentUserId={auth.user.id}
+                    commentsRoute="presensi.izin.comments"
+                    replyRoute="presensi.izin.reply"
+                />
+            </Card>
         </MobileLayout>
     );
 }

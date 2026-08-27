@@ -9,12 +9,15 @@ use App\Helpers\NotificationHelper;
 use App\Helpers\PayrollLockHelper;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
+use App\Models\PengajuanIzinComment;
 use App\Models\User;
 use App\Notifications\IzinBaru;
+use App\Notifications\IzinReply;
 use App\Services\ImageUploadService;
 use App\Traits\ResolvesPegawai;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -106,6 +109,7 @@ class MobileIzinController extends Controller
 
         if ($existingIzin) {
             $label = $existingIzin->status === 'disetujui' ? 'sudah disetujui' : 'sedang diproses';
+
             return back()->withErrors(['tanggal_mulai' => 'Anda sudah memiliki pengajuan '.$existingIzin->jenis_izin.' untuk tanggal tersebut ('.$label.').']);
         }
 
@@ -203,6 +207,70 @@ class MobileIzinController extends Controller
         }
     }
 
+    public function comments(PengajuanIzin $pengajuan)
+    {
+        $pegawai = $this->getPegawai();
+        if (! $pegawai || $pengajuan->pegawai_id !== $pegawai->id) {
+            abort(404);
+        }
+
+        $pengajuan->load([
+            'comments' => fn ($q) => $q->with('user:id,name'),
+        ]);
+
+        return response()->json([
+            'pengajuan' => $pengajuan,
+            'comments' => $pengajuan->comments->values(),
+        ]);
+    }
+
+    public function reply(Request $request, PengajuanIzin $pengajuan)
+    {
+        $pegawai = $this->getPegawai();
+        if (! $pegawai || $pengajuan->pegawai_id !== $pegawai->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'message' => 'required|string|max:1000',
+        ]);
+
+        $user = $pegawai->user;
+        $comment = DB::transaction(function () use ($pengajuan, $user, $request) {
+            $pengajuan->refresh();
+            $pengajuan->lockForUpdate();
+
+            if (in_array($pengajuan->approval_stage, ['approved', 'rejected'])) {
+                abort(422, 'Pengajuan sudah final. Thread sudah dikunci.');
+            }
+
+            return PengajuanIzinComment::create([
+                'pengajuan_izin_id' => $pengajuan->id,
+                'user_id' => $user->id,
+                'message' => $request->message,
+            ]);
+        });
+
+        // Notify approvers (skip sender) — batch load
+        $recipientIds = collect();
+        if ($pengajuan->approver_l1_id && $pengajuan->approver_l1_id !== $user->id) {
+            $recipientIds->push($pengajuan->approver_l1_id);
+        }
+        if ($pengajuan->approver_l2_id && $pengajuan->approver_l2_id !== $user->id) {
+            $recipientIds->push($pengajuan->approver_l2_id);
+        }
+
+        if ($recipientIds->isNotEmpty()) {
+            User::whereIn('id', $recipientIds->unique())->get()
+                ->each(fn (User $recipient) => NotificationHelper::sendSafely($recipient, new IzinReply($pengajuan, $comment, $user)));
+        }
+
+        return response()->json([
+            'comment' => $comment->load('user:id,name'),
+            'message' => 'Balasan terkirim.',
+        ]);
+    }
+
     /**
      * Hitung jumlah hari kerja (Senin–Jumat) dalam rentang tanggal.
      */
@@ -218,6 +286,7 @@ class MobileIzinController extends Controller
             }
             $current->addDay();
         }
+
         return $count;
     }
 }

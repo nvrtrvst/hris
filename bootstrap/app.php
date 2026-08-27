@@ -22,6 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Reminder presensi pagi (06:00) & sebelum jam mulai (10:00) utk yang belum absen
         $schedule->command('presensi:reminder')->dailyAt('06:00')->withoutOverlapping();
         $schedule->command('presensi:reminder')->dailyAt('10:00')->withoutOverlapping();
+        // Reminder admin: cek setiap 5 menit
+        $schedule->command('reminders:process')->everyFiveMinutes()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append([

@@ -49,6 +49,10 @@ Route::middleware('auth:web_mobile')->group(function () {
     Route::get('/izin/{pengajuan}', [MobileIzinController::class, 'show'])->name('presensi.izin.show');
     Route::post('/izin', [MobileIzinController::class, 'store'])
         ->middleware('throttle:10,1')->name('presensi.izin.store');
+    Route::get('/izin/{pengajuan}/comments', [MobileIzinController::class, 'comments'])
+        ->name('presensi.izin.comments');
+    Route::post('/izin/{pengajuan}/reply', [MobileIzinController::class, 'reply'])
+        ->middleware('throttle:60,1')->name('presensi.izin.reply');
 
     Route::get('/absen', [MobileController::class, 'absen'])->name('presensi.absen');
     Route::post('/absen', [MobileController::class, 'storeAbsen'])

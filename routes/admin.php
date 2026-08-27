@@ -17,6 +17,7 @@ use App\Http\Controllers\PengajuanIzinController;
 use App\Http\Controllers\PenggajianController;
 use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\RoleManagementController;
 use App\Http\Controllers\SkalaMasaBaktiController;
 use App\Http\Controllers\TugasLuarController;
@@ -201,6 +202,11 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::post('/pengajuan-izin/{id}/reject', [PengajuanIzinController::class, 'reject'])
         ->middleware('throttle:60,1')
         ->name('pengajuan-izin.reject');
+    Route::get('/pengajuan-izin/{id}/comments', [PengajuanIzinController::class, 'comments'])
+        ->name('pengajuan-izin.comments');
+    Route::post('/pengajuan-izin/{id}/reply', [PengajuanIzinController::class, 'reply'])
+        ->middleware('throttle:60,1')
+        ->name('pengajuan-izin.reply');
 
     // Laporan
     Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
@@ -263,6 +269,15 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::post('hari-libur/sync-api', [HariLiburController::class, 'syncApi'])
             ->middleware('throttle:10,1')
             ->name('hari-libur.sync-api');
+
+        // Reminder Management
+        Route::get('reminders', [ReminderController::class, 'index'])->name('reminders.index');
+        Route::post('reminders', [ReminderController::class, 'store'])
+            ->middleware('throttle:30,1')->name('reminders.store');
+        Route::delete('reminders/{reminder}', [ReminderController::class, 'destroy'])
+            ->middleware('throttle:30,1')->name('reminders.destroy');
+        Route::post('reminders/{reminder}/send', [ReminderController::class, 'sendNow'])
+            ->middleware('throttle:10,1')->name('reminders.send');
     });
 });
 

@@ -68,4 +68,9 @@ class PengajuanIzin extends Model
     {
         return $this->belongsTo(User::class, 'rejected_by');
     }
+
+    public function comments()
+    {
+        return $this->hasMany(PengajuanIzinComment::class)->oldest();
+    }
 }

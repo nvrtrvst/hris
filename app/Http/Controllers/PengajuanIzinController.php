@@ -8,9 +8,11 @@ use App\Helpers\PayrollLockHelper;
 use App\Models\AuditPresensi;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
+use App\Models\PengajuanIzinComment;
 use App\Models\Presensi;
 use App\Models\User;
 use App\Notifications\IzinBaru;
+use App\Notifications\IzinReply;
 use App\Notifications\StatusIzin;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -252,6 +254,88 @@ class PengajuanIzinController extends Controller
         NotificationHelper::sendSafely($pengajuan->pegawai?->user, new StatusIzin($pengajuan, 'ditolak', $request->alasan_penolakan));
 
         return back()->with('message', 'Pengajuan berhasil ditolak.');
+    }
+
+    public function comments(Request $request, $id)
+    {
+        $user = auth()->user();
+        $pengajuan = PengajuanIzin::with([
+            'pegawai' => fn ($q) => $q->select('id', 'user_id'),
+            'comments' => fn ($q) => $q->with('user:id,name'),
+        ])->findOrFail($id);
+
+        // Authorization: pegawai can see own, approver/admin can see all
+        $isOwner = $pengajuan->pegawai?->user_id === $user->id;
+        $isAdmin = $user->can('view_izin') || $user->isApprover();
+        if (! $isOwner && ! $isAdmin) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        return response()->json([
+            'pengajuan' => $pengajuan,
+            'comments' => $pengajuan->comments->values(),
+        ]);
+    }
+
+    public function reply(Request $request, $id)
+    {
+        $user = auth()->user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $request->validate([
+            'message' => 'required|string|max:1000',
+        ]);
+
+        $comment = DB::transaction(function () use ($id, $user, $request) {
+            $pengajuan = PengajuanIzin::with('pegawai.user:id,id,name')->lockForUpdate()->findOrFail($id);
+
+            // Authorization: pegawai can reply on own, approver/admin can reply on any
+            $isOwner = $pengajuan->pegawai?->user_id === $user->id;
+            $isAdmin = $user->can('view_izin') || $user->isApprover();
+            if (! $isOwner && ! $isAdmin) {
+                abort(403, 'Akses ditolak.');
+            }
+
+            // Thread locked after final (approve/reject) — inside lock, race-safe
+            if (in_array($pengajuan->approval_stage, ['approved', 'rejected'])) {
+                abort(422, 'Pengajuan sudah final. Thread sudah dikunci.');
+            }
+
+            $comment = PengajuanIzinComment::create([
+                'pengajuan_izin_id' => $pengajuan->id,
+                'user_id' => $user->id,
+                'message' => $request->message,
+            ]);
+
+            return [$comment, $pengajuan];
+        });
+
+        [$comment, $pengajuan] = $comment;
+
+        // Notify: all approvers + pegawai (skip sender) — batch load
+        $recipientIds = collect();
+        if ($pengajuan->approver_l1_id && $pengajuan->approver_l1_id !== $user->id) {
+            $recipientIds->push($pengajuan->approver_l1_id);
+        }
+        if ($pengajuan->approver_l2_id && $pengajuan->approver_l2_id !== $user->id) {
+            $recipientIds->push($pengajuan->approver_l2_id);
+        }
+        $pegawaiUserId = $pengajuan->pegawai?->user_id;
+        if ($pegawaiUserId && $pegawaiUserId !== $user->id) {
+            $recipientIds->push($pegawaiUserId);
+        }
+
+        if ($recipientIds->isNotEmpty()) {
+            User::whereIn('id', $recipientIds->unique())->get()
+                ->each(fn (User $recipient) => NotificationHelper::sendSafely($recipient, new IzinReply($pengajuan, $comment, $user)));
+        }
+
+        return response()->json([
+            'comment' => $comment->load('user:id,name'),
+            'message' => 'Balasan terkirim.',
+        ]);
     }
 
     private function generatePresensi(PengajuanIzin $pengajuan): void
