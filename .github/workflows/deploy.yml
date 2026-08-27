@@ -7,11 +7,21 @@ on:
         description: 'Branch to deploy'
         required: true
         default: 'main'
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     steps:
       - name: Deploy to Production
         uses: appleboy/ssh-action@v1
@@ -21,5 +31,5 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd /var/www/hris
-            git fetch origin ${{ inputs.branch }}
+            git fetch origin main
             bash deploy/deploy.sh /var/www/hris
