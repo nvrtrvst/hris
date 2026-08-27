@@ -262,7 +262,7 @@ Route::middleware('auth:web_admin')->group(function () {
             ->name('backup.download');
         Route::resource('mata-pelajaran', MataPelajaranController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('throttle:60,1');
         Route::resource('jabatan', JabatanController::class)->except(['show', 'create', 'edit'])->middleware('throttle:60,1');
-        Route::resource('hari-libur', HariLiburController::class)->except(['show'])->middleware('throttle:60,1');
+        Route::resource('hari-libur', HariLiburController::class)->except(['show', 'create', 'edit'])->middleware('throttle:60,1');
         Route::post('hari-libur/import', [HariLiburController::class, 'importLokal'])
             ->middleware('throttle:10,1')
             ->name('hari-libur.import');

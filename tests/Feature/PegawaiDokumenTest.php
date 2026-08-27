@@ -154,7 +154,7 @@ class PegawaiDokumenTest extends TestCase
         $this->actingAs($superadmin, 'web_admin')
             ->get(route('pegawai.dokumen.download', [$pegawai->id, $dokumen->id]))
             ->assertOk()
-            ->assertHeader('content-disposition', 'attachment; filename="SK Pengangkatan.pdf"');
+            ->assertHeader('content-disposition', 'attachment; filename="SK Pengangkatan-Pegawai_3333444455556666-'.now()->format('Ymd').'.pdf"');
     }
 
     public function test_admin_unit_tidak_bisa_upload_ke_pegawai_unit_lain(): void

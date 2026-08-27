@@ -18,47 +18,39 @@ class PresensiPhotoController extends Controller
             abort(403, 'Path tidak valid.');
         }
 
-        if (! Storage::disk($disk)->exists($fullPath)) {
-            abort(404);
-        }
-
         $user = $request->user();
 
         if (! $user) {
             abort(401);
         }
 
-        // Foto profil milik user yang sedang login (admin unit & pegawai) →
-        // izinkan langsung tanpa regex path (foto pegawai disimpan tanpa prefix {id}_).
-        if ($user->pegawai && $fullPath === $user->pegawai->foto) {
-            return Storage::disk($disk)->response($fullPath);
-        }
+        // Otorisasi dulu (403), baru cek eksistensi file — jangan bocorkan
+        // keberadaan file lewat 404 (anti-IDOR: unit lain tetap 403 walau file ada/tidak).
+        $allowed = false;
 
-        if ($user->can('view_presensi')) {
+        // Foto profil milik user yang sedang login (admin unit & pegawai) → izinkan.
+        if ($user->pegawai && $fullPath === $user->pegawai->foto) {
+            $allowed = true;
+        } elseif ($user->can('view_presensi')) {
             // Admin unit: scope foto ke pegawai unitnya sendiri (anti-IDOR).
             // Nama file berformat {folder}/{pegawai_id}_{slug}/{uuid}.webp
-            if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
-                if (! preg_match('/(\d+)_/', $fullPath, $m)) {
-                    abort(403, 'Akses ditolak.');
-                }
-
+            if (! $user->unit_sekolah_id || $user->can('view_all_units')) {
+                $allowed = true;
+            } elseif (preg_match('/(\d+)_/', $fullPath, $m)) {
                 $pegawai = Pegawai::find((int) $m[1]);
-                if (! $pegawai || ! $pegawai->belongsToUnit($user->unit_sekolah_id)) {
-                    abort(403, 'Akses ditolak.');
-                }
+                $allowed = $pegawai && $pegawai->belongsToUnit($user->unit_sekolah_id);
             }
-
-            return Storage::disk($disk)->response($fullPath);
+        } else {
+            $pegawai = Pegawai::where('user_id', $user->id)->first();
+            if ($pegawai && ($fullPath === $pegawai->foto || str_contains($fullPath, '/'.$pegawai->id.'_'))) {
+                $allowed = true;
+            }
         }
 
-        $pegawai = Pegawai::where('user_id', $user->id)->first();
-        if (! $pegawai) {
-            abort(403, 'Akses ditolak.');
-        }
+        abort_unless($allowed, 403, 'Akses ditolak.');
 
-        $prefix = '/'.$pegawai->id.'_';
-        if ($fullPath !== $pegawai->foto && ! str_contains($fullPath, $prefix)) {
-            abort(403, 'Akses ditolak.');
+        if (! Storage::disk($disk)->exists($fullPath)) {
+            abort(404);
         }
 
         return Storage::disk($disk)->response($fullPath);

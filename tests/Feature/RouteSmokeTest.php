@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Announcement;
+use App\Models\HariLibur;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
@@ -13,7 +14,9 @@ use App\Models\PengajuanIzin;
 use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
 use App\Models\Presensi;
+use App\Models\Reminder;
 use App\Models\SkalaMasaBakti;
+use App\Models\TugasLuar;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -134,6 +137,10 @@ class RouteSmokeTest extends TestCase
         'backup.index' => 'Backup/Index',
         'mata-pelajaran.index' => 'MataPelajaran/Index',
         'jabatan.index' => 'Jabatan/Index',
+        'hari-libur.index' => 'HariLibur/Index',
+        'tugas-luar.index' => 'TugasLuar/Index',
+        'reminders.index' => 'Reminder/Index',
+        'laporan.kcd' => 'Laporan/Kcd',
 
         // ── Mobile (web_mobile) ──
         'presensi.dashboard' => 'Mobile/Dashboard',
@@ -145,6 +152,7 @@ class RouteSmokeTest extends TestCase
         'presensi.notifikasi.index' => 'Mobile/Notifikasi',
         'presensi.izin.index' => 'Mobile/Izin/Index',
         'presensi.izin.create' => 'Mobile/Izin/Create',
+        'presensi.izin.show' => 'Mobile/Izin/Show',
         'presensi.absen' => 'Mobile/Absen',
         'presensi.profile.edit' => 'Mobile/Profile',
         // presensi.lengkapi-data → Mobile/LengkapiData karena test berjalan di
@@ -733,6 +741,50 @@ class RouteSmokeTest extends TestCase
         $this->disposableMapel = MataPelajaran::create(['nama' => 'Mapel Hapus']);
         $this->disposableJabatan = Jabatan::create(['nama' => 'Jabatan Hapus', 'is_guru' => false]);
         $this->disposableRole = Role::create(['name' => 'smoke_role_test', 'guard_name' => 'web']);
+
+        // Fixture master (hari-libur / tugas-luar / reminders) untuk smoke route.
+        $this->hariLibur = HariLibur::create([
+            'tanggal' => '2026-08-17',
+            'nama' => 'Smoke Libur',
+            'tipe' => 'nasional',
+            'unit_sekolah_id' => null,
+        ]);
+        $this->disposableHariLibur = HariLibur::create([
+            'tanggal' => '2026-12-25',
+            'nama' => 'Smoke Libur Hapus',
+            'tipe' => 'nasional',
+            'unit_sekolah_id' => null,
+        ]);
+        $this->tugasLuar = TugasLuar::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => now()->format('Y-m-d'),
+            'jam_mulai' => '09:00',
+            'jam_selesai' => '11:00',
+            'tujuan' => 'Smoke Tugas Luar',
+            'keterangan' => 'smoke',
+        ]);
+        $this->disposableTugasLuar = TugasLuar::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => now()->format('Y-m-d'),
+            'tujuan' => 'Smoke Tugas Luar Hapus',
+            'keterangan' => 'smoke',
+        ]);
+        $this->reminder = Reminder::create([
+            'title' => 'Smoke Reminder',
+            'message' => 'Test reminder',
+            'type' => 'presensi',
+            'unit_sekolah_id' => $this->unit->id,
+            'created_by' => $this->superadmin->id,
+        ]);
+        $this->disposableReminder = Reminder::create([
+            'title' => 'Smoke Reminder Hapus',
+            'message' => 'Test reminder hapus',
+            'type' => 'presensi',
+            'unit_sekolah_id' => $this->unit->id,
+            'created_by' => $this->superadmin->id,
+        ]);
 
         $this->pengajuanApprove = $this->makePengajuan();
         $this->pengajuanReject = $this->makePengajuan();
@@ -1407,6 +1459,13 @@ class RouteSmokeTest extends TestCase
             'mata-pelajaran.update' => ['nama' => 'Matematika'],
             'jabatan.store' => ['nama' => 'Kepala Sekolah Smoke', 'is_guru' => false],
             'jabatan.update' => ['nama' => 'Guru', 'is_guru' => true],
+            'hari-libur.update' => [
+                'tanggal' => '2026-12-25',
+                'nama' => 'Libur Diperbarui',
+                'tipe' => 'nasional',
+                'unit_sekolah_id' => $this->unit->id,
+                'keterangan' => 'smoke',
+            ],
             'password.update', 'presensi.password.update' => [
                 'current_password' => 'password',
                 'password' => 'password123',
@@ -1480,6 +1539,7 @@ class RouteSmokeTest extends TestCase
             'role' => in_array($routeName, ['roles.update', 'roles.destroy'], true) ? $this->disposableRole->id : Role::query()->where('name', 'pegawai')->value('id'),
             'announcement' => $this->announcement->id,
             'dokumen' => $this->dokumen->id,
+            'pengajuan' => $this->pengajuanApprove->id,
             'month' => now()->format('m'),
             'year' => now()->format('Y'),
             'id' => match (true) {
@@ -1491,6 +1551,9 @@ class RouteSmokeTest extends TestCase
                 $routeName === 'penggajian.destroy' => $this->penggajianDraft->id,
                 default => $this->penggajianDraft->id,
             },
+            'hari_libur' => $routeName === 'hari-libur.destroy' ? $this->disposableHariLibur->id : $this->hariLibur->id,
+            'tugas_luar' => $routeName === 'tugas-luar.destroy' ? $this->disposableTugasLuar->id : $this->tugasLuar->id,
+            'reminder' => in_array($routeName, ['reminders.destroy', 'reminders.send'], true) ? $this->disposableReminder->id : $this->reminder->id,
             default => throw new \RuntimeException("Param route tak dikenal: {$param} @ {$routeName}"),
         };
     }
@@ -1508,6 +1571,10 @@ class RouteSmokeTest extends TestCase
             'penggajian.export-bank' => ['periode_bulan' => now()->format('m-Y')],
             'jadwal.kelas-by-unit' => ['q' => 'smoke'],
             'presensi.jadwal.kelas' => ['jadwal_id' => $this->jadwal->id],
+            'laporan.kcd.preview', 'laporan.kcd.pdf' => [
+                'unit_sekolah_id' => $this->unit->id,
+                'periode' => now()->format('Y-m'),
+            ],
             default => [],
         };
     }

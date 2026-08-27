@@ -70,7 +70,7 @@ class JadwalPresensiLiveTest extends TestCase
             'toleransi_tap_menit' => 15,
         ]);
 
-        $jabatan = Jabatan::create(['nama' => 'Guru']);
+        $jabatan = Jabatan::create(['nama' => 'Guru', 'is_guru' => true]);
         $pegawai = Pegawai::create([
             'user_id' => User::factory()->create()->id,
             'nik' => '1111222233334444',

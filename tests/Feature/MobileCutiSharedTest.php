@@ -62,8 +62,8 @@ class MobileCutiSharedTest extends TestCase
         $izin = new PengajuanIzin([
             'pegawai_id' => $pegawai->id,
             'jenis_izin' => 'cuti',
-            'tanggal_mulai' => Carbon::now()->startOfMonth()->format('Y-m-d'),
-            'tanggal_selesai' => Carbon::now()->startOfMonth()->addDay()->format('Y-m-d'),
+            'tanggal_mulai' => Carbon::now()->startOfWeek(Carbon::MONDAY)->format('Y-m-d'),
+            'tanggal_selesai' => Carbon::now()->startOfWeek(Carbon::MONDAY)->addDay()->format('Y-m-d'),
             'alasan' => 'Cuti tahunan test',
         ]);
         $izin->status = 'disetujui';
