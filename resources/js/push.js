@@ -55,7 +55,7 @@ export async function initPush() {
             applicationServerKey: urlBase64ToUint8Array(vapidKey),
         });
 
-        await fetch('/mobile/push/subscribe', {
+        await fetch(route('presensi.push.subscribe'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -90,7 +90,7 @@ export async function disablePush() {
         const reg = await navigator.serviceWorker.getRegistration('/sw.js');
         const sub = reg ? await reg.pushManager.getSubscription() : null;
         if (sub) {
-            await fetch('/mobile/push/unsubscribe', {
+            await fetch(route('presensi.push.unsubscribe'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -138,7 +138,7 @@ function arrayBufferToBase64(buffer) {
  */
 export async function sendTestPush() {
     try {
-        const res = await fetch('/mobile/push/test', {
+        const res = await fetch(route('presensi.push.test'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

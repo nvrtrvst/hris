@@ -117,9 +117,6 @@ export default function MobileLayout({ user, header, children }) {
                                 <Bell className="mr-2 h-4 w-4" />
                                 Kirim Tes Notif
                             </button>
-                            {testMsg && (
-                                <p className="px-4 py-1 text-xs text-slate-500">{testMsg}</p>
-                            )}
                             <Dropdown.Link href={route('presensi.logout')} method="post" as="button" className="text-red-600 font-bold flex items-center">
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                                 Keluar
@@ -133,6 +130,12 @@ export default function MobileLayout({ user, header, children }) {
             {header && (
                 <div className="px-4 pt-5">
                     <h2 className="text-xl font-bold tracking-tight text-slate-900">{header}</h2>
+                </div>
+            )}
+
+            {testMsg && (
+                <div className="px-4 pt-2">
+                    <p className="rounded-lg bg-slate-100 px-3 py-2 text-xs leading-relaxed text-slate-600">{testMsg}</p>
                 </div>
             )}
 
