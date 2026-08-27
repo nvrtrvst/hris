@@ -7,9 +7,10 @@
     @page { margin: 16mm 12mm; }
     * { box-sizing: border-box; }
     body { font-family: 'Helvetica', 'Arial', sans-serif; color: #1f2937; font-size: 11px; margin: 0; }
-    .kop { display: flex; align-items: center; gap: 14px; }
+    .kop { text-align: center; }
+    .kop-center { display: inline-flex; align-items: center; gap: 14px; justify-content: center; }
     .kop img { height: 56px; width: auto; }
-    .kop-text { text-align: center; flex: 1; }
+    .kop-text { text-align: left; }
     .kop-name { font-size: 18px; font-weight: 800; letter-spacing: .5px; color: #0f3d3e; }
     .kop-sub { font-size: 10px; color: #6b7280; margin-top: 2px; }
     .rule { border: 0; height: 3px; background: #0f3d3e; margin: 6px 0 2px; }
@@ -25,14 +26,15 @@
 </head>
 <body>
     <div class="kop">
-        @if($logoData)
-            <img src="{{ $logoData }}" alt="Logo">
-        @endif
-        <div class="kop-text">
-            <div class="kop-name">{{ config('app.name') }}</div>
-            <div class="kop-sub">Sistem Informasi Manajemen SDM &amp; Presensi Yayasan</div>
+        <div class="kop-center">
+            @if($logoData)
+                <img src="{{ $logoData }}" alt="Logo Yayasan">
+            @endif
+            <div class="kop-text">
+                <div class="kop-name">{{ config('app.name') }}</div>
+                <div class="kop-sub">Sistem Informasi Manajemen SDM &amp; Presensi Yayasan</div>
+            </div>
         </div>
-        @if($logoData)<div style="width:56px"></div>@endif
     </div>
     <hr class="rule">
     <hr class="rule-thin">
