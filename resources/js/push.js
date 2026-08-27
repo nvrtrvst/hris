@@ -131,3 +131,25 @@ function arrayBufferToBase64(buffer) {
 
     return window.btoa(binary);
 }
+
+/**
+ * Kirim notifikasi tes ke device sendiri (diagnostic).
+ * Mengembalikan JSON { success, message } dari server.
+ */
+export async function sendTestPush() {
+    try {
+        const res = await fetch('/mobile/push/test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        return await res.json();
+    } catch (err) {
+        return { success: false, message: 'Network error: ' + err.message };
+    }
+}

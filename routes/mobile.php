@@ -73,6 +73,8 @@ Route::middleware('auth:web_mobile')->group(function () {
         ->middleware('throttle:20,1')->name('presensi.push.unsubscribe');
     Route::get('/push/subscriptions', [PushSubscriptionController::class, 'index'])
         ->middleware('throttle:60,1')->name('presensi.push.subscriptions');
+    Route::post('/push/test', [PushSubscriptionController::class, 'test'])
+        ->middleware('throttle:5,1')->name('presensi.push.test');
     Route::get('/profile', function (Request $request) {
         $pegawai = $request->user()->pegawai;
         if ($pegawai) {

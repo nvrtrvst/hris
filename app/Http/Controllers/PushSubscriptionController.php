@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Notifications\PushTestNotification;
 use Illuminate\Http\Request;
+use Throwable;
 
 class PushSubscriptionController extends Controller
 {
@@ -69,5 +71,40 @@ class PushSubscriptionController extends Controller
             : collect();
 
         return response()->json(['subscriptions' => $subscriptions]);
+    }
+
+    /**
+     * Kirim notifikasi tes ke device user sendiri (diagnostic on-device).
+     * Mengembalikan pesan error nyata bila VAPID belum di-set / subscription kosong,
+     * sehingga kegagalan terlihat (tidak dibungkam seperti sendSafely).
+     */
+    public function test(Request $request)
+    {
+        $user = $request->user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $count = $user->pushSubscriptions()->count();
+        if ($count === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Belum ada subscription. Pastikan VAPID di-set di .env, lalu RELOAD PWA & grant izin notifikasi.',
+            ]);
+        }
+
+        try {
+            $user->notify(new PushTestNotification);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Push tes dikirim ke {$count} device. Cek notification bar HP Anda.",
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal kirim: '.$e->getMessage(),
+            ]);
+        }
     }
 }
