@@ -107,14 +107,7 @@ class AnnouncementController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'body' => 'required|string|max:5000',
-            'is_pinned' => 'nullable|boolean',
-            'published_at' => 'nullable|date',
-            'image' => 'nullable|image|mimes:jpeg,png,webp|max:2048',
-            'file' => 'nullable|file|extensions:pdf,doc,docx,xls,xlsx,ppt,pptx,zip|max:5120',
-        ]);
+        $validated = $request->validate($this->announcementRules(), $this->announcementMessages());
 
         $data = [
             'title' => $validated['title'],
@@ -123,39 +116,32 @@ class AnnouncementController extends Controller
             'published_at' => $validated['published_at'] ?? $announcement->published_at,
         ];
 
+        if ($request->boolean('remove_file')) {
+            $this->deleteAnnouncementFile($announcement->image);
+            $this->deleteAnnouncementFile($announcement->file);
+            $data['image'] = null;
+            $data['file'] = null;
+        }
+
         if ($request->hasFile('image')) {
-            if ($announcement->image) {
-                $disk = config('filesystems.image_disk', 'public');
-                if (Storage::disk($disk)->exists($announcement->image)) {
-                    Storage::disk($disk)->delete($announcement->image);
-                }
-            }
+            $this->deleteAnnouncementFile($announcement->image);
+            $this->deleteAnnouncementFile($announcement->file);
             $disk = config('filesystems.image_disk', 'public');
             try {
                 $data['image'] = $request->file('image')->store('announcements', $disk);
+                $data['file'] = null;
             } catch (\Throwable $e) {
                 Log::warning('Gagal simpan gambar pengumuman (update)', ['error' => $e->getMessage()]);
             }
         }
 
-        if ($request->boolean('remove_file') && $announcement->file) {
-            $disk = config('filesystems.image_disk', 'public');
-            if (Storage::disk($disk)->exists($announcement->file)) {
-                Storage::disk($disk)->delete($announcement->file);
-            }
-            $data['file'] = null;
-        }
-
         if ($request->hasFile('file')) {
-            if ($announcement->file) {
-                $disk = config('filesystems.image_disk', 'public');
-                if (Storage::disk($disk)->exists($announcement->file)) {
-                    Storage::disk($disk)->delete($announcement->file);
-                }
-            }
+            $this->deleteAnnouncementFile($announcement->image);
+            $this->deleteAnnouncementFile($announcement->file);
             $disk = config('filesystems.image_disk', 'public');
             try {
                 $data['file'] = $request->file('file')->store('announcements', $disk);
+                $data['image'] = null;
             } catch (\Throwable $e) {
                 Log::warning('Gagal simpan file pengumuman (update)', ['error' => $e->getMessage()]);
             }
@@ -211,5 +197,16 @@ class AnnouncementController extends Controller
             'file.extensions' => 'Lampiran File harus berformat PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, atau ZIP.',
             'file.max' => 'Lampiran File maksimal 5 MB.',
         ];
+    }
+
+    private function deleteAnnouncementFile(?string $path): void
+    {
+        if (! $path) {
+            return;
+        }
+        $disk = config('filesystems.image_disk', 'public');
+        if (Storage::disk($disk)->exists($path)) {
+            Storage::disk($disk)->delete($path);
+        }
     }
 }

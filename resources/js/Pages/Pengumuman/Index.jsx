@@ -14,33 +14,49 @@ const FILE_ACCEPT = ['application/pdf', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'pp
 export default function PengumumanIndex({ auth, announcements, units, userUnitId, flash }) {
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), image: null, imagePreview: null, file: null, fileRemoved: false });
-    const [imageError, setImageError] = useState(null);
-    const [docError, setDocError] = useState(null);
-    const [editFileUrl, setEditFileUrl] = useState(null);
+    const [form, setForm] = useState({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), attachment: null, attachmentType: null, imagePreview: null, attachmentRemoved: false });
+    const [attachmentError, setAttachmentError] = useState(null);
+    const [editAttachmentUrl, setEditAttachmentUrl] = useState(null);
+    const [editAttachmentType, setEditAttachmentType] = useState(null);
 
     const resetForm = () => {
-        setForm({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), image: null, imagePreview: null, file: null, fileRemoved: false });
+        setForm({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), attachment: null, attachmentType: null, imagePreview: null, attachmentRemoved: false });
         setEditing(null);
         setShowForm(false);
-        setImageError(null);
-        setDocError(null);
-        setEditFileUrl(null);
+        setAttachmentError(null);
+        setEditAttachmentUrl(null);
+        setEditAttachmentType(null);
     };
     const openEdit = (a) => {
-        setForm({ title: a.title, body: a.body, is_pinned: a.is_pinned, unit_sekolah_id: a.unit_sekolah_id || '', published_at: a.published_at?.slice(0, 16) || '', image: null, imagePreview: a.image_url || null, file: null, fileRemoved: false });
-        setEditFileUrl(a.file_url || null);
+        const hasImage = !!a.image_url;
+        setForm({ title: a.title, body: a.body, is_pinned: a.is_pinned, unit_sekolah_id: a.unit_sekolah_id || '', published_at: a.published_at?.slice(0, 16) || '', attachment: null, attachmentType: null, imagePreview: hasImage ? a.image_url : null, attachmentRemoved: false });
+        setEditAttachmentUrl(hasImage ? a.image_url : (a.file_url || null));
+        setEditAttachmentType(hasImage ? 'image' : (a.file_url ? 'file' : null));
         setEditing(a.id);
         setShowForm(true);
     };
     const submit = (e) => {
         e.preventDefault();
-        if (imageError || docError) return;
+        if (attachmentError) return;
         const method = editing ? 'put' : 'post';
         const routeName = editing ? route('pengumuman.update', editing) : route('pengumuman.store');
         const payload = { ...form };
         delete payload.imagePreview;
-        payload.remove_file = form.fileRemoved ? 1 : 0;
+        delete payload.attachment;
+        delete payload.attachmentType;
+        if (form.attachmentRemoved) {
+            payload.image = null;
+            payload.file = null;
+            payload.remove_file = 1;
+        } else if (form.attachment) {
+            if (form.attachmentType === 'image') {
+                payload.image = form.attachment;
+                payload.file = null;
+            } else {
+                payload.file = form.attachment;
+                payload.image = null;
+            }
+        }
         router[method](routeName, payload, { preserveState: true, onSuccess: () => resetForm() });
     };
     const destroy = (id) => {
@@ -99,56 +115,43 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
                                     rows={4} placeholder="Isi pengumuman..." className="input-field" />
                             </div>
                             <div>
-                                <label className="form-label text-xs">Gambar (opsional)</label>
-                                <p className="text-xs text-text-muted">Hanya gambar JPG/PNG/WebP (maks 2 MB). Untuk dokumen, gunakan kolom <span className="font-semibold">Lampiran File</span> di bawah.</p>
-                                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => {
+                                <label className="form-label text-xs">Lampiran (opsional)</label>
+                                <p className="text-xs text-text-muted">Gambar JPG/PNG/WebP (maks 2 MB) atau dokumen PDF/DOC/XLS/PPT/ZIP (maks 5 MB).</p>
+                                <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip" onChange={(e) => {
                                     const f = e.target.files?.[0] || null;
-                                    setImageError(null);
+                                    setAttachmentError(null);
                                     if (f) {
-                                        const err = validateUpload(f, { maxBytes: 2 * 1024 * 1024, accept: ['image/jpeg', 'image/png', 'image/webp'], label: 'Gambar' });
+                                        const isImage = f.type.startsWith('image/');
+                                        const maxBytes = isImage ? 2 * 1024 * 1024 : FILE_MAX;
+                                        const accept = isImage ? ['image/jpeg', 'image/png', 'image/webp'] : FILE_ACCEPT;
+                                        const err = validateUpload(f, { maxBytes, accept, label: isImage ? 'Gambar' : 'File' });
                                         if (err) {
-                                            setImageError(err);
-                                            setForm((prev) => ({ ...prev, image: null, imagePreview: null }));
+                                            setAttachmentError(err);
+                                            setForm((prev) => ({ ...prev, attachment: null, attachmentType: null, imagePreview: null }));
                                             e.target.value = '';
                                             return;
                                         }
+                                        setForm((prev) => ({ ...prev, attachment: f, attachmentType: isImage ? 'image' : 'file', imagePreview: isImage ? URL.createObjectURL(f) : null }));
+                                    } else {
+                                        setForm((prev) => ({ ...prev, attachment: null, attachmentType: null, imagePreview: null }));
                                     }
-                                    setForm((prev) => ({ ...prev, image: f, imagePreview: f ? URL.createObjectURL(f) : (editing ? prev.imagePreview : null) }));
                                 }} className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20" />
-                                {form.imagePreview && (
-                                    <img src={form.imagePreview} alt="Pratinjau" className="mt-2 h-32 w-auto rounded-lg border border-border object-cover" />
-                                )}
-                                {imageError && <p className="mt-1 text-xs font-medium text-rose-600">{imageError}</p>}
-                            </div>
-                            <div>
-                                <label className="form-label text-xs">Lampiran File (opsional)</label>
-                                <p className="text-xs text-text-muted">Maksimal 5 MB, format PDF/DOC/XLS/PPT/ZIP.</p>
-                                <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip" onChange={(e) => {
-                                    const f = e.target.files?.[0] || null;
-                                    setDocError(null);
-                                    if (f) {
-                                        const err = validateUpload(f, { maxBytes: FILE_MAX, accept: FILE_ACCEPT, label: 'File' });
-                                        if (err) {
-                                            setDocError(err);
-                                            setForm((prev) => ({ ...prev, file: null, fileRemoved: true }));
-                                            e.target.value = '';
-                                            return;
-                                        }
-                                    }
-                                    setForm((prev) => ({ ...prev, file: f, fileRemoved: false }));
-                                }} className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20" />
-                                {(form.file || (editing && !form.fileRemoved && editFileUrl)) && (
+                                {(form.attachment || (editing && !form.attachmentRemoved && editAttachmentUrl)) && (
                                     <div className="mt-2 flex items-center gap-2">
-                                        <span className="truncate text-xs text-text-secondary">
-                                            {form.file ? form.file.name : 'Lampiran saat ini'}
-                                        </span>
-                                        <button type="button" onClick={() => setForm((prev) => ({ ...prev, file: null, fileRemoved: true }))}
+                                        {(form.attachmentType === 'image' || (editing && editAttachmentType === 'image' && !form.attachmentRemoved)) ? (
+                                            <img src={form.imagePreview || editAttachmentUrl} alt="Pratinjau" className="h-24 w-auto rounded-lg border border-border object-cover" />
+                                        ) : (
+                                            <span className="truncate text-xs text-text-secondary">
+                                                {form.attachment ? form.attachment.name : 'Lampiran saat ini'}
+                                            </span>
+                                        )}
+                                        <button type="button" onClick={() => setForm((prev) => ({ ...prev, attachment: null, attachmentType: null, imagePreview: null, attachmentRemoved: true }))}
                                             className="rounded-lg bg-surface px-2 py-1 text-[10px] font-bold text-danger hover:bg-danger/10">
                                             Hapus
                                         </button>
                                     </div>
                                 )}
-                                {docError && <p className="mt-1 text-xs font-medium text-rose-600">{docError}</p>}
+                                {attachmentError && <p className="mt-1 text-xs font-medium text-rose-600">{attachmentError}</p>}
                             </div>
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                                 <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-text-primary">
