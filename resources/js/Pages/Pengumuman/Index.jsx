@@ -6,11 +6,13 @@ import StatCard from '@/Components/StatCard';
 import { Calendar, Megaphone, Pencil, Pin as PinIcon, Plus, Save, Trash2, X as XIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
+import { validateUpload } from '@/Utils/file';
 
 export default function PengumumanIndex({ auth, announcements, units, userUnitId, flash }) {
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), image: null, imagePreview: null });
+    const [fileError, setFileError] = useState(null);
 
     const resetForm = () => {
         setForm({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), image: null, imagePreview: null });
@@ -24,6 +26,7 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
     };
     const submit = (e) => {
         e.preventDefault();
+        if (fileError) return;
         const method = editing ? 'put' : 'post';
         const routeName = editing ? route('pengumuman.update', editing) : route('pengumuman.store');
         const payload = { ...form };
@@ -81,13 +84,25 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
                             </div>
                             <div>
                                 <label className="form-label text-xs">Gambar (opsional)</label>
-                                <input type="file" accept="image/*" onChange={(e) => {
+                                <p className="text-xs text-text-muted">Maksimal 2 MB, format JPG/PNG/WebP.</p>
+                                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => {
                                     const f = e.target.files?.[0] || null;
+                                    setFileError(null);
+                                    if (f) {
+                                        const err = validateUpload(f, { maxBytes: 2 * 1024 * 1024, accept: ['image/jpeg', 'image/png', 'image/webp'], label: 'Gambar' });
+                                        if (err) {
+                                            setFileError(err);
+                                            setForm((prev) => ({ ...prev, image: null, imagePreview: null }));
+                                            e.target.value = '';
+                                            return;
+                                        }
+                                    }
                                     setForm((prev) => ({ ...prev, image: f, imagePreview: f ? URL.createObjectURL(f) : (editing ? prev.imagePreview : null) }));
                                 }} className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20" />
                                 {form.imagePreview && (
                                     <img src={form.imagePreview} alt="Pratinjau" className="mt-2 h-32 w-auto rounded-lg border border-border object-cover" />
                                 )}
+                                {fileError && <p className="mt-1 text-xs font-medium text-rose-600">{fileError}</p>}
                             </div>
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                                 <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-text-primary">

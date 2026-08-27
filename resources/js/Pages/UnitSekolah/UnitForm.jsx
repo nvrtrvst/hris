@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { Image, Loader2, MapPin, Save, School, Settings2, Timer } from 'lucide-react';
 import LeafletPicker from '@/Components/LeafletPicker';
+import { validateUpload } from '@/Utils/file';
 
 const inputClass = 'input-field';
 
@@ -32,6 +33,7 @@ function SectionCard({ Icon, title, description, children }) {
 }
 
 export default function UnitForm({ data, setData, errors, processing, onSubmit, isEdit, unitName, unitLogoUrl }) {
+    const [logoError, setLogoError] = useState(null);
     const validLat = !isNaN(parseFloat(data.latitude));
     const validLng = !isNaN(parseFloat(data.longitude));
     const mapsUrl = validLat && validLng
@@ -51,7 +53,7 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                         <input type="text" value={data.singkatan} onChange={(e) => setData('singkatan', e.target.value)}
                             placeholder="cth. SMP" className={inputClass} />
                     </Field>
-                    <Field label="Logo Unit" error={errors.logo} hint="JPEG, PNG, atau WebP. Maksimum 1 MB. Rasio persegi disarankan.">
+                        <Field label="Logo Unit" error={logoError || errors.logo} hint="JPEG, PNG, atau WebP. Maksimum 1 MB. Rasio persegi disarankan.">
                         <div className="flex items-center gap-3">
                             {(isEdit && data.logo === null) && (
                                 <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white">
@@ -67,7 +69,19 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                             <label className="btn-secondary btn-sm inline-flex cursor-pointer items-center gap-2">
                                 <Image className="h-4 w-4" /> Pilih File
                                 <input type="file" accept="image/jpeg,image/png,image/webp"
-                                    onChange={(e) => setData('logo', e.target.files[0] || null)} className="hidden" />
+                                    onChange={(e) => {
+                                        const f = e.target.files[0] || null;
+                                        setLogoError(null);
+                                        if (f) {
+                                            const err = validateUpload(f, { maxBytes: 1 * 1024 * 1024, accept: ['image/jpeg', 'image/png', 'image/webp'], label: 'Logo' });
+                                            if (err) {
+                                                setLogoError(err);
+                                                e.target.value = '';
+                                                return;
+                                            }
+                                        }
+                                        setData('logo', f);
+                                    }} className="hidden" />
                             </label>
                         </div>
                     </Field>

@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { kepagawaianBadge, STATUS_AKTIF_BADGE } from '@/Utils/statusMeta';
 import Modal from '@/Components/Modal';
+import { validateUpload } from '@/Utils/file';
 import {
     AlertTriangle,
     ArrowLeft,
@@ -119,6 +120,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
 
     // ── Upload dokumen ──
     const [showUpload, setShowUpload] = useState(false);
+    const [docError, setDocError] = useState(null);
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         nama_dokumen: '',
         jenis: 'SK',
@@ -486,10 +488,22 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                         <input
                                             type="file"
                                             accept=".pdf,.jpg,.jpeg,.png,.webp"
-                                            onChange={(e) => setData('file', e.target.files?.[0] || null)}
+                                            onChange={(e) => {
+                                                const f = e.target.files?.[0] || null;
+                                                setDocError(null);
+                                                if (f) {
+                                                    const err = validateUpload(f, { maxBytes: 5 * 1024 * 1024, accept: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'], label: 'File' });
+                                                    if (err) {
+                                                        setDocError(err);
+                                                        e.target.value = '';
+                                                        return;
+                                                    }
+                                                }
+                                                setData('file', f);
+                                            }}
                                             className="input-field file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-primary hover:file:bg-primary/20"
                                         />
-                                        {errors.file && <p className="input-error">{errors.file}</p>}
+                                        {docError || errors.file ? <p className="input-error">{docError || errors.file}</p> : null}
                                     </div>
 
                                     <div>

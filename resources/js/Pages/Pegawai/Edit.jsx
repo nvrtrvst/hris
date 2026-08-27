@@ -5,6 +5,7 @@ import { ArrowLeft, BadgeCheck, Camera, Loader2, Save, Trash2, User, X as XIcon 
 import { MapelSection } from '@/Pages/Pegawai/Partials/MapelSection';
 import { UnitAssignmentSection } from '@/Pages/Pegawai/Partials/UnitAssignmentSection';
 import { statusKepegawaianLabel } from '@/Utils/pegawaiMeta';
+import { validateUpload } from '@/Utils/file';
 
 const inputClass = 'input-field';
 const selectClass = 'select-field';
@@ -73,11 +74,19 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
     });
 
     const [fotoPreview, setFotoPreview] = useState(null);
+    const [fotoError, setFotoError] = useState(null);
     const fileInputRef = useRef(null);
 
     const handleFotoChange = (e) => {
         const file = e.target.files[0];
+        setFotoError(null);
         if (file) {
+            const err = validateUpload(file, { maxBytes: 2 * 1024 * 1024, accept: ['image/jpeg', 'image/png', 'image/jpg'], label: 'Foto' });
+            if (err) {
+                setFotoError(err);
+                e.target.value = '';
+                return;
+            }
             setData('foto', file);
             setData('hapus_foto', false);
             const reader = new FileReader();
@@ -163,7 +172,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                                         </div>
                                     )}
                                     <div className="flex-1 min-w-0">
-                                        <Field label="Upload Foto Baru" error={errors.foto} hint="JPEG/PNG, maks 2MB. Kosongkan jika tidak ingin mengubah.">
+                                        <Field label="Upload Foto Baru" error={fotoError || errors.foto} hint="JPEG/PNG, maks 2MB. Kosongkan jika tidak ingin mengubah.">
                                             <div className="flex items-center gap-3">
                                                 <label className="cursor-pointer inline-flex items-center gap-2 btn-secondary btn-sm">
                                                     <Camera className="w-4 h-4" /> Pilih File

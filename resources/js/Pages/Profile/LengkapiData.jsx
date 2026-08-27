@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { Camera, CheckCircle } from 'lucide-react';
 import ComboSelect from '@/Components/ComboSelect';
+import { validateUpload } from '@/Utils/file';
 
 const inputClass = 'input-field';
 const labelClass = 'form-label';
@@ -98,10 +99,18 @@ export default function LengkapiData({ auth, pegawai }) {
     });
 
     const [fotoPreview, setFotoPreview] = useState(null);
+    const [fotoError, setFotoError] = useState(null);
 
     const handleFoto = (e) => {
         const file = e.target.files[0];
+        setFotoError(null);
         if (file) {
+            const err = validateUpload(file, { maxBytes: 2 * 1024 * 1024, accept: ['image/jpeg', 'image/png', 'image/jpg'], label: 'Foto' });
+            if (err) {
+                setFotoError(err);
+                e.target.value = '';
+                return;
+            }
             setData('foto', file);
             setFotoPreview(URL.createObjectURL(file));
         }
@@ -109,6 +118,7 @@ export default function LengkapiData({ auth, pegawai }) {
 
     const submit = (e) => {
         e.preventDefault();
+        if (fotoError) return;
         post(route('lengkapi-data.store'));
     };
 
@@ -206,12 +216,13 @@ export default function LengkapiData({ auth, pegawai }) {
                                 <span className="text-xs text-text-secondary/60">Format: JPG/PNG, max 2MB</span>
                                 <input type="file" accept="image/jpeg,image/png,image/jpg" onChange={handleFoto} className="hidden" />
                             </label>
-                            {fotoPreview && (
-                                <div className="mt-3 flex items-center gap-3">
-                                    <img src={fotoPreview} alt="Preview" className="h-16 w-16 rounded-full object-cover ring-2 ring-border-light" />
-                                    <span className="text-sm text-text-secondary">Foto siap diupload</span>
-                                </div>
-                            )}
+                                {fotoPreview && (
+                                    <div className="mt-3 flex items-center gap-3">
+                                        <img src={fotoPreview} alt="Preview" className="h-16 w-16 rounded-full object-cover ring-2 ring-border-light" />
+                                        <span className="text-sm text-text-secondary">Foto siap diupload</span>
+                                    </div>
+                                )}
+                                {fotoError && <p className="mt-1 text-xs font-medium text-rose-600">{fotoError}</p>}
                         </div>
                     </SectionCard>
 
