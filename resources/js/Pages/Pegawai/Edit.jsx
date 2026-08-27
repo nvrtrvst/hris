@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, BadgeCheck, Camera, Loader2, Save, Trash2, User, X as XIcon } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, Camera, Landmark, Loader2, Save, Trash2, User, X as XIcon } from 'lucide-react';
 import { MapelSection } from '@/Pages/Pegawai/Partials/MapelSection';
 import { UnitAssignmentSection } from '@/Pages/Pegawai/Partials/UnitAssignmentSection';
 import { statusKepegawaianLabel } from '@/Utils/pegawaiMeta';
@@ -60,6 +60,13 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         status_aktif: pegawai.status_aktif,
         tanggal_mulai_kerja: pegawai.tanggal_mulai_kerja,
         pendidikan_terakhir: pegawai.pendidikan_terakhir,
+        pendidikan_jurusan: pegawai.pendidikan_jurusan || '',
+        jumlah_tanggungan: pegawai.jumlah_tanggungan ?? 0,
+        alamat_domisili: pegawai.alamat_domisili || '',
+        no_hp_darurat: pegawai.no_hp_darurat || '',
+        tanggal_akhir_kontrak: pegawai.tanggal_akhir_kontrak || '',
+        nama_bank: pegawai.nama_bank || '',
+        no_rekening: pegawai.no_rekening || '',
         foto: null,
         hapus_foto: false,
         units: (pegawai.units || []).map((u) => ({
@@ -247,9 +254,21 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                             <Field label="No. HP" required error={errors.no_hp}>
                                 <input type="text" value={data.no_hp} onChange={(e) => setData('no_hp', e.target.value)} className={inputClass} />
                             </Field>
+                            <Field label="No. HP Darurat" error={errors.no_hp_darurat}>
+                                <input type="text" value={data.no_hp_darurat} onChange={(e) => setData('no_hp_darurat', e.target.value)} className={inputClass} />
+                            </Field>
                             <Field label="Alamat KTP" required error={errors.alamat_ktp} className="sm:col-span-2">
                                 <textarea value={data.alamat_ktp} onChange={(e) => setData('alamat_ktp', e.target.value)}
                                     rows={3} className={inputClass} />
+                            </Field>
+                            <Field label="Alamat Domisili" error={errors.alamat_domisili} className="sm:col-span-2">
+                                <textarea value={data.alamat_domisili} onChange={(e) => setData('alamat_domisili', e.target.value)}
+                                    rows={3} className={inputClass} />
+                            </Field>
+                            <Field label="Jumlah Tanggungan" error={errors.jumlah_tanggungan}>
+                                <input type="number" min="0" value={data.jumlah_tanggungan}
+                                    onChange={(e) => setData('jumlah_tanggungan', e.target.value === '' ? null : e.target.value)}
+                                    className={inputClass} />
                             </Field>
                         </SectionCard>
 
@@ -299,6 +318,10 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                                 <input type="date" value={data.tanggal_mulai_kerja}
                                     onChange={(e) => setData('tanggal_mulai_kerja', e.target.value)} className={inputClass} />
                             </Field>
+                            <Field label="Tanggal Akhir Kontrak" error={errors.tanggal_akhir_kontrak} hint="Kosongkan jika bukan kontrak.">
+                                <input type="date" value={data.tanggal_akhir_kontrak}
+                                    onChange={(e) => setData('tanggal_akhir_kontrak', e.target.value)} className={inputClass} />
+                            </Field>
                             <Field label="Pendidikan Terakhir" required error={errors.pendidikan_terakhir}>
                                 <select value={data.pendidikan_terakhir}
                                     onChange={(e) => setData('pendidikan_terakhir', e.target.value)}
@@ -307,6 +330,21 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                                         <option key={p} value={p}>{p}</option>
                                     ))}
                                 </select>
+                            </Field>
+                            <Field label="Jurusan / Program Studi" error={errors.pendidikan_jurusan}>
+                                <input type="text" value={data.pendidikan_jurusan}
+                                    onChange={(e) => setData('pendidikan_jurusan', e.target.value)} className={inputClass}
+                                    placeholder="Misal: Pendidikan Matematika" />
+                            </Field>
+                        </SectionCard>
+
+                        {/* Data Finansial */}
+                        <SectionCard Icon={Landmark} title="Data Finansial">
+                            <Field label="Nama Bank" error={errors.nama_bank}>
+                                <input type="text" value={data.nama_bank} onChange={(e) => setData('nama_bank', e.target.value)} className={inputClass} />
+                            </Field>
+                            <Field label="No. Rekening" error={errors.no_rekening}>
+                                <input type="text" value={data.no_rekening} onChange={(e) => setData('no_rekening', e.target.value)} className={inputClass} />
                             </Field>
                         </SectionCard>
 

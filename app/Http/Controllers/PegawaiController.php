@@ -474,6 +474,13 @@ class PegawaiController extends Controller
             'mapels.*.mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
             'mapels.*.unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
             'atasan_langsung_id' => 'nullable|integer|exists:pegawai,id',
+            'jumlah_tanggungan' => 'nullable|integer|min:0',
+            'alamat_domisili' => 'nullable|string|max:500',
+            'no_hp_darurat' => 'nullable|string|max:20',
+            'tanggal_akhir_kontrak' => 'nullable|date|after_or_equal:tanggal_mulai_kerja',
+            'pendidikan_jurusan' => 'nullable|string|max:255',
+            'nama_bank' => 'nullable|string|max:255',
+            'no_rekening' => 'nullable|string|max:50',
         ]);
 
         // Admin unit: atasan wajib pegawai di unitnya sendiri (anti-bypass).
