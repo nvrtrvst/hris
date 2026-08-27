@@ -234,6 +234,11 @@ class LaporanController extends Controller
             return null;
         }
 
+        $public = public_path($rel);
+        if (file_exists($public)) {
+            return $public;
+        }
+
         $disk = config('filesystems.image_disk', 'public');
         $root = config("filesystems.disks.$disk.root");
         $path = rtrim($root, '/').'/'.ltrim($rel, '/');
