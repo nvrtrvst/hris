@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\NotificationHelper;
+use App\Models\Pegawai;
 use App\Models\Reminder;
 use App\Models\UnitSekolah;
 use App\Models\User;
@@ -36,9 +37,20 @@ class ReminderController extends Controller
             ? UnitSekolah::orderBy('nama')->get(['id', 'nama'])
             : UnitSekolah::where('id', $user->unit_sekolah_id)->get(['id', 'nama']);
 
+        $pegawaiOptions = Pegawai::query()
+            ->where('status_aktif', 'aktif')
+            ->whereNotNull('user_id')
+            ->when($user->unit_sekolah_id && ! $user->can('view_all_units'), fn ($q) => $q->forUnit($user->unit_sekolah_id))
+            ->with('user:id,name')
+            ->get(['id', 'nama_lengkap', 'user_id'])
+            ->map(fn ($p) => ['id' => $p->user_id, 'nama' => $p->nama_lengkap ?? $p->user?->name])
+            ->values()
+            ->all();
+
         return Inertia::render('Reminder/Index', [
             'reminders' => $reminders,
             'units' => $units,
+            'pegawaiOptions' => $pegawaiOptions,
             'filters' => $request->only(['type']),
         ]);
     }

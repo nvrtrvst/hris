@@ -12,7 +12,7 @@ const TYPE_OPTIONS = [
     { value: 'custom', label: 'Custom', color: 'bg-gray-100 text-gray-700' },
 ];
 
-export default function Index({ auth, reminders, units, filters }) {
+export default function Index({ auth, reminders, units, filters, pegawaiOptions = [] }) {
     const { flash } = usePage().props;
     const [showCreate, setShowCreate] = useState(false);
     const [typeFilter, setTypeFilter] = useState(filters?.type || 'semua');
@@ -246,6 +246,36 @@ export default function Index({ auth, reminders, units, filters }) {
                                 </select>
                             </div>
                         </div>
+
+                        {!data.target_all && (
+                            <div>
+                                <label className="form-label text-sm font-semibold">Pilih Pegawai</label>
+                                <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl border border-border p-2">
+                                    {pegawaiOptions.length === 0 ? (
+                                        <p className="text-xs text-text-muted">Tidak ada pegawai aktif.</p>
+                                    ) : (
+                                        pegawaiOptions.map((p) => (
+                                            <label key={p.id} className="flex items-center gap-2 text-sm">
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-4 w-4 accent-[#0F3D3E]"
+                                                    checked={data.target_user_ids.includes(p.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setData('target_user_ids', [...data.target_user_ids, p.id]);
+                                                        } else {
+                                                            setData('target_user_ids', data.target_user_ids.filter((x) => x !== p.id));
+                                                        }
+                                                    }}
+                                                />
+                                                {p.nama}
+                                            </label>
+                                        ))
+                                    )}
+                                </div>
+                                {errors.target_user_ids && <p className="text-danger text-xs mt-1">{errors.target_user_ids}</p>}
+                            </div>
+                        )}
 
                         <div className="flex items-center gap-2">
                             <input type="checkbox" checked={data.is_recurring} onChange={e => setData('is_recurring', e.target.checked)}
