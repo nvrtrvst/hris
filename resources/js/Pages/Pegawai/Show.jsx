@@ -268,6 +268,13 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                 <InfoRow label="Alamat">
                                     <span className="inline-flex items-start gap-1"><MapPin className="mt-0.5 h-3 w-3 shrink-0 text-primary" /> {pegawai.alamat_ktp || '—'}</span>
                                 </InfoRow>
+                                <InfoRow label="Alamat Domisili">
+                                    <span className="inline-flex items-start gap-1"><MapPin className="mt-0.5 h-3 w-3 shrink-0 text-primary" /> {pegawai.alamat_domisili || '—'}</span>
+                                </InfoRow>
+                                <InfoRow label="No. HP Darurat">
+                                    <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3 text-primary" /> {pegawai.no_hp_darurat || '—'}</span>
+                                </InfoRow>
+                                <InfoRow label="Jumlah Tanggungan">{pegawai.jumlah_tanggungan != null ? `${pegawai.jumlah_tanggungan} orang` : '—'}</InfoRow>
                             </div>
 
                             {/* Akun login mobile */}
@@ -316,7 +323,9 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                         {/* Data Kepegawaian */}
                         <SectionCard Icon={Briefcase} title="Data Kepegawaian">
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <InfoRow label="Pendidikan Terakhir">{pegawai.pendidikan_terakhir || '—'}</InfoRow>
+                                <InfoRow label="Pendidikan Terakhir">
+                                    {[pegawai.pendidikan_terakhir, pegawai.pendidikan_jurusan].filter(Boolean).join(' — ') || '—'}
+                                </InfoRow>
                                 <InfoRow label="Mulai Bekerja">{fmtDate(pegawai.tanggal_mulai_kerja)}</InfoRow>
                                 <InfoRow label="Dibuat oleh">
                                     {pegawai.created_by?.name ? `${pegawai.created_by.name} • ${fmtDate(pegawai.created_at)}` : fmtDate(pegawai.created_at)}
