@@ -323,6 +323,52 @@ const StatCard = ({ label, value, Icon, iconBg, iconCls }) => (
     </div>
 );
 
+const StatusDistribution = ({ stats }) => {
+    const items = [
+        { key: 'hadir', label: 'Hadir', val: stats.hadir, color: 'bg-emerald-500' },
+        { key: 'telat', label: 'Terlambat', val: stats.telat, color: 'bg-amber-500' },
+        { key: 'sakit', label: 'Sakit', val: stats.sakit, color: 'bg-purple-500' },
+        { key: 'izin', label: 'Izin', val: stats.izin, color: 'bg-blue-500' },
+        { key: 'cuti', label: 'Cuti', val: stats.cuti, color: 'bg-cyan-500' },
+        { key: 'alpa', label: 'Alpa', val: stats.alpa, color: 'bg-rose-500' },
+    ];
+    const total = stats.total || 0;
+    const segs = items.filter((x) => x.val > 0);
+
+    return (
+        <div className="border-b border-border bg-surface/60 px-4 py-3 sm:px-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
+                    <span>Distribusi Status</span>
+                    <span className="rounded-full bg-border px-2 py-0.5 text-[11px] font-bold text-text-primary">{total} record</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {items.map((it) => (
+                        <span key={it.key} className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+                            <span className={`h-2.5 w-2.5 rounded-full ${it.color}`} />
+                            {it.label} <b className="text-text-primary">{it.val}</b>
+                        </span>
+                    ))}
+                </div>
+            </div>
+            <div className="mt-2 flex h-2.5 w-full overflow-hidden rounded-full bg-border">
+                {segs.length === 0 ? (
+                    <div className="h-full w-full bg-border" />
+                ) : (
+                    segs.map((seg) => (
+                        <div
+                            key={seg.key}
+                            className={seg.color}
+                            style={{ width: `${(seg.val / total) * 100}%` }}
+                            title={`${seg.label}: ${seg.val}`}
+                        />
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
 const parseDate = (s) => {
     const [y, m, d] = String(s).split('-').map(Number);
 
@@ -705,6 +751,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     {/* ─── ADMIN: Table ─── */}
                     {isAdmin ? (
                         <div className="card p-0 overflow-hidden">
+                            <StatusDistribution stats={s} />
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">
