@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import { initPush, disablePush } from '@/push';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
@@ -18,6 +20,30 @@ export default function MobileLayout({ user, header, children }) {
     const primaryUnit = user?.pegawai?.units?.find((unit) => unit.pivot?.is_primary) ?? user?.pegawai?.units?.[0];
     const unitLabel = primaryUnit?.singkatan || primaryUnit?.nama || 'Yayasan';
     const unitInitial = unitLabel.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || 'YYS';
+
+    const [pushPermission, setPushPermission] = useState(
+        typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+    );
+
+    // Auto-subscribe bila izin sudah pernah diberikan (tidak memunculkan prompt).
+    // User baru memicu prompt lewat tombol "Aktifkan Notifikasi" di menu.
+    useEffect(() => {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            initPush();
+        }
+    }, []);
+
+    const enablePushNotifications = async () => {
+        const ok = await initPush();
+        setPushPermission(
+            ok ? 'granted' : (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported')
+        );
+    };
+
+    const disablePushNotifications = async () => {
+        await disablePush();
+        setPushPermission(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
+    };
 
     return (
         <div className="mobile-root mx-auto max-w-md bg-[#f4f7f5] font-sans font-antialiased text-slate-900 shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
@@ -69,6 +95,16 @@ export default function MobileLayout({ user, header, children }) {
                                 <Megaphone className="w-4 h-4 mr-2" />
                                 Pengumuman
                             </Dropdown.Link>
+                            {typeof Notification !== 'undefined' && pushPermission !== 'unsupported' && (
+                                <button
+                                    type="button"
+                                    onClick={pushPermission === 'granted' ? disablePushNotifications : enablePushNotifications}
+                                    className="flex w-full items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                >
+                                    <Bell className="mr-2 h-4 w-4" />
+                                    {pushPermission === 'granted' ? 'Nonaktifkan Notifikasi' : 'Aktifkan Notifikasi'}
+                                </button>
+                            )}
                             <Dropdown.Link href={route('presensi.logout')} method="post" as="button" className="text-red-600 font-bold flex items-center">
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                                 Keluar

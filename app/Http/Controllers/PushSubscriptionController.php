@@ -32,6 +32,17 @@ class PushSubscriptionController extends Controller
             $validated['content_encoding'] ?? 'aesgcm',
         );
 
+        // Batasi jumlah subscription per user (cegah abuse / akumulasi row tak terbatas).
+        // Sisakan 5 terbaru; hapus yang paling lama bila lewat.
+        $max = 5;
+        $count = $user->pushSubscriptions()->count();
+        if ($count > $max) {
+            $user->pushSubscriptions()
+                ->orderBy('created_at')
+                ->limit($count - $max)
+                ->delete();
+        }
+
         return response()->json(['success' => true, 'subscription_id' => $subscription->id]);
     }
 
