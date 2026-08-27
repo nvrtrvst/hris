@@ -40,6 +40,7 @@ export default function NotificationsIndex({ auth, notifications, filters, flash
         const type = n.data?.type;
         if (type === 'status_izin') return route('pengajuan-izin.index');
         if (type === 'izin_baru') return route('pengajuan-izin.index');
+        if (type === 'announcement') return route('pengumuman.index');
         return null;
     };
 
@@ -121,18 +122,23 @@ export default function NotificationsIndex({ auth, notifications, filters, flash
                                 <div key={n.id} className={`card p-4 transition-all hover:shadow-card ${!n.read_at ? 'border-primary/30 bg-primary/[0.02]' : ''}`}>
                                     <div className="flex items-start justify-between gap-2">
                                         <div
-                                            className={`min-w-0 flex-1 ${targetUrl ? 'cursor-pointer' : ''}`}
+                                            className={`flex min-w-0 flex-1 gap-3 ${targetUrl ? 'cursor-pointer' : ''}`}
                                             onClick={handleClick}
                                             role={targetUrl ? 'button' : undefined}
                                             tabIndex={targetUrl ? 0 : undefined}
                                             onKeyDown={targetUrl ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); } : undefined}
                                         >
-                                            <p className={`text-sm ${!n.read_at ? 'font-bold text-text-primary' : 'text-text-secondary'}`}>
-                                                {n.data?.message || n.data?.pegawai_nama || 'Notifikasi'}
-                                            </p>
-                                            <p className="mt-0.5 text-xs text-text-muted">
-                                                {n.created_at ? format(new Date(n.created_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}
-                                            </p>
+                                            {n.data?.image && (
+                                                <img src={n.data.image} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-border object-cover" />
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                                <p className={`text-sm ${!n.read_at ? 'font-bold text-text-primary' : 'text-text-secondary'}`}>
+                                                    {n.data?.message || n.data?.pegawai_nama || 'Notifikasi'}
+                                                </p>
+                                                <p className="mt-0.5 text-xs text-text-muted">
+                                                    {n.created_at ? format(new Date(n.created_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}
+                                                </p>
+                                            </div>
                                         </div>
                                         <div className="flex shrink-0 items-center gap-1.5">
                                             {targetUrl && (

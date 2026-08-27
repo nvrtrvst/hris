@@ -16,6 +16,9 @@ function getNotificationRoute(n) {
     if (type === 'status_izin' || type === 'izin_baru') {
         return { name: 'presensi.izin.index', params: null };
     }
+    if (type === 'announcement') {
+        return { name: 'presensi.pengumuman', params: null };
+    }
     return null;
 }
 
@@ -104,18 +107,23 @@ export default function Notifikasi({ auth, notifications, filters }) {
                         return (
                             <Card key={n.id} press={false} className={`py-3.5 px-4 ${!n.read_at ? 'border-primary/30 bg-primary/[0.02]' : ''}`}>
                                 <div className="flex items-start justify-between gap-2">
-                                    <div
-                                        className={`min-w-0 flex-1 ${routeInfo ? 'cursor-pointer' : ''}`}
-                                        onClick={handleClick}
-                                        role={routeInfo ? 'button' : undefined}
-                                        tabIndex={routeInfo ? 0 : undefined}
-                                        onKeyDown={routeInfo ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); } : undefined}
-                                    >
+                                <div
+                                    className={`flex min-w-0 flex-1 gap-3 ${routeInfo ? 'cursor-pointer' : ''}`}
+                                    onClick={handleClick}
+                                    role={routeInfo ? 'button' : undefined}
+                                    tabIndex={routeInfo ? 0 : undefined}
+                                    onKeyDown={routeInfo ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); } : undefined}
+                                >
+                                    {n.data?.image && (
+                                        <img src={n.data.image} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover" />
+                                    )}
+                                    <div className="min-w-0 flex-1">
                                         <p className={`text-sm ${!n.read_at ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
                                             {n.data?.message || n.data?.pegawai_nama || 'Notifikasi'}
                                         </p>
                                         <p className="mt-0.5 text-xs text-slate-400">{n.created_at ? format(parseISO(n.created_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}</p>
                                     </div>
+                                </div>
                                     <div className="flex shrink-0 items-center gap-1.5">
                                         {routeInfo && (
                                             <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-300" />
