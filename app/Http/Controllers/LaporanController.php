@@ -126,9 +126,12 @@ class LaporanController extends Controller
             .' s/d '.Carbon::parse($validated['end_date'])->format('d/m/Y');
 
         $logoPath = $this->resolveYayasanLogoPath();
-        $logoData = null;
+        $logoWidth = null;
         if ($logoPath && file_exists($logoPath)) {
-            $logoData = 'data:image/'.pathinfo($logoPath, PATHINFO_EXTENSION).';base64,'.base64_encode(file_get_contents($logoPath));
+            $sz = @getimagesize($logoPath);
+            if ($sz) {
+                $logoWidth = (int) round(56 * $sz[0] / $sz[1]);
+            }
         }
 
         $title = match ($type) {
@@ -143,7 +146,7 @@ class LaporanController extends Controller
             'lemburan' => 'Laporan_Lemburan',
         };
 
-        $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoData'))
+        $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth'))
             ->setPaper('A4', 'landscape');
 
         return $pdf->download($filename.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf');

@@ -8,9 +8,9 @@
     * { box-sizing: border-box; }
     body { font-family: 'Helvetica', 'Arial', sans-serif; color: #1f2937; font-size: 11px; margin: 0; }
     .kop { text-align: center; }
-    .kop-center { display: inline-flex; align-items: center; gap: 14px; justify-content: center; }
-    .kop img { height: 56px; width: auto; }
-    .kop-text { text-align: left; }
+    .kop-table { margin: 0 auto; border-collapse: collapse; }
+    .kop-logo { padding-right: 14px; vertical-align: middle; }
+    .kop-text { vertical-align: middle; text-align: left; }
     .kop-name { font-size: 18px; font-weight: 800; letter-spacing: .5px; color: #0f3d3e; }
     .kop-sub { font-size: 10px; color: #6b7280; margin-top: 2px; }
     .rule { border: 0; height: 3px; background: #0f3d3e; margin: 6px 0 2px; }
@@ -26,15 +26,19 @@
 </head>
 <body>
     <div class="kop">
-        <div class="kop-center">
-            @if($logoData)
-                <img src="{{ $logoData }}" alt="Logo Yayasan">
-            @endif
-            <div class="kop-text">
-                <div class="kop-name">{{ config('app.name') }}</div>
-                <div class="kop-sub">Sistem Informasi Manajemen SDM &amp; Presensi Yayasan</div>
-            </div>
-        </div>
+        <table class="kop-table">
+            <tr>
+                @if($logoPath)
+                    <td class="kop-logo">
+                        <img src="{{ $logoPath }}" alt="Logo Yayasan" style="height:56px;width:{{ $logoWidth }}px">
+                    </td>
+                @endif
+                <td class="kop-text">
+                    <div class="kop-name">{{ config('app.name') }}</div>
+                    <div class="kop-sub">Sistem Informasi Manajemen SDM &amp; Presensi Yayasan</div>
+                </td>
+            </tr>
+        </table>
     </div>
     <hr class="rule">
     <hr class="rule-thin">
