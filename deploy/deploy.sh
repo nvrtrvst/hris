@@ -68,11 +68,15 @@ step "Git pull (origin/main)"
 BEFORE=$(git rev-parse HEAD)
 git fetch origin main 2>&1 | tail -1 || true
 
-if git rev-parse --verify -q origin/main >/dev/null; then
-    git pull origin main 2>&1 | tail -3
-else
+if ! git rev-parse --verify -q origin/main >/dev/null; then
     fail "Tidak ada branch origin/main. Cek remote: git remote -v"
 fi
+
+# Server harus selalu bersih (hanya menarik dari repo). Pakai reset --hard
+# bukan merge-pull supaya tidak gagal saat working tree kotor (mis.
+# composer.lock yang di-regenerate oleh `composer install --no-dev`).
+# Aman: server produksi tidak menyimpan perubahan lokal yang perlu dipertahankan.
+git reset --hard origin/main 2>&1 | tail -2
 
 AFTER=$(git rev-parse HEAD)
 if [[ "$BEFORE" == "$AFTER" ]]; then
