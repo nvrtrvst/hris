@@ -19,7 +19,6 @@ export default function MobileLayout({ user, header, children }) {
     const auth = props.auth;
     const primaryUnit = user?.pegawai?.units?.find((unit) => unit.pivot?.is_primary) ?? user?.pegawai?.units?.[0];
     const unitLabel = primaryUnit?.singkatan || primaryUnit?.nama || 'Yayasan';
-    const unitInitial = unitLabel.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || 'YYS';
 
     const [pushPermission, setPushPermission] = useState(
         typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
@@ -51,7 +50,7 @@ export default function MobileLayout({ user, header, children }) {
             <header className="sticky top-0 z-20 border-b border-emerald-950/10 bg-primary px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
                 <div className="flex min-h-11 items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <ApplicationLogo src={primaryUnit?.logo_url} fallback={unitInitial} alt={`Logo ${primaryUnit?.nama || 'Yayasan'}`} width="44" height="44" className="h-11 w-11 text-sm text-white" />
+                        <ApplicationLogo src={primaryUnit?.logo_url || '/logo.png'} alt={`Logo ${primaryUnit?.nama || 'Yayasan'}`} width="44" height="44" className="h-11 w-11 text-white" />
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100">Portal Pegawai</p>
                             <p className="max-w-52 truncate text-sm font-bold leading-tight">Presensi {unitLabel}</p>
