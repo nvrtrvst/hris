@@ -108,6 +108,10 @@ fi
 step "Migrate database"
 $PHP_BIN artisan migrate --force 2>&1 | tail -4
 
+# ── Seed permissions (idempoten: pastikan permission baru ada di DB) ───────
+step "Seed permissions"
+$PHP_BIN artisan db:seed --class=RolePermissionSeeder --force 2>&1 | tail -4
+
 # ── Build asset (hanya jika ada perubahan JS/CSS) ─────────────────────────
 step "Build asset (Vite)"
 NEED_BUILD=false

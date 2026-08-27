@@ -8,6 +8,7 @@ use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Notifications\AnnouncementPush;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class AnnouncementController extends Controller
@@ -50,8 +51,12 @@ class AnnouncementController extends Controller
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $disk = config('filesystems.image_disk', 'public');
-            $imagePath = $request->file('image')->store('announcements', $disk);
+            try {
+                $disk = config('filesystems.image_disk', 'public');
+                $imagePath = $request->file('image')->store('announcements', $disk);
+            } catch (\Throwable $e) {
+                Log::warning('Gagal simpan gambar pengumuman', ['error' => $e->getMessage()]);
+            }
         }
 
         $announcement = Announcement::create([
@@ -121,7 +126,11 @@ class AnnouncementController extends Controller
                 }
             }
             $disk = config('filesystems.image_disk', 'public');
-            $data['image'] = $request->file('image')->store('announcements', $disk);
+            try {
+                $data['image'] = $request->file('image')->store('announcements', $disk);
+            } catch (\Throwable $e) {
+                Log::warning('Gagal simpan gambar pengumuman (update)', ['error' => $e->getMessage()]);
+            }
         }
 
         $announcement->update($data);
