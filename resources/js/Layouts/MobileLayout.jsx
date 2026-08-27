@@ -25,11 +25,21 @@ export default function MobileLayout({ user, header, children }) {
     );
     const [testMsg, setTestMsg] = useState(null);
 
-    // Auto-subscribe bila izin sudah pernah diberikan (tidak memunculkan prompt).
-    // User baru memicu prompt lewat tombol "Aktifkan Notifikasi" di menu.
+    // Auto-subscribe: bila izin sudah 'granted' langsung subscribe; bila 'default'
+    // minta izin saat buka pertama, lalu subscribe bila diberikan.
     useEffect(() => {
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        if (typeof Notification === 'undefined') return;
+        if (Notification.permission === 'granted') {
             initPush();
+        } else if (Notification.permission === 'default') {
+            Notification.requestPermission()
+                .then((perm) => {
+                    if (perm === 'granted') {
+                        initPush();
+                        setPushPermission('granted');
+                    }
+                })
+                .catch(() => {});
         }
     }, []);
 

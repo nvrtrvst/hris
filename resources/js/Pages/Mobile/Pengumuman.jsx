@@ -29,6 +29,9 @@ export default function Pengumuman({ auth, pengumuman }) {
                                             {a.title}
                                         </h2>
                                     </div>
+                                    {a.image_url && (
+                                        <img src={a.image_url} alt={a.title} className="mt-2 w-full rounded-lg border border-slate-200 object-cover" />
+                                    )}
                                     <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{a.body}</p>
                                     <div className="mt-3 flex items-center gap-4 text-[11px] text-slate-400">
                                         <span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{a.published_at ? format(parseISO(a.published_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}</span>

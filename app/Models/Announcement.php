@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\FileHelper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,6 +13,7 @@ class Announcement extends Model
     protected $fillable = [
         'title',
         'body',
+        'image',
         'unit_sekolah_id',
         'is_pinned',
         'published_at',
@@ -22,6 +24,13 @@ class Announcement extends Model
         'is_pinned' => 'boolean',
         'published_at' => 'datetime',
     ];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image ? FileHelper::fotoUrl($this->image) : null;
+    }
 
     public function unitSekolah()
     {

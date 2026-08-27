@@ -10,15 +10,15 @@ import { id as idLocale } from 'date-fns/locale/id';
 export default function PengumumanIndex({ auth, announcements, units, userUnitId, flash }) {
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16) });
+    const [form, setForm] = useState({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), image: null, imagePreview: null });
 
     const resetForm = () => {
-        setForm({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16) });
+        setForm({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), image: null, imagePreview: null });
         setEditing(null);
         setShowForm(false);
     };
     const openEdit = (a) => {
-        setForm({ title: a.title, body: a.body, is_pinned: a.is_pinned, unit_sekolah_id: a.unit_sekolah_id || '', published_at: a.published_at?.slice(0, 16) || '' });
+        setForm({ title: a.title, body: a.body, is_pinned: a.is_pinned, unit_sekolah_id: a.unit_sekolah_id || '', published_at: a.published_at?.slice(0, 16) || '', image: null, imagePreview: a.image_url || null });
         setEditing(a.id);
         setShowForm(true);
     };
@@ -26,7 +26,9 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
         e.preventDefault();
         const method = editing ? 'put' : 'post';
         const routeName = editing ? route('pengumuman.update', editing) : route('pengumuman.store');
-        router[method](routeName, form, { preserveState: true, onSuccess: () => resetForm() });
+        const payload = { ...form };
+        delete payload.imagePreview;
+        router[method](routeName, payload, { preserveState: true, onSuccess: () => resetForm() });
     };
     const destroy = (id) => {
         if (confirm('Hapus pengumuman ini?')) router.delete(route('pengumuman.destroy', id), { preserveState: true });
@@ -76,6 +78,16 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
                                 <label className="form-label text-xs">Isi Pengumuman <span className="text-danger">*</span></label>
                                 <textarea required value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })}
                                     rows={4} placeholder="Isi pengumuman..." className="input-field" />
+                            </div>
+                            <div>
+                                <label className="form-label text-xs">Gambar (opsional)</label>
+                                <input type="file" accept="image/*" onChange={(e) => {
+                                    const f = e.target.files?.[0] || null;
+                                    setForm((prev) => ({ ...prev, image: f, imagePreview: f ? URL.createObjectURL(f) : (editing ? prev.imagePreview : null) }));
+                                }} className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20" />
+                                {form.imagePreview && (
+                                    <img src={form.imagePreview} alt="Pratinjau" className="mt-2 h-32 w-auto rounded-lg border border-border object-cover" />
+                                )}
                             </div>
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                                 <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-text-primary">
@@ -131,6 +143,9 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
                                                 )}
                                                 <h3 className="text-sm font-extrabold text-text-primary">{a.title}</h3>
                                             </div>
+                                            {a.image_url && (
+                                                <img src={a.image_url} alt={a.title} className="mt-2 w-full max-h-60 rounded-lg border border-border object-cover" />
+                                            )}
                                             <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">{a.body}</p>
                                             <p className="mt-2 flex items-center gap-1 text-xs text-text-muted">
                                                 <Calendar className="h-3 w-3" />

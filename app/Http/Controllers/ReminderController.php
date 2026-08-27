@@ -58,7 +58,7 @@ class ReminderController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
-        if (! $user || ! $user->can('manage_master_data')) {
+        if (! $user || ! $user->can('manage_reminders')) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -74,6 +74,16 @@ class ReminderController extends Controller
             'recurring_schedule' => 'nullable|in:daily,weekly,monthly',
             'scheduled_at' => 'nullable|date|after:now',
         ]);
+
+        // Admin unit / pimpinan: kunci ke unit sendiri + filter pilihan pegawai.
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $validated['unit_sekolah_id'] = $user->unit_sekolah_id;
+            if (! empty($validated['target_user_ids'])) {
+                $allowed = User::whereHas('pegawai', fn ($q) => $q->forUnit($user->unit_sekolah_id))
+                    ->pluck('id')->all();
+                $validated['target_user_ids'] = array_values(array_intersect($validated['target_user_ids'], $allowed));
+            }
+        }
 
         $validated['created_by'] = $user->id;
         if (empty($validated['target_all']) && empty($validated['target_user_ids'])) {
@@ -93,11 +103,11 @@ class ReminderController extends Controller
     public function destroy(Reminder $reminder)
     {
         $user = auth()->user();
-        if (! $user || ! $user->can('manage_master_data')) {
+        if (! $user || ! $user->can('manage_reminders')) {
             abort(403, 'Akses ditolak.');
         }
 
-        // Admin unit hanya bisa hapus reminder mereka sendiri
+        // Admin unit / pimpinan: hanya reminder buatan sendiri.
         if ($user->unit_sekolah_id && ! $user->can('view_all_units') && $reminder->created_by !== $user->id) {
             abort(403, 'Akses ditolak.');
         }
@@ -110,7 +120,12 @@ class ReminderController extends Controller
     public function sendNow(Reminder $reminder)
     {
         $user = auth()->user();
-        if (! $user || ! $user->can('manage_master_data')) {
+        if (! $user || ! $user->can('manage_reminders')) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        // Admin unit / pimpinan: hanya reminder buatan sendiri.
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units') && $reminder->created_by !== $user->id) {
             abort(403, 'Akses ditolak.');
         }
 

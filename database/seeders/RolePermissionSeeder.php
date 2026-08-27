@@ -33,6 +33,7 @@ class RolePermissionSeeder extends Seeder
             'view_payroll',
             'view_laporan_kcd',
             'manage_master_data', // unit sekolah, komponen gaji, dll
+            'manage_reminders', // kirim reminder/notifikasi push ke pegawai
             'manage_users',
             'manage_roles',
             'manage_payroll',
@@ -57,6 +58,7 @@ class RolePermissionSeeder extends Seeder
             'manage_jadwal',
             'view_presensi',
             'view_izin',
+            'manage_reminders',
             // Payroll TIDAK lagi di role admin_unit — dialihkan ke jabatan
             // dgn flag `is_payroll_operator` (mis. Bendahara). Akses payroll
             // = operator jabatan (semua) + superadmin (view saja).
@@ -77,6 +79,7 @@ class RolePermissionSeeder extends Seeder
             // trait ScopesPimpinan (hanya bawahan langsung, bukan semua unit).
             'view_presensi',
             'view_jadwal',
+            'manage_reminders',
         ]);
     }
 }

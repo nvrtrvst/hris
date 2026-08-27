@@ -269,8 +269,10 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::post('hari-libur/sync-api', [HariLiburController::class, 'syncApi'])
             ->middleware('throttle:10,1')
             ->name('hari-libur.sync-api');
+    });
 
-        // Reminder Management
+    // Reminder Management — superadmin + admin_unit + pimpinan
+    Route::middleware('can:manage_reminders')->group(function () {
         Route::get('reminders', [ReminderController::class, 'index'])->name('reminders.index');
         Route::post('reminders', [ReminderController::class, 'store'])
             ->middleware('throttle:30,1')->name('reminders.store');
