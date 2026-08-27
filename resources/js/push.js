@@ -67,7 +67,7 @@ export async function initPush() {
                 endpoint: sub.endpoint,
                 public_key: arrayBufferToBase64(sub.getKey('p256dh')),
                 auth_token: arrayBufferToBase64(sub.getKey('auth')),
-                content_encoding: 'aesgcm',
+                content_encoding: 'aes128gcm',
             }),
         });
 

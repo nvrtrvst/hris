@@ -29,7 +29,7 @@ class PushSubscriptionController extends Controller
             $validated['endpoint'],
             $validated['public_key'] ?? null,
             $validated['auth_token'] ?? null,
-            $validated['content_encoding'] ?? 'aesgcm',
+            $validated['content_encoding'] ?? 'aes128gcm',
         );
 
         // Batasi jumlah subscription per user (cegah abuse / akumulasi row tak terbatas).
