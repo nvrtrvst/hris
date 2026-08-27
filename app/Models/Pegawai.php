@@ -278,6 +278,7 @@ class Pegawai extends Model
             ->get()
             ->first(function ($p) use ($jabatanNames) {
                 $j = $p->jabatanPrimer();
+
                 return $j && in_array($j->nama, $jabatanNames, true);
             });
     }
@@ -355,6 +356,7 @@ class Pegawai extends Model
                     }
                     $current->addDay();
                 }
+
                 return $count;
             });
     }

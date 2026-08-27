@@ -40,7 +40,7 @@ class PhotoOverlayServiceTest extends TestCase
 
         $out = app(PhotoOverlayService::class)->applyToImage($this->sampleBinary(), $data);
 
-        $this->assertStringStartsWith("RIFF", $out); // magic webp
+        $this->assertStringStartsWith('RIFF', $out); // magic webp
     }
 
     public function test_renders_without_alamat(): void
@@ -58,6 +58,6 @@ class PhotoOverlayServiceTest extends TestCase
 
         $out = app(PhotoOverlayService::class)->applyToImage($this->sampleBinary(), $data);
 
-        $this->assertStringStartsWith("RIFF", $out);
+        $this->assertStringStartsWith('RIFF', $out);
     }
 }

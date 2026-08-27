@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Http;
+
 class PhotoOverlayService
 {
     private string $fontRegular;
@@ -155,7 +157,7 @@ class PhotoOverlayService
 
         $tileUrl = 'https://tile.openstreetmap.org/'.$zoom.'/'.$tileX.'/'.$tileY.'.png';
         try {
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
+            $response = Http::withHeaders([
                 'User-Agent' => 'HRIS-Yayasan/1.0 (presensi photo overlay)',
             ])->timeout(5)->get($tileUrl);
             $tileData = $response->successful() ? $response->body() : null;

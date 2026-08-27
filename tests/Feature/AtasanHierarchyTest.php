@@ -70,7 +70,7 @@ class AtasanHierarchyTest extends TestCase
         $guru = $this->makePegawai('Guru Reza', $this->sd, 'Guru Mata Pelajaran');
         $bendahara = $this->makePegawai('Bendahara SD', $this->sd, 'Bendahara');
 
-        (new AtasanHierarchySeeder())->run();
+        (new AtasanHierarchySeeder)->run();
 
         $this->assertSame($ketuaYayasan->id, $kepsek->fresh()->atasan_langsung_id);
         $this->assertSame($ketuaYayasan->id, Pegawai::where('nama_lengkap', 'Staf Yayasan')->first()->atasan_langsung_id);
@@ -90,7 +90,7 @@ class AtasanHierarchyTest extends TestCase
         $manual = $this->makePegawai('Atasan Manual', $this->sd, 'Guru Kelas');
         $guru->update(['atasan_langsung_id' => $manual->id]);
 
-        (new AtasanHierarchySeeder())->run();
+        (new AtasanHierarchySeeder)->run();
 
         // Tidak ditimpa — tetap atasan manual.
         $this->assertSame($manual->id, $guru->fresh()->atasan_langsung_id);

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Jabatan;
+use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\Presensi;
@@ -71,7 +72,7 @@ class TapKeluarTest extends TestCase
         $hari = Carbon::now()->locale('id')->dayName;
         $pegawai = $this->makePegawaiTetap();
         $mapel = MataPelajaran::create(['nama' => 'Matematika']);
-        $jadwal = \App\Models\Jadwal::create([
+        $jadwal = Jadwal::create([
             'pegawai_id' => $pegawai->id,
             'unit_sekolah_id' => $this->unit->id,
             'mata_pelajaran_id' => $mapel->id,
@@ -124,7 +125,7 @@ class TapKeluarTest extends TestCase
         $hari = Carbon::now()->locale('id')->dayName;
         $pegawai = $this->makePegawaiTetap();
         $mapel = MataPelajaran::create(['nama' => 'Matematika']);
-        $jadwal = \App\Models\Jadwal::create([
+        $jadwal = Jadwal::create([
             'pegawai_id' => $pegawai->id,
             'unit_sekolah_id' => $this->unit->id,
             'mata_pelajaran_id' => $mapel->id,

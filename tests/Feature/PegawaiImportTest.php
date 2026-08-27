@@ -10,6 +10,7 @@ use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 use Tests\TestCase;
 
@@ -82,7 +83,7 @@ class PegawaiImportTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent('pegawai.csv', $csv, 'text/csv');
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         Excel::import(new PegawaiImport($unit->id, false, null), $file);
     }
 }

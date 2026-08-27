@@ -44,7 +44,7 @@ class HariLiburTest extends TestCase
         $this->actingAs($this->makeAdmin(), 'web_admin')
             ->get(route('hari-libur.index', ['year' => 2026]))
             ->assertOk()
-                ->assertInertia(fn ($page) => $page->component('HariLibur/Index')
+            ->assertInertia(fn ($page) => $page->component('HariLibur/Index')
                 ->has('holidays'));
     }
 

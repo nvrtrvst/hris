@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 class SeedJabatanDapodik extends Command
 {
     protected $signature = 'jabatan:seed-dapodik';
+
     protected $description = 'Seed jabatan referensi Dapodik + hierarchy_level';
 
     public function handle(): int
