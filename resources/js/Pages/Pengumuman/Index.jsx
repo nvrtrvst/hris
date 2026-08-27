@@ -100,7 +100,7 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
                             </div>
                             <div>
                                 <label className="form-label text-xs">Gambar (opsional)</label>
-                                <p className="text-xs text-text-muted">Maksimal 2 MB, format JPG/PNG/WebP.</p>
+                                <p className="text-xs text-text-muted">Hanya gambar JPG/PNG/WebP (maks 2 MB). Untuk dokumen, gunakan kolom <span className="font-semibold">Lampiran File</span> di bawah.</p>
                                 <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => {
                                     const f = e.target.files?.[0] || null;
                                     setImageError(null);

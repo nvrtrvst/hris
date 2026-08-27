@@ -40,15 +40,7 @@ class AnnouncementController extends Controller
             $request->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
         }
 
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'body' => 'required|string|max:5000',
-            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
-            'is_pinned' => 'nullable|boolean',
-            'published_at' => 'nullable|date',
-            'image' => 'nullable|image|mimes:jpeg,png,webp|max:2048',
-            'file' => 'nullable|file|extensions:pdf,doc,docx,xls,xlsx,ppt,pptx,zip|max:5120',
-        ]);
+        $validated = $request->validate($this->announcementRules(), $this->announcementMessages());
 
         $imagePath = null;
         if ($request->hasFile('image')) {
@@ -193,5 +185,31 @@ class AnnouncementController extends Controller
         $announcement->delete();
 
         return back()->with('message', 'Pengumuman dihapus.');
+    }
+
+    private function announcementRules(): array
+    {
+        return [
+            'title' => 'required|string|max:255',
+            'body' => 'required|string|max:5000',
+            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'is_pinned' => 'nullable|boolean',
+            'published_at' => 'nullable|date',
+            'image' => 'nullable|image|mimes:jpeg,png,webp|max:2048',
+            'file' => 'nullable|file|extensions:pdf,doc,docx,xls,xlsx,ppt,pptx,zip|max:5120',
+        ];
+    }
+
+    private function announcementMessages(): array
+    {
+        return [
+            'title.required' => 'Judul wajib diisi.',
+            'body.required' => 'Isi pengumuman wajib diisi.',
+            'image.image' => 'Kolom Gambar hanya untuk file gambar (JPG, PNG, atau WebP). Untuk dokumen, gunakan kolom Lampiran File.',
+            'image.mimes' => 'Gambar harus berformat JPG, PNG, atau WebP.',
+            'image.max' => 'Gambar maksimal 2 MB.',
+            'file.extensions' => 'Lampiran File harus berformat PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, atau ZIP.',
+            'file.max' => 'Lampiran File maksimal 5 MB.',
+        ];
     }
 }
