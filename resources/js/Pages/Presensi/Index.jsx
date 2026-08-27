@@ -189,7 +189,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                     <td className="px-4 py-3.5 whitespace-nowrap">
                         {auth.permissions?.includes('manage_master_data') ? (
                             <select
-                                className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[parent.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                                className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[parent.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
                                 value={parent.status}
                                 onChange={(e) => setConfirmStatus({ id: parent.id, statusLama: parent.status, statusBaru: e.target.value })}
                             >
@@ -280,7 +280,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             <td className="px-4 py-3.5 whitespace-nowrap">
                                 {auth.permissions?.includes('manage_master_data') ? (
                                     <select
-                                        className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                                        className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
                                         value={c.status}
                                         onChange={(e) => setConfirmStatus({ id: c.id, statusLama: c.status, statusBaru: e.target.value })}
                                     >
@@ -872,7 +872,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                                         {auth.permissions?.includes('manage_master_data') ? (
                                                             <select
-                                                                className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[p.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                                                                className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[p.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
                                                                 value={p.status}
                                                                 onChange={(e) => setConfirmStatus({ id: p.id, statusLama: p.status, statusBaru: e.target.value })}
                                                             >
