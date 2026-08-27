@@ -7,14 +7,17 @@
     @page { margin: 16mm 12mm; }
     * { box-sizing: border-box; }
     body { font-family: 'Helvetica', 'Arial', sans-serif; color: #1f2937; font-size: 11px; margin: 0; }
-    .kop { text-align: center; }
-    .kop-table { margin: 0 auto; border-collapse: collapse; }
-    .kop-logo { padding-right: 14px; vertical-align: middle; }
-    .kop-text { vertical-align: middle; text-align: left; }
-    .kop-name { font-size: 18px; font-weight: 800; letter-spacing: .5px; color: #0f3d3e; }
-    .kop-sub { font-size: 10px; color: #6b7280; margin-top: 2px; }
-    .rule { border: 0; height: 3px; background: #0f3d3e; margin: 6px 0 2px; }
-    .rule-thin { border: 0; height: 1px; background: #0f3d3e; margin: 0 0 10px; }
+    .kop { margin-bottom: 2px; }
+    .kop-table { width: 100%; border-collapse: collapse; }
+    .kop-logo { width: 76px; vertical-align: middle; padding-right: 16px; }
+    .kop-logo img { height: 64px; width: auto; display: block; }
+    .kop-info { vertical-align: middle; }
+    .kop-name { font-size: 17px; font-weight: 800; letter-spacing: .5px; color: #0f3d3e; text-transform: uppercase; line-height: 1.2; }
+    .kop-tagline { font-size: 9.5px; font-style: italic; color: #0f3d3e; margin-top: 1px; }
+    .kop-address { font-size: 9.5px; color: #374151; margin-top: 4px; }
+    .kop-contact { font-size: 9px; color: #6b7280; margin-top: 2px; }
+    .rule-bold { border: 0; height: 3px; background: #0f3d3e; margin: 6px 0 0; }
+    .rule-thin { border: 0; height: 1px; background: #0f3d3e; margin: 1px 0 8px; }
     .doc-title { text-align: center; font-size: 14px; font-weight: 800; margin: 10px 0 2px; text-transform: uppercase; }
     .doc-meta { text-align: center; font-size: 10px; color: #374151; margin-bottom: 10px; }
     table { width: 100%; border-collapse: collapse; }
@@ -30,12 +33,14 @@
             <tr>
                 @if($logoPath)
                     <td class="kop-logo">
-                        <img src="{{ $logoPath }}" alt="Logo Yayasan" style="height:56px;width:{{ $logoWidth }}px">
+                        <img src="{{ $logoPath }}" alt="Logo Yayasan" style="height:64px;width:{{ $logoWidth }}px">
                     </td>
                 @endif
-                <td class="kop-text">
-                    <div class="kop-name">{{ config('app.name') }}</div>
-                    <div class="kop-sub">Sistem Informasi Manajemen SDM &amp; Presensi Yayasan</div>
+                <td class="kop-info">
+                    <div class="kop-name">{{ config('yayasan.name') }}</div>
+                    <div class="kop-tagline">{{ config('yayasan.tagline') }}</div>
+                    <div class="kop-address">{{ config('yayasan.address') }}</div>
+                    <div class="kop-contact">Telp: {{ config('yayasan.phone') }} &nbsp;|&nbsp; Email: {{ config('yayasan.email') }} &nbsp;|&nbsp; Web: {{ config('yayasan.website') }}</div>
                 </td>
             </tr>
         </table>

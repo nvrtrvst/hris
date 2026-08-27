@@ -130,7 +130,7 @@ class LaporanController extends Controller
         if ($logoPath && file_exists($logoPath)) {
             $sz = @getimagesize($logoPath);
             if ($sz) {
-                $logoWidth = (int) round(56 * $sz[0] / $sz[1]);
+                $logoWidth = (int) round(64 * $sz[0] / $sz[1]);
             }
         }
 
