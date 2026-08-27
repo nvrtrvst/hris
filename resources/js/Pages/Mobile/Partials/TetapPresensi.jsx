@@ -720,10 +720,10 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 </>
             )}
 
-            {activeJadwals.length === 0 && jadwals.length > 0 && (
+            {activeJadwals.length === 0 && jadwals.length > 0 && phase !== SELESAI && (
                 <Empty icon={Clock} title="Tidak ada jadwal yang bisa di-tap" subtitle={semuaBeres ? 'Semua jadwal sudah berakhir — lanjut ke foto sore.' : 'Jadwal aktif akan muncul setelah jam mengajar tiba.'} />
             )}
-            {jadwals.length === 0 && (
+            {jadwals.length === 0 && phase !== SELESAI && (
                 <Empty icon={Clock} title="Tidak ada jadwal hari ini" subtitle="Jika tidak ada jadwal, lanjut ke foto sore." />
             )}
 
@@ -733,7 +733,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                         <CheckCircle className="h-8 w-8" />
                     </div>
                     <h2 className="text-lg font-bold text-slate-900">Presensi hari ini selesai</h2>
-                    <p className="mt-1 text-sm text-slate-500">Foto pagi, tap jadwal, dan foto sore sudah lengkap.</p>
+                    <p className="mt-1 text-sm text-slate-500">{tugasLuarDone ? 'Presensi dinas luar tercatat lengkap.' : 'Foto pagi, tap jadwal, dan foto sore sudah lengkap.'}</p>
                 </div>
             )}
 
