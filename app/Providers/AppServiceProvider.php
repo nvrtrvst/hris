@@ -31,13 +31,14 @@ class AppServiceProvider extends ServiceProvider
         // Dependency (WebPush + ReportHandler) di-bind oleh WebPushServiceProvider.
         Notification::extend('webpush', fn ($app) => $app->make(WebPushChannel::class));
 
-        // [AUDIT M1] Integrasi keuangan WAJIB HTTPS di produksi.
-        // Cegah payload payroll/siswa terkirim plaintext ke endpoint tak aman.
-        if (app()->environment('production')) {
+        // [AUDIT M1] Produksi: integrasi keuangan wajib https,
+        // KECUALI loopback (satu server, trafik tidak lewat jaringan).
+        // Tidak throw saat composer install (runningInConsole).
+        if (app()->environment('production') && ! app()->runningInConsole()) {
             $keuanganUrl = (string) config('keuangan.url');
-            if ($keuanganUrl !== '' && ! str_starts_with($keuanganUrl, 'https://')) {
+            if ($keuanganUrl !== '' && ! $this->isKeuanganUrlAman($keuanganUrl)) {
                 throw new \RuntimeException(
-                    'KEUANGAN_API_URL harus https:// di produksi. Perbaiki .env sebelum deploy.'
+                    'KEUANGAN_API_URL harus https:// atau loopback (127.0.0.1/localhost) di produksi.'
                 );
             }
         }
@@ -57,5 +58,19 @@ class AppServiceProvider extends ServiceProvider
                 ->line('Apabila Anda tidak pernah mengajukan permohonan ini, Anda tidak perlu melakukan tindakan apa pun. Keamanan akun Anda tetap terjaga.')
                 ->salutation('Hormat kami, Tim IT Yayasan Nuurul Muttaqiin');
         });
+    }
+
+    /**
+     * Izinkan https, atau loopback (satu server) yang trafiknya tidak lewat jaringan.
+     */
+    private function isKeuanganUrlAman(string $url): bool
+    {
+        if (str_starts_with($url, 'https://')) {
+            return true;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST) ?: '';
+
+        return in_array($host, ['127.0.0.1', 'localhost', '::1'], true);
     }
 }
