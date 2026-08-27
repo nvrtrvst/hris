@@ -105,6 +105,23 @@ export default function LaporanIndex({ auth, units }) {
         if (filter.report_type === 'lemburan') url = route('laporan.lemburan');
 
         const params = new URLSearchParams();
+        params.append('type', filter.report_type);
+        params.append('start_date', filter.start_date);
+        params.append('end_date', filter.end_date);
+        if (filter.unit_sekolah_id) {
+            params.append('unit_sekolah_id', filter.unit_sekolah_id);
+        }
+        if (filter.jenis_filter) {
+            params.append('jenis_filter', filter.jenis_filter);
+        }
+
+        window.location.href = `${url}?${params.toString()}`;
+    };
+
+    const handleDownloadPdf = () => {
+        const url = route('laporan.pdf');
+        const params = new URLSearchParams();
+        params.append('type', filter.report_type);
         params.append('start_date', filter.start_date);
         params.append('end_date', filter.end_date);
         if (filter.unit_sekolah_id) {
@@ -214,6 +231,9 @@ export default function LaporanIndex({ auth, units }) {
                             </button>
                             <button onClick={handleDownload} className="btn-secondary inline-flex items-center gap-2">
                                 <Download className="h-4 w-4" /> Download Excel
+                            </button>
+                            <button onClick={handleDownloadPdf} className="btn-secondary inline-flex items-center gap-2">
+                                <FileText className="h-4 w-4" /> Download PDF
                             </button>
                         </div>
                     </div>

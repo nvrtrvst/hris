@@ -102,6 +102,53 @@ class LaporanController extends Controller
         );
     }
 
+    public function exportPdf(LaporanGenerateRequest $request)
+    {
+        $validated = $request->validated();
+        $type = $validated['type'];
+
+        $export = match ($type) {
+            'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
+            'penggajian' => new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
+            'lemburan' => new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
+        };
+
+        $rows = $export->collection()->map(fn ($item) => $export->map($item))->all();
+        $headings = $export->headings();
+
+        $unitName = 'Semua Unit Sekolah';
+        if (! empty($validated['unit_sekolah_id'])) {
+            $unit = UnitSekolah::find($validated['unit_sekolah_id']);
+            $unitName = $unit ? $unit->nama : $unitName;
+        }
+
+        $periodeStr = Carbon::parse($validated['start_date'])->format('d/m/Y')
+            .' s/d '.Carbon::parse($validated['end_date'])->format('d/m/Y');
+
+        $logoPath = $this->resolveYayasanLogoPath();
+        $logoData = null;
+        if ($logoPath && file_exists($logoPath)) {
+            $logoData = 'data:image/'.pathinfo($logoPath, PATHINFO_EXTENSION).';base64,'.base64_encode(file_get_contents($logoPath));
+        }
+
+        $title = match ($type) {
+            'presensi' => 'LAPORAN REKAPITULASI PRESENSI PEGAWAI',
+            'penggajian' => 'LAPORAN REKAPITULASI PENGGAJIAN PEGAWAI',
+            'lemburan' => 'LAPORAN LEMBUR PEGAWAI',
+        };
+
+        $filename = match ($type) {
+            'presensi' => 'Laporan_Presensi',
+            'penggajian' => 'Laporan_Rekap_Gaji',
+            'lemburan' => 'Laporan_Lemburan',
+        };
+
+        $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoData'))
+            ->setPaper('A4', 'landscape');
+
+        return $pdf->download($filename.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf');
+    }
+
     public function kcdIndex()
     {
         $user = request()->user();
