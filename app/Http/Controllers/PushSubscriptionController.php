@@ -85,11 +85,21 @@ class PushSubscriptionController extends Controller
             abort(401);
         }
 
+        // Cek VAPID dulu — pesan lebih spesifik daripada cuma "no subscription".
+        $vapidPublic = config('webpush.vapid.public_key');
+        $vapidPrivate = config('webpush.vapid.private_key');
+        if (empty($vapidPublic) || empty($vapidPrivate)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'VAPID belum di-set di .env server. Jalankan: php artisan webpush:vapid — lalu copy VAPID_PUBLIC_KEY & VAPID_PRIVATE_KEY ke .env, lalu php artisan config:clear.',
+            ]);
+        }
+
         $count = $user->pushSubscriptions()->count();
         if ($count === 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Belum ada subscription. Pastikan VAPID di-set di .env, lalu RELOAD PWA & grant izin notifikasi.',
+                'message' => 'VAPID OK, tapi device belum subscribe. Tutup PWA seluruhnya, buka lagi, lalu di menu klik "Aktifkan Notifikasi" (grant izin notifikasi).',
             ]);
         }
 
