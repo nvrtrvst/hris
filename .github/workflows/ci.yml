@@ -10,9 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    env:
-      APP_ENV: testing
-
     services:
       mysql:
         image: mysql:8.0
@@ -46,6 +43,7 @@ jobs:
       - name: Prepare Environment
         run: |
           cp .env.example .env
+          echo 'APP_ENV=testing' >> .env
           php artisan key:generate
 
       - name: Install Dependencies
