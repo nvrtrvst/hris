@@ -10,6 +10,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      APP_ENV: testing
+
     services:
       mysql:
         image: mysql:8.0
