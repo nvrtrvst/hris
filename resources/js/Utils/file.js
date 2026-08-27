@@ -26,10 +26,13 @@ export function validateUpload(file, { maxBytes, accept, label = 'File' }) {
 
     if (accept && accept.length) {
         const ext = (file.name.split('.').pop() || '').toLowerCase();
-        const ok = accept.includes(file.type) || accept.some((a) => a.split('/')[1] === ext);
+        const ok = accept.some((a) => {
+            if (a.includes('/')) return a === file.type; // MIME, mis. image/jpeg
+            return a.toLowerCase() === ext; // ekstensi, mis. docx
+        });
         if (!ok) {
-            const exts = accept.map((a) => (a.split('/')[1] || a).toUpperCase()).join(', ');
-            return `Format ${label} tidak didukung. Gunakan: ${exts}.`;
+            const labels = accept.map((a) => (a.includes('/') ? (a.split('/')[1] || a) : a).toUpperCase()).join(', ');
+            return `Format ${label} tidak didukung. Gunakan: ${labels}.`;
         }
     }
 

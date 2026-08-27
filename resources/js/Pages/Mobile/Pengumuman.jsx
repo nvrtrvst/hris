@@ -2,7 +2,7 @@ import React from 'react';
 import { Head } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Empty } from '@/Components/MobileUI';
-import { Megaphone, PinIcon, Clock3 } from 'lucide-react';
+import { Megaphone, PinIcon, Clock3, Paperclip } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
@@ -31,6 +31,12 @@ export default function Pengumuman({ auth, pengumuman }) {
                                     </div>
                                     {a.image_url && (
                                         <img src={a.image_url} alt={a.title} className="mt-2 w-full rounded-lg border border-slate-200 object-cover" />
+                                    )}
+                                    {a.file_url && (
+                                        <a href={a.file_url} target="_blank" rel="noopener noreferrer"
+                                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-primary">
+                                            <Paperclip className="h-3.5 w-3.5" /> Unduh lampiran
+                                        </a>
                                     )}
                                     <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{a.body}</p>
                                     <div className="mt-3 flex items-center gap-4 text-[11px] text-slate-400">

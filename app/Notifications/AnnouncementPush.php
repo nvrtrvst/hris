@@ -24,6 +24,7 @@ class AnnouncementPush extends Notification
             'title' => $this->announcement->title,
             'message' => Str::limit(strip_tags($this->announcement->body), 140),
             'image' => $this->announcement->image_url,
+            'file_url' => $this->announcement->file_url,
         ];
     }
 

@@ -3,34 +3,44 @@ import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Pagination from '@/Components/Pagination';
 import StatCard from '@/Components/StatCard';
-import { Calendar, Megaphone, Pencil, Pin as PinIcon, Plus, Save, Trash2, X as XIcon } from 'lucide-react';
+import { Calendar, Megaphone, Paperclip, Pencil, Pin as PinIcon, Plus, Save, Trash2, X as XIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import { validateUpload } from '@/Utils/file';
 
+const FILE_MAX = 5 * 1024 * 1024;
+const FILE_ACCEPT = ['application/pdf', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip'];
+
 export default function PengumumanIndex({ auth, announcements, units, userUnitId, flash }) {
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), image: null, imagePreview: null });
-    const [fileError, setFileError] = useState(null);
+    const [form, setForm] = useState({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), image: null, imagePreview: null, file: null, fileRemoved: false });
+    const [imageError, setImageError] = useState(null);
+    const [docError, setDocError] = useState(null);
+    const [editFileUrl, setEditFileUrl] = useState(null);
 
     const resetForm = () => {
-        setForm({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), image: null, imagePreview: null });
+        setForm({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), image: null, imagePreview: null, file: null, fileRemoved: false });
         setEditing(null);
         setShowForm(false);
+        setImageError(null);
+        setDocError(null);
+        setEditFileUrl(null);
     };
     const openEdit = (a) => {
-        setForm({ title: a.title, body: a.body, is_pinned: a.is_pinned, unit_sekolah_id: a.unit_sekolah_id || '', published_at: a.published_at?.slice(0, 16) || '', image: null, imagePreview: a.image_url || null });
+        setForm({ title: a.title, body: a.body, is_pinned: a.is_pinned, unit_sekolah_id: a.unit_sekolah_id || '', published_at: a.published_at?.slice(0, 16) || '', image: null, imagePreview: a.image_url || null, file: null, fileRemoved: false });
+        setEditFileUrl(a.file_url || null);
         setEditing(a.id);
         setShowForm(true);
     };
     const submit = (e) => {
         e.preventDefault();
-        if (fileError) return;
+        if (imageError || docError) return;
         const method = editing ? 'put' : 'post';
         const routeName = editing ? route('pengumuman.update', editing) : route('pengumuman.store');
         const payload = { ...form };
         delete payload.imagePreview;
+        payload.remove_file = form.fileRemoved ? 1 : 0;
         router[method](routeName, payload, { preserveState: true, onSuccess: () => resetForm() });
     };
     const destroy = (id) => {
@@ -87,11 +97,11 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
                                 <p className="text-xs text-text-muted">Maksimal 2 MB, format JPG/PNG/WebP.</p>
                                 <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => {
                                     const f = e.target.files?.[0] || null;
-                                    setFileError(null);
+                                    setImageError(null);
                                     if (f) {
                                         const err = validateUpload(f, { maxBytes: 2 * 1024 * 1024, accept: ['image/jpeg', 'image/png', 'image/webp'], label: 'Gambar' });
                                         if (err) {
-                                            setFileError(err);
+                                            setImageError(err);
                                             setForm((prev) => ({ ...prev, image: null, imagePreview: null }));
                                             e.target.value = '';
                                             return;
@@ -102,7 +112,37 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
                                 {form.imagePreview && (
                                     <img src={form.imagePreview} alt="Pratinjau" className="mt-2 h-32 w-auto rounded-lg border border-border object-cover" />
                                 )}
-                                {fileError && <p className="mt-1 text-xs font-medium text-rose-600">{fileError}</p>}
+                                {imageError && <p className="mt-1 text-xs font-medium text-rose-600">{imageError}</p>}
+                            </div>
+                            <div>
+                                <label className="form-label text-xs">Lampiran File (opsional)</label>
+                                <p className="text-xs text-text-muted">Maksimal 5 MB, format PDF/DOC/XLS/PPT/ZIP.</p>
+                                <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip" onChange={(e) => {
+                                    const f = e.target.files?.[0] || null;
+                                    setDocError(null);
+                                    if (f) {
+                                        const err = validateUpload(f, { maxBytes: FILE_MAX, accept: FILE_ACCEPT, label: 'File' });
+                                        if (err) {
+                                            setDocError(err);
+                                            setForm((prev) => ({ ...prev, file: null, fileRemoved: true }));
+                                            e.target.value = '';
+                                            return;
+                                        }
+                                    }
+                                    setForm((prev) => ({ ...prev, file: f, fileRemoved: false }));
+                                }} className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20" />
+                                {(form.file || (editing && !form.fileRemoved && editFileUrl)) && (
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <span className="truncate text-xs text-text-secondary">
+                                            {form.file ? form.file.name : 'Lampiran saat ini'}
+                                        </span>
+                                        <button type="button" onClick={() => setForm((prev) => ({ ...prev, file: null, fileRemoved: true }))}
+                                            className="rounded-lg bg-surface px-2 py-1 text-[10px] font-bold text-danger hover:bg-danger/10">
+                                            Hapus
+                                        </button>
+                                    </div>
+                                )}
+                                {docError && <p className="mt-1 text-xs font-medium text-rose-600">{docError}</p>}
                             </div>
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                                 <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-text-primary">
@@ -160,6 +200,12 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
                                             </div>
                                             {a.image_url && (
                                                 <img src={a.image_url} alt={a.title} className="mt-2 w-full max-h-60 rounded-lg border border-border object-cover" />
+                                            )}
+                                            {a.file_url && (
+                                                <a href={a.file_url} target="_blank" rel="noopener noreferrer"
+                                                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10">
+                                                    <Paperclip className="h-3.5 w-3.5" /> Unduh lampiran
+                                                </a>
                                             )}
                                             <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">{a.body}</p>
                                             <p className="mt-2 flex items-center gap-1 text-xs text-text-muted">

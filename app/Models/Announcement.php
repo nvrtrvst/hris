@@ -14,6 +14,7 @@ class Announcement extends Model
         'title',
         'body',
         'image',
+        'file',
         'unit_sekolah_id',
         'is_pinned',
         'published_at',
@@ -25,11 +26,16 @@ class Announcement extends Model
         'published_at' => 'datetime',
     ];
 
-    protected $appends = ['image_url'];
+    protected $appends = ['image_url', 'file_url'];
 
     public function getImageUrlAttribute(): ?string
     {
         return $this->image ? FileHelper::fotoUrl($this->image) : null;
+    }
+
+    public function getFileUrlAttribute(): ?string
+    {
+        return $this->file ? FileHelper::fotoUrl($this->file) : null;
     }
 
     public function unitSekolah()
