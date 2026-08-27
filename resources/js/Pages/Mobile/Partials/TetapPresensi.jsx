@@ -109,7 +109,9 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const lemburUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
 
     const tugasLuarOpen = useMemo(() => presensiHariIni.some((p) => p.is_tugas_luar && p.jam_masuk && !p.jam_keluar), [presensiHariIni]);
-const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_luar && p.jam_masuk), [presensiHariIni]);
+    const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_luar && p.jam_masuk), [presensiHariIni]);
+    const tugasLuarDone = useMemo(() => presensiHariIni.some((p) => p.is_tugas_luar && p.jam_masuk && p.jam_keluar), [presensiHariIni]);
+    const isDinasLuarFlow = tugasLuarOpen || (isTugasLuar && !tugasLuarRecord);
 
     const geofence = useMemo(() => {
         if (!currentPosition || !lemburUnit) return null;
@@ -211,7 +213,7 @@ const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_lua
 
         if (!capturedPhoto) { setError('Silakan ambil foto terlebih dahulu.'); return; }
         if (!currentPosition) { setError('Lokasi belum tersedia. Pastikan GPS aktif.'); return; }
-        if (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) { setError('Tujuan tugas luar wajib diisi.'); return; }
+        if (isDinasLuarFlow && !tugasLuarRecord && !tujuan.trim()) { setError('Tujuan tugas luar wajib diisi.'); return; }
         if (!isTugasLuar && geoBlocked) { setError(`Anda di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m).`); return; }
 
         setIsSubmitting(true);
@@ -220,8 +222,8 @@ const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_lua
             _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
             foto: capturedPhoto,
             tipe,
-            is_tugas_luar: isTugasLuar,
-            tujuan: isTugasLuar ? tujuan : null,
+            is_tugas_luar: isDinasLuarFlow,
+            tujuan: isDinasLuarFlow ? (tugasLuarRecord?.tujuan || tujuan) : null,
             keterangan: null,
             latitude: currentPosition?.latitude ?? null,
             longitude: currentPosition?.longitude ?? null,
@@ -413,26 +415,50 @@ const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_lua
                 </div>
             </div>
 
-            <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
-                <div>
-                    <p className="text-sm font-bold text-slate-900">Mode tugas luar</p>
-                    <p className="mt-0.5 text-xs text-slate-500">Dikecualikan dari cek radius, perlu tujuan</p>
-                </div>
-                <Toggle checked={isTugasLuar} onChange={() => setIsTugasLuar((prev) => !prev)} tone="sky" />
-            </Card>
+            {tugasLuarRecord ? (
+                <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
+                    <div>
+                        <p className="text-sm font-bold text-slate-900">{tugasLuarDone ? 'Tugas luar selesai' : 'Tugas luar berlangsung'}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{tugasLuarDone ? 'Presensi dinas luar sudah lengkap.' : 'Dikecualikan dari cek radius, perlu tujuan'}</p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${tugasLuarDone ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'}`}>
+                        {tugasLuarDone ? 'Selesai' : 'Aktif'}
+                    </span>
+                </Card>
+            ) : (
+                <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
+                    <div>
+                        <p className="text-sm font-bold text-slate-900">Mode tugas luar</p>
+                        <p className="mt-0.5 text-xs text-slate-500">Dikecualikan dari cek radius, perlu tujuan</p>
+                    </div>
+                    <Toggle checked={isTugasLuar} onChange={() => setIsTugasLuar((prev) => !prev)} tone="sky" />
+                </Card>
+            )}
 
-            {isTugasLuar && (
+            {tugasLuarRecord ? (
                 <div className="mb-4">
-                    <label htmlFor="tujuan" className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tujuan tugas luar</label>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tujuan tugas luar</label>
                     <input
-                        id="tujuan"
                         type="text"
-                        value={tujuan}
-                        onChange={(e) => setTujuan(e.target.value)}
-                        placeholder="Contoh: Rapat dinas di Dinas Pendidikan"
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-200"
+                        value={tugasLuarRecord.tujuan || tujuan}
+                        readOnly
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
                     />
                 </div>
+            ) : (
+                isTugasLuar && (
+                    <div className="mb-4">
+                        <label htmlFor="tujuan" className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tujuan tugas luar</label>
+                        <input
+                            id="tujuan"
+                            type="text"
+                            value={tujuan}
+                            onChange={(e) => setTujuan(e.target.value)}
+                            placeholder="Contoh: Rapat dinas di Dinas Pendidikan"
+                            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-200"
+                        />
+                    </div>
+                )
             )}
 
             {tugasLuarOpen && tugasLuarRecord && (
@@ -685,11 +711,11 @@ const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_lua
 
             <button
                 type="button"
-                onClick={() => handleSubmitFoto(isTugasLuar ? (tugasLuarOpen ? 'keluar' : 'masuk') : (phase === FOTO_PAGI ? 'masuk' : 'keluar'))}
-                        disabled={isSubmitting || !capturedPhoto || !currentPosition || (!geofence?.inside && !isTugasLuar) || (isTugasLuar && !tugasLuarOpen && !tujuan.trim())}
-                        className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isTugasLuar ? 'bg-sky-500' : 'bg-primary'}`}
-                    >
-                        {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isTugasLuar ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : `Kirim ${phase === FOTO_PAGI ? 'foto pagi' : 'foto sore'}`}
+                onClick={() => handleSubmitFoto(isDinasLuarFlow ? (tugasLuarOpen ? 'keluar' : 'masuk') : (phase === FOTO_PAGI ? 'masuk' : 'keluar'))}
+                disabled={isSubmitting || !capturedPhoto || !currentPosition || (!geofence?.inside && !isDinasLuarFlow) || (isDinasLuarFlow && !tugasLuarRecord && !tujuan.trim()) || presensiComplete}
+                className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isDinasLuarFlow ? 'bg-sky-500' : 'bg-primary'}`}
+            >
+                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isDinasLuarFlow ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : `Kirim ${phase === FOTO_PAGI ? 'foto pagi' : 'foto sore'}`}
                     </button>
                 </>
             )}
