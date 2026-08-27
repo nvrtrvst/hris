@@ -116,33 +116,26 @@ $PHP_BIN artisan migrate --force 2>&1 | tail -4
 step "Seed permissions"
 $PHP_BIN artisan db:seed --class=RolePermissionSeeder --force 2>&1 | tail -4
 
-# ── Build asset (hanya jika ada perubahan JS/CSS) ─────────────────────────
+# ── Build asset (selalu build ulang agar mencerminkan source terbaru) ──────
 step "Build asset (Vite)"
-NEED_BUILD=false
+# npm ci hanya jika package-lock berubah (node_modules sudah ada umumnya)
 if [[ "$BEFORE" != "$AFTER" ]]; then
-    if ! git diff --quiet "$BEFORE" "$AFTER" -- resources/ tailwind.config.js vite.config.js package.json package-lock.json postcss.config.js; then
-        NEED_BUILD=true
+    if ! git diff --quiet "$BEFORE" "$AFTER" -- package-lock.json; then
+        npm ci --no-audit --no-fund 2>&1 | tail -2 || true
     fi
-elif [[ ! -f public/build/manifest.json ]]; then
-    NEED_BUILD=true
 fi
 
-if [[ "$NEED_BUILD" == "true" ]]; then
-    # npm install hanya jika package-lock berubah (node_modules sudah ada umumnya)
-    if [[ "$BEFORE" != "$AFTER" ]]; then
-        if ! git diff --quiet "$BEFORE" "$AFTER" -- package-lock.json; then
-            npm ci --no-audit --no-fund 2>&1 | tail -2 || true
-        fi
-    fi
-    npm run build 2>&1 | tail -6
-    # Asset hasil build harus bisa dibaca www-data (web server)
-    if command -v sudo >/dev/null 2>&1; then
-        sudo chown -R www-data:www-data public/build
-    fi
-    info "Build asset selesai + chown www-data."
-else
-    info "Tidak ada perubahan JS/CSS — pakai build yang sudah ada."
+# Bersihkan cache Vite + build lama supaya tidak ada asset kadaluarsa.
+rm -rf node_modules/.vite public/build
+npm run build 2>&1 | tail -8
+if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+    fail "npm run build GAGAL — asset tidak diperbarui. Cek error di atas."
 fi
+# Asset hasil build harus bisa dibaca www-data (web server)
+if command -v sudo >/dev/null 2>&1; then
+    sudo chown -R www-data:www-data public/build
+fi
+info "Build asset selesai + chown www-data."
 
 # ── Clear cache ───────────────────────────────────────────────────────────
 step "Clear cache (routes/views/config)"
