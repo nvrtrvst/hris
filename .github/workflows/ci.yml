@@ -43,15 +43,15 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Install Dependencies
-        run: |
-          composer install --no-progress --prefer-dist
-          npm ci
-
       - name: Prepare Environment
         run: |
           cp .env.example .env
           php artisan key:generate
+
+      - name: Install Dependencies
+        run: |
+          composer install --no-progress --prefer-dist
+          npm ci
 
       - name: Build Frontend
         run: npm run build
