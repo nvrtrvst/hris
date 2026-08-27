@@ -311,8 +311,12 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
     });
 };
 
-const StatCard = ({ label, value, Icon, iconBg, iconCls }) => (
-    <div className="stat-card group hover:shadow-card-hover transition-shadow">
+const StatCard = ({ label, value, Icon, iconBg, iconCls, onClick, active }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className={`stat-card group hover:shadow-card-hover transition-shadow text-left w-full ${active ? 'ring-2 ring-primary' : ''}`}
+    >
         <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg} transition-transform group-hover:scale-105`}>
             <Icon className={`h-5 w-5 ${iconCls}`} />
         </div>
@@ -320,7 +324,7 @@ const StatCard = ({ label, value, Icon, iconBg, iconCls }) => (
             <p className="text-2xl font-extrabold leading-none text-primary tabular-nums">{value}</p>
             <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary">{label}</p>
         </div>
-    </div>
+    </button>
 );
 
 const StatusDistribution = ({ stats }) => {
@@ -491,6 +495,15 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         router.get(route('presensi.index'), buildParams(overrides), { preserveState: true, preserveScroll: true });
     }, [buildParams]);
 
+    // Klik kartu statistik → langsung filter ke data tersebut.
+    const applyStatFilter = (overrides) => {
+        if ('status_filter' in overrides) setStatusFilter(overrides.status_filter);
+        if ('lembur_filter' in overrides) setLemburFilter(overrides.lembur_filter);
+        if ('lokasi_filter' in overrides) setLokasiFilter(overrides.lokasi_filter);
+        if ('suspicious_filter' in overrides) setSuspiciousFilter(overrides.suspicious_filter);
+        applyFilters(overrides);
+    };
+
     // Search otomatis dengan debounce
     React.useEffect(() => {
         if (search === (filters?.search || '')) return;
@@ -556,15 +569,15 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const s = stats || { total: 0, hadir: 0, telat: 0, sakit: 0, izin: 0, cuti: 0, alpa: 0, lembur_pending: 0, perlu_review: 0 };
 
     const statsCards = [
-        { label: 'Total', value: s.total, Icon: Users, iconBg: 'bg-primary/10', iconCls: 'text-primary' },
-        { label: 'Hadir', value: s.hadir, Icon: CheckCircle2, iconBg: 'bg-emerald-100', iconCls: 'text-emerald-600' },
-        { label: 'Terlambat', value: s.telat, Icon: Clock3, iconBg: 'bg-amber-100', iconCls: 'text-amber-600' },
-        { label: 'Sakit', value: s.sakit, Icon: HeartPulse, iconBg: 'bg-purple-100', iconCls: 'text-purple-600' },
-        { label: 'Izin', value: s.izin, Icon: FileText, iconBg: 'bg-blue-100', iconCls: 'text-blue-600' },
-        { label: 'Cuti', value: s.cuti, Icon: CalendarOff, iconBg: 'bg-cyan-100', iconCls: 'text-cyan-600' },
-        { label: 'Alpa', value: s.alpa, Icon: UserX, iconBg: 'bg-rose-100', iconCls: 'text-rose-600' },
-        { label: 'Lembur Pending', value: s.lembur_pending, Icon: AlarmClock, iconBg: 'bg-orange-100', iconCls: 'text-orange-600' },
-        { label: 'Perlu Review', value: s.perlu_review, Icon: ShieldAlert, iconBg: 'bg-red-100', iconCls: 'text-red-600' },
+        { key: 'total', label: 'Total', value: s.total, Icon: Users, iconBg: 'bg-primary/10', iconCls: 'text-primary', filter: { status_filter: '', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: !statusFilter && !lemburFilter && !lokasiFilter && !suspiciousFilter },
+        { key: 'hadir', label: 'Hadir', value: s.hadir, Icon: CheckCircle2, iconBg: 'bg-emerald-100', iconCls: 'text-emerald-600', filter: { status_filter: 'hadir', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'hadir' },
+        { key: 'telat', label: 'Terlambat', value: s.telat, Icon: Clock3, iconBg: 'bg-amber-100', iconCls: 'text-amber-600', filter: { status_filter: 'telat', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'telat' },
+        { key: 'sakit', label: 'Sakit', value: s.sakit, Icon: HeartPulse, iconBg: 'bg-purple-100', iconCls: 'text-purple-600', filter: { status_filter: 'sakit', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'sakit' },
+        { key: 'izin', label: 'Izin', value: s.izin, Icon: FileText, iconBg: 'bg-blue-100', iconCls: 'text-blue-600', filter: { status_filter: 'izin', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'izin' },
+        { key: 'cuti', label: 'Cuti', value: s.cuti, Icon: CalendarOff, iconBg: 'bg-cyan-100', iconCls: 'text-cyan-600', filter: { status_filter: 'cuti', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'cuti' },
+        { key: 'alpa', label: 'Alpa', value: s.alpa, Icon: UserX, iconBg: 'bg-rose-100', iconCls: 'text-rose-600', filter: { status_filter: 'alpa', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'alpa' },
+        { key: 'lembur_pending', label: 'Lembur Pending', value: s.lembur_pending, Icon: AlarmClock, iconBg: 'bg-orange-100', iconCls: 'text-orange-600', filter: { status_filter: '', lembur_filter: 'lembur_pending', lokasi_filter: '', suspicious_filter: '' }, active: lemburFilter === 'lembur_pending' },
+        { key: 'perlu_review', label: 'Perlu Review', value: s.perlu_review, Icon: ShieldAlert, iconBg: 'bg-red-100', iconCls: 'text-red-600', filter: { status_filter: '', lembur_filter: '', lokasi_filter: 'perlu_review', suspicious_filter: '' }, active: lokasiFilter === 'perlu_review' },
     ];
 
     // flex-1 + min-w/basis: tiap kontrol mengisi penuh baris, baris terakhir
@@ -606,7 +619,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                     {/* Stats */}
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                        {statsCards.map((card) => <StatCard key={card.label} {...card} />)}
+                        {statsCards.map((card) => <StatCard key={card.label} {...card} onClick={() => applyStatFilter(card.filter)} />)}
                     </div>
 
                     {/* Filter bar */}
