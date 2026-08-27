@@ -11,6 +11,53 @@ const Field = ({ label, children }) => (
     </div>
 );
 
+const STATUS_STYLES = {
+    hadir: 'bg-green-100 text-green-800 ring-green-600/20',
+    telat: 'bg-amber-100 text-amber-800 ring-amber-600/20',
+    izin: 'bg-sky-100 text-sky-800 ring-sky-600/20',
+    sakit: 'bg-indigo-100 text-indigo-800 ring-indigo-600/20',
+    cuti: 'bg-violet-100 text-violet-800 ring-violet-600/20',
+    alpa: 'bg-red-100 text-red-800 ring-red-600/20',
+    disetujui: 'bg-green-100 text-green-800 ring-green-600/20',
+    ditolak: 'bg-red-100 text-red-800 ring-red-600/20',
+    pending: 'bg-amber-100 text-amber-800 ring-amber-600/20',
+    finalized: 'bg-blue-100 text-blue-800 ring-blue-600/20',
+    paid: 'bg-emerald-100 text-emerald-800 ring-emerald-600/20',
+    draft: 'bg-gray-100 text-gray-700 ring-gray-500/20',
+};
+
+const KpiCard = ({ label, value, accent }) => (
+    <div className={`rounded-xl border border-border p-4 ${accent ? 'bg-primary/5 ring-1 ring-primary/30' : 'bg-surface'}`}>
+        <p className="text-xs font-medium text-text-muted">{label}</p>
+        <p className={`mt-1 text-2xl font-extrabold ${accent ? 'text-primary' : 'text-text-primary'}`}>{value}</p>
+    </div>
+);
+
+const StatusBadge = ({ status }) => {
+    const key = String(status ?? '').toLowerCase();
+    const cls = STATUS_STYLES[key] || 'bg-gray-100 text-gray-700 ring-gray-500/20';
+    return (
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${cls}`}>
+            {status}
+        </span>
+    );
+};
+
+const computePresensiSummary = (data, headings) => {
+    const statusIdx = headings.findIndex((h) => String(h).toLowerCase() === 'status');
+    const tally = { hadir: 0, telat: 0, izin: 0, sakit: 0, cuti: 0, alpa: 0 };
+    const total = data.length;
+    if (statusIdx >= 0) {
+        data.forEach((row) => {
+            const s = String(row[statusIdx] ?? '').toLowerCase();
+            if (s in tally) tally[s] += 1;
+        });
+    }
+    const present = tally.hadir + tally.telat;
+    const persen = total > 0 ? Math.round((present / total) * 100) : 0;
+    return { total, ...tally, present, persen };
+};
+
 export default function LaporanIndex({ auth, units }) {
     const d = new Date();
     const currentMonth = d.getMonth() + 1;
@@ -192,6 +239,59 @@ export default function LaporanIndex({ auth, units }) {
                                     </p>
                                 </div>
                             </div>
+
+                            {activePreview.report_type === 'presensi' && (() => {
+                                const s = computePresensiSummary(previewData.data, previewData.headings);
+                                const segs = [
+                                    { key: 'hadir', label: 'Hadir', val: s.hadir, color: 'bg-green-500' },
+                                    { key: 'telat', label: 'Telat', val: s.telat, color: 'bg-amber-500' },
+                                    { key: 'izin', label: 'Izin', val: s.izin, color: 'bg-sky-500' },
+                                    { key: 'sakit', label: 'Sakit', val: s.sakit, color: 'bg-indigo-500' },
+                                    { key: 'cuti', label: 'Cuti', val: s.cuti, color: 'bg-violet-500' },
+                                    { key: 'alpa', label: 'Alpa', val: s.alpa, color: 'bg-red-500' },
+                                ].filter((x) => x.val > 0);
+                                return (
+                                    <div className="space-y-4 px-6 py-5">
+                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                                            <KpiCard label="Total Presensi" value={s.total} />
+                                            <KpiCard label="% Kehadiran" value={`${s.persen}%`} accent />
+                                            <KpiCard label="Hadir" value={s.hadir} />
+                                            <KpiCard label="Telat" value={s.telat} />
+                                            <KpiCard label="Izin/Sakit/Cuti" value={s.izin + s.sakit + s.cuti} />
+                                            <KpiCard label="Alpa" value={s.alpa} />
+                                        </div>
+                                        <div>
+                                            <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-text-muted">
+                                                <span>Distribusi Status Kehadiran</span>
+                                                <span>{s.total} record</span>
+                                            </div>
+                                            <div className="flex h-3 w-full overflow-hidden rounded-full bg-border">
+                                                {segs.length === 0 ? (
+                                                    <div className="h-full w-full bg-border" />
+                                                ) : (
+                                                    segs.map((seg) => (
+                                                        <div
+                                                            key={seg.key}
+                                                            className={seg.color}
+                                                            style={{ width: `${(seg.val / s.total) * 100}%` }}
+                                                            title={`${seg.label}: ${seg.val}`}
+                                                        />
+                                                    ))
+                                                )}
+                                            </div>
+                                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                                                {segs.map((seg) => (
+                                                    <span key={seg.key} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                                                        <span className={`h-2.5 w-2.5 rounded-full ${seg.color}`} />
+                                                        {seg.label} ({seg.val})
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface">
@@ -206,7 +306,8 @@ export default function LaporanIndex({ auth, units }) {
                                             <tr key={rowIdx} className="transition-colors hover:bg-surface">
                                                 {row.map((cell, cellIdx) => {
                                                     const headerStr = previewData.headings[cellIdx] ? previewData.headings[cellIdx].toLowerCase() : '';
-                                                    const isCurrency = headerStr.includes('(rp)') || headerStr.includes('nominal');
+                                                    const isStatus = headerStr === 'status';
+                                                    const isCurrency = headerStr.includes('(rp)') || headerStr.includes('nominal') || headerStr.includes('rp)');
                                                     let displayValue = cell;
 
                                                     if (isCurrency && cell !== null && cell !== '-' && !isNaN(cell)) {
@@ -215,7 +316,7 @@ export default function LaporanIndex({ auth, units }) {
 
                                                     return (
                                                         <td key={cellIdx} className="whitespace-nowrap px-4 py-3 text-sm text-text-secondary tabular-nums">
-                                                            {displayValue}
+                                                            {isStatus ? <StatusBadge status={cell} /> : displayValue}
                                                         </td>
                                                     );
                                                 })}

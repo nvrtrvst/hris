@@ -73,7 +73,7 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
         $totalHours = round($totalMinutes / 60, 2);
 
         return [
-            $pegawai->nik ?? '-',
+            $pegawai->nip ?? '-',
             $pegawai->nama_lengkap ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $unitName,
@@ -88,7 +88,7 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
     public function headings(): array
     {
         return [
-            'NIK',
+            'NIP',
             'Nama Pegawai',
             'Jenis',
             'Unit Sekolah',
