@@ -65,11 +65,16 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
     {
         $pegawai = $presensi->pegawai;
 
+        $tipePresensi = $presensi->tipe_presensi
+            ? ucfirst(str_replace('_', ' ', $presensi->tipe_presensi))
+            : '-';
+
         return [
             $presensi->tanggal->format('d/m/Y'),
             $pegawai?->nama_lengkap ?? '-',
             $pegawai?->nip ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
+            $tipePresensi,
             $presensi->unitSekolah?->nama ?? '-',
             $presensi->jam_masuk ?? '-',
             $presensi->jam_keluar ?? '-',
@@ -85,6 +90,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
             'Nama Pegawai',
             'NIP',
             'Jenis',
+            'Tipe Presensi',
             'Unit Sekolah',
             'Jam Masuk',
             'Jam Keluar',
@@ -113,23 +119,23 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
                 $periodeStr = Carbon::parse($this->start_date)->format('d/m/Y').' s/d '.Carbon::parse($this->end_date)->format('d/m/Y');
 
                 // Kop Yayasan
-                $sheet->mergeCells('A1:I1');
+                $sheet->mergeCells('A1:J1');
                 $sheet->setCellValue('A1', 'YAYASAN PENDIDIKAN'); // Ganti dengan nama yayasan asli
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A2:I2');
+                $sheet->mergeCells('A2:J2');
                 $sheet->setCellValue('A2', 'LAPORAN REKAPITULASI PRESENSI PEGAWAI');
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A3:I3');
+                $sheet->mergeCells('A3:J3');
                 $sheet->setCellValue('A3', 'Periode: '.$periodeStr.' | Unit: '.$namaUnit);
                 $sheet->getStyle('A3')->getFont()->setItalic(true);
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                // Styling for Headings (A6:I6)
-                $sheet->getStyle('A6:I6')->applyFromArray([
+                // Styling for Headings (A6:J6)
+                $sheet->getStyle('A6:J6')->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,

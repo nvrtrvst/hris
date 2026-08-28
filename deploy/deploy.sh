@@ -141,6 +141,19 @@ info "Build asset selesai + chown www-data."
 step "Clear cache (routes/views/config)"
 $PHP_BIN artisan optimize:clear 2>&1 | tail -3
 
+# ── Scheduler cron (php artisan schedule:run) ───────────────────────────────
+# Pastikan cron OS terpasang agar command terjadwal (mis. presensi:finalize-alpa)
+# berjalan tiap menit. Idempoten: tidak menambah duplikat.
+step "Scheduler cron (schedule:run)"
+CRON_CMD="* * * * * cd $REPO_DIR && sudo -u www-data php artisan schedule:run >> /dev/null 2>&1"
+if crontab -l 2>/dev/null | grep -qF "artisan schedule:run"; then
+    info "Cron schedule:run sudah terpasang."
+else
+    ( crontab -l 2>/dev/null; echo "$CRON_CMD" ) | crontab - 2>/dev/null \
+        && info "Cron schedule:run dipasang." \
+        || warn "Gagal pasang cron (perlu akses crontab). Pasang manual: $CRON_CMD"
+fi
+
 # ── Smoke check ───────────────────────────────────────────────────────────
 step "Smoke check endpoint"
 check_url() {

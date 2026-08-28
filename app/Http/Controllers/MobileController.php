@@ -121,25 +121,28 @@ class MobileController extends Controller
         $alpa = (int) ($countsCount['alpa'] ?? 0);
         $awalBulan = Carbon::createFromDate($tahun, $bulan, 1);
         $startBulan = $awalBulan->copy()->startOfMonth();
-        $endBulan = $awalBulan->copy()->endOfMonth();
+        $endOfMonth = $awalBulan->copy()->endOfMonth();
+        $today = Carbon::today();
 
-        // Exclude hari libur (nasional + unit pegawai) dari hari kerja agar tak dihitung alpa.
-        // Satu query; filter ke weekday agar Sabtu/Minggu (sudah tak dihitung) tak dobel-dikurangi.
+        // Kehadiran dihitung sampai hari ini. ALPA mengikuti aturan H+1:
+        // hari berjalan belum dihitung alpa -> working-days ALPA hanya sampai kemarin.
+        $endKehadiran = $today->gt($endOfMonth) ? $endOfMonth->copy() : $today->copy();
+        $endAlpa = $today->copy()->subDay();
+        if ($endAlpa->gt($endOfMonth)) {
+            $endAlpa = $endOfMonth->copy();
+        }
+        if ($endAlpa->lt($startBulan)) {
+            $endAlpa = $startBulan->copy();
+        }
+
         $unitIds = $pegawai->units->pluck('id')->filter()->unique()->toArray();
-        $holidayExclude = HariLibur::whereBetween('tanggal', [$startBulan->toDateString(), $endBulan->toDateString()])
-            ->where(function ($q) use ($unitIds) {
-                $q->whereNull('unit_sekolah_id');
-                if ($unitIds) {
-                    $q->orWhereIn('unit_sekolah_id', $unitIds);
-                }
-            })
-            ->get(['tanggal'])
-            ->filter(fn ($h) => ! in_array((int) Carbon::parse($h->tanggal)->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]))
-            ->count();
+        $holidayKehadiran = $this->holidayCount($startBulan, $endKehadiran, $unitIds);
+        $holidayAlpa = $this->holidayCount($startBulan, $endAlpa, $unitIds);
 
-        $workingDays = $this->countWeekdaysInRange($startBulan, $endBulan, $holidayExclude);
+        $workingDays = $this->countWeekdaysInRange($startBulan, $endKehadiran, $holidayKehadiran);
+        $workingDaysAlpa = $this->countWeekdaysInRange($startBulan, $endAlpa, $holidayAlpa);
         $totalHadir = $hadir + $telat + $izin + $sakit + $cuti + $alpa;
-        $alphaTerisi = max(0, $workingDays - $totalHadir);
+        $alphaTerisi = max(0, $workingDaysAlpa - $totalHadir);
         $alpa = $alpa + $alphaTerisi;
         $presentCount = $hadir + $telat;
         $percent = $workingDays > 0 ? round(($presentCount / $workingDays) * 100) : 0;
@@ -190,6 +193,24 @@ class MobileController extends Controller
         }
 
         return max(0, $count - $exclude);
+    }
+
+    /**
+     * Hitung jumlah hari libur weekday dalam rentang untuk unit pegawai
+     * (libur nasional = unit_sekolah_id null, atau libur unit terkait).
+     */
+    private function holidayCount(Carbon $start, Carbon $end, array $unitIds): int
+    {
+        return HariLibur::whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
+            ->where(function ($q) use ($unitIds) {
+                $q->whereNull('unit_sekolah_id');
+                if ($unitIds) {
+                    $q->orWhereIn('unit_sekolah_id', $unitIds);
+                }
+            })
+            ->get(['tanggal'])
+            ->filter(fn ($h) => ! in_array((int) Carbon::parse($h->tanggal)->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]))
+            ->count();
     }
 
     /**
