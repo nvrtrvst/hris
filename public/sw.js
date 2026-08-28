@@ -1,6 +1,6 @@
 /* HRIS Yayasan — Service Worker */
 // Bump versi cache saat deploy: purges shell/HTML lama yang mereferensikan bundle usang.
-const CACHE_NAME = 'hris-mobile-v12';
+const CACHE_NAME = 'hris-mobile-v13';
 
 // Aset shell (fallback offline ringan — halaman Inertia tetap butuh jaringan untuk data).
 const SHELL_ASSETS = [
@@ -35,18 +35,11 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (request.mode === 'navigate') {
+        // Network-only: HTML (shell Inertia) selalu di-fetch baru agar tidak
+        // pernah menyajikan bundle usang setelah deploy. Fallback cache hanya
+        // untuk offline (root shell).
         event.respondWith(
-            fetch(request)
-                .then((response) => {
-                    // Hanya cache respons sukses — jangan pernah simpan halaman error
-                    // (500/404) sebagai fallback offline.
-                    if (response && response.ok) {
-                        const copy = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-                    }
-                    return response;
-                })
-                .catch(() => caches.match(request).then((hit) => hit || caches.match('/')))
+            fetch(request).catch(() => caches.match('/'))
         );
         return;
     }
