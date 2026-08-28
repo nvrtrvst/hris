@@ -712,7 +712,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             <button
                 type="button"
                 onClick={() => handleSubmitFoto(isDinasLuarFlow ? (tugasLuarOpen ? 'keluar' : 'masuk') : (phase === FOTO_PAGI ? 'masuk' : 'keluar'))}
-                disabled={isSubmitting || !capturedPhoto || !currentPosition || (!geofence?.inside && !isDinasLuarFlow) || (isDinasLuarFlow && !tugasLuarRecord && !tujuan.trim()) || presensiComplete}
+                disabled={isSubmitting || !capturedPhoto || !currentPosition || (!geofence?.inside && !isDinasLuarFlow) || (isDinasLuarFlow && !tugasLuarRecord && !tujuan.trim()) || allRecordsComplete}
                 className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isDinasLuarFlow ? 'bg-sky-500' : 'bg-primary'}`}
             >
                 {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isDinasLuarFlow ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : `Kirim ${phase === FOTO_PAGI ? 'foto pagi' : 'foto sore'}`}
