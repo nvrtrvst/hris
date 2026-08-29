@@ -8,6 +8,7 @@ use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class FinalizeAlpa extends Command
 {
@@ -115,16 +116,16 @@ class FinalizeAlpa extends Command
                 }
 
                 // Tak ada kehadiran sama sekali -> alpa kehadiran (kantor).
-                $primaryUnit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
-                if (! $primaryUnit) {
-                    // Pegawai tanpa unit (mis. superadmin) -> lewati.
+                $unitId = $this->resolveUnitId($pegawai);
+                if (! $unitId) {
+                    // Benar-benar tanpa unit di mana pun -> lewati.
                     $skipped++;
 
                     continue;
                 }
                 $row = Presensi::firstOrCreate(
                     ['pegawai_id' => $pegawai->id, 'jadwal_id' => null, 'tipe_presensi' => 'kantor', 'tanggal' => $tanggal],
-                    ['unit_sekolah_id' => $primaryUnit->id, 'keterangan' => 'Auto-mark alpa (kehadiran)'],
+                    ['unit_sekolah_id' => $unitId, 'keterangan' => 'Auto-mark alpa (kehadiran)'],
                 );
                 if ($row->wasRecentlyCreated) {
                     $row->status = 'alpa';
@@ -139,6 +140,25 @@ class FinalizeAlpa extends Command
         $this->info("Selesai. {$marked} alpa di-mark, {$skipped} dilewati.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Cari unit_sekolah_id pegawai secara robust: baca FK langsung dari pivot
+     * pegawai_unit (hindari scope soft-delete di relasi units()), lalu fallback
+     * ke unit_sekolah_id milik User. Null hanya jika benar-benar tak ada unit.
+     */
+    private function resolveUnitId(Pegawai $pegawai): ?int
+    {
+        $fromPivot = DB::table('pegawai_unit')
+            ->where('pegawai_id', $pegawai->id)
+            ->orderByDesc('is_primary')
+            ->value('unit_sekolah_id');
+
+        if ($fromPivot) {
+            return (int) $fromPivot;
+        }
+
+        return $pegawai->user?->unit_sekolah_id;
     }
 
     private function resolveTargets(): array
