@@ -97,6 +97,9 @@ class FinalizeAlpa extends Command
                         if ($jadwalPresent) {
                             continue;
                         }
+                        if (! $jadwal->unit_sekolah_id) {
+                            continue;
+                        }
                         $row = Presensi::firstOrCreate(
                             ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jadwal->id, 'tanggal' => $tanggal],
                             ['unit_sekolah_id' => $jadwal->unit_sekolah_id, 'tipe_presensi' => 'mengajar', 'keterangan' => 'Auto-mark alpa (mengajar)'],
@@ -113,9 +116,15 @@ class FinalizeAlpa extends Command
 
                 // Tak ada kehadiran sama sekali -> alpa kehadiran (kantor).
                 $primaryUnit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
+                if (! $primaryUnit) {
+                    // Pegawai tanpa unit (mis. superadmin) -> lewati.
+                    $skipped++;
+
+                    continue;
+                }
                 $row = Presensi::firstOrCreate(
                     ['pegawai_id' => $pegawai->id, 'jadwal_id' => null, 'tipe_presensi' => 'kantor', 'tanggal' => $tanggal],
-                    ['unit_sekolah_id' => $primaryUnit?->id, 'keterangan' => 'Auto-mark alpa (kehadiran)'],
+                    ['unit_sekolah_id' => $primaryUnit->id, 'keterangan' => 'Auto-mark alpa (kehadiran)'],
                 );
                 if ($row->wasRecentlyCreated) {
                     $row->status = 'alpa';
