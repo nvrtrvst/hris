@@ -225,7 +225,7 @@ class PegawaiImport implements ToCollection
         foreach ($data as $index => $row) {
             $namaJabatan = strtolower(trim($row[13]));
             if (! $jabatans->has($namaJabatan)) {
-                $validator->errors()->add($index.'.13', "Jabatan '{$row[13]}' tidak ditemukan. Jabatan tersedia: {$availableHint}");
+                $validator->errors()->add($index.'.13', "Jabatan '{$row[13]}' tidak ditemukan. Jabatan yang tersedia: {$availableHint}");
             }
         }
 
@@ -240,7 +240,7 @@ class PegawaiImport implements ToCollection
             foreach ($data as $index => $row) {
                 $unitName = strtolower(trim((string) ($row[14] ?? '')));
                 if ($unitName !== '' && ! $units->has($unitName)) {
-                    $validator->errors()->add($index.'.14', "Unit '{$row[14]}' tidak ditemukan. Unit tersedia: {$unitHint}");
+                    $validator->errors()->add($index.'.14', "Unit '{$row[14]}' tidak ditemukan. Unit yang tersedia: {$unitHint}");
                 }
             }
         }

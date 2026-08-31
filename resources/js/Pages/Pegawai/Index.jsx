@@ -480,6 +480,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                     className="mt-1 block w-full text-sm text-text-muted file:mr-4 file:rounded-lg file:border-0 file:bg-primary-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary-100"
                                 />
                                 {importErrors.file && <p className="form-error">{importErrors.file}</p>}
+                                {importErrors.import && <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 whitespace-pre-line">{importErrors.import}</div>}
                                 {importErrors[0] && <p className="form-error">Error pada baris data: Silakan periksa file Anda. {importErrors[0]}</p>}
                             </div>
 

@@ -57,38 +57,42 @@ class PegawaiTemplateImportTest extends TestCase
         $this->assertStringContainsString('attachment', $response->headers->get('content-disposition'));
     }
 
-    public function test_template_dropdown_bersumber_dari_sheet_tersembunyi(): void
+    public function test_template_dropdown_bersumber_dari_kolom_tersembunyi(): void
     {
         Excel::store(new PegawaiTemplateExport, 'tpl_check.xlsx', 'local');
         $ss = IOFactory::load(Storage::disk('local')->path('tpl_check.xlsx'));
         $sheet = $ss->getSheet(0);
         Storage::disk('local')->delete('tpl_check.xlsx');
 
-        $list = $ss->getSheetByName('DaftarPegawai');
-        $this->assertNotNull($list, 'Sheet tersembunyi DaftarPegawai harus ada');
-        $this->assertSame(Worksheet::SHEETSTATE_HIDDEN, $list->getSheetState());
+        // Reference data ada di kolom R-U sheet utama (bukan hidden sheet terpisah)
+        $this->assertSame('_Jabatan', $sheet->getCell('R1')->getValue());
+        $this->assertSame('_Pendidikan', $sheet->getCell('S1')->getValue());
+        $this->assertSame('_Status', $sheet->getCell('T1')->getValue());
+        $this->assertSame('_Unit', $sheet->getCell('U1')->getValue());
 
-        // Dropdown memakai defined name (paling kompatibel) + showDropDown=true
-        // (writer membalik: true -> atribut "0" -> panah TAMPIL di Excel).
+        // Kolom tersembunyi
+        $this->assertFalse($sheet->getColumnDimension('R')->getVisible());
+        $this->assertFalse($sheet->getColumnDimension('U')->getVisible());
+
+        // Named ranges exist on the SAME sheet
         $this->assertNotNull($ss->getNamedRange('DAFTAR_JABATAN'));
         $this->assertNotNull($ss->getNamedRange('DAFTAR_PENDIDIKAN'));
         $this->assertNotNull($ss->getNamedRange('DAFTAR_STATUS'));
         $this->assertNotNull($ss->getNamedRange('DAFTAR_UNIT'));
 
+        // Dropdown validation on data columns
         $this->assertSame('DAFTAR_JABATAN', $sheet->getDataValidation('N2')->getFormula1());
         $this->assertSame('DAFTAR_PENDIDIKAN', $sheet->getDataValidation('M2')->getFormula1());
         $this->assertSame('DAFTAR_STATUS', $sheet->getDataValidation('K2')->getFormula1());
         $this->assertSame('DAFTAR_UNIT', $sheet->getDataValidation('O2')->getFormula1());
         $this->assertTrue($sheet->getDataValidation('N2')->getShowDropDown());
-        $this->assertTrue($sheet->getDataValidation('M2')->getShowDropDown());
-        $this->assertTrue($sheet->getDataValidation('K2')->getShowDropDown());
         $this->assertTrue($sheet->getDataValidation('O2')->getShowDropDown());
 
-        // Isi sheet tersembunyi sesuai sumber kebenaran
-        $this->assertSame(Jabatan::orderBy('nama')->first()->nama, $list->getCell('A2')->getValue());
-        $this->assertSame('SD/Sederajat', $list->getCell('B2')->getValue());
-        $this->assertSame('tetap', $list->getCell('C2')->getValue());
-        $this->assertSame(UnitSekolah::orderBy('nama')->first()->nama, $list->getCell('D2')->getValue());
+        // Reference data values
+        $this->assertSame(Jabatan::orderBy('nama')->first()->nama, $sheet->getCell('R2')->getValue());
+        $this->assertSame('SD/Sederajat', $sheet->getCell('S2')->getValue());
+        $this->assertSame('tetap', $sheet->getCell('T2')->getValue());
+        $this->assertSame(UnitSekolah::orderBy('nama')->first()->nama, $sheet->getCell('U2')->getValue());
     }
 
     public function test_import_menolak_jabatan_yang_tidak_ada_dan_menampilkan_daftar_tersedia(): void

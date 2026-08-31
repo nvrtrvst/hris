@@ -88,7 +88,7 @@ class PegawaiController extends Controller
                 $message = "Gagal import. Periksa file Anda:\n".$grouped;
             }
 
-            return back()->with('error', $message);
+            return back()->withErrors(['import' => $message]);
         } catch (\Throwable $e) {
             Log::error('Import error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
