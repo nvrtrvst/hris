@@ -23,11 +23,11 @@ class MobileAuthController extends Controller
 
         $user = Auth::guard('web_mobile')->user();
         if ($user && $user->needsPasswordChange()) {
-            return redirect()->route('presensi.profile.edit', absolute: false)
+            return redirect(route('presensi.profile.edit', [], false))
                 ->with('message', 'Anda harus mengganti password sebelum melanjutkan.');
         }
 
-        return redirect()->intended(route('presensi.dashboard', absolute: false));
+        return redirect()->intended(route('presensi.dashboard', [], false));
     }
 
     public function destroy(Request $request): RedirectResponse
