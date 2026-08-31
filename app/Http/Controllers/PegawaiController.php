@@ -72,14 +72,18 @@ class PegawaiController extends Controller
             $errors = $e->errors();
             Log::warning('Import validation error', ['errors' => array_map(fn ($msgs) => is_array($msgs) ? implode(', ', $msgs) : $msgs, $errors)]);
 
-            // Format error per baris agar user tahu baris mana yang salah
-            $details = collect($errors)
-                ->map(fn ($msgs, $key) => 'Baris '.((int) explode('.', $key)[0] + 2).': '.(is_array($msgs) ? implode('; ', $msgs) : $msgs))
-                ->unique()
+            // Group errors by unique message, show affected row numbers
+            $grouped = collect($errors)
+                ->map(fn ($msgs, $key) => [
+                    'row' => (int) explode('.', $key)[0] + 2,
+                    'msg' => is_array($msgs) ? reset($msgs) : $msgs,
+                ])
+                ->groupBy('msg')
+                ->map(fn ($items, $msg) => '• '.$msg.' (baris '.collect($items)->pluck('row')->unique()->implode(', ').')')
                 ->values()
-                ->implode('\n');
+                ->implode("\n");
 
-            return back()->with('error', "Gagal import. Periksa file Anda:\n".$details);
+            return back()->with('error', "Gagal import. Periksa file Anda:\n".$grouped);
         } catch (\Throwable $e) {
             Log::error('Import error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
 

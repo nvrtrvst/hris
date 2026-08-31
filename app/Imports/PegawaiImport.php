@@ -49,8 +49,15 @@ class PegawaiImport implements ToCollection
 
     public function collection(Collection $rows)
     {
-        // Skip header row
-        $rows->shift();
+        // Skip header row(s) — detect header by checking if first row contains 'NIK'
+        while ($rows->isNotEmpty()) {
+            $firstRow = collect($rows->first())->map(fn ($v) => strtolower(trim((string) ($v ?? ''))));
+            if ($firstRow->contains('nik') || $firstRow->contains('nama lengkap') || $firstRow->contains('email')) {
+                $rows->shift();
+            } else {
+                break;
+            }
+        }
 
         // Convert dates to standard format for validation.
         // CSV reader PhpSpreadsheet mengubah angka (mis. NIK) jadi integer,
@@ -59,7 +66,7 @@ class PegawaiImport implements ToCollection
             $row = collect($row)->pad(16, null)->map(fn ($v) => $v === null ? null : (string) $v);
 
             // Skip baris kosong (trailing rows di Excel)
-            $nonEmpty = $row->filter(fn ($v) => $v !== null && $v !== '')->values();
+            $nonEmpty = $row->filter(fn ($v) => $v !== null && trim($v) !== '')->values();
             if ($nonEmpty->isEmpty()) {
                 return null;
             }
