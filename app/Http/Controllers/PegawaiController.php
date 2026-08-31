@@ -43,6 +43,8 @@ class PegawaiController extends Controller
         $this->authorizePegawaiMutation();
 
         $user = auth()->user();
+        Log::info('Import start', ['user_id' => $user?->id, 'is_superadmin' => $user?->can('view_all_units'), 'has_file' => $request->hasFile('file'), 'unit_id' => $request->unit_sekolah_id]);
+
         $rules = [
             'file' => 'required|mimes:xlsx,xls,csv|max:5120',
             'default_password' => ['nullable', 'string', 'min:8'],
@@ -55,8 +57,6 @@ class PegawaiController extends Controller
         $request->validate($rules);
         $unitId = ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) ? $user->unit_sekolah_id : $request->unit_sekolah_id;
 
-        // Kalau tidak ada unit sama sekali (modal kosong & kolom unit di template kosong),
-        // tidak ada baris yang bisa disimpan — tolak lebih awal dengan pesan jelas.
         if (! $unitId && (! $user || ! $user->can('view_all_units'))) {
             throw ValidationException::withMessages(['unit_sekolah_id' => 'Pilih unit sekolah di form, atau isi kolom Unit Sekolah di template.']);
         }
@@ -69,10 +69,12 @@ class PegawaiController extends Controller
 
             return back()->with('message', 'Data pegawai berhasil diimport.');
         } catch (ValidationException $e) {
-            Log::warning('Import validation error: ' . $e->errors()->toJson());
-            return back()->withErrors($e->errors())->with('error', 'Gagal import, periksa kembali file Anda. Terjadi kesalahan validasi baris.');
+            $errors = $e->errors();
+            Log::warning('Import validation error', ['errors' => $errors]);
+
+            return back()->withErrors($errors)->with('error', 'Gagal import, periksa kembali file Anda. Terjadi kesalahan validasi baris.');
         } catch (\Exception $e) {
-            Log::error('Import error: '.$e->getMessage());
+            Log::error('Import error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
             return back()->with('error', 'Terjadi kesalahan sistem. Silakan coba lagi nanti atau hubungi administrator.');
         }
