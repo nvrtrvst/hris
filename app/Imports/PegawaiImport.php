@@ -45,8 +45,6 @@ class PegawaiImport implements ToCollection
      * @param  bool  $allowUnitOverride  Superadmin: kolom Unit di template bisa menimpa per baris.
      *                                   Admin unit: false, selalu dipaksa ke unitnya sendiri.
      * @param  string|null  $defaultPassword  Password seragam untuk semua user hasil import.
-     *                                        Bila diisi, user wajib ganti password saat login pertama.
-     *                                        Bila null, password default = NIK (per baris).
      */
     public function __construct($unitSekolahId, protected bool $allowUnitOverride = false, protected ?string $defaultPassword = null)
     {
@@ -59,20 +57,16 @@ class PegawaiImport implements ToCollection
             return null;
         }
 
-        // PhpSpreadsheet sometimes returns DateTime objects for date cells
         if ($value instanceof \DateTimeInterface) {
             return $value->format('Y-m-d');
         }
 
-        // Excel serial numbers (e.g., 32874 for 1990-01-01)
         if (is_numeric($value)) {
             $num = (float) $value;
             if ($num > 25569 && $num < 2958462) {
-                // Reasonable date range: 1970-01-01 to 9999-12-31
                 return Date::excelToDateTimeObject($num)->format('Y-m-d');
             }
 
-            // Not a date serial number, return as-is (will fail date validation later)
             return (string) $value;
         }
 
@@ -85,7 +79,6 @@ class PegawaiImport implements ToCollection
 
     /**
      * Normalize NIK: strip all non-digit chars, handle PhpSpreadsheet float→string conversion.
-     * E.g., "3.20101000000000E+15" → "3201010000000000", "3201010000000000.0" → "3201010000000000".
      */
     private function normalizeNik($value): ?string
     {
@@ -100,10 +93,10 @@ class PegawaiImport implements ToCollection
 
     public function collection(Collection $rows)
     {
-        // Debug: dump first 5 rows to log for troubleshooting
-        Log::info('[Import] Raw rows received', [
+        // Debug: dump raw rows to log (use warning so it appears in production LOG_LEVEL=warning)
+        Log::warning('[Import DEBUG] Raw rows received', [
             'count' => $rows->count(),
-            'first_3' => $rows->take(3)->map(fn ($r) => collect($r)->toArray())->toArray(),
+            'first_3_raw' => $rows->take(3)->map(fn ($r) => collect($r)->toArray())->toArray(),
         ]);
 
         // Skip header row(s) — detect header by checking if first row contains header keywords
@@ -116,9 +109,9 @@ class PegawaiImport implements ToCollection
             }
         }
 
-        Log::info('[Import] After header skip', [
+        Log::warning('[Import DEBUG] After header skip', [
             'count' => $rows->count(),
-            'first_3' => $rows->take(3)->map(fn ($r) => collect($r)->toArray())->toArray(),
+            'first_3_after_skip' => $rows->take(3)->map(fn ($r) => collect($r)->toArray())->toArray(),
         ]);
 
         // Convert data: normalize all values, handle dates, pad to 16 columns
@@ -131,7 +124,7 @@ class PegawaiImport implements ToCollection
                 return null;
             }
 
-            // Normalize NIK to plain digits string (handles float/scientific notation)
+            // Normalize NIK to plain digits string
             $row[0] = $this->normalizeNik($row[0]);
 
             $row[4] = $this->parseDate($row[4]); // Tanggal Lahir
@@ -141,27 +134,14 @@ class PegawaiImport implements ToCollection
             return $row->toArray();
         })->filter()->values()->toArray();
 
-        Log::info('[Import] Parsed data sample', [
+        Log::warning('[Import DEBUG] Parsed data sample', [
             'count' => count($data),
-            'first_3' => array_slice($data, 0, 3),
+            'first_3_parsed' => array_slice($data, 0, 3),
         ]);
 
-        // Custom validation messages — human-readable field names
-        $fieldMessages = [];
-        foreach (self::COLUMN_NAMES as $idx => $name) {
-            $fieldMessages["*.$idx.required"] = "{$name} wajib diisi (baris :position).";
-            $fieldMessages["*.$idx.string"] = "{$name} harus berupa teks (baris :position).";
-            $fieldMessages["*.$idx.max"] = "{$name} terlalu panjang (baris :position).";
-            $fieldMessages["*.$idx.email"] = "{$name} format email tidak valid (baris :position).";
-            $fieldMessages["*.$idx.unique"] = "{$name} sudah terdaftar dalam sistem (baris :position).";
-            $fieldMessages["*.$idx.size"] = "{$name} harus tepat :size karakter (baris :position).";
-            $fieldMessages["*.$idx.in"] = "{$name} harus salah satu dari: :values (baris :position).";
-            $fieldMessages["*.$idx.date"] = "{$name} harus berupa tanggal yang valid (baris :position).";
-            $fieldMessages["*.$idx.regex"] = "{$name} format tidak sesuai (baris :position).";
-        }
-
+        // Validation: NO :position in messages — we add row info during grouping
         $validator = Validator::make($data, [
-            '*.0' => 'required|regex:/^\d{16}$/', // NIK — regex lebih robust dari size:16
+            '*.0' => 'required|regex:/^\d{16}$/', // NIK
             '*.1' => 'nullable|string|max:50|unique:pegawai,nip', // NIP
             '*.2' => 'required|string|max:255', // Nama Lengkap
             '*.3' => 'required|string|max:255', // Tempat Lahir
@@ -175,12 +155,32 @@ class PegawaiImport implements ToCollection
             '*.11' => 'required|date', // Tanggal Mulai Kerja
             '*.12' => 'required|string|max:255', // Pendidikan Terakhir
             '*.13' => 'required|string|max:255', // Nama Jabatan
-            '*.14' => 'nullable|string|max:255', // Unit Sekolah (opsional, fallback ke unit modal)
-            '*.15' => 'required|email|max:191|unique:users,email', // Email (wajib — login)
-        ], array_merge($fieldMessages, [
-            '*.0.regex' => 'NIK harus tepat 16 digit angka (baris :position).',
-            '*.15.unique' => 'Email sudah terdaftar dalam sistem (baris :position).',
-        ]));
+            '*.14' => 'nullable|string|max:255', // Unit Sekolah (opsional)
+            '*.15' => 'required|email|max:191|unique:users,email', // Email
+        ], [
+            // NO :position here — grouping adds row info
+            '*.0.required' => 'NIK wajib diisi.',
+            '*.0.regex' => 'NIK harus tepat 16 digit angka.',
+            '*.2.required' => 'Nama Lengkap wajib diisi.',
+            '*.3.required' => 'Tempat Lahir wajib diisi.',
+            '*.4.required' => 'Tanggal Lahir wajib diisi.',
+            '*.4.date' => 'Tanggal Lahir format tidak valid.',
+            '*.5.required' => 'Jenis Kelamin wajib diisi.',
+            '*.5.in' => 'Jenis Kelamin harus L atau P.',
+            '*.6.required' => 'Agama wajib diisi.',
+            '*.7.required' => 'Status Pernikahan wajib diisi.',
+            '*.8.required' => 'No HP wajib diisi.',
+            '*.9.required' => 'Alamat KTP wajib diisi.',
+            '*.10.required' => 'Status Kepegawaian wajib diisi.',
+            '*.10.in' => 'Status Kepegawaian tidak valid.',
+            '*.11.required' => 'Tanggal Mulai Kerja wajib diisi.',
+            '*.11.date' => 'Tanggal Mulai Kerja format tidak valid.',
+            '*.12.required' => 'Pendidikan Terakhir wajib diisi.',
+            '*.13.required' => 'Nama Jabatan wajib diisi.',
+            '*.15.required' => 'Email wajib diisi.',
+            '*.15.email' => 'Format email tidak valid.',
+            '*.15.unique' => 'Email sudah terdaftar dalam sistem.',
+        ]);
 
         if ($validator->fails()) {
             $this->throwGroupedValidationException($validator);
@@ -198,11 +198,11 @@ class PegawaiImport implements ToCollection
         foreach ($data as $index => $row) {
             $namaJabatan = strtolower(trim($row[13]));
             if (! $jabatans->has($namaJabatan)) {
-                $validator->errors()->add($index.'.13', "Jabatan '{$row[13]}' tidak ditemukan dalam sistem pada baris ".($index + 2).'. Jabatan yang tersedia: '.$availableHint);
+                $validator->errors()->add($index.'.13', "Jabatan '{$row[13]}' tidak ditemukan. Jabatan tersedia: {$availableHint}");
             }
         }
 
-        // Validasi unit per baris (opsional): kalau diisi, harus ada di sistem.
+        // Validasi unit per baris (opsional)
         $units = collect();
         if ($this->allowUnitOverride) {
             $unitNames = collect($data)->pluck(14)->map(fn ($v) => trim((string) $v))->filter()->unique();
@@ -213,12 +213,12 @@ class PegawaiImport implements ToCollection
             foreach ($data as $index => $row) {
                 $unitName = strtolower(trim((string) ($row[14] ?? '')));
                 if ($unitName !== '' && ! $units->has($unitName)) {
-                    $validator->errors()->add($index.'.14', "Unit '{$row[14]}' tidak ditemukan dalam sistem pada baris ".($index + 2).'. Unit yang tersedia: '.$unitHint);
+                    $validator->errors()->add($index.'.14', "Unit '{$row[14]}' tidak ditemukan. Unit tersedia: {$unitHint}");
                 }
             }
         }
 
-        // Cek duplikat NIK terhadap DB & dalam file.
+        // Cek duplikat NIK terhadap DB & dalam file
         $nikHashes = collect($data)->pluck(0)->map(fn ($nik) => Pegawai::nikHash((string) $nik))->filter();
         $existingHashes = Pegawai::whereIn('nik_hash', $nikHashes)->pluck('nik_hash')->flip();
         $seen = [];
@@ -230,7 +230,7 @@ class PegawaiImport implements ToCollection
             $seen[$hash] = true;
         }
 
-        // Cek duplikat email dalam file.
+        // Cek duplikat email dalam file
         $seenEmails = [];
         foreach ($data as $index => $row) {
             $email = $row[15];
@@ -296,46 +296,61 @@ class PegawaiImport implements ToCollection
     }
 
     /**
-     * Group validation errors by message, listing affected rows.
-     * Instead of showing 100+ individual lines, group identical errors:
-     *   "• NIK harus tepat 16 digit angka (baris 2, 3, 4, ...)"
+     * Group validation errors by message type, listing affected rows.
+     * Messages do NOT include row numbers — we add them here.
+     *
+     * Uses the field index from the error key to determine the field name,
+     * then groups all rows that have the same error for the same field.
      */
     private function throwGroupedValidationException($validator): void
     {
         $rawErrors = $validator->errors()->toArray();
 
-        // Group by error message → list of row numbers
+        // Group by (field_index, error_message) → list of row numbers
         $grouped = [];
         foreach ($rawErrors as $key => $messages) {
-            foreach ($messages as $msg) {
-                // Extract row index from key (format: "rowIndex.fieldIndex")
-                $parts = explode('.', $key);
-                $rowIndex = (int) ($parts[0] ?? 0);
-                $excelRow = $rowIndex + 2; // +1 for header, +1 for 1-based
+            $parts = explode('.', $key);
+            $rowIndex = (int) ($parts[0] ?? 0);
+            $fieldIndex = (int) ($parts[1] ?? -1);
+            $excelRow = $rowIndex + 2; // +1 for header, +1 for 1-based
 
-                if (! isset($grouped[$msg])) {
-                    $grouped[$msg] = [];
+            foreach ($messages as $msg) {
+                // Use field index as grouping key so errors for same field group together
+                $groupKey = "field_{$fieldIndex}:{$msg}";
+                if (! isset($grouped[$groupKey])) {
+                    $grouped[$groupKey] = [
+                        'field' => self::COLUMN_NAMES[$fieldIndex] ?? "Kolom {$fieldIndex}",
+                        'msg' => $msg,
+                        'rows' => [],
+                    ];
                 }
-                $grouped[$msg][] = $excelRow;
+                $grouped[$groupKey]['rows'][] = $excelRow;
             }
         }
 
+        // Sort groups by field index for consistent ordering
+        uksort($grouped, function ($a, $b) {
+            $fieldA = (int) explode(':', $a)[0];
+            $fieldB = (int) explode(':', $b)[0];
+
+            return $fieldA <=> $fieldB;
+        });
+
         // Build a single readable error message
         $errorLines = [];
-        foreach ($grouped as $msg => $rows) {
-            // Deduplicate row numbers and sort
-            $uniqueRows = array_values(array_unique($rows));
+        foreach ($grouped as $group) {
+            $uniqueRows = array_values(array_unique($group['rows']));
             sort($uniqueRows);
 
             if (count($uniqueRows) <= 5) {
                 $rowStr = 'baris '.implode(', ', $uniqueRows);
+            } elseif (count($uniqueRows) <= 10) {
+                $rowStr = 'baris '.implode(', ', $uniqueRows);
             } else {
-                $rowStr = 'baris '.implode(', ', array_slice($uniqueRows, 0, 5)).' ... ('.count($uniqueRows).' baris total)';
+                $rowStr = 'baris '.implode(', ', array_slice($uniqueRows, 0, 5)).' ... ('.count($uniqueRows).' baris)';
             }
 
-            // Remove trailing " (baris X)." from the message if present, since we add our own
-            $cleanMsg = preg_replace('/\s*\(baris\s+\d+\)\.?\s*$/', '', $msg);
-            $errorLines[] = "• {$cleanMsg} ({$rowStr})";
+            $errorLines[] = "• {$group['msg']} ({$rowStr})";
         }
 
         $fullMessage = "Gagal import. Periksa file Anda:\n".implode("\n", $errorLines);
@@ -343,7 +358,7 @@ class PegawaiImport implements ToCollection
         Log::warning('[Import] Validation failed', [
             'total_errors' => count($rawErrors),
             'grouped_count' => count($grouped),
-            'sample_errors' => array_slice($errorLines, 0, 10),
+            'error_lines' => $errorLines,
         ]);
 
         throw ValidationException::withMessages(['import' => $fullMessage]);
