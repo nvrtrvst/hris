@@ -20,6 +20,9 @@ class PegawaiImport implements ToCollection
 {
     protected $unitSekolahId;
 
+    /** Kolom yang WAJIB ada di header template pegawai. */
+    protected const REQUIRED_HEADERS = ['nik', 'nama lengkap', 'email'];
+
     /** Kolom nama untuk pesan error yang mudah dipahami. */
     protected const COLUMN_NAMES = [
         0 => 'NIK',
@@ -43,7 +46,6 @@ class PegawaiImport implements ToCollection
     /**
      * @param  int|null  $unitSekolahId  Unit default (dari pilihan modal).
      * @param  bool  $allowUnitOverride  Superadmin: kolom Unit di template bisa menimpa per baris.
-     *                                   Admin unit: false, selalu dipaksa ke unitnya sendiri.
      * @param  string|null  $defaultPassword  Password seragam untuk semua user hasil import.
      */
     public function __construct($unitSekolahId, protected bool $allowUnitOverride = false, protected ?string $defaultPassword = null)
@@ -77,9 +79,6 @@ class PegawaiImport implements ToCollection
         }
     }
 
-    /**
-     * Normalize NIK: strip all non-digit chars, handle PhpSpreadsheet float→string conversion.
-     */
     private function normalizeNik($value): ?string
     {
         if ($value === null || $value === '' || $value === false) {
@@ -93,13 +92,41 @@ class PegawaiImport implements ToCollection
 
     public function collection(Collection $rows)
     {
-        // Debug: dump raw rows to log (use warning so it appears in production LOG_LEVEL=warning)
-        Log::warning('[Import DEBUG] Raw rows received', [
+        Log::warning('[Import] Raw rows received', [
             'count' => $rows->count(),
-            'first_3_raw' => $rows->take(3)->map(fn ($r) => collect($r)->toArray())->toArray(),
+            'first_row' => $rows->isNotEmpty() ? $rows->first()->toArray() : [],
         ]);
 
-        // Skip header row(s) — detect header by checking if first row contains header keywords
+        // === STEP 1: Validate header ===
+        // Template pegawai WAJIB punya header "NIK", "Nama Lengkap", "Email".
+        // Kalau tidak ada → file salah (bisa hidden sheet dropdown, atau file lain).
+        if ($rows->isEmpty()) {
+            throw ValidationException::withMessages([
+                'import' => 'File kosong. Silakan download template dari menu Pegawai dan isi datanya.',
+            ]);
+        }
+
+        $firstRowValues = collect($rows->first())->map(fn ($v) => strtolower(trim((string) ($v ?? ''))));
+        $hasNikHeader = $firstRowValues->contains('nik');
+        $hasNamaHeader = $firstRowValues->contains('nama lengkap');
+        $hasEmailHeader = $firstRowValues->contains('email');
+
+        if (! $hasNikHeader && ! $hasNamaHeader && ! $hasEmailHeader) {
+            // Header tidak dikenali — kemungkinan: hidden sheet dropdown, atau file bukan template
+            $firstRowPreview = collect($rows->first())->filter()->values()->take(4)->implode(', ');
+
+            Log::warning('[Import] Invalid template uploaded', [
+                'first_row' => $firstRowValues->toArray(),
+            ]);
+
+            throw ValidationException::withMessages([
+                'import' => "File bukan template pegawai.\n"
+                    ."Kolom ditemukan: {$firstRowPreview}\n"
+                    .'Silakan download template dari menu Pegawai → Download Template, isi datanya, lalu upload kembali.',
+            ]);
+        }
+
+        // === STEP 2: Skip header row(s) ===
         while ($rows->isNotEmpty()) {
             $firstRow = collect($rows->first())->map(fn ($v) => strtolower(trim((string) ($v ?? ''))));
             if ($firstRow->contains('nik') || $firstRow->contains('nama lengkap') || $firstRow->contains('email')) {
@@ -109,56 +136,64 @@ class PegawaiImport implements ToCollection
             }
         }
 
-        Log::warning('[Import DEBUG] After header skip', [
+        if ($rows->isEmpty()) {
+            throw ValidationException::withMessages([
+                'import' => 'File hanya berisi header tanpa data pegawai. Silakan isi data terlebih dahulu.',
+            ]);
+        }
+
+        Log::warning('[Import] Data after header skip', [
             'count' => $rows->count(),
-            'first_3_after_skip' => $rows->take(3)->map(fn ($r) => collect($r)->toArray())->toArray(),
         ]);
 
-        // Convert data: normalize all values, handle dates, pad to 16 columns
+        // === STEP 3: Normalize data ===
         $data = $rows->map(function ($row) {
             $row = collect($row)->pad(16, null)->map(fn ($v) => $v === null ? null : (string) $v);
 
-            // Skip completely empty rows (trailing rows in Excel)
+            // Skip baris kosong
             $nonEmpty = $row->filter(fn ($v) => $v !== null && trim($v) !== '')->values();
             if ($nonEmpty->isEmpty()) {
                 return null;
             }
 
-            // Normalize NIK to plain digits string
             $row[0] = $this->normalizeNik($row[0]);
-
-            $row[4] = $this->parseDate($row[4]); // Tanggal Lahir
-            $row[11] = $this->parseDate($row[11]); // Tanggal Mulai Kerja
+            $row[4] = $this->parseDate($row[4]);
+            $row[11] = $this->parseDate($row[11]);
             $row[15] = empty(trim((string) ($row[15] ?? ''))) ? null : trim((string) $row[15]);
 
             return $row->toArray();
         })->filter()->values()->toArray();
 
-        Log::warning('[Import DEBUG] Parsed data sample', [
+        if (empty($data)) {
+            throw ValidationException::withMessages([
+                'import' => 'Tidak ada data pegawai yang valid ditemukan di file.',
+            ]);
+        }
+
+        Log::warning('[Import] Parsed data', [
             'count' => count($data),
-            'first_3_parsed' => array_slice($data, 0, 3),
+            'sample' => array_slice($data, 0, 2),
         ]);
 
-        // Validation: NO :position in messages — we add row info during grouping
+        // === STEP 4: Validate ===
         $validator = Validator::make($data, [
-            '*.0' => 'required|regex:/^\d{16}$/', // NIK
-            '*.1' => 'nullable|string|max:50|unique:pegawai,nip', // NIP
-            '*.2' => 'required|string|max:255', // Nama Lengkap
-            '*.3' => 'required|string|max:255', // Tempat Lahir
-            '*.4' => 'required|date', // Tanggal Lahir
-            '*.5' => 'required|in:L,P', // Jenis Kelamin
-            '*.6' => 'required|string|max:255', // Agama
-            '*.7' => 'required|string|max:255', // Status Pernikahan
-            '*.8' => 'required|string|max:20', // No HP
-            '*.9' => 'required|string', // Alamat KTP
-            '*.10' => 'required|in:'.implode(',', PegawaiConstants::STATUS_KEPEGAWAIAN), // Status Kepegawaian
-            '*.11' => 'required|date', // Tanggal Mulai Kerja
-            '*.12' => 'required|string|max:255', // Pendidikan Terakhir
-            '*.13' => 'required|string|max:255', // Nama Jabatan
-            '*.14' => 'nullable|string|max:255', // Unit Sekolah (opsional)
-            '*.15' => 'required|email|max:191|unique:users,email', // Email
+            '*.0' => 'required|regex:/^\d{16}$/',
+            '*.1' => 'nullable|string|max:50|unique:pegawai,nip',
+            '*.2' => 'required|string|max:255',
+            '*.3' => 'required|string|max:255',
+            '*.4' => 'required|date',
+            '*.5' => 'required|in:L,P',
+            '*.6' => 'required|string|max:255',
+            '*.7' => 'required|string|max:255',
+            '*.8' => 'required|string|max:20',
+            '*.9' => 'required|string',
+            '*.10' => 'required|in:'.implode(',', PegawaiConstants::STATUS_KEPEGAWAIAN),
+            '*.11' => 'required|date',
+            '*.12' => 'required|string|max:255',
+            '*.13' => 'required|string|max:255',
+            '*.14' => 'nullable|string|max:255',
+            '*.15' => 'required|email|max:191|unique:users,email',
         ], [
-            // NO :position here — grouping adds row info
             '*.0.required' => 'NIK wajib diisi.',
             '*.0.regex' => 'NIK harus tepat 16 digit angka.',
             '*.2.required' => 'Nama Lengkap wajib diisi.',
@@ -186,11 +221,9 @@ class PegawaiImport implements ToCollection
             $this->throwGroupedValidationException($validator);
         }
 
-        // Validate that the jabatan exists
+        // Validate jabatan
         $jabatanNames = collect($data)->pluck(13)->unique()->toArray();
-        $jabatans = Jabatan::whereIn('nama', $jabatanNames)->get()->keyBy(function ($item) {
-            return strtolower($item->nama);
-        });
+        $jabatans = Jabatan::whereIn('nama', $jabatanNames)->get()->keyBy(fn ($item) => strtolower($item->nama));
 
         $allJabatanNames = Jabatan::orderBy('nama')->pluck('nama');
         $availableHint = $allJabatanNames->take(10)->implode(', ').($allJabatanNames->count() > 10 ? ', ...' : '');
@@ -202,7 +235,7 @@ class PegawaiImport implements ToCollection
             }
         }
 
-        // Validasi unit per baris (opsional)
+        // Validate unit
         $units = collect();
         if ($this->allowUnitOverride) {
             $unitNames = collect($data)->pluck(14)->map(fn ($v) => trim((string) $v))->filter()->unique();
@@ -218,7 +251,7 @@ class PegawaiImport implements ToCollection
             }
         }
 
-        // Cek duplikat NIK terhadap DB & dalam file
+        // Duplicate NIK check
         $nikHashes = collect($data)->pluck(0)->map(fn ($nik) => Pegawai::nikHash((string) $nik))->filter();
         $existingHashes = Pegawai::whereIn('nik_hash', $nikHashes)->pluck('nik_hash')->flip();
         $seen = [];
@@ -230,7 +263,7 @@ class PegawaiImport implements ToCollection
             $seen[$hash] = true;
         }
 
-        // Cek duplikat email dalam file
+        // Duplicate email check
         $seenEmails = [];
         foreach ($data as $index => $row) {
             $email = $row[15];
@@ -249,73 +282,79 @@ class PegawaiImport implements ToCollection
             $this->throwGroupedValidationException($validator);
         }
 
-        // Process all rows since validation passed
+        // === STEP 5: Process rows ===
+        $imported = 0;
         foreach ($data as $index => $row) {
-            $unitId = $this->unitSekolahId;
-            if ($this->allowUnitOverride && trim((string) ($row[14] ?? '')) !== '') {
-                $unitId = $units[strtolower(trim($row[14]))]->id;
+            try {
+                $unitId = $this->unitSekolahId;
+                if ($this->allowUnitOverride && trim((string) ($row[14] ?? '')) !== '') {
+                    $unitId = $units[strtolower(trim($row[14]))]->id;
+                }
+
+                if ($unitId === null) {
+                    throw ValidationException::withMessages(['unit_sekolah_id' => 'Tidak ada unit untuk baris '.($index + 2).'.']);
+                }
+
+                $user = User::create([
+                    'name' => $row[2],
+                    'email' => $row[15],
+                    'password' => Hash::make($this->defaultPassword ?? $row[0]),
+                    'role' => 'pegawai',
+                    'unit_sekolah_id' => $unitId,
+                    'force_password_change' => $this->defaultPassword !== null,
+                ]);
+                $user->assignRole('pegawai');
+
+                $pegawai = Pegawai::create([
+                    'user_id' => $user->id,
+                    'nik' => $row[0],
+                    'nip' => $row[1],
+                    'nama_lengkap' => $row[2],
+                    'tempat_lahir' => $row[3],
+                    'tanggal_lahir' => $row[4],
+                    'jenis_kelamin' => $row[5],
+                    'agama' => $row[6],
+                    'status_pernikahan' => $row[7],
+                    'no_hp' => $row[8],
+                    'alamat_ktp' => $row[9],
+                    'status_kepegawaian' => $row[10],
+                    'tanggal_mulai_kerja' => $row[11],
+                    'pendidikan_terakhir' => $row[12],
+                    'status_aktif' => 'aktif',
+                    'jumlah_tanggungan' => 0,
+                ]);
+
+                $jabatanId = $jabatans[strtolower(trim($row[13]))]->id;
+                $pegawai->units()->attach($unitId, ['jabatan_id' => $jabatanId, 'is_primary' => true]);
+
+                $imported++;
+            } catch (\Throwable $e) {
+                Log::error('[Import] Failed at row '.($index + 2).': '.$e->getMessage(), [
+                    'row_data' => $row,
+                    'trace' => $e->getTraceAsString(),
+                ]);
+
+                throw ValidationException::withMessages([
+                    'import' => 'Gagal import baris '.($index + 2)." ({$row[2]}): ".$e->getMessage(),
+                ]);
             }
-
-            if ($unitId === null) {
-                throw ValidationException::withMessages(['unit_sekolah_id' => 'Tidak ada unit untuk baris '.($index + 2).'. Pilih unit di form import atau isi kolom Unit Sekolah di template.']);
-            }
-
-            $user = User::create([
-                'name' => $row[2],
-                'email' => $row[15],
-                'password' => Hash::make($this->defaultPassword ?? $row[0]),
-                'role' => 'pegawai',
-                'unit_sekolah_id' => $unitId,
-                'force_password_change' => $this->defaultPassword !== null,
-            ]);
-            $user->assignRole('pegawai');
-
-            $pegawai = Pegawai::create([
-                'user_id' => $user->id,
-                'nik' => $row[0],
-                'nip' => $row[1],
-                'nama_lengkap' => $row[2],
-                'tempat_lahir' => $row[3],
-                'tanggal_lahir' => $row[4],
-                'jenis_kelamin' => $row[5],
-                'agama' => $row[6],
-                'status_pernikahan' => $row[7],
-                'no_hp' => $row[8],
-                'alamat_ktp' => $row[9],
-                'status_kepegawaian' => $row[10],
-                'tanggal_mulai_kerja' => $row[11],
-                'pendidikan_terakhir' => $row[12],
-                'status_aktif' => 'aktif',
-                'jumlah_tanggungan' => 0,
-            ]);
-
-            $jabatanId = $jabatans[strtolower(trim($row[13]))]->id;
-
-            $pegawai->units()->attach($unitId, ['jabatan_id' => $jabatanId, 'is_primary' => true]);
         }
+
+        Log::warning('[Import] Success', ['imported' => $imported]);
     }
 
-    /**
-     * Group validation errors by message type, listing affected rows.
-     * Messages do NOT include row numbers — we add them here.
-     *
-     * Uses the field index from the error key to determine the field name,
-     * then groups all rows that have the same error for the same field.
-     */
     private function throwGroupedValidationException($validator): void
     {
         $rawErrors = $validator->errors()->toArray();
 
-        // Group by (field_index, error_message) → list of row numbers
         $grouped = [];
         foreach ($rawErrors as $key => $messages) {
             $parts = explode('.', $key);
             $rowIndex = (int) ($parts[0] ?? 0);
             $fieldIndex = (int) ($parts[1] ?? -1);
-            $excelRow = $rowIndex + 2; // +1 for header, +1 for 1-based
+            $excelRow = $rowIndex + 2;
 
             foreach ($messages as $msg) {
-                // Use field index as grouping key so errors for same field group together
                 $groupKey = "field_{$fieldIndex}:{$msg}";
                 if (! isset($grouped[$groupKey])) {
                     $grouped[$groupKey] = [
@@ -328,7 +367,6 @@ class PegawaiImport implements ToCollection
             }
         }
 
-        // Sort groups by field index for consistent ordering
         uksort($grouped, function ($a, $b) {
             $fieldA = (int) explode(':', $a)[0];
             $fieldB = (int) explode(':', $b)[0];
@@ -336,7 +374,6 @@ class PegawaiImport implements ToCollection
             return $fieldA <=> $fieldB;
         });
 
-        // Build a single readable error message
         $errorLines = [];
         foreach ($grouped as $group) {
             $uniqueRows = array_values(array_unique($group['rows']));
@@ -354,12 +391,6 @@ class PegawaiImport implements ToCollection
         }
 
         $fullMessage = "Gagal import. Periksa file Anda:\n".implode("\n", $errorLines);
-
-        Log::warning('[Import] Validation failed', [
-            'total_errors' => count($rawErrors),
-            'grouped_count' => count($grouped),
-            'error_lines' => $errorLines,
-        ]);
 
         throw ValidationException::withMessages(['import' => $fullMessage]);
     }
