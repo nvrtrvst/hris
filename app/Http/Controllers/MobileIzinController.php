@@ -237,8 +237,7 @@ class MobileIzinController extends Controller
 
         $user = $pegawai->user;
         $comment = DB::transaction(function () use ($pengajuan, $user, $request) {
-            $pengajuan->refresh();
-            $pengajuan->lockForUpdate();
+            $pengajuan = PengajuanIzin::lockForUpdate()->find($pengajuan->id);
 
             if (in_array($pengajuan->approval_stage, ['approved', 'rejected'])) {
                 abort(422, 'Pengajuan sudah final. Thread sudah dikunci.');
@@ -273,20 +272,26 @@ class MobileIzinController extends Controller
 
     /**
      * Hitung jumlah hari kerja (Senin–Jumat) dalam rentang tanggal.
+     * O(1) — tidak iterasi per hari.
      */
     private function countWeekdays(string $start, string $end): int
     {
         $startDate = Carbon::parse($start);
         $endDate = Carbon::parse($end);
-        $count = 0;
-        $current = $startDate->copy();
-        while ($current->lte($endDate)) {
-            if ($current->isWeekday()) {
-                $count++;
+        $totalDays = $startDate->diffInDays($endDate) + 1;
+        $fullWeeks = intdiv($totalDays, 7);
+        $remainderDays = $totalDays % 7;
+
+        // Each full week has 5 weekdays
+        $weekdays = $fullWeeks * 5;
+
+        // Check remainder days
+        for ($i = 0; $i < $remainderDays; $i++) {
+            if (! in_array($startDate->copy()->addDays($i)->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                $weekdays++;
             }
-            $current->addDay();
         }
 
-        return $count;
+        return $weekdays;
     }
 }

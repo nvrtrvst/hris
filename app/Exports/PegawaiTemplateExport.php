@@ -100,7 +100,6 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 // NOT on a separate hidden sheet — PhpSpreadsheet/LibreOffice/WPS
                 // may switch active sheet on save, causing import to read wrong data.
                 // ================================================================
-                $refStartCol = 'R'; // Column 18
 
                 // Row 1: headers for reference data
                 $sheet->setCellValue('R1', '_Jabatan');

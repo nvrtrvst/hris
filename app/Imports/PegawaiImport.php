@@ -20,9 +20,6 @@ class PegawaiImport implements ToCollection
 {
     protected $unitSekolahId;
 
-    /** Kolom yang WAJIB ada di header template pegawai. */
-    protected const REQUIRED_HEADERS = ['nik', 'nama lengkap', 'email'];
-
     /** Kolom nama untuk pesan error yang mudah dipahami. */
     protected const COLUMN_NAMES = [
         0 => 'NIK',
@@ -92,9 +89,9 @@ class PegawaiImport implements ToCollection
 
     public function collection(Collection $rows)
     {
-        Log::warning('[Import] Raw rows received', [
+        Log::debug('[Import] Raw rows received', [
             'count' => $rows->count(),
-            'first_row' => $rows->isNotEmpty() ? $rows->first()->toArray() : [],
+            'has_header' => $rows->isNotEmpty(),
         ]);
 
         // === STEP 1: Validate header ===
@@ -115,9 +112,7 @@ class PegawaiImport implements ToCollection
             // Header tidak dikenali — kemungkinan: hidden sheet dropdown, atau file bukan template
             $firstRowPreview = collect($rows->first())->filter()->values()->take(4)->implode(', ');
 
-            Log::warning('[Import] Invalid template uploaded', [
-                'first_row' => $firstRowValues->toArray(),
-            ]);
+            Log::warning('[Import] Invalid template uploaded');
 
             throw ValidationException::withMessages([
                 'import' => "File bukan template pegawai.\n"
@@ -142,7 +137,7 @@ class PegawaiImport implements ToCollection
             ]);
         }
 
-        Log::warning('[Import] Data after header skip', [
+        Log::debug('[Import] Data after header skip', [
             'count' => $rows->count(),
         ]);
 
@@ -170,9 +165,8 @@ class PegawaiImport implements ToCollection
             ]);
         }
 
-        Log::warning('[Import] Parsed data', [
+        Log::debug('[Import] Parsed data', [
             'count' => count($data),
-            'sample' => array_slice($data, 0, 2),
         ]);
 
         // === STEP 4: Validate ===
