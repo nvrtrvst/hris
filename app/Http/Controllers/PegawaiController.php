@@ -70,10 +70,10 @@ class PegawaiController extends Controller
             return back()->with('message', 'Data pegawai berhasil diimport.');
         } catch (ValidationException $e) {
             $errors = $e->errors();
-            Log::warning('Import validation error', ['errors' => $errors]);
+            Log::warning('Import validation error', ['errors' => array_map(fn ($msgs) => is_array($msgs) ? implode(', ', $msgs) : $msgs, $errors)]);
 
             return back()->withErrors($errors)->with('error', 'Gagal import, periksa kembali file Anda. Terjadi kesalahan validasi baris.');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Import error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
             return back()->with('error', 'Terjadi kesalahan sistem. Silakan coba lagi nanti atau hubungi administrator.');
