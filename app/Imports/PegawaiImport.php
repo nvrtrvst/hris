@@ -56,14 +56,20 @@ class PegawaiImport implements ToCollection
         // CSV reader PhpSpreadsheet mengubah angka (mis. NIK) jadi integer,
         // jadi semua sel dinormalisasi ke string dulu agar validasi & penyimpanan konsisten.
         $data = $rows->map(function ($row) {
-            $row = collect($row)->map(fn ($v) => $v === null ? null : (string) $v);
+            $row = collect($row)->pad(16, null)->map(fn ($v) => $v === null ? null : (string) $v);
+
+            // Skip baris kosong (trailing rows di Excel)
+            $nonEmpty = $row->filter(fn ($v) => $v !== null && $v !== '')->values();
+            if ($nonEmpty->isEmpty()) {
+                return null;
+            }
+
             $row[4] = $this->parseDate($row[4]); // Tanggal Lahir
             $row[11] = $this->parseDate($row[11]); // Tanggal Mulai Kerja
-            $row = $row->pad(16, null); // pastikan kolom email (index 15) ada
             $row[15] = empty(trim((string) ($row[15] ?? ''))) ? null : trim((string) $row[15]);
 
             return $row->toArray();
-        })->values()->toArray();
+        })->filter()->values()->toArray();
 
         $validator = Validator::make($data, [
             '*.0' => 'required|string|size:16', // NIK
