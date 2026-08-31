@@ -159,6 +159,8 @@ class PegawaiController extends Controller
             $query->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
         }
 
+        $query->orderBy('nama_lengkap', 'asc');
+
         return $query;
     }
 
