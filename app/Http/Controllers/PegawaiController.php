@@ -69,6 +69,7 @@ class PegawaiController extends Controller
 
             return back()->with('message', 'Data pegawai berhasil diimport.');
         } catch (ValidationException $e) {
+            Log::warning('Import validation error: ' . $e->errors()->toJson());
             return back()->withErrors($e->errors())->with('error', 'Gagal import, periksa kembali file Anda. Terjadi kesalahan validasi baris.');
         } catch (\Exception $e) {
             Log::error('Import error: '.$e->getMessage());
