@@ -20,6 +20,7 @@ use Carbon\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -37,21 +38,23 @@ class MobileController extends Controller
         private AttestationService $attestationService,
     ) {}
 
+    /**
+     * Cache jadwal sebagai array (bukan objek Eloquent) supaya tidak corrupt
+     * setelah deploy ketika model class berubah.
+     */
     private function rememberJadwal(string $key, int $ttl, \Closure $callback): mixed
     {
-        try {
-            $cached = Cache::remember($key, $ttl, $callback);
-            if ($cached instanceof \__PHP_Incomplete_Class) {
-                throw new \UnexpectedValueException('Cache corrupted: incomplete class');
-            }
+        $cached = Cache::get($key);
 
-            return $cached;
-        } catch (\Throwable $e) {
-            Log::warning('Cache jadwal corrupted', ['key' => $key, 'error' => $e->getMessage()]);
-            Cache::forget($key);
-
-            return $callback();
+        if ($cached !== null) {
+            return is_array($cached) ? collect($cached) : $cached;
         }
+
+        $result = $callback();
+        $data = $result instanceof Collection ? $result->toArray() : $result;
+        Cache::put($key, $data, $ttl);
+
+        return $result;
     }
 
     public function dashboard()
