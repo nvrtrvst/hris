@@ -30,3 +30,4 @@ Thumbs.db
 app-key.backup.env
 .env.backup
 *.backup.b64
+check_import*.php
