@@ -6,6 +6,7 @@ use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\PegawaiMapel;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
@@ -92,13 +93,19 @@ class JadwalPresensiLiveTest extends TestCase
 
         $mapel = MataPelajaran::create(['nama' => 'Matematika']);
 
+        $pegawaiMapel = PegawaiMapel::create([
+            'pegawai_id' => $pegawai->id,
+            'mata_pelajaran_id' => $mapel->id,
+            'unit_sekolah_id' => $unit->id,
+        ]);
+
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIni = $hariMap[Carbon::now()->format('l')];
 
         $jadwal = Jadwal::create([
             'pegawai_id' => $pegawai->id,
             'unit_sekolah_id' => $unit->id,
-            'mata_pelajaran_id' => $mapel->id,
+            'pegawai_mapel_id' => $pegawaiMapel->id,
             'hari' => $hariIni,
             'jam_mulai' => '08:00:00',
             'jam_selesai' => '09:45:00',

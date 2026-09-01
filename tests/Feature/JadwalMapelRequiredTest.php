@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Jabatan;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\PegawaiMapel;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -108,10 +109,19 @@ class JadwalMapelRequiredTest extends TestCase
             ->post('/jadwal', $this->storePayload($pegawai, $unit, ['mata_pelajaran_id' => $mapel->id]));
 
         $response->assertRedirect(route('jadwal.index'));
+        $this->assertDatabaseHas('pegawai_mapel', [
+            'pegawai_id' => $pegawai->id,
+            'mata_pelajaran_id' => $mapel->id,
+            'unit_sekolah_id' => $unit->id,
+        ]);
+        $pegawaiMapel = PegawaiMapel::where('pegawai_id', $pegawai->id)
+            ->where('mata_pelajaran_id', $mapel->id)
+            ->where('unit_sekolah_id', $unit->id)
+            ->first();
         $this->assertDatabaseHas('jadwal', [
             'pegawai_id' => $pegawai->id,
             'jenis_jadwal' => 'mengajar',
-            'mata_pelajaran_id' => $mapel->id,
+            'pegawai_mapel_id' => $pegawaiMapel->id,
         ]);
     }
 
@@ -131,7 +141,7 @@ class JadwalMapelRequiredTest extends TestCase
         $this->assertDatabaseHas('jadwal', [
             'pegawai_id' => $pegawai->id,
             'jenis_jadwal' => 'piket',
-            'mata_pelajaran_id' => null,
+            'pegawai_mapel_id' => null,
         ]);
     }
 
@@ -173,10 +183,14 @@ class JadwalMapelRequiredTest extends TestCase
             ]);
 
         $response->assertRedirect(route('jadwal.index'));
+        $this->assertDatabaseHas('pegawai_mapel', [
+            'pegawai_id' => $pegawai->id,
+            'mata_pelajaran_id' => $mapel->id,
+            'unit_sekolah_id' => $unit->id,
+        ]);
         $this->assertDatabaseHas('jadwal', [
             'pegawai_id' => $pegawai->id,
             'jenis_jadwal' => 'mengajar',
-            'mata_pelajaran_id' => $mapel->id,
         ]);
     }
 }

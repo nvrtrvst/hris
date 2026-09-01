@@ -6,6 +6,7 @@ use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\PegawaiMapel;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
@@ -154,10 +155,20 @@ class PimpinanRoleTest extends TestCase
         $orangLain = $this->makePegawai('Guru Bukan Bawahan');
 
         $mapel = MataPelajaran::firstOrCreate(['nama' => 'Matematika']);
+        $bawahanMapel = PegawaiMapel::create([
+            'pegawai_id' => $bawahan->id,
+            'mata_pelajaran_id' => $mapel->id,
+            'unit_sekolah_id' => $this->sd->id,
+        ]);
+        $orangLainMapel = PegawaiMapel::create([
+            'pegawai_id' => $orangLain->id,
+            'mata_pelajaran_id' => $mapel->id,
+            'unit_sekolah_id' => $this->sd->id,
+        ]);
         Jadwal::create([
             'pegawai_id' => $bawahan->id,
             'unit_sekolah_id' => $this->sd->id,
-            'mata_pelajaran_id' => $mapel->id,
+            'pegawai_mapel_id' => $bawahanMapel->id,
             'hari' => 'Senin',
             'jam_mulai' => '07:00:00',
             'jam_selesai' => '08:00:00',
@@ -168,7 +179,7 @@ class PimpinanRoleTest extends TestCase
         Jadwal::create([
             'pegawai_id' => $orangLain->id,
             'unit_sekolah_id' => $this->sd->id,
-            'mata_pelajaran_id' => $mapel->id,
+            'pegawai_mapel_id' => $orangLainMapel->id,
             'hari' => 'Senin',
             'jam_mulai' => '09:00:00',
             'jam_selesai' => '10:00:00',

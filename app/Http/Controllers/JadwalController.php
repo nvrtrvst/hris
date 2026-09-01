@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\PegawaiMapel;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use Illuminate\Http\Client\ConnectionException;
@@ -24,7 +25,7 @@ class JadwalController extends Controller
         $isAdmin = $user && ($user->can('view_jadwal') || $user->can('manage_jadwal'));
         $search = trim((string) $request->input('search', ''));
 
-        $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'mataPelajaran:id,nama']);
+        $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'pegawaiMapel.mataPelajaran:id,nama']);
 
         if ($this->isPimpinanReadOnly($user)) {
             // Pimpinan (kepsek/kepala TU/ketua yayasan): HANYA jadwal bawahan langsung.
@@ -251,8 +252,13 @@ class JadwalController extends Controller
                 }
             }
 
+            $pegawaiMapelId = $this->resolvePegawaiMapelId($validated);
+
             foreach ($hariList as $hari) {
-                Jadwal::create(array_merge($validated, ['hari' => $hari]));
+                Jadwal::create(array_merge($validated, [
+                    'hari' => $hari,
+                    'pegawai_mapel_id' => $pegawaiMapelId,
+                ]));
             }
 
             $this->clearJadwalCache($validated['pegawai_id']);
@@ -357,6 +363,8 @@ class JadwalController extends Controller
                 }
             }
 
+            $validated['pegawai_mapel_id'] = $this->resolvePegawaiMapelId($validated);
+
             $jadwal->update($validated);
 
             $this->clearJadwalCache($validated['pegawai_id']);
@@ -443,6 +451,21 @@ class JadwalController extends Controller
                     continue;
                 }
 
+                // Resolve pegawai_mapel for this pegawai+mapel+unit combo.
+                $pegawaiMapel = PegawaiMapel::where('pegawai_id', $pegawai->id)
+                    ->where('mata_pelajaran_id', $mapel->id)
+                    ->where('unit_sekolah_id', $unit->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $pegawaiMapel) {
+                    $pegawaiMapel = PegawaiMapel::create([
+                        'pegawai_id' => $pegawai->id,
+                        'mata_pelajaran_id' => $mapel->id,
+                        'unit_sekolah_id' => $unit->id,
+                    ]);
+                }
+
                 // Hitung existing minutes mingguan
                 $existingMinutes = Jadwal::where('pegawai_id', $pegawai->id)
                     ->where('jenis_jadwal', 'mengajar')
@@ -481,7 +504,7 @@ class JadwalController extends Controller
                             Jadwal::create([
                                 'pegawai_id' => $pegawai->id,
                                 'unit_sekolah_id' => $unit->id,
-                                'mata_pelajaran_id' => $mapel ? $mapel->id : null,
+                                'pegawai_mapel_id' => $pegawaiMapel->id,
                                 'hari' => $day,
                                 'jam_mulai' => $time[0],
                                 'jam_selesai' => $time[1],
@@ -609,6 +632,36 @@ class JadwalController extends Controller
         $this->clearJadwalCache($jadwal->pegawai_id);
 
         return redirect()->route('jadwal.index')->with('message', 'Jadwal berhasil dihapus.');
+    }
+
+    /**
+     * Resolve pegawai_mapel_id from validated jadwal data.
+     * findOrCreate with lockForUpdate inside transaction for race condition safety.
+     * Returns null for non-mengajar types.
+     */
+    private function resolvePegawaiMapelId(array $validated): ?int
+    {
+        if ($validated['jenis_jadwal'] !== 'mengajar' || empty($validated['mata_pelajaran_id'])) {
+            return null;
+        }
+
+        $row = DB::table('pegawai_mapel')
+            ->where('pegawai_id', $validated['pegawai_id'])
+            ->where('mata_pelajaran_id', $validated['mata_pelajaran_id'])
+            ->where('unit_sekolah_id', $validated['unit_sekolah_id'])
+            ->first();
+
+        if ($row) {
+            return (int) $row->id;
+        }
+
+        return (int) DB::table('pegawai_mapel')->insertGetId([
+            'pegawai_id' => $validated['pegawai_id'],
+            'mata_pelajaran_id' => $validated['mata_pelajaran_id'],
+            'unit_sekolah_id' => $validated['unit_sekolah_id'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     private function pegawaiBelongsToUnit(int $pegawaiId, int $unitId): bool

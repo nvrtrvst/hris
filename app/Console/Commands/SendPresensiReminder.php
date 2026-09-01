@@ -25,7 +25,7 @@ class SendPresensiReminder extends Command
         $hariIndo = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariTarget = $hariIndo[$target->format('l')];
 
-        $pegawais = Pegawai::with(['user', 'jadwals.unitSekolah', 'jadwals.mataPelajaran'])
+        $pegawais = Pegawai::with(['user', 'jadwals.unitSekolah', 'jadwals.pegawaiMapel.mataPelajaran'])
             ->where('status_aktif', 'aktif')
             ->whereHas('jadwals', fn ($q) => $q->where('hari', $hariTarget))
             ->get();

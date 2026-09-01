@@ -401,7 +401,7 @@ class DashboardController extends Controller
         // 6. Jadwal Hari Ini
         $jadwalHariIniQuery = Jadwal::with([
             'pegawai:id,nama_lengkap',
-            'mataPelajaran:id,nama',
+            'pegawaiMapel.mataPelajaran:id,nama',
             'unitSekolah:id,nama,singkatan',
         ])
             ->where('hari', $hariIniIndo)

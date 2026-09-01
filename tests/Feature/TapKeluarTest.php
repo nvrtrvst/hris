@@ -6,6 +6,7 @@ use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\PegawaiMapel;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
@@ -72,10 +73,15 @@ class TapKeluarTest extends TestCase
         $hari = Carbon::now()->locale('id')->dayName;
         $pegawai = $this->makePegawaiTetap();
         $mapel = MataPelajaran::create(['nama' => 'Matematika']);
+        $pegawaiMapel = PegawaiMapel::create([
+            'pegawai_id' => $pegawai->id,
+            'mata_pelajaran_id' => $mapel->id,
+            'unit_sekolah_id' => $this->unit->id,
+        ]);
         $jadwal = Jadwal::create([
             'pegawai_id' => $pegawai->id,
             'unit_sekolah_id' => $this->unit->id,
-            'mata_pelajaran_id' => $mapel->id,
+            'pegawai_mapel_id' => $pegawaiMapel->id,
             'hari' => $hari,
             'jam_mulai' => '07:00',
             'jam_selesai' => '15:00',
@@ -125,10 +131,15 @@ class TapKeluarTest extends TestCase
         $hari = Carbon::now()->locale('id')->dayName;
         $pegawai = $this->makePegawaiTetap();
         $mapel = MataPelajaran::create(['nama' => 'Matematika']);
+        $pegawaiMapel = PegawaiMapel::create([
+            'pegawai_id' => $pegawai->id,
+            'mata_pelajaran_id' => $mapel->id,
+            'unit_sekolah_id' => $this->unit->id,
+        ]);
         $jadwal = Jadwal::create([
             'pegawai_id' => $pegawai->id,
             'unit_sekolah_id' => $this->unit->id,
-            'mata_pelajaran_id' => $mapel->id,
+            'pegawai_mapel_id' => $pegawaiMapel->id,
             'hari' => $hari,
             'jam_mulai' => '07:00',
             'jam_selesai' => '15:00',

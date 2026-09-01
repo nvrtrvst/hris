@@ -40,7 +40,7 @@ class PresensiController extends Controller
 
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_presensi');
-        $query = Presensi::with(['unitSekolah', 'pegawai', 'jadwal.mataPelajaran']);
+        $query = Presensi::with(['unitSekolah', 'pegawai', 'jadwal.pegawaiMapel.mataPelajaran']);
 
         if ($this->isPimpinanReadOnly($user)) {
             // Pimpinan (kepsek/kepala TU/ketua yayasan): HANYA presensi bawahan langsung.

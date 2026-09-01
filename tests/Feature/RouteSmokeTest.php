@@ -10,6 +10,7 @@ use App\Models\KomponenGaji;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\PegawaiDokumen;
+use App\Models\PegawaiMapel;
 use App\Models\PengajuanIzin;
 use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
@@ -564,11 +565,16 @@ class RouteSmokeTest extends TestCase
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIni = $hariMap[now()->format('l')];
 
+        $this->jadwalPegawaiMapel = PegawaiMapel::where('pegawai_id', $this->pegawai->id)
+            ->where('mata_pelajaran_id', $this->mapel->id)
+            ->where('unit_sekolah_id', $this->unit->id)
+            ->first();
+
         $this->jadwal = Jadwal::create([
             'pegawai_id' => $this->pegawai->id,
             'unit_sekolah_id' => $this->unit->id,
             'kelas_label' => '7 - A',
-            'mata_pelajaran_id' => $this->mapel->id,
+            'pegawai_mapel_id' => $this->jadwalPegawaiMapel->id,
             'hari' => $hariIni,
             'jam_mulai' => '08:00',
             'jam_selesai' => '09:30',
@@ -583,7 +589,7 @@ class RouteSmokeTest extends TestCase
             'pegawai_id' => $this->pegawai->id,
             'unit_sekolah_id' => $this->unit->id,
             'kelas_label' => '8 - A',
-            'mata_pelajaran_id' => $this->mapel->id,
+            'pegawai_mapel_id' => $this->jadwalPegawaiMapel->id,
             'hari' => $hariLain,
             'jam_mulai' => '10:00',
             'jam_selesai' => '11:30',

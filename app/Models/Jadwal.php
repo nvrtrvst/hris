@@ -13,7 +13,7 @@ class Jadwal extends Model
         'pegawai_id',
         'unit_sekolah_id',
         'kelas_label',
-        'mata_pelajaran_id',
+        'pegawai_mapel_id',
         'hari',
         'jam_mulai',
         'jam_selesai',
@@ -21,6 +21,8 @@ class Jadwal extends Model
         'tahun_ajaran',
         'semester',
     ];
+
+    protected $appends = ['mata_pelajaran'];
 
     public function pegawai(): BelongsTo
     {
@@ -32,8 +34,13 @@ class Jadwal extends Model
         return $this->belongsTo(UnitSekolah::class);
     }
 
-    public function mataPelajaran(): BelongsTo
+    public function pegawaiMapel(): BelongsTo
     {
-        return $this->belongsTo(MataPelajaran::class);
+        return $this->belongsTo(PegawaiMapel::class);
+    }
+
+    public function getMataPelajaranAttribute(): ?MataPelajaran
+    {
+        return $this->pegawaiMapel?->mataPelajaran;
     }
 }
