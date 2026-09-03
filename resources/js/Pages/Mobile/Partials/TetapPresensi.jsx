@@ -18,6 +18,40 @@ const SELESAI = 'selesai';
 // harus sinkron dengan PresensiMessages::TAP_GRACE_MINUTES di backend.
 const TAP_GRACE_MINUTES = 15;
 
+/**
+ * Kelompokkan jadwal berurutan dengan mata pelajaran sama (back-to-back).
+ * Syarat satu grup: pegawai_mapel_id SAMA + jam_selesai[j] === jam_mulai[j+1].
+ * Jadwal beda mapel atau ada gap → grup baru.
+ */
+function groupConsecutiveJadwals(jadwals) {
+    if (!jadwals?.length) return [];
+    const sorted = [...jadwals].sort((a, b) => (a.jam_mulai ?? '').localeCompare(b.jam_mulai ?? ''));
+    const groups = [];
+    let cur = null;
+    for (const j of sorted) {
+        if (cur && j.pegawai_mapel_id === cur.pegMapelId && j.jam_mulai === cur.jamSelesaiLast) {
+            cur.allIds.push(j.id);
+            cur.jadwals.push(j);
+            cur.jamSelesaiLast = j.jam_selesai;
+        } else {
+            if (cur) groups.push(cur);
+            cur = {
+                id: j.id,
+                pegMapelId: j.pegawai_mapel_id,
+                allIds: [j.id],
+                jadwals: [j],
+                mata_pelajaran: j.mata_pelajaran,
+                kelas_label: j.kelas_label,
+                unit_sekolah: j.unit_sekolah,
+                jam_mulai: j.jam_mulai,
+                jamSelesaiLast: j.jam_selesai,
+            };
+        }
+    }
+    if (cur) groups.push(cur);
+    return groups;
+}
+
 const pad = (n) => String(n).padStart(2, '0');
 
 export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null }) {
@@ -56,38 +90,41 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const jamSore = 960;
     const toMinutes = (hms) => { if (!hms) return 0; const p = String(hms).split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1] || 0, 10); };
 
-    // Jadwal "aktif" = sudah di-tap ATAU masih dalam jendela waktu tap
-    // (mulai <= sekarang <= selesai + grace) — jadwal yang sudah lewat
-    // tidak bisa di-tap lagi (cegah presensi retroaktif).
-    const activeJadwals = useMemo(() => jadwals.filter((j) => {
-        if (tappedIds.has(j.id)) return true;
-        const mulai = toMinutes(j.jam_mulai);
-        const selesai = toMinutes(j.jam_selesai) || (mulai + 60);
-        // Grace per unit (toleransi_tap_menit), fallback ke konstanta global.
-        const grace = j.unit_sekolah?.toleransi_tap_menit ?? TAP_GRACE_MINUTES;
+    // Kelompokkan jadwal berurutan dengan mapel sama (back-to-back).
+    const groupedJadwals = useMemo(() => groupConsecutiveJadwals(jadwals), [jadwals]);
 
+    // Helper: semua jadwal dalam grup sudah di-tap (jam_masuk tercatat).
+    const isGroupTapped = useCallback((g) => g.allIds.every((id) => tappedIds.has(id)), [tappedIds]);
+    // Helper: semua jadwal dalam grup sudah closed (jam_keluar tercatat).
+    const isGroupClosed = useCallback((g) => g.allIds.every((id) => closedIds.has(id)), [closedIds]);
+
+    // Grup "aktif" = SUDAH di-tap ATAU masih dalam jendela waktu tap.
+    const activeGroups = useMemo(() => groupedJadwals.filter((g) => {
+        if (isGroupTapped(g)) return true;
+        const mulai = toMinutes(g.jam_mulai);
+        const selesai = toMinutes(g.jamSelesaiLast) || (mulai + 60);
+        const grace = g.unit_sekolah?.toleransi_tap_menit ?? TAP_GRACE_MINUTES;
         return mulai <= jamSekarang && jamSekarang <= selesai + grace;
-    }), [jadwals, tappedIds, jamSekarang]);
-    const untappedActive = activeJadwals.filter((j) => !tappedIds.has(j.id));
-    const masihBisaTap = untappedActive.length > 0;
-    // Ada jadwal yang SEDANG berlangsung (mulai <= sekarang < selesai) —
+    }), [groupedJadwals, isGroupTapped, jamSekarang]);
+    const untappedActiveGroups = activeGroups.filter((g) => !isGroupTapped(g));
+    const masihBisaTap = untappedActiveGroups.length > 0;
+
+    // Ada grup yang SEDANG berlangsung (mulai <= sekarang < selesai) —
     // di-tap bukan berarti selesai; foto sore menunggu jam mengajar habis.
-    const adaBerlangsung = useMemo(() => jadwals.some((j) => {
-        const mulai = toMinutes(j.jam_mulai);
-        const selesai = toMinutes(j.jam_selesai) || (mulai + 60);
-
+    const adaBerlangsung = useMemo(() => groupedJadwals.some((g) => {
+        const mulai = toMinutes(g.jam_mulai);
+        const selesai = toMinutes(g.jamSelesaiLast) || (mulai + 60);
         return mulai <= jamSekarang && jamSekarang < selesai;
-    }), [jadwals, jamSekarang]);
-    // Semua jadwal hari ini "beres": di-tap & jam selesainya sudah lewat, ATAU
-    // sudah lewat batas tap (terlambat — tidak bisa di-tap lagi).
-    const semuaBeres = useMemo(() => jadwals.length > 0 && jadwals.every((j) => {
-        const mulai = toMinutes(j.jam_mulai);
-        const selesai = toMinutes(j.jam_selesai) || (mulai + 60);
-        if (tappedIds.has(j.id)) return jamSekarang >= selesai;
-        const grace = j.unit_sekolah?.toleransi_tap_menit ?? TAP_GRACE_MINUTES;
+    }), [groupedJadwals, jamSekarang]);
 
+    // Semua grup hari ini "beres": di-tap & jam selesainya sudah lewat, ATAU
+    // sudah lewat batas tap (terlambat — tidak bisa di-tap lagi).
+    const semuaBeres = useMemo(() => groupedJadwals.length > 0 && groupedJadwals.every((g) => {
+        const selesai = toMinutes(g.jamSelesaiLast) || (toMinutes(g.jam_mulai) + 60);
+        if (isGroupTapped(g)) return jamSekarang >= selesai;
+        const grace = g.unit_sekolah?.toleransi_tap_menit ?? TAP_GRACE_MINUTES;
         return jamSekarang > selesai + grace;
-    }), [jadwals, tappedIds, jamSekarang]);
+    }), [groupedJadwals, isGroupTapped, jamSekarang]);
 
     // Generic check: semua presensi hari ini sudah lengkap
     const allRecordsComplete = presensiHariIni.length > 0
@@ -295,8 +332,10 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         }
     }, [capturedPhoto, currentPosition, geoBlocked, geofence, posA, posAwal, motionSamples]);
 
-    const handleTap = useCallback(async (jadwalId, tipe = 'masuk') => {
-        setTapLoading(jadwalId);
+    // Tap seluruh grup secara atomik: optimis UI → kirim request untuk semua
+    // jadwal_id dalam grup → rollback semua bila ADA satupun gagal (cegah partial state).
+    const handleTapGroup = useCallback(async (group, tipe = 'masuk') => {
+        setTapLoading(group.id);
         setError(null);
         setSuccessMessage(null);
 
@@ -306,69 +345,73 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             return;
         }
 
+        // Optimis: tandai SEMUA jadwal dalam grup sekaligus.
         if (tipe === 'keluar') {
-            setClosedIds((prev) => new Set(prev).add(jadwalId));
+            setClosedIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.add(id)); return next; });
         } else {
-            setTappedIds((prev) => new Set(prev).add(jadwalId));
+            setTappedIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.add(id)); return next; });
         }
-        setSuccessMessage(null);
 
-        try {
-            const res = await fetch(route('presensi.absen.tap'), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: JSON.stringify({
-                    _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                    jadwal_id: jadwalId,
-                    tipe,
-                    latitude: currentPosition.latitude,
-                    longitude: currentPosition.longitude,
-                    accuracy: currentPosition.accuracy,
-                    mock_suspect: currentPosition.accuracy === 0,
-                }),
-            });
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        let allOk = true;
 
-            if (!res.ok) {
-                if (res.status === 419) throw { type: 'session_expired' };
-                const data = await res.json().catch(() => ({}));
-                if (tipe === 'keluar') {
-                    setClosedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
-                } else {
-                    setTappedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+        for (const jadwalId of group.allIds) {
+            try {
+                const res = await fetch(route('presensi.absen.tap'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        _token: token,
+                        jadwal_id: jadwalId,
+                        tipe,
+                        latitude: currentPosition.latitude,
+                        longitude: currentPosition.longitude,
+                        accuracy: currentPosition.accuracy,
+                        mock_suspect: currentPosition.accuracy === 0,
+                    }),
+                });
+
+                if (!res.ok) {
+                    allOk = false;
+                    if (res.status === 419) throw { type: 'session_expired' };
+                    const data = await res.json().catch(() => ({}));
+                    const msg = (data.errors && Object.values(data.errors)[0]?.[0]) || data.message || 'Gagal tap jadwal.';
+                    setError(msg);
+                    break;
                 }
-                const msg = (data.errors && Object.values(data.errors)[0]?.[0]) || data.message || 'Gagal tap jadwal.';
-                setError(msg);
-                return;
-            }
 
-            const data = await res.json();
-            if (data.success) {
-                setSuccessMessage(data.message || (tipe === 'keluar' ? 'Presensi pulang tercatat.' : 'Kehadiran tercatat.'));
-                setTimeout(() => setSuccessMessage(null), 2000);
-            } else {
-                if (tipe === 'keluar') {
-                    setClosedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
-                } else {
-                    setTappedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+                const data = await res.json();
+                if (!data.success) {
+                    allOk = false;
+                    setError(data.message || 'Gagal.');
+                    break;
                 }
-                setError(data.message || 'Gagal.');
+            } catch (err) {
+                allOk = false;
+                if (err.type === 'session_expired') setError('Sesi habis.');
+                else setError('Gagal terhubung ke server.');
+                break;
             }
-        } catch (err) {
+        }
+
+        if (!allOk) {
+            // Rollback SEMUA jadwal dalam grup — partial state tidak diperbolehkan.
             if (tipe === 'keluar') {
-                setClosedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+                setClosedIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.delete(id)); return next; });
             } else {
-                setTappedIds((prev) => { const next = new Set(prev); next.delete(jadwalId); return next; });
+                setTappedIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.delete(id)); return next; });
             }
-            if (err.type === 'session_expired') setError('Sesi habis.');
-            else setError('Gagal terhubung ke server.');
-        } finally {
-            setTapLoading(null);
+        } else {
+            setSuccessMessage(tipe === 'keluar' ? 'Presensi pulang tercatat.' : 'Kehadiran tercatat.');
+            setTimeout(() => setSuccessMessage(null), 2000);
         }
+
+        setTapLoading(null);
     }, [currentPosition]);
 
     const timeString = `${pad(now.getHours())}.${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
@@ -474,7 +517,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 <section aria-labelledby="jadwal-heading" className="mb-4">
                     <div className="mb-2 flex items-center justify-between">
                         <h2 id="jadwal-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Agenda Mengajar</h2>
-                        <span className="text-xs text-slate-500">{tappedIds.size} dari {activeJadwals.length} sudah di-tap</span>
+                        <span className="text-xs text-slate-500">{activeGroups.filter(isGroupTapped).length} dari {activeGroups.length} sudah di-tap</span>
                     </div>
                     {phase === TAP_JADWAL && adaBerlangsung && !masihBisaTap && (
                         <div className="mb-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800">
@@ -482,27 +525,32 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                         </div>
                     )}
                     <div className="space-y-2">
-                        {activeJadwals.map((j) => {
-                            const done = tappedIds.has(j.id);
-                            const closed = closedIds.has(j.id);
+                        {activeGroups.map((g) => {
+                            const done = isGroupTapped(g);
+                            const closed = isGroupClosed(g);
+                            const timeLabel = g.jam_mulai?.slice(0, 5) + (g.jamSelesaiLast ? '–' + g.jamSelesaiLast.slice(0, 5) : '');
+                            const count = g.allIds.length;
                             return (
-                                <div key={j.id} className={`rounded-xl border p-3 ${done ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+                                <div key={g.id} className={`rounded-xl border p-3 ${done ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
                                     <div className="mb-2 flex items-start justify-between gap-2">
                                         <div className="min-w-0">
-                                            <p className="text-sm font-bold text-slate-900">{j.mata_pelajaran?.nama || 'Jadwal'}</p>
-                                            <p className="mt-0.5 text-xs text-slate-500">{j.kelas_label || ''}</p>
+                                            <p className="text-sm font-bold text-slate-900">{g.mata_pelajaran?.nama || 'Jadwal'}</p>
+                                            <p className="mt-0.5 text-xs text-slate-500">
+                                                {g.kelas_label || ''}
+                                                {count > 1 && <span className="ml-1 font-semibold text-primary">· {count} jam berturut</span>}
+                                            </p>
                                         </div>
-                                        <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-primary">{j.jam_mulai?.slice(0, 5)}</span>
+                                        <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-primary">{timeLabel}</span>
                                     </div>
                                     {!done && phase === TAP_JADWAL ? (
                                         <>
                                             <SlideToConfirm
-                                                onConfirm={() => handleTap(j.id)}
-                                                disabled={tapLoading !== null || !currentPosition || !isInsideJadwal(j)}
+                                                onConfirm={() => handleTapGroup(g)}
+                                                disabled={tapLoading !== null || !currentPosition || !isInsideJadwal(g)}
                                                 confirmed={false}
-                                                label={`Tap ${j.mata_pelajaran?.nama || 'jadwal'}`}
+                                                label={`Tap ${g.mata_pelajaran?.nama || 'jadwal'}${count > 1 ? ` (${count} jam)` : ''}`}
                                             />
-                                            {(!currentPosition || !isInsideJadwal(j)) && (
+                                            {(!currentPosition || !isInsideJadwal(g)) && (
                                                 <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
                                                     <MapPin className="h-3 w-3 shrink-0" />
                                                     {!currentPosition ? 'Tunggu GPS aktif…' : 'Di luar radius unit — geser tidak aktif'}
@@ -510,12 +558,10 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                             )}
                                         </>
                                     ) : done && !closed ? (
-                                        <SlideToConfirm
-                                            onConfirm={() => handleTap(j.id, 'keluar')}
-                                            disabled={tapLoading !== null || !currentPosition || !isInsideJadwal(j)}
-                                            confirmed={false}
-                                            label={`Tap keluar ${j.mata_pelajaran?.nama || 'jadwal'}`}
-                                        />
+                                        <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
+                                            <CheckCircle className="h-4 w-4" /> Presensi mengajar tercatat
+                                            {count > 1 && <span className="text-emerald-500">({count} jam)</span>}
+                                        </div>
                                     ) : done && closed ? (
                                         <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
                                             <CheckCircle className="h-4 w-4" /> Presensi mengajar lengkap
@@ -720,7 +766,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 </>
             )}
 
-            {activeJadwals.length === 0 && jadwals.length > 0 && phase !== SELESAI && (
+            {activeGroups.length === 0 && jadwals.length > 0 && phase !== SELESAI && (
                 <Empty icon={Clock} title="Tidak ada jadwal yang bisa di-tap" subtitle={semuaBeres ? 'Semua jadwal sudah berakhir — lanjut ke foto sore.' : 'Jadwal aktif akan muncul setelah jam mengajar tiba.'} />
             )}
             {jadwals.length === 0 && phase !== SELESAI && (

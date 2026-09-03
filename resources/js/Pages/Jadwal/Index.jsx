@@ -4,7 +4,7 @@ import useNowEveryMinute from '@/Utils/useNowEveryMinute';
 import usePolling from '@/Utils/usePolling';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     BookOpen,
     CalendarDays,
@@ -25,6 +25,7 @@ import {
     ShieldCheck,
     Sparkles,
     Trash2,
+    Upload,
     Users,
     UserRound,
 } from 'lucide-react';
@@ -145,6 +146,14 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
     const [showSwapModal, setShowSwapModal] = useState(false);
     const [swapData, setSwapData] = useState({ jadwal_asal_id: '', jadwal_tujuan_id: '' });
     const [targetPegawaiId, setTargetPegawaiId] = useState('');
+
+    // Modal Import
+    const [showImportModal, setShowImportModal] = useState(false);
+    const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
+        file: null,
+        unit_sekolah_id: '',
+        delete_existing: false,
+    });
 
     // Hitung jumlah pegawai per unit buat info di modal generate
     const pegawaiCountByUnit = useMemo(() => {
@@ -271,6 +280,16 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         });
     };
 
+    const handleImportSubmit = (e) => {
+        e.preventDefault();
+        postImport(route('jadwal.import-pdf'), {
+            onSuccess: () => {
+                setShowImportModal(false);
+                resetImport();
+            },
+        });
+    };
+
     const s = stats || { total_jadwal: 0, total_mengajar: 0, total_jam_menit: 0, total_pegawai: 0, total_kelas: 0 };
 
     const statCards = [
@@ -368,9 +387,14 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     </button>
                                 )}
                                 <div className="ml-auto flex flex-wrap items-center gap-2 print:hidden">
-                                    <button type="button" onClick={() => window.print()} className="btn-secondary btn-sm flex items-center gap-1.5">
+                                    <a href={route('jadwal.export-pdf', buildParams())} className="btn-secondary btn-sm flex items-center gap-1.5">
                                         <Printer className="h-3.5 w-3.5" /> Cetak PDF
-                                    </button>
+                                    </a>
+                                    {canMutateJadwal && (
+                                        <button type="button" onClick={() => setShowImportModal(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
+                                            <Upload className="h-3.5 w-3.5" /> Import Jadwal
+                                        </button>
+                                    )}
                                     {canMutateJadwal && (
                                         <button type="button" onClick={() => setShowGenerateModal(true)} className="btn-primary btn-sm bg-accent text-primary-800 hover:bg-yellow-500 flex items-center gap-1.5">
                                             <Sparkles className="h-3.5 w-3.5" /> Generate Otomatis
@@ -1044,6 +1068,84 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     </button>
                                 </div>
                             </div>
+                        </Modal>
+                    )}
+
+                    {/* Import Jadwal Modal */}
+                    {showImportModal && (
+                        <Modal show={showImportModal} onClose={() => setShowImportModal(false)} maxWidth="md">
+                            <form onSubmit={handleImportSubmit}>
+                                <div className="px-6 py-5">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                            <Upload className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="page-title">Import Jadwal dari PDF</h3>
+                                            <p className="page-subtitle">Upload file PDF jadwal pelajaran. Sistem akan mengekstrak data secara otomatis.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="form-label mb-1">Unit Sekolah <span className="text-danger">*</span></label>
+                                            <select
+                                                value={importData.unit_sekolah_id}
+                                                onChange={(e) => setImportData('unit_sekolah_id', e.target.value)}
+                                                className="select-field"
+                                                required
+                                            >
+                                                <option value="">-- Pilih Unit --</option>
+                                                {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
+                                            </select>
+                                            {importErrors.unit_sekolah_id && <p className="form-error">{importErrors.unit_sekolah_id}</p>}
+                                        </div>
+
+                                        <div>
+                                            <label className="form-label mb-1">File PDF (.pdf) <span className="text-danger">*</span></label>
+                                            <input
+                                                type="file"
+                                                accept=".pdf"
+                                                onChange={(e) => setImportData('file', e.target.files[0])}
+                                                className="mt-1 block w-full text-sm text-text-muted file:mr-4 file:rounded-lg file:border-0 file:bg-primary-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary-100"
+                                                required
+                                            />
+                                            {importErrors.file && <p className="form-error">{importErrors.file}</p>}
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                id="import_delete_existing"
+                                                checked={importData.delete_existing}
+                                                onChange={(e) => setImportData('delete_existing', e.target.checked)}
+                                                className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
+                                            />
+                                            <label htmlFor="import_delete_existing" className="text-sm text-text-secondary">
+                                                Hapus jadwal lama sebelum import (untuk periode yang sama)
+                                            </label>
+                                        </div>
+
+                                        <div className="flex items-start gap-2 rounded-xl border border-info/30 bg-info-light p-3 text-xs text-info">
+                                            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                                            <span>File PDF harus berupa jadwal pelajaran dengan format tabel. Duplikat akan dilewati otomatis.</span>
+                                        </div>
+
+                                        {importErrors.import && (
+                                            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 whitespace-pre-line">{importErrors.import}</div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-border">
+                                        <button type="button" onClick={() => setShowImportModal(false)} disabled={importProcessing} className="btn-secondary">
+                                            Batal
+                                        </button>
+                                        <button type="submit" disabled={importProcessing || !importData.file || !importData.unit_sekolah_id} className="btn-primary flex items-center gap-1.5">
+                                            {importProcessing ? <><Loader2 className="h-4 w-4 animate-spin" /> Mengimport…</> : <><Upload className="h-4 w-4" /> Upload & Proses</>}
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
                         </Modal>
                     )}
                 </div>

@@ -125,6 +125,11 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('jadwal/kelas-by-unit', [JadwalController::class, 'kelasByUnit'])
         ->middleware('throttle:30,1')
         ->name('jadwal.kelas-by-unit');
+    Route::get('jadwal/export-pdf', [JadwalController::class, 'exportPdf'])
+        ->name('jadwal.export-pdf');
+    Route::post('jadwal/import-pdf', [JadwalController::class, 'importPdf'])
+        ->middleware('throttle:10,1')
+        ->name('jadwal.import-pdf');
 
     // Presensi — create/store/update hanya admin
     Route::get('presensi/create', [PresensiController::class, 'create'])->name('presensi.create');

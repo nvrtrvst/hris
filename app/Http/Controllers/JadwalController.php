@@ -9,11 +9,13 @@ use App\Models\Pegawai;
 use App\Models\PegawaiMapel;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class JadwalController extends Controller
 {
@@ -756,5 +758,368 @@ class JadwalController extends Controller
         }
 
         return response()->json($response->json() ?: ['success' => false, 'kelas' => []]);
+    }
+
+    // ──────────────────────────────────────────
+    //  PDF Export
+    // ──────────────────────────────────────────
+
+    public function exportPdf(Request $request)
+    {
+        $user = auth()->user();
+        $isAdmin = $user && ($user->can('view_jadwal') || $user->can('manage_jadwal'));
+
+        $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'pegawaiMapel.mataPelajaran:id,nama']);
+
+        if ($this->isPimpinanReadOnly($user)) {
+            $this->scopePimpinanBawahan($query, $user);
+        } elseif (! $isAdmin) {
+            $pegawai = Pegawai::where('user_id', auth()->id())->first();
+            $query->where('pegawai_id', $pegawai?->id ?? -1);
+        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $query->where('unit_sekolah_id', $user->unit_sekolah_id);
+        } elseif ($request->filled('unit_sekolah_id')) {
+            $query->where('unit_sekolah_id', $request->unit_sekolah_id);
+        }
+
+        if ($request->filled('kelas_label')) {
+            $query->where('kelas_label', $request->kelas_label);
+        }
+
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
+            $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', "%{$search}%"));
+        }
+
+        $jenis = $request->input('jenis_filter');
+        if ($jenis === '' || $jenis === null) {
+            $jenis = 'pendidik';
+        }
+        if ($jenis === 'pendidik') {
+            $query->whereHas('pegawai.jabatans', fn ($q) => $q->where('is_guru', true));
+        } elseif ($jenis === 'kependidikan') {
+            $query->whereHas('pegawai', fn ($q) => $q->whereDoesntHave('jabatans', fn ($q2) => $q2->where('is_guru', true)));
+        }
+
+        $jadwals = $query->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 WHEN 'Minggu' THEN 7 END")
+            ->orderBy('jam_mulai')
+            ->get();
+
+        $DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+        $matrix = [];
+        $perGuru = [];
+
+        foreach ($jadwals as $j) {
+            $kelas = $j->kelas_label;
+            $hari = $j->hari;
+            if (! $kelas || ! in_array($hari, $DAYS)) {
+                continue;
+            }
+
+            $slotNum = $this->getJamSlot($j->jam_mulai);
+            if (! $slotNum) {
+                continue;
+            }
+
+            $guru = $j->pegawai->nama_lengkap ?? '-';
+            $mapel = $j->pegawaiMapel->mataPelajaran->nama ?? ($j->jenis_jadwal === 'mengajar' ? '-' : ucfirst($j->jenis_jadwal));
+
+            $matrix[$kelas][$hari][$slotNum] = ['guru' => $guru, 'mapel' => $mapel];
+
+            $pid = $j->pegawai_id;
+            if (! isset($perGuru[$pid])) {
+                $perGuru[$pid] = ['nama' => $guru, 'jadwals' => []];
+            }
+            $perGuru[$pid]['jadwals'][] = [
+                'hari' => $hari,
+                'jam_mulai' => substr($j->jam_mulai, 0, 5),
+                'jam_selesai' => substr($j->jam_selesai, 0, 5),
+                'kelas' => $kelas,
+                'mapel' => $mapel,
+                'jenis' => $j->jenis_jadwal,
+            ];
+        }
+
+        ksort($matrix);
+        foreach ($matrix as &$hariArr) {
+            ksort($hariArr);
+        }
+
+        $kelasList = collect(array_keys($matrix))->sort()->values()->all();
+
+        $jamSlotLabels = [
+            1 => '07:00', 2 => '08:10', 3 => '08:50', 4 => '09:30',
+            5 => '10:30', 6 => '11:10', 7 => '11:50', 8 => '13:00',
+            9 => '13:40', 10 => '14:20', 11 => '15:00',
+        ];
+
+        $logoPath = $this->resolveYayasanLogoPath();
+        $logoWidth = null;
+        if ($logoPath && file_exists($logoPath)) {
+            $sz = @getimagesize($logoPath);
+            if ($sz) {
+                $logoWidth = (int) round(64 * $sz[0] / $sz[1]);
+            }
+        }
+
+        $unitName = 'Semua Unit';
+        if (! empty($request->unit_sekolah_id)) {
+            $unit = UnitSekolah::find($request->unit_sekolah_id);
+            $unitName = $unit?->nama ?? $unitName;
+        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $unit = UnitSekolah::find($user->unit_sekolah_id);
+            $unitName = $unit?->nama ?? $unitName;
+        }
+
+        $tahunAjaran = $jadwals->first()?->tahun_ajaran ?? date('Y').'/'.(date('Y') + 1);
+        $semester = $jadwals->first()?->semester ?? 1;
+
+        $pdf = Pdf::loadView('exports.pdf-jadwal', compact(
+            'matrix', 'perGuru', 'kelasList', 'DAYS', 'jamSlotLabels',
+            'logoPath', 'logoWidth', 'unitName', 'tahunAjaran', 'semester'
+        ))->setPaper('a4', 'landscape');
+
+        $safeName = preg_replace('#[/\\\\]#', '-', "Jadwal_Pelajaran_{$unitName}_{$tahunAjaran}_S{$semester}");
+
+        return $pdf->download("{$safeName}.pdf");
+    }
+
+    // ──────────────────────────────────────────
+    //  Import Jadwal from JSON
+    // ──────────────────────────────────────────
+
+    public function importPdf(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('manage_jadwal')) {
+            abort(403);
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:pdf|max:20480',
+            'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
+            'delete_existing' => 'nullable|boolean',
+        ]);
+
+        $unitId = (int) $request->unit_sekolah_id;
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $unitId = $user->unit_sekolah_id;
+        }
+
+        // Simpan PDF ke temp lalu jalankan extraction via Python.
+        $pdfPath = $request->file('file')->storeAs('temp', 'jadwal_import_'.time().'.pdf');
+        $fullPdfPath = Storage::path($pdfPath);
+        $scriptPath = base_path('scripts/extract_jadwal.py');
+
+        if (! file_exists($scriptPath)) {
+            Storage::delete($pdfPath);
+
+            return back()->withErrors(['file' => 'Script ekstraksi tidak ditemukan.']);
+        }
+
+        // Coba python3 (Linux), fallback python (Windows).
+        $cmd = sprintf('python3 %s %s', escapeshellarg($scriptPath), escapeshellarg($fullPdfPath));
+        $output = shell_exec($cmd);
+        if ($output === null || $output === '') {
+            $cmd = sprintf('python %s %s', escapeshellarg($scriptPath), escapeshellarg($fullPdfPath));
+            $output = shell_exec($cmd);
+        }
+        Storage::delete($pdfPath);
+
+        if ($output === null || $output === '') {
+            return back()->withErrors(['file' => 'Gagal menjalankan script ekstraksi. Pastikan Python terinstal di server.']);
+        }
+
+        $data = json_decode($output, true);
+        if (! $data || ! isset($data['jadwal'])) {
+            return back()->withErrors(['file' => 'PDF tidak dapat diproses. Pastikan format PDF sesuai jadwal pelajaran.']);
+        }
+
+        $tahunAjaran = $data['tahun_ajaran'] ?? '2026/2027';
+        $semester = $data['semester'] ?? 1;
+        $entries = $data['jadwal'];
+
+        $pegawaiByName = Pegawai::select('id', 'nama_lengkap')->get()->keyBy('nama_lengkap');
+        $mapelByNama = MataPelajaran::select('id', 'nama')
+            ->where('unit_sekolah_id', $unitId)->orWhereNull('unit_sekolah_id')
+            ->get()->keyBy('nama');
+        $pmlPairs = PegawaiMapel::select('id', 'pegawai_id', 'mata_pelajaran_id')
+            ->where('unit_sekolah_id', $unitId)
+            ->get()->keyBy(fn ($r) => "{$r->pegawai_id}_{$r->mata_pelajaran_id}");
+
+        if ($request->boolean('delete_existing')) {
+            Jadwal::where('unit_sekolah_id', $unitId)
+                ->where('tahun_ajaran', $tahunAjaran)
+                ->where('semester', $semester)
+                ->delete();
+        }
+
+        $created = 0;
+        $skipped = 0;
+        $failures = [];
+
+        DB::transaction(function () use ($entries, $unitId, $tahunAjaran, $semester, $pegawaiByName, $mapelByNama, $pmlPairs, &$created, &$skipped, &$failures) {
+            foreach ($entries as $idx => $entry) {
+                $row = $idx + 2;
+
+                $pegawaiId = $this->resolvePegawaiIdForImport($entry['guru'] ?? '', $pegawaiByName);
+                if (! $pegawaiId) {
+                    $failures[] = "Baris {$row}: Pegawai tidak ditemukan untuk '{$entry['guru']}'";
+
+                    continue;
+                }
+
+                $mapel = $mapelByNama[$entry['mapel'] ?? ''] ?? null;
+                if (! $mapel) {
+                    $failures[] = "Baris {$row}: Mapel tidak ditemukan untuk '{$entry['mapel']}'";
+
+                    continue;
+                }
+
+                $pmlKey = "{$pegawaiId}_{$mapel->id}";
+                $pml = $pmlPairs[$pmlKey] ?? null;
+                if (! $pml) {
+                    $pml = PegawaiMapel::create([
+                        'pegawai_id' => $pegawaiId,
+                        'mata_pelajaran_id' => $mapel->id,
+                        'unit_sekolah_id' => $unitId,
+                    ]);
+                    $pmlPairs[$pmlKey] = $pml;
+                }
+
+                $exists = Jadwal::where('pegawai_id', $pegawaiId)
+                    ->where('kelas_label', $entry['kelas'] ?? '')
+                    ->where('hari', $entry['hari'] ?? '')
+                    ->where('jam_mulai', $this->normalizeTime($entry['jam_mulai'] ?? ''))
+                    ->where('tahun_ajaran', $tahunAjaran)
+                    ->where('semester', $semester)
+                    ->exists();
+
+                if ($exists) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                Jadwal::create([
+                    'pegawai_id' => $pegawaiId,
+                    'unit_sekolah_id' => $unitId,
+                    'kelas_label' => $entry['kelas'] ?? null,
+                    'pegawai_mapel_id' => $pml->id,
+                    'hari' => $entry['hari'] ?? '',
+                    'jam_mulai' => $this->normalizeTime($entry['jam_mulai'] ?? ''),
+                    'jam_selesai' => $this->normalizeTime($entry['jam_selesai'] ?? ''),
+                    'jenis_jadwal' => 'mengajar',
+                    'tahun_ajaran' => $tahunAjaran,
+                    'semester' => $semester,
+                ]);
+                $created++;
+            }
+        });
+
+        $affectedPegawai = Jadwal::where('unit_sekolah_id', $unitId)
+            ->where('tahun_ajaran', $tahunAjaran)
+            ->where('semester', $semester)
+            ->pluck('pegawai_id')
+            ->unique();
+        foreach ($affectedPegawai as $pid) {
+            $this->clearJadwalCache($pid);
+        }
+
+        $message = "Import selesai: {$created} jadwal dibuat, {$skipped} duplikat dilewati";
+        if (count($failures) > 0) {
+            $message .= ', '.count($failures).' gagal';
+        }
+
+        if (! empty($failures)) {
+            if (! empty($failures)) {
+                \Log::warning('Jadwal import failures', array_slice($failures, 0, 10));
+                \Log::warning('Jadwal import sample entry', $entries[0] ?? []);
+            }
+
+            return back()->with('message', $message)->with('import_failures', array_slice($failures, 0, 50));
+        }
+
+        return back()->with('message', $message);
+    }
+
+    // ──────────────────────────────────────────
+    //  Private helpers
+    // ──────────────────────────────────────────
+
+    private function getJamSlot(string $jamMulai): ?int
+    {
+        $h = (int) substr($jamMulai, 0, 2);
+        $m = (int) substr($jamMulai, 3, 2);
+        $minutes = $h * 60 + $m;
+
+        return match (true) {
+            $minutes >= 420 && $minutes < 490 => 1,
+            $minutes >= 490 && $minutes < 530 => 2,
+            $minutes >= 530 && $minutes < 570 => 3,
+            $minutes >= 570 && $minutes < 630 => 4,
+            $minutes >= 630 && $minutes < 670 => 5,
+            $minutes >= 670 && $minutes < 710 => 6,
+            $minutes >= 710 && $minutes < 750 => 7,
+            $minutes >= 780 && $minutes < 820 => 8,
+            $minutes >= 820 && $minutes < 860 => 9,
+            $minutes >= 860 && $minutes < 900 => 10,
+            $minutes >= 900 && $minutes < 940 => 11,
+            default => null,
+        };
+    }
+
+    private function normalizeTime(string $time): string
+    {
+        $parts = explode(':', $time);
+        if (count($parts) === 2) {
+            return $time.':00';
+        }
+
+        return $time;
+    }
+
+    private function resolvePegawaiIdForImport(string $name, $pegawaiByName): ?int
+    {
+        if (isset($pegawaiByName[$name])) {
+            return $pegawaiByName[$name]->id;
+        }
+
+        foreach ($pegawaiByName as $p) {
+            if (stripos($p->nama_lengkap, $name) !== false || stripos($name, $p->nama_lengkap) !== false) {
+                return $p->id;
+            }
+        }
+
+        $clean = preg_replace('/,?\s*(S\.Pd\.?|S\.Kom\.?|S\.Ag\.?|S\.Si\.?|SE\.?|ST\.?|M\.Pd\.?|M\.Kom\.?|M\.MPd\.?|A\.Md\.Kom\.?|S\.S\.?|S\.A\.?.*)$/iu', '', trim($name));
+        $clean = trim($clean);
+        if ($clean !== '' && $clean !== $name) {
+            foreach ($pegawaiByName as $p) {
+                if (stripos($p->nama_lengkap, $clean) !== false) {
+                    return $p->id;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveYayasanLogoPath(): ?string
+    {
+        $rel = config('kcd.yayasan_logo');
+        if (! $rel) {
+            return null;
+        }
+
+        $public = public_path($rel);
+        if (file_exists($public)) {
+            return $public;
+        }
+
+        $disk = config('filesystems.image_disk', 'public');
+        $root = config("filesystems.disks.$disk.root");
+        $path = rtrim($root, '/').'/'.ltrim($rel, '/');
+
+        return file_exists($path) ? $path : null;
     }
 }

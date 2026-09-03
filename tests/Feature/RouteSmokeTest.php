@@ -51,6 +51,7 @@ class RouteSmokeTest extends TestCase
         'verification.verify', // butuh signed URL
         'password.confirm',    // Breeze boilerplate (session confirm)
         'backup.download',     // side-effect: dump DB sungguhan
+        'jadwal.export-pdf',   // side-effect: generate PDF download
     ];
 
     /** Route yang bergantung pada API eksternal (keuangan) — bukan bug 500. */
