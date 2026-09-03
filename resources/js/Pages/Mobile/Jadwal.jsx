@@ -117,26 +117,28 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                         const badge = rec ? rec.status : sudahSelesai ? 'alpa' : null;
 
                         return (
-                            <Card key={j.id} press onClick={() => onOpenDetail?.(j)} className="px-4 py-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-14 shrink-0 text-center leading-none">
-                                        <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{fmtJam(j.jam_mulai)}</p>
-                                        <div className="mx-auto my-1 h-3 w-px bg-slate-200" />
-                                        <p className="font-mono text-[11px] tabular-nums text-slate-400">{fmtJam(j.jam_selesai)}</p>
+                            <button key={j.id} type="button" onClick={() => onOpenDetail?.(j)} className="w-full text-left">
+                                <Card press className="px-4 py-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-14 shrink-0 text-center leading-none">
+                                            <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{fmtJam(j.jam_mulai)}</p>
+                                            <div className="mx-auto my-1 h-3 w-px bg-slate-200" />
+                                            <p className="font-mono text-[11px] tabular-nums text-slate-400">{fmtJam(j.jam_selesai)}</p>
+                                        </div>
+                                        <div className={`h-10 w-1 shrink-0 rounded-full ${isLembur ? 'bg-amber-400' : 'bg-primary'}`} />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-bold text-slate-900">{mapel}</p>
+                                            <p className="mt-0.5 truncate text-xs text-slate-500">
+                                                {[kelas, unit].filter(Boolean).join(' • ')}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            {badge && <StatusBadge status={badge} />}
+                                            <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" />
+                                        </div>
                                     </div>
-                                    <div className={`h-10 w-1 shrink-0 rounded-full ${isLembur ? 'bg-amber-400' : 'bg-primary'}`} />
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-bold text-slate-900">{mapel}</p>
-                                        <p className="mt-0.5 truncate text-xs text-slate-500">
-                                            {[kelas, unit].filter(Boolean).join(' • ')}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        {badge && <StatusBadge status={badge} />}
-                                        <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" />
-                                    </div>
-                                </div>
-                            </Card>
+                                </Card>
+                            </button>
                         );
                     })}
                 </div>
