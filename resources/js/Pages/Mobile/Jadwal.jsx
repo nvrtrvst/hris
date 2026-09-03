@@ -27,7 +27,7 @@ function StatusBadge({ status }) {
     );
 }
 
-function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, todayName }) {
+function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, todayName, onOpenDetail }) {
     const regulerPresensi = (presensiHariIni || []).filter(p => !p.is_lembur);
     const lemburPresensi = (presensiHariIni || []).filter(p => p.is_lembur);
     const kantor = regulerPresensi.find(p => p.jam_masuk && !p.jadwal_id);
@@ -117,7 +117,7 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                         const badge = rec ? rec.status : sudahSelesai ? 'alpa' : null;
 
                         return (
-                            <Card key={j.id} press={false} className="px-4 py-3">
+                            <Card key={j.id} press onClick={() => onOpenDetail?.(j)} className="px-4 py-3">
                                 <div className="flex items-center gap-3">
                                     <div className="w-14 shrink-0 text-center leading-none">
                                         <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{fmtJam(j.jam_mulai)}</p>
@@ -131,7 +131,10 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                                             {[kelas, unit].filter(Boolean).join(' • ')}
                                         </p>
                                     </div>
-                                    {badge && <StatusBadge status={badge} />}
+                                    <div className="flex items-center gap-1.5">
+                                        {badge && <StatusBadge status={badge} />}
+                                        <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" />
+                                    </div>
                                 </div>
                             </Card>
                         );
@@ -342,6 +345,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
                 jadwalHariIni={jadwalHariIni}
                 jadwalPerHari={hariMap}
                 todayName={todayName}
+                onOpenDetail={openDetail}
             />
 
             {/* Bawahan (untuk pimpinan) */}
