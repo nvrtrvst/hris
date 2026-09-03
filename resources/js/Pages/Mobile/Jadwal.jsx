@@ -7,14 +7,12 @@ import { ArrowRight, Calendar, Clock3, WifiOff, X, CheckCircle, XCircle, AlertTr
 const hariUrut = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
 const kelasColors = [
-    { bar: 'bg-sky-500', bg: 'bg-sky-50/60', border: 'border-sky-200/60' },
-    { bar: 'bg-violet-500', bg: 'bg-violet-50/60', border: 'border-violet-200/60' },
-    { bar: 'bg-emerald-500', bg: 'bg-emerald-50/60', border: 'border-emerald-200/60' },
-    { bar: 'bg-amber-500', bg: 'bg-amber-50/60', border: 'border-amber-200/60' },
-    { bar: 'bg-rose-500', bg: 'bg-rose-50/60', border: 'border-rose-200/60' },
-    { bar: 'bg-cyan-500', bg: 'bg-cyan-50/60', border: 'border-cyan-200/60' },
-    { bar: 'bg-fuchsia-500', bg: 'bg-fuchsia-50/60', border: 'border-fuchsia-200/60' },
-    { bar: 'bg-lime-600', bg: 'bg-lime-50/60', border: 'border-lime-200/60' },
+    { bar: 'bg-sky-500', bg: 'bg-sky-50', border: 'border-sky-200' },
+    { bar: 'bg-violet-500', bg: 'bg-violet-50', border: 'border-violet-200' },
+    { bar: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+    { bar: 'bg-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },
+    { bar: 'bg-rose-500', bg: 'bg-rose-50', border: 'border-rose-200' },
+    { bar: 'bg-lime-600', bg: 'bg-lime-50', border: 'border-lime-200' },
 ];
 
 const fmtJam = (t) => (t ? String(t).substring(0, 5) : '—');
@@ -135,19 +133,30 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                         const sudahSelesai = isToday && j.jam_selesai && now > selesai;
                         const badge = rec ? rec.status : sudahSelesai ? 'alpa' : null;
                         const color = isLembur ? null : getKelasColor(kelas, kelasSeen);
+                        const [smh, smm] = (j.jam_mulai || '').split(':').map(Number);
+                        const mulai = new Date(now); mulai.setHours(smh || 0, smm || 0, 0, 0);
+                        const sedangBerlangsung = isToday && j.jam_mulai && j.jam_selesai && now >= mulai && now <= selesai;
 
                         return (
                             <button key={j.id} type="button" onClick={() => onOpenDetail?.(j)} className="w-full text-left">
-                                <Card press className={`px-4 py-3 ${color ? `${color.bg} border ${color.border}` : ''}`}>
+                                <Card press className={`px-4 py-3 ${color ? `${color.bg} border ${color.border}` : ''} ${sedangBerlangsung ? 'ring-2 ring-primary/20' : ''}`}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-14 shrink-0 text-center leading-none">
                                             <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{fmtJam(j.jam_mulai)}</p>
                                             <div className="mx-auto my-1 h-3 w-px bg-slate-200" />
                                             <p className="font-mono text-[11px] tabular-nums text-slate-400">{fmtJam(j.jam_selesai)}</p>
                                         </div>
-                                        <div className={`h-10 w-1 shrink-0 rounded-full ${isLembur ? 'bg-amber-400' : color ? color.bar : 'bg-primary'}`} />
+                                        <div className="relative h-10 w-1.5 shrink-0 rounded-full">
+                                            <div className={`absolute inset-0 rounded-full ${isLembur ? 'bg-amber-400' : color ? color.bar : 'bg-primary'}`} />
+                                            {sedangBerlangsung && (
+                                                <div className="absolute inset-0 rounded-full bg-primary animate-pulse opacity-60" />
+                                            )}
+                                        </div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-bold text-slate-900">{mapel}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="truncate text-sm font-bold text-slate-900">{mapel}</p>
+                                                {sedangBerlangsung && <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">NOW</span>}
+                                            </div>
                                             <p className="mt-0.5 truncate text-xs text-slate-500">
                                                 {[kelas, unit].filter(Boolean).join(' • ')}
                                             </p>
