@@ -27,13 +27,11 @@ function StatusBadge({ status }) {
     );
 }
 
-function PresensiSelfCard({ presensiHariIni, jadwalHariIni, totalJadwal }) {
+function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, todayName }) {
     const regulerPresensi = (presensiHariIni || []).filter(p => !p.is_lembur);
     const lemburPresensi = (presensiHariIni || []).filter(p => p.is_lembur);
     const kantor = regulerPresensi.find(p => p.jam_masuk && !p.jadwal_id);
-    const hasJadwal = (jadwalHariIni?.length || 0) > 0;
 
-    // Map jadwal_id → presensi record
     const presensiByJadwal = useMemo(() => {
         const map = {};
         regulerPresensi.forEach(p => {
@@ -42,19 +40,15 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, totalJadwal }) {
         return map;
     }, [regulerPresensi]);
 
+    const [selectedDay, setSelectedDay] = useState(todayName);
+    const isToday = selectedDay === todayName;
+    const selectedItems = jadwalPerHari?.[selectedDay] || [];
+
     return (
         <div className="mb-4">
-            <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Status Hari Ini</h2>
-                <div className="rounded-xl bg-primary px-3 py-1.5 text-white">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100">Sesi</p>
-                    <p className="text-sm font-bold">{jadwalHariIni?.length || 0}</p>
-                </div>
-            </div>
-
-            {/* Kantor presensi (jika ada) */}
+            {/* Kantor presensi */}
             {kantor && (
-                <Card press={false} className="!bg-[#0F3D3E] border-0 px-4 py-3 text-white shadow-[0_8px_20px_-12px_rgba(15,61,62,0.7)] mb-2">
+                <Card press={false} className="!bg-[#0F3D3E] border-0 px-4 py-3 text-white shadow-[0_8px_20px_-12px_rgba(15,61,62,0.7)] mb-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
@@ -72,57 +66,87 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, totalJadwal }) {
                 </Card>
             )}
 
-            {/* Jadwal hari ini dengan status presensi */}
-            {hasJadwal ? (
-                <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                        {kantor ? 'Mengajar Hari Ini' : 'Jadwal Hari Ini'}
-                    </p>
-                    <div className="space-y-2">
-                        {jadwalHariIni.map((j) => {
-                            const rec = presensiByJadwal[j.id];
-                            const mapel = j.mata_pelajaran?.nama || (j.jenis_jadwal === 'lembur' ? 'Lembur' : 'Jadwal');
-                            const kelas = j.kelas_label || null;
-                            const unit = j.unit_sekolah?.singkatan || j.unit_sekolah?.nama || null;
-                            const isLembur = j.jenis_jadwal === 'lembur';
-                            const now = new Date();
-                            const [sh, sm] = (j.jam_selesai || '').split(':').map(Number);
-                            const selesai = new Date(now); selesai.setHours(sh || 0, sm || 0, 0, 0);
-                            const sudahSelesai = j.jam_selesai && now > selesai;
-                            const badge = rec
-                                ? rec.status
-                                : sudahSelesai ? 'alpa' : null;
-
-                            return (
-                                <Card key={j.id} press={false} className="px-4 py-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-14 shrink-0 text-center leading-none">
-                                            <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{fmtJam(j.jam_mulai)}</p>
-                                            <div className="mx-auto my-1 h-3 w-px bg-slate-200" />
-                                            <p className="font-mono text-[11px] tabular-nums text-slate-400">{fmtJam(j.jam_selesai)}</p>
-                                        </div>
-                                        <div className={`h-10 w-1 shrink-0 rounded-full ${isLembur ? 'bg-amber-400' : 'bg-primary'}`} />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-bold text-slate-900">{mapel}</p>
-                                            <p className="mt-0.5 truncate text-xs text-slate-500">
-                                                {[kelas, unit].filter(Boolean).join(' • ')}
-                                            </p>
-                                        </div>
-                                        {badge && <StatusBadge status={badge} />}
-                                    </div>
-                                </Card>
-                            );
-                        })}
-                    </div>
+            {/* Day picker */}
+            <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    {kantor ? 'Mengajar Hari Ini' : 'Jadwal Hari Ini'}
+                </h2>
+                <div className="rounded-xl bg-primary px-3 py-1.5 text-white">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100">Sesi</p>
+                    <p className="text-sm font-bold">{jadwalHariIni?.length || 0}</p>
                 </div>
-            ) : !hasJadwal && !kantor ? (
-                <Card press={false} className="!bg-[#0F3D3E] border-0 p-4 text-white shadow-[0_8px_20px_-12px_rgba(15,61,62,0.7)]">
-                    <p className="text-sm text-white/60">Absen masuk untuk memulai hari</p>
-                </Card>
-            ) : null}
+            </div>
 
-            {/* Lembur */}
-            {lemburPresensi.length > 0 && (
+            <div className="mb-3 -mx-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Pilih hari">
+                <div className="flex min-w-max gap-2">
+                    {hariUrut.map((hari) => {
+                        const active = selectedDay === hari;
+                        const isTd = todayName === hari;
+                        const count = jadwalPerHari?.[hari]?.length || 0;
+                        return (
+                            <button
+                                key={hari}
+                                type="button"
+                                role="tab"
+                                aria-selected={active}
+                                onClick={() => setSelectedDay(hari)}
+                                className={`min-w-[58px] rounded-xl border px-3 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 ${active ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-slate-600'}`}
+                            >
+                                <span className={`block text-[10px] font-bold uppercase ${active ? 'text-emerald-100' : 'text-slate-400'}`}>{hari.slice(0, 3)}</span>
+                                <span className="mt-1 block text-sm font-bold">{count}</span>
+                                {isTd && <span className={`mx-auto mt-1 block h-1 w-1 rounded-full ${active ? 'bg-emerald-200' : 'bg-primary'}`} />}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Jadwal list */}
+            {selectedItems.length > 0 ? (
+                <div className="space-y-2">
+                    {selectedItems.map((j) => {
+                        const rec = isToday ? presensiByJadwal[j.id] : null;
+                        const mapel = j.mata_pelajaran?.nama || (j.jenis_jadwal === 'lembur' ? 'Lembur' : 'Jadwal');
+                        const kelas = j.kelas_label || null;
+                        const unit = j.unit_sekolah?.singkatan || j.unit_sekolah?.nama || null;
+                        const isLembur = j.jenis_jadwal === 'lembur';
+                        const now = new Date();
+                        const [sh, sm] = (j.jam_selesai || '').split(':').map(Number);
+                        const selesai = new Date(now); selesai.setHours(sh || 0, sm || 0, 0, 0);
+                        const sudahSelesai = isToday && j.jam_selesai && now > selesai;
+                        const badge = rec ? rec.status : sudahSelesai ? 'alpa' : null;
+
+                        return (
+                            <Card key={j.id} press={false} className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-14 shrink-0 text-center leading-none">
+                                        <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{fmtJam(j.jam_mulai)}</p>
+                                        <div className="mx-auto my-1 h-3 w-px bg-slate-200" />
+                                        <p className="font-mono text-[11px] tabular-nums text-slate-400">{fmtJam(j.jam_selesai)}</p>
+                                    </div>
+                                    <div className={`h-10 w-1 shrink-0 rounded-full ${isLembur ? 'bg-amber-400' : 'bg-primary'}`} />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-bold text-slate-900">{mapel}</p>
+                                        <p className="mt-0.5 truncate text-xs text-slate-500">
+                                            {[kelas, unit].filter(Boolean).join(' • ')}
+                                        </p>
+                                    </div>
+                                    {badge && <StatusBadge status={badge} />}
+                                </div>
+                            </Card>
+                        );
+                    })}
+                </div>
+            ) : (
+                <Card press={false} className="px-4 py-8 text-center">
+                    <Calendar className="mx-auto h-8 w-8 text-slate-300" />
+                    <p className="mt-3 text-sm font-bold text-slate-700">Tidak ada jadwal {selectedDay}</p>
+                    <p className="mt-1 text-xs text-slate-500">Pilih hari lain untuk melihat agenda mengajar.</p>
+                </Card>
+            )}
+
+            {/* Lembur (hanya hari ini) */}
+            {isToday && lemburPresensi.length > 0 && (
                 <div className="mt-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Lembur</p>
                     <div className="space-y-2">
@@ -214,11 +238,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
         if (hariMap[hari]) hariMap[hari] = jadwalPerHari[hari];
     });
 
-    const totalJadwal = hariUrut.reduce((sum, h) => sum + (hariMap[h]?.length || 0), 0);
-    const activeHari = hariUrut.filter((h) => (hariMap[h]?.length || 0) > 0);
     const todayName = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
-    const [selectedDay, setSelectedDay] = useState(hariMap[todayName]?.length ? todayName : activeHari[0] || 'Senin');
-    const selectedDayItems = hariMap[selectedDay] || [];
 
     const [selected, setSelected] = useState(null);
     const [siswa, setSiswa] = useState([]);
@@ -230,7 +250,6 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
     const [offline, setOffline] = useState(false);
 
     const isPimpinan = bawahanPresensi.length > 0;
-    const hasJadwal = totalJadwal > 0;
 
     // PWA offline jadwal
     useEffect(() => {
@@ -317,100 +336,16 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
         <MobileLayout user={auth.user}>
             <Head title="Jadwal" />
 
-            {/* Status Hari Ini */}
+            {/* Status Hari Ini + Jadwal dengan day picker */}
             <PresensiSelfCard
                 presensiHariIni={presensiHariIni}
                 jadwalHariIni={jadwalHariIni}
-                totalJadwal={totalJadwal}
+                jadwalPerHari={hariMap}
+                todayName={todayName}
             />
 
             {/* Bawahan (untuk pimpinan) */}
             {isPimpinan && <BawahanPresensiCard bawahanPresensi={bawahanPresensi} />}
-
-            {/* Weekly jadwal view (hanya untuk yang punya jadwal) */}
-            {hasJadwal && (
-                <>
-                    <div className="mb-3 flex items-center justify-between">
-                        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Jadwal Mingguan</h2>
-                        {offline && (
-                            <div className="flex items-center gap-1 text-[10px] font-bold text-amber-600">
-                                <WifiOff className="h-3 w-3" /> Offline
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="mb-4 -mx-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Pilih hari">
-                        <div className="flex min-w-max gap-2">
-                            {hariUrut.map((hari) => {
-                                const active = selectedDay === hari;
-                                const isToday = todayName === hari;
-                                return (
-                                    <button
-                                        key={hari}
-                                        type="button"
-                                        role="tab"
-                                        aria-selected={active}
-                                        onClick={() => setSelectedDay(hari)}
-                                        className={`min-w-[58px] rounded-xl border px-3 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 ${active ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-slate-600'}`}
-                                    >
-                                        <span className={`block text-[10px] font-bold uppercase ${active ? 'text-emerald-100' : 'text-slate-400'}`}>{hari.slice(0, 3)}</span>
-                                        <span className="mt-1 block text-sm font-bold">{hariMap[hari]?.length || 0}</span>
-                                        {isToday && <span className={`mx-auto mt-1 block h-1 w-1 rounded-full ${active ? 'bg-emerald-200' : 'bg-primary'}`} />}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {selectedDayItems.length === 0 ? (
-                        <Card press={false} className="px-4 py-8 text-center">
-                            <Calendar className="mx-auto h-8 w-8 text-slate-300" />
-                            <p className="mt-3 text-sm font-bold text-slate-700">Tidak ada jadwal {selectedDay}</p>
-                            <p className="mt-1 text-xs text-slate-500">Pilih hari lain untuk melihat agenda mengajar.</p>
-                        </Card>
-                    ) : (
-                        <Card press={false} className="overflow-hidden p-0">
-                            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                                <div>
-                                    <p className="text-base font-bold text-slate-900">{selectedDay}</p>
-                                    <p className="text-xs text-slate-500">{selectedDayItems.length} sesi terjadwal</p>
-                                </div>
-                                <Calendar className="h-5 w-5 text-primary" />
-                            </div>
-                            <div className="divide-y divide-slate-100">
-                                {selectedDayItems.map((j) => {
-                                    const mapel = j.mata_pelajaran?.nama || (j.jenis_jadwal === 'lembur' ? 'Lembur' : 'Jadwal');
-                                    const kelas = j.kelas_label || null;
-                                    const unit = j.unit_sekolah?.singkatan || j.unit_sekolah?.nama || null;
-                                    const isLembur = j.jenis_jadwal === 'lembur';
-                                    return (
-                                        <button
-                                            key={j.id}
-                                            type="button"
-                                            onClick={() => openDetail(j)}
-                                            className="flex min-h-[82px] w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
-                                        >
-                                            <div className="w-16 shrink-0 text-center leading-none">
-                                                <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{fmtJam(j.jam_mulai)}</p>
-                                                <div className="mx-auto my-1 h-3 w-px bg-slate-200" />
-                                                <p className="font-mono text-[11px] tabular-nums text-slate-400">{fmtJam(j.jam_selesai)}</p>
-                                            </div>
-                                            <div className={`h-10 w-1 shrink-0 rounded-full ${isLembur ? 'bg-amber-400' : 'bg-primary'}`} />
-                                            <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm font-bold text-slate-900">{mapel}</p>
-                                                <p className="mt-1 truncate text-xs text-slate-500">
-                                                    {[kelas, unit].filter(Boolean).join(' • ')}
-                                                </p>
-                                            </div>
-                                            <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" />
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </Card>
-                    )}
-                </>
-            )}
 
             {/* Detail modal */}
             {selected && (
