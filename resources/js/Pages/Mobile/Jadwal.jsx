@@ -30,13 +30,17 @@ function StatusBadge({ status }) {
 function PresensiSelfCard({ presensiHariIni, jadwalHariIni, totalJadwal }) {
     const regulerPresensi = (presensiHariIni || []).filter(p => !p.is_lembur);
     const lemburPresensi = (presensiHariIni || []).filter(p => p.is_lembur);
-
-    const masuk = regulerPresensi.find(p => p.jam_masuk && p.jadwal_id);
-    const keluar = regulerPresensi.find(p => p.jam_keluar && p.jadwal_id);
     const kantor = regulerPresensi.find(p => p.jam_masuk && !p.jadwal_id);
-
     const hasJadwal = (jadwalHariIni?.length || 0) > 0;
-    const hasPresensi = regulerPresensi.length > 0;
+
+    // Map jadwal_id → presensi record
+    const presensiByJadwal = useMemo(() => {
+        const map = {};
+        regulerPresensi.forEach(p => {
+            if (p.jadwal_id) map[p.jadwal_id] = p;
+        });
+        return map;
+    }, [regulerPresensi]);
 
     return (
         <div className="mb-4">
@@ -48,81 +52,47 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, totalJadwal }) {
                 </div>
             </div>
 
-            {/* Status card */}
-            <Card press={false} className="!bg-[#0F3D3E] border-0 p-4 text-white shadow-[0_8px_20px_-12px_rgba(15,61,62,0.7)]">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">
-                            {hasPresensi ? 'Presensi hari ini' : 'Belum absen'}
-                        </p>
-
-                        {hasPresensi ? (
-                            <div className="mt-2 space-y-1.5">
-                                {regulerPresensi.filter(p => p.jam_masuk && p.jadwal_id).map((p, i) => (
-                                    <div key={i} className="flex items-center gap-2">
-                                        <div className="flex items-center gap-1 text-xs text-white/80">
-                                            <CheckCircle className="h-3 w-3 text-emerald-400" />
-                                            <span className="font-mono font-bold">{p.jam_masuk}</span>
-                                            {p.jam_keluar && (
-                                                <>
-                                                    <span className="text-white/40">→</span>
-                                                    <span className="font-mono font-bold">{p.jam_keluar}</span>
-                                                </>
-                                            )}
-                                        </div>
-                                        <StatusBadge status={p.status} />
-                                    </div>
-                                ))}
-                                {kantor && (
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex items-center gap-1 text-xs text-white/80">
-                                            <CheckCircle className="h-3 w-3 text-emerald-400" />
-                                            <span className="font-mono font-bold">{kantor.jam_masuk}</span>
-                                            {kantor.jam_keluar && (
-                                                <>
-                                                    <span className="text-white/40">→</span>
-                                                    <span className="font-mono font-bold">{kantor.jam_keluar}</span>
-                                                </>
-                                            )}
-                                        </div>
-                                        <StatusBadge status={kantor.status} />
-                                    </div>
-                                )}
-                                {lemburPresensi.length > 0 && (
-                                    <div className="mt-1 border-t border-white/10 pt-1.5">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">Lembur</p>
-                                        {lemburPresensi.map((p, i) => (
-                                            <div key={i} className="flex items-center gap-2 text-xs text-white/70">
-                                                <Clock3 className="h-3 w-3 text-amber-400" />
-                                                <span className="font-mono font-bold">{p.jam_masuk}</span>
-                                                {p.jam_keluar && (
-                                                    <>
-                                                        <span className="text-white/40">→</span>
-                                                        <span className="font-mono font-bold">{p.jam_keluar}</span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <p className="mt-1 text-sm text-white/60">Absen masuk untuk memulai hari</p>
-                        )}
+            {/* Kantor presensi (jika ada) */}
+            {kantor && (
+                <Card press={false} className="!bg-[#0F3D3E] border-0 px-4 py-3 text-white shadow-[0_8px_20px_-12px_rgba(15,61,62,0.7)] mb-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+                            <span className="text-xs font-bold text-white/90">Kantor</span>
+                            <span className="font-mono text-xs font-bold text-white/70">{fmtJam(kantor.jam_masuk)}</span>
+                            {kantor.jam_keluar && (
+                                <>
+                                    <span className="text-white/40">→</span>
+                                    <span className="font-mono text-xs font-bold text-white/70">{fmtJam(kantor.jam_keluar)}</span>
+                                </>
+                            )}
+                        </div>
+                        <StatusBadge status={kantor.status} />
                     </div>
-                </div>
-            </Card>
+                </Card>
+            )}
 
-            {/* Jadwal hari ini list (for teachers) */}
-            {hasJadwal && (
-                <div className="mt-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Jadwal Hari Ini</p>
+            {/* Jadwal hari ini dengan status presensi */}
+            {hasJadwal ? (
+                <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        {kantor ? 'Mengajar Hari Ini' : 'Jadwal Hari Ini'}
+                    </p>
                     <div className="space-y-2">
                         {jadwalHariIni.map((j) => {
+                            const rec = presensiByJadwal[j.id];
                             const mapel = j.mata_pelajaran?.nama || (j.jenis_jadwal === 'lembur' ? 'Lembur' : 'Jadwal');
                             const kelas = j.kelas_label || null;
                             const unit = j.unit_sekolah?.singkatan || j.unit_sekolah?.nama || null;
                             const isLembur = j.jenis_jadwal === 'lembur';
+                            const now = new Date();
+                            const [sh, sm] = (j.jam_selesai || '').split(':').map(Number);
+                            const selesai = new Date(now); selesai.setHours(sh || 0, sm || 0, 0, 0);
+                            const sudahSelesai = j.jam_selesai && now > selesai;
+                            const badge = rec
+                                ? rec.status
+                                : sudahSelesai ? 'alpa' : null;
+
                             return (
                                 <Card key={j.id} press={false} className="px-4 py-3">
                                     <div className="flex items-center gap-3">
@@ -138,10 +108,41 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, totalJadwal }) {
                                                 {[kelas, unit].filter(Boolean).join(' • ')}
                                             </p>
                                         </div>
+                                        {badge && <StatusBadge status={badge} />}
                                     </div>
                                 </Card>
                             );
                         })}
+                    </div>
+                </div>
+            ) : !hasJadwal && !kantor ? (
+                <Card press={false} className="!bg-[#0F3D3E] border-0 p-4 text-white shadow-[0_8px_20px_-12px_rgba(15,61,62,0.7)]">
+                    <p className="text-sm text-white/60">Absen masuk untuk memulai hari</p>
+                </Card>
+            ) : null}
+
+            {/* Lembur */}
+            {lemburPresensi.length > 0 && (
+                <div className="mt-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Lembur</p>
+                    <div className="space-y-2">
+                        {lemburPresensi.map((p, i) => (
+                            <Card key={i} press={false} className="!bg-amber-50 border-0 px-4 py-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Clock3 className="h-3.5 w-3.5 text-amber-500" />
+                                        <span className="font-mono text-xs font-bold text-slate-700">{fmtJam(p.jam_masuk)}</span>
+                                        {p.jam_keluar && (
+                                            <>
+                                                <span className="text-slate-400">→</span>
+                                                <span className="font-mono text-xs font-bold text-slate-700">{fmtJam(p.jam_keluar)}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    <StatusBadge status={p.status} />
+                                </div>
+                            </Card>
+                        ))}
                     </div>
                 </div>
             )}
