@@ -135,7 +135,7 @@ class PresensiController extends Controller
                 });
         }
 
-        $presensis = $query->orderBy('tanggal', 'desc')->paginate(10)->withQueryString();
+        $presensis = $query->orderBy('tanggal', 'desc')->paginate(100)->withQueryString();
 
         $units = [];
         if ($user->can('view_all_units')) {
