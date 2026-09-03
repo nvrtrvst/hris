@@ -23,6 +23,22 @@ function getKelasColor(kelas, seen) {
     return kelasColors[seen[kelas] % kelasColors.length];
 }
 
+function getWeekDates() {
+    const now = new Date();
+    const dayIdx = now.getDay();
+    const mondayOffset = dayIdx === 0 ? -6 : 1 - dayIdx;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + mondayOffset);
+    const map = {};
+    const names = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+    names.forEach((n, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        map[n] = d;
+    });
+    return map;
+}
+
 const statusConfig = {
     hadir: { label: 'Hadir', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: CheckCircle },
     telat: { label: 'Telat', color: 'text-amber-600', bg: 'bg-amber-50', icon: AlertTriangle },
@@ -54,6 +70,8 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
         });
         return map;
     }, [regulerPresensi]);
+
+    const weekDates = useMemo(() => getWeekDates(), []);
 
     const [selectedDay, setSelectedDay] = useState(todayName);
     const isToday = selectedDay === todayName;
@@ -97,7 +115,8 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                     {hariUrut.map((hari) => {
                         const active = selectedDay === hari;
                         const isTd = todayName === hari;
-                        const count = jadwalPerHari?.[hari]?.length || 0;
+                        const tgl = weekDates[hari];
+                        const tglStr = tgl ? `${tgl.getDate()}/${tgl.getMonth() + 1}` : '';
                         return (
                             <button
                                 key={hari}
@@ -108,7 +127,7 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                                 className={`min-w-[58px] rounded-xl border px-3 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 ${active ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-slate-600'}`}
                             >
                                 <span className={`block text-[10px] font-bold uppercase ${active ? 'text-emerald-100' : 'text-slate-400'}`}>{hari.slice(0, 3)}</span>
-                                <span className="mt-1 block text-sm font-bold">{count}</span>
+                                <span className={`mt-1 block text-[11px] font-bold ${active ? 'text-white' : 'text-slate-700'}`}>{tglStr}</span>
                                 {isTd && <span className={`mx-auto mt-1 block h-1 w-1 rounded-full ${active ? 'bg-emerald-200' : 'bg-primary'}`} />}
                             </button>
                         );
