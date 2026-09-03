@@ -29,7 +29,8 @@ function groupConsecutiveJadwals(jadwals) {
     const groups = [];
     let cur = null;
     for (const j of sorted) {
-        if (cur && j.pegawai_mapel_id === cur.pegMapelId && j.jam_mulai === cur.jamSelesaiLast) {
+        const sameClass = j.kelas_label === cur?.kelas_label;
+        if (cur && sameClass && j.pegawai_mapel_id === cur.pegMapelId && j.jam_mulai === cur.jamSelesaiLast) {
             cur.allIds.push(j.id);
             cur.jadwals.push(j);
             cur.jamSelesaiLast = j.jam_selesai;
