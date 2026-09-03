@@ -152,7 +152,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                     </td>
                     <td className="hidden sm:table-cell px-4 py-3.5 whitespace-nowrap">
                         {children.length > 0
-                            ? <span className="text-xs font-semibold text-text-secondary">{children.length} sesi mengajar/tugas</span>
+                            ? <span className="text-xs font-semibold text-text-secondary">Kantor dan Mengajar</span>
                             : parent.is_tugas_luar
                                 ? <span className="text-xs font-semibold text-text-secondary">Tugas Luar</span>
                                 : <span className="text-xs text-text-secondary">Kantor</span>}
