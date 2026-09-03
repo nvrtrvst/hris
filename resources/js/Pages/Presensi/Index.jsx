@@ -144,8 +144,8 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                                 <div className="text-sm font-bold text-primary truncate max-w-[180px]">{nama}</div>
                                 <div className="text-[11px] text-text-secondary truncate max-w-[180px]">
                                     {parent.pegawai?.jabatans?.some(j => j.is_guru) ? (
-                                        <span title={parent.pegawai?.mapels?.map(m => m.mata_pelajaran?.nama).filter(Boolean).join(', ')}>
-                                            {parent.pegawai?.mapels?.map(m => m.mata_pelajaran?.nama).filter(Boolean).join(', ') || 'Guru'}
+                                        <span title={parent.pegawai?.mapels?.map(m => m.nama).filter(Boolean).join(', ')}>
+                                            {parent.pegawai?.mapels?.map(m => m.nama).filter(Boolean).join(', ') || 'Guru'}
                                         </span>
                                     ) : (
                                         <span>{parent.pegawai?.jabatans?.map(j => j.nama).filter(Boolean).join(', ') || '—'}</span>
@@ -841,8 +841,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                                 <div className="text-sm font-bold text-primary truncate max-w-[180px]">{nama}</div>
                                                                 <div className="text-[11px] text-text-secondary truncate max-w-[180px]">
                                                                     {p.pegawai?.jabatans?.some(j => j.is_guru) ? (
-                                                                        <span title={p.pegawai?.mapels?.map(m => m.mata_pelajaran?.nama).filter(Boolean).join(', ')}>
-                                                                            {p.pegawai?.mapels?.map(m => m.mata_pelajaran?.nama).filter(Boolean).join(', ') || 'Guru'}
+                                                                        <span title={p.pegawai?.mapels?.map(m => m.nama).filter(Boolean).join(', ')}>
+                                                                            {p.pegawai?.mapels?.map(m => m.nama).filter(Boolean).join(', ') || 'Guru'}
                                                                         </span>
                                                                     ) : (
                                                                         <span>{p.pegawai?.jabatans?.map(j => j.nama).filter(Boolean).join(', ') || '—'}</span>
