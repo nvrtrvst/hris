@@ -6,7 +6,24 @@ import { ArrowRight, Calendar, Clock3, WifiOff, X, CheckCircle, XCircle, AlertTr
 
 const hariUrut = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
+const kelasColors = [
+    { bar: 'bg-sky-500', bg: 'bg-sky-50/60', border: 'border-sky-200/60' },
+    { bar: 'bg-violet-500', bg: 'bg-violet-50/60', border: 'border-violet-200/60' },
+    { bar: 'bg-emerald-500', bg: 'bg-emerald-50/60', border: 'border-emerald-200/60' },
+    { bar: 'bg-amber-500', bg: 'bg-amber-50/60', border: 'border-amber-200/60' },
+    { bar: 'bg-rose-500', bg: 'bg-rose-50/60', border: 'border-rose-200/60' },
+    { bar: 'bg-cyan-500', bg: 'bg-cyan-50/60', border: 'border-cyan-200/60' },
+    { bar: 'bg-fuchsia-500', bg: 'bg-fuchsia-50/60', border: 'border-fuchsia-200/60' },
+    { bar: 'bg-lime-600', bg: 'bg-lime-50/60', border: 'border-lime-200/60' },
+];
+
 const fmtJam = (t) => (t ? String(t).substring(0, 5) : '—');
+
+function getKelasColor(kelas, seen) {
+    if (!kelas) return null;
+    if (!(kelas in seen)) seen[kelas] = Object.keys(seen).length;
+    return kelasColors[seen[kelas] % kelasColors.length];
+}
 
 const statusConfig = {
     hadir: { label: 'Hadir', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: CheckCircle },
@@ -102,7 +119,9 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
             </div>
 
             {/* Jadwal list */}
-            {selectedItems.length > 0 ? (
+            {(() => {
+                const kelasSeen = {};
+                return selectedItems.length > 0 ? (
                 <div className="space-y-2">
                     {selectedItems.map((j) => {
                         const rec = isToday ? presensiByJadwal[j.id] : null;
@@ -115,17 +134,18 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                         const selesai = new Date(now); selesai.setHours(sh || 0, sm || 0, 0, 0);
                         const sudahSelesai = isToday && j.jam_selesai && now > selesai;
                         const badge = rec ? rec.status : sudahSelesai ? 'alpa' : null;
+                        const color = isLembur ? null : getKelasColor(kelas, kelasSeen);
 
                         return (
                             <button key={j.id} type="button" onClick={() => onOpenDetail?.(j)} className="w-full text-left">
-                                <Card press className="px-4 py-3">
+                                <Card press className={`px-4 py-3 ${color ? `${color.bg} border ${color.border}` : ''}`}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-14 shrink-0 text-center leading-none">
                                             <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{fmtJam(j.jam_mulai)}</p>
                                             <div className="mx-auto my-1 h-3 w-px bg-slate-200" />
                                             <p className="font-mono text-[11px] tabular-nums text-slate-400">{fmtJam(j.jam_selesai)}</p>
                                         </div>
-                                        <div className={`h-10 w-1 shrink-0 rounded-full ${isLembur ? 'bg-amber-400' : 'bg-primary'}`} />
+                                        <div className={`h-10 w-1 shrink-0 rounded-full ${isLembur ? 'bg-amber-400' : color ? color.bar : 'bg-primary'}`} />
                                         <div className="min-w-0 flex-1">
                                             <p className="truncate text-sm font-bold text-slate-900">{mapel}</p>
                                             <p className="mt-0.5 truncate text-xs text-slate-500">
@@ -148,7 +168,8 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                     <p className="mt-3 text-sm font-bold text-slate-700">Tidak ada jadwal {selectedDay}</p>
                     <p className="mt-1 text-xs text-slate-500">Pilih hari lain untuk melihat agenda mengajar.</p>
                 </Card>
-            )}
+            );
+            })()}
 
             {/* Lembur (hanya hari ini) */}
             {isToday && lemburPresensi.length > 0 && (
