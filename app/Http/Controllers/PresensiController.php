@@ -136,7 +136,7 @@ class PresensiController extends Controller
         }
 
         $presensis = $query->orderBy('tanggal', 'desc')->paginate(100)->withQueryString();
-        $presensis->load('pegawai.jabatans', 'pegawai.mapels');
+        $presensis->load('pegawai.jabatans');
 
         $units = [];
         if ($user->can('view_all_units')) {
