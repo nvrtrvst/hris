@@ -456,6 +456,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [viewMode, setViewMode] = React.useState('ringkas');
     const [expanded, setExpanded] = React.useState({});
     const [search, setSearch] = React.useState(filters?.search || '');
+    const [sortKey, setSortKey] = React.useState('nama');
+    const [sortDir, setSortDir] = React.useState('asc');
 
     const [confirmStatus, setConfirmStatus] = React.useState(null);
     const [persentaseBayar, setPersentaseBayar] = React.useState(100);
@@ -769,29 +771,52 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     </div>
 
                     {/* ─── ADMIN: Table ─── */}
-                    {isAdmin ? (
+                    {(() => {
+                        const sortGetters = {
+                            nama: (p) => p.pegawai?.nama_lengkap || '',
+                            tanggal: (p) => p.tanggal || '',
+                            masuk: (p) => p.jam_masuk || '',
+                            keluar: (p) => p.jam_keluar || '',
+                            status: (p) => p.status || '',
+                        };
+                        const sorted = [...presensis.data].sort((a, b) => {
+                            const fn = sortGetters[sortKey];
+                            if (!fn) return 0;
+                            const av = fn(a), bv = fn(b);
+                            const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+                            return sortDir === 'asc' ? cmp : -cmp;
+                        });
+                        const toggleSort = (key) => {
+                            if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortKey(key); setSortDir('asc'); }
+                        };
+                        const SortIcon = ({ col }) => {
+                            if (sortKey !== col) return <span className="ml-1 text-text-secondary/40">↕</span>;
+                            return <span className="ml-1 text-primary">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+                        };
+                    return isAdmin ? (
                         <div className="card p-0 overflow-hidden">
                             <StatusDistribution stats={s} />
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">
                                         <tr>
-                                            <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Pegawai & Unit</th>
-                                            <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Tanggal</th>
+                                            <th onClick={() => toggleSort('nama')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Pegawai & Unit <SortIcon col="nama" /></th>
+                                            <th onClick={() => toggleSort('tanggal')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Tanggal <SortIcon col="tanggal" /></th>
                                             <th className="hidden sm:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Jadwal</th>
-                                            <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Masuk</th>
-                                            <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Keluar</th>
+                                            <th onClick={() => toggleSort('masuk')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Masuk <SortIcon col="masuk" /></th>
+                                            <th onClick={() => toggleSort('keluar')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Keluar <SortIcon col="keluar" /></th>
                                             <th className="hidden md:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Foto</th>
                                             <th className="hidden lg:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lembur</th>
                                             <th className="hidden lg:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Tugas Luar</th>
-                                            <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status</th>
+                                            <th onClick={() => toggleSort('status')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Status <SortIcon col="status" /></th>
                                             <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lokasi & Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody className={`divide-y divide-border/50 ${processing ? 'opacity-60 pointer-events-none transition-opacity' : ''}`}>
-                                        {presensis.data.length === 0 ? null : viewMode === 'ringkas' ? (
-                                            <RingkasBody data={presensis.data} auth={auth} now={now} expanded={expanded} setExpanded={setExpanded} openReview={openReview} openAudit={openAudit} setConfirmStatus={setConfirmStatus} />
-                                        ) : presensis.data.map((p) => {
+                                        {sorted.length === 0 ? null : viewMode === 'ringkas' ? (
+                                            <RingkasBody data={sorted} auth={auth} now={now} expanded={expanded} setExpanded={setExpanded} openReview={openReview} openAudit={openAudit} setConfirmStatus={setConfirmStatus} />
+                                        ) : sorted.map((p) => {
                                             const durasi = kerjaDurasi(p.jam_masuk, p.jam_keluar);
                                             const flagReview = p.lokasi_perlu_review || p.posisi_mencurigakan || p.motion_suspect;
                                             const nama = p.pegawai?.nama_lengkap || '-';
@@ -931,7 +956,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                 </tr>
                                             );
                                         })}
-                                        {presensis.data.length === 0 && (
+                                        {sorted.length === 0 && (
                                             <tr>
                                                 <td colSpan="10" className="px-6 py-16">
                                                     <div className="flex flex-col items-center text-center">
@@ -1022,7 +1047,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                 </div>
                             )}
                         </div>
-                    )}
+                    );
+                    })()}
 
                     {/* Pagination */}
                     {presensis.total > 0 && (
