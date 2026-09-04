@@ -88,8 +88,9 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const pagiRecord = useMemo(() => presensiHariIni.find((p) => p.jadwal_id === null && !p.is_lembur), [presensiHariIni]);
     const now = new Date();
     const jamSekarang = now.getHours() * 60 + now.getMinutes();
-    const jamSore = 960;
     const toMinutes = (hms) => { if (!hms) return 0; const p = String(hms).split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1] || 0, 10); };
+    const primaryUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
+    const jamSore = primaryUnit?.jam_pulang_kantor ? toMinutes(primaryUnit.jam_pulang_kantor) : 960;
 
     // Kelompokkan jadwal berurutan dengan mapel sama (back-to-back).
     const groupedJadwals = useMemo(() => groupConsecutiveJadwals(jadwals), [jadwals]);
