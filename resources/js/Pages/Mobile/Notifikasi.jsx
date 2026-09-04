@@ -118,7 +118,7 @@ export default function Notifikasi({ auth, notifications, filters }) {
                                         <img src={n.data.image} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover" />
                                     )}
                                     <div className="min-w-0 flex-1">
-                                        <p className={`text-sm ${!n.read_at ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
+                                        <p className={`text-sm whitespace-pre-line ${!n.read_at ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
                                             {n.data?.message || n.data?.pegawai_nama || 'Notifikasi'}
                                         </p>
                                         <p className="mt-0.5 text-xs text-slate-400">{n.created_at ? format(parseISO(n.created_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}</p>
