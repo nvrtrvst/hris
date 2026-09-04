@@ -125,7 +125,22 @@ class ReminderController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $reminder->delete();
+        DB::transaction(function () use ($reminder) {
+            // Lock row — block concurrent ProcessReminders cron
+            $locked = Reminder::where('id', $reminder->id)->lockForUpdate()->first();
+            if (! $locked) {
+                return;
+            }
+
+            // Hapus notifikasi terkait dari mobile pegawai
+            DB::table('notifications')
+                ->where('type', ReminderPush::class)
+                ->whereJsonContains('data->reminder_id', $reminder->id)
+                ->delete();
+
+            // Hapus reminder
+            $locked->delete();
+        });
 
         return back()->with('message', 'Reminder berhasil dihapus.');
     }
