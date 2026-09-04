@@ -187,7 +187,17 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         {lembur ? <LemburBadge status={lembur.lembur_status} /> : <span className="text-xs text-text-secondary">—</span>}
                     </td>
                     <td className="hidden lg:table-cell px-4 py-3.5 whitespace-nowrap">
-                        {tugasLuar ? <TugasLuarBadge status={tugasLuar.tugas_luar_status} /> : <span className="text-xs text-text-secondary">—</span>}
+                        {tugasLuar ? (
+                            <div>
+                                <TugasLuarBadge status={tugasLuar.tugas_luar_status} />
+                                {tugasLuar.tugas_luar_status === 'pending' && (
+                                    <div className="mt-1.5 flex gap-1">
+                                        <button onClick={() => router.post(route('presensi.approveTugasLuar', tugasLuar.id), {}, { preserveState: true })} className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-emerald-600">Setuju</button>
+                                        <button onClick={() => router.post(route('presensi.rejectTugasLuar', tugasLuar.id), {}, { preserveState: true })} className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-600">Tolak</button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : <span className="text-xs text-text-secondary">—</span>}
                     </td>
                     <td className="px-4 py-3.5 whitespace-nowrap">
                         {auth.permissions?.includes('manage_master_data') ? (
