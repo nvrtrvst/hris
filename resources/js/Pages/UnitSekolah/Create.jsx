@@ -18,6 +18,8 @@ export default function Create({ auth }) {
         max_jam_minggu: 30,
         jam_masuk_kantor: '07:30',
         jam_pulang_kantor: '15:00',
+        jam_kerja_sabtu_mulai: null,
+        jam_kerja_sabtu_selesai: null,
         web: '',
         telepon: '',
         alamat: '',

@@ -177,6 +177,35 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                             onChange={(e) => setData('jam_pulang_kantor', e.target.value)} className={inputClass} />
                     </Field>
                 </div>
+
+                <div className="mt-4 border-t border-border pt-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={!!data.jam_kerja_sabtu_mulai}
+                            onChange={(e) => {
+                                if (e.target.checked) {
+                                    setData('jam_kerja_sabtu_mulai', data.jam_kerja_sabtu_mulai || '07:00');
+                                    setData('jam_kerja_sabtu_selesai', data.jam_kerja_sabtu_selesai || '12:00');
+                                } else {
+                                    setData('jam_kerja_sabtu_mulai', null);
+                                    setData('jam_kerja_sabtu_selesai', null);
+                                }
+                            }}
+                            className="accent-[#0F3D3E]" />
+                        <span className="text-sm font-semibold text-primary">Sabtu Masuk</span>
+                    </label>
+                    {data.jam_kerja_sabtu_mulai && (
+                        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <Field label="Jam Masuk Sabtu" error={errors.jam_kerja_sabtu_mulai}>
+                                <input type="time" value={data.jam_kerja_sabtu_mulai}
+                                    onChange={(e) => setData('jam_kerja_sabtu_mulai', e.target.value)} className={inputClass} />
+                            </Field>
+                            <Field label="Jam Pulang Sabtu" error={errors.jam_kerja_sabtu_selesai}>
+                                <input type="time" value={data.jam_kerja_sabtu_selesai}
+                                    onChange={(e) => setData('jam_kerja_sabtu_selesai', e.target.value)} className={inputClass} />
+                            </Field>
+                        </div>
+                    )}
+                </div>
             </SectionCard>
 
             {/* Kop Surat (Laporan KCD) */}

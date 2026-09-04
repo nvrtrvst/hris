@@ -820,7 +820,9 @@ class MobileController extends Controller
                         $presensi->keterangan = $request->input('keterangan');
                     }
                 } else {
-                    $jamMulai = $tipePresensi === 'kantor' ? $unit->jam_masuk_kantor : $jadwal->jam_mulai;
+                    $jamMulai = $tipePresensi === 'kantor'
+                        ? (Carbon::now()->isSaturday() && $unit->jam_kerja_sabtu_mulai ? $unit->jam_kerja_sabtu_mulai : $unit->jam_masuk_kantor)
+                        : $jadwal->jam_mulai;
                     $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jamMulai, (int) $unit->toleransi_menit);
                 }
 
@@ -861,10 +863,15 @@ class MobileController extends Controller
                             $lokasiPerluReview = true;
                         }
                     }
-                } elseif (! $isLembur && $tipePresensi === 'kantor' && $unit->jam_pulang_kantor) {
-                    $batasPulang = Carbon::parse($unit->jam_pulang_kantor)->subMinutes(30)->format('H:i:s');
-                    if ($presensi->jam_keluar < $batasPulang) {
-                        $lokasiPerluReview = true;
+                } elseif (! $isLembur && $tipePresensi === 'kantor') {
+                    $jamPulang = Carbon::now()->isSaturday() && $unit->jam_kerja_sabtu_selesai
+                        ? $unit->jam_kerja_sabtu_selesai
+                        : $unit->jam_pulang_kantor;
+                    if ($jamPulang) {
+                        $batasPulang = Carbon::parse($jamPulang)->subMinutes(30)->format('H:i:s');
+                        if ($presensi->jam_keluar < $batasPulang) {
+                            $lokasiPerluReview = true;
+                        }
                     }
                 }
 

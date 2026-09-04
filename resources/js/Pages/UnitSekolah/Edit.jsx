@@ -19,6 +19,8 @@ export default function Edit({ auth, unit }) {
         max_jam_minggu: unit.max_jam_minggu ?? 30,
         jam_masuk_kantor: unit.jam_masuk_kantor?.slice(0, 5) || '07:30',
         jam_pulang_kantor: unit.jam_pulang_kantor?.slice(0, 5) || '15:00',
+        jam_kerja_sabtu_mulai: unit.jam_kerja_sabtu_mulai?.slice(0, 5) || null,
+        jam_kerja_sabtu_selesai: unit.jam_kerja_sabtu_selesai?.slice(0, 5) || null,
         web: unit.web ?? '',
         telepon: unit.telepon ?? '',
         alamat: unit.alamat ?? '',
