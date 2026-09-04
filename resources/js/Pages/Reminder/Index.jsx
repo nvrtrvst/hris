@@ -26,6 +26,7 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
         target_user_ids: [],
         is_recurring: false,
         recurring_schedule: 'daily',
+        recurring_time: '07:00',
         scheduled_at: '',
     });
 
@@ -284,14 +285,34 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                         </div>
 
                         {data.is_recurring && (
-                            <div>
-                                <label className="form-label text-sm font-semibold">Jadwal Pengulangan</label>
-                                <select value={data.recurring_schedule} onChange={e => setData('recurring_schedule', e.target.value)} className="select-field w-full">
-                                    <option value="daily">Harian</option>
-                                    <option value="weekly">Mingguan</option>
-                                    <option value="monthly">Bulanan</option>
-                                </select>
-                            </div>
+                            <>
+                                <div>
+                                    <label className="form-label text-sm font-semibold">Jadwal Pengulangan</label>
+                                    <select value={data.recurring_schedule} onChange={e => setData('recurring_schedule', e.target.value)} className="select-field w-full">
+                                        <option value="daily">Harian</option>
+                                        <option value="weekly">Mingguan</option>
+                                        <option value="monthly">Bulanan</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="form-label text-sm font-semibold">Jam Kirim</label>
+                                    <input type="time" value={data.recurring_time}
+                                        onChange={e => setData('recurring_time', e.target.value)}
+                                        className="input-field w-full" required />
+                                </div>
+                                <div className="rounded-xl bg-surface p-3 text-xs text-text-muted">
+                                    <p className="font-semibold text-text-secondary mb-1">Hari Kerja Otomatis</p>
+                                    <p>
+                                        {(() => {
+                                            const unit = units.find(u => String(u.id) === String(data.unit_sekolah_id));
+                                            const hasSabtu = unit?.jam_kerja_sabtu_mulai;
+                                            return hasSabtu
+                                                ? 'Senin — Sabtu (unit ini kerja Sabtu)'
+                                                : 'Senin — Jumat';
+                                        })()}
+                                    </p>
+                                </div>
+                            </>
                         )}
 
                         {errors.unit_sekolah_id && <p className="text-danger text-xs">{errors.unit_sekolah_id}</p>}

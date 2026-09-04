@@ -12,7 +12,7 @@ class ProcessReminders extends Command
 {
     protected $signature = 'reminders:process';
 
-    protected $description = 'Kirim reminder yang sudah jatuh tempo (scheduled_at <= now, belum terkirim)';
+    protected $description = 'Kirim reminder yang sudah jatuh tempo (one-shot: scheduled_at <= now; recurring: next_run_at <= now)';
 
     public function handle(): int
     {
@@ -26,16 +26,24 @@ class ProcessReminders extends Command
 
         $sent = 0;
         foreach ($due as $reminder) {
-            // Atomic: claim send slot — prevents double-send from concurrent cron runs
-            $claimed = Reminder::where('id', $reminder->id)
-                ->whereNull('sent_at')
-                ->update(['sent_at' => now()]);
+            // Atomic claim — prevents double-send from concurrent cron runs
+            if ($reminder->is_recurring) {
+                $claimed = Reminder::where('id', $reminder->id)
+                    ->where('is_recurring', true)
+                    ->where('next_run_at', '<=', now())
+                    ->update(['next_run_at' => now()]);
+            } else {
+                $claimed = Reminder::where('id', $reminder->id)
+                    ->whereNull('sent_at')
+                    ->update(['sent_at' => now()]);
+            }
 
             if (! $claimed) {
                 continue;
             }
 
             $this->sendNotifications($reminder);
+            $reminder->markSentAndReschedule();
             $sent++;
         }
 

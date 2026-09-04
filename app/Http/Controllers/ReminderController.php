@@ -72,6 +72,7 @@ class ReminderController extends Controller
             'target_user_ids.*' => 'exists:users,id',
             'is_recurring' => 'boolean',
             'recurring_schedule' => 'nullable|in:daily,weekly,monthly',
+            'recurring_time' => 'nullable|date_format:H:i',
             'scheduled_at' => 'nullable|date|after:now',
         ]);
 
@@ -92,8 +93,19 @@ class ReminderController extends Controller
 
         $reminder = Reminder::create($validated);
 
-        // Manual send: jika scheduled_at null, langsung kirim
-        if (empty($validated['scheduled_at'])) {
+        // Auto-set recurring_days dari unit (Sen-Sab jika kerja Sabtu, Sen-Jum jika tidak)
+        if ($reminder->is_recurring && empty($reminder->recurring_days)) {
+            $unit = $reminder->unitSekolah;
+            $hasSabtu = $unit && $unit->jam_kerja_sabtu_mulai;
+            $reminder->update([
+                'recurring_days' => $hasSabtu ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5],
+            ]);
+        }
+
+        // Set next_run_at untuk recurring, atau langsung kirim untuk one-shot
+        if ($reminder->is_recurring && $reminder->recurring_time) {
+            $reminder->update(['next_run_at' => $reminder->getNextRunAt()]);
+        } elseif (empty($validated['scheduled_at'])) {
             $this->sendReminder($reminder);
         }
 
