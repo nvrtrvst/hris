@@ -135,7 +135,8 @@ class PresensiController extends Controller
                 });
         }
 
-        $presensis = $query->orderBy('tanggal', 'desc')->paginate(100)->withQueryString();
+        $perPage = min(max((int) $request->input('per_page', 100), 1), 100);
+        $presensis = $query->orderBy('tanggal', 'desc')->paginate($perPage)->withQueryString();
         $presensis->load('pegawai.jabatans');
 
         $units = [];

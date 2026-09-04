@@ -134,7 +134,7 @@ class PaginationQueryStringTest extends TestCase
         }
 
         $response = $this->actingAs($admin, 'web_admin')
-            ->get('/presensi?start_date=2026-07-01&end_date=2026-07-31&page=2');
+            ->get('/presensi?start_date=2026-07-01&end_date=2026-07-31&per_page=10&page=2');
 
         $response->assertInertia(function (Assert $page) {
             $page->component('Presensi/Index')
