@@ -9,6 +9,7 @@ use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Notifications\ReminderPush;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ReminderController extends Controller
@@ -157,6 +158,32 @@ class ReminderController extends Controller
         }
 
         return back()->with('message', 'Reminder berhasil dikirim ulang.');
+    }
+
+    /**
+     * Tarik kembali reminder yang sudah dikirim — hapus dari notifications table.
+     */
+    public function revoke(Reminder $reminder)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('manage_reminders')) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units') && $reminder->created_by !== $user->id) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        // Hapus semua notifikasi yang terkait dengan reminder ini
+        $deleted = DB::table('notifications')
+            ->where('type', ReminderPush::class)
+            ->whereJsonContains('data->reminder_id', $reminder->id)
+            ->delete();
+
+        // Update reminder: tandai sudah ditarik
+        $reminder->update(['sent_at' => null, 'next_run_at' => null]);
+
+        return back()->with('message', "Reminder berhasil ditarik. {$deleted} notifikasi dihapus dari mobile.");
     }
 
     /**

@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage, router } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
-import { Bell, Plus, Trash2, Send, Clock, Calendar, Filter, AlertCircle, Repeat, Users, Building2, CheckCircle } from 'lucide-react';
+import { Bell, Plus, Trash2, Send, Clock, Calendar, Filter, AlertCircle, Repeat, Users, Building2, CheckCircle, RotateCcw } from 'lucide-react';
 
 const TYPE_OPTIONS = [
     { value: 'presensi', label: 'Presensi', color: 'bg-blue-100 text-blue-700' },
@@ -57,6 +57,13 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
     const handleSendNow = (id) => {
         if (!confirm('Kirim reminder ini sekarang?')) return;
         router.post(route('reminders.send', id), {}, {
+            preserveState: true,
+        });
+    };
+
+    const handleRevoke = (id) => {
+        if (!confirm('Tarik kembali reminder ini? Notifikasi akan dihapus dari mobile pegawai.')) return;
+        router.post(route('reminders.revoke', id), {}, {
             preserveState: true,
         });
     };
@@ -160,6 +167,12 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                                                         <button onClick={() => handleSendNow(r.id)}
                                                             className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="Kirim Sekarang">
                                                             <Send className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {r.sent_at && (
+                                                        <button onClick={() => handleRevoke(r.id)}
+                                                            className="p-2 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors" title="Tarik Kembali">
+                                                            <RotateCcw className="w-4 h-4" />
                                                         </button>
                                                     )}
                                                     <button onClick={() => handleDelete(r.id)}

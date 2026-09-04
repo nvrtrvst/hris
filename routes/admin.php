@@ -286,6 +286,8 @@ Route::middleware('auth:web_admin')->group(function () {
             ->middleware('throttle:30,1')->name('reminders.destroy');
         Route::post('reminders/{reminder}/send', [ReminderController::class, 'sendNow'])
             ->middleware('throttle:10,1')->name('reminders.send');
+        Route::post('reminders/{reminder}/revoke', [ReminderController::class, 'revoke'])
+            ->middleware('throttle:10,1')->name('reminders.revoke');
     });
 });
 
