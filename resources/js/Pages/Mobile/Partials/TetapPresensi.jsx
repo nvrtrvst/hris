@@ -10,13 +10,13 @@ import { useMotionSamples } from '@/Hooks/useMotionSamples';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, Clock } from 'lucide-react';
 
 const FOTO_PAGI = 'foto_pagi';
-const TAP_JADWAL = 'tap_jadwal';
+const SLIDE_JADWAL = 'slide_jadwal';
 const FOTO_SORE = 'foto_sore';
 const SELESAI = 'selesai';
 
-// Tap jadwal hanya dalam rentang [jam_mulai, jam_selesai + grace] —
-// harus sinkron dengan PresensiMessages::TAP_GRACE_MINUTES di backend.
-const TAP_GRACE_MINUTES = 15;
+// Slide jadwal hanya dalam rentang [jam_mulai, jam_selesai + grace] —
+// harus sinkron dengan PresensiMessages::SLIDE_GRACE_MINUTES di backend.
+const SLIDE_GRACE_MINUTES = 15;
 
 /**
  * Kelompokkan jadwal berurutan dengan mata pelajaran sama (back-to-back).
@@ -62,13 +62,13 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const [currentTime, setCurrentTime] = useState('');
     const [posA, setPosA] = useState(null);
     const [posAwal, setPosAwal] = useState(null);
-    const [tappedIds, setTappedIds] = useState(() => new Set(
+    const [slidIds, setSlidIds] = useState(() => new Set(
         presensiHariIni.filter((p) => p.jadwal_id && p.jam_masuk).map((p) => p.jadwal_id)
     ));
     const [closedIds, setClosedIds] = useState(() => new Set(
         presensiHariIni.filter((p) => p.jadwal_id && p.jam_keluar).map((p) => p.jadwal_id)
     ));
-    const [tapLoading, setTapLoading] = useState(null);
+    const [slideLoading, setSlideLoading] = useState(null);
     const [isTugasLuar, setIsTugasLuar] = useState(false);
     const [tujuan, setTujuan] = useState('');
 
@@ -95,38 +95,38 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     // Kelompokkan jadwal berurutan dengan mapel sama (back-to-back).
     const groupedJadwals = useMemo(() => groupConsecutiveJadwals(jadwals), [jadwals]);
 
-    // Helper: semua jadwal dalam grup sudah di-tap (jam_masuk tercatat).
-    const isGroupTapped = useCallback((g) => g.allIds.every((id) => tappedIds.has(id)), [tappedIds]);
+    // Helper: semua jadwal dalam grup sudah di-slide (jam_masuk tercatat).
+    const isGroupSlid = useCallback((g) => g.allIds.every((id) => slidIds.has(id)), [slidIds]);
     // Helper: semua jadwal dalam grup sudah closed (jam_keluar tercatat).
     const isGroupClosed = useCallback((g) => g.allIds.every((id) => closedIds.has(id)), [closedIds]);
 
-    // Grup "aktif" = SUDAH di-tap ATAU masih dalam jendela waktu tap.
+    // Grup "aktif" = SUDAH di-slide ATAU masih dalam jendela waktu slide.
     const activeGroups = useMemo(() => groupedJadwals.filter((g) => {
-        if (isGroupTapped(g)) return true;
+        if (isGroupSlid(g)) return true;
         const mulai = toMinutes(g.jam_mulai);
         const selesai = toMinutes(g.jamSelesaiLast) || (mulai + 60);
-        const grace = g.unit_sekolah?.toleransi_tap_menit ?? TAP_GRACE_MINUTES;
+        const grace = g.unit_sekolah?.toleransi_slide_menit ?? SLIDE_GRACE_MINUTES;
         return mulai <= jamSekarang && jamSekarang <= selesai + grace;
-    }), [groupedJadwals, isGroupTapped, jamSekarang]);
-    const untappedActiveGroups = activeGroups.filter((g) => !isGroupTapped(g));
-    const masihBisaTap = untappedActiveGroups.length > 0;
+    }), [groupedJadwals, isGroupSlid, jamSekarang]);
+    const unslidActiveGroups = activeGroups.filter((g) => !isGroupSlid(g));
+    const masihBisaSlide = unslidActiveGroups.length > 0;
 
     // Ada grup yang SEDANG berlangsung (mulai <= sekarang < selesai) —
-    // di-tap bukan berarti selesai; foto sore menunggu jam mengajar habis.
+    // di-slide bukan berarti selesai; foto sore menunggu jam mengajar habis.
     const adaBerlangsung = useMemo(() => groupedJadwals.some((g) => {
         const mulai = toMinutes(g.jam_mulai);
         const selesai = toMinutes(g.jamSelesaiLast) || (mulai + 60);
         return mulai <= jamSekarang && jamSekarang < selesai;
     }), [groupedJadwals, jamSekarang]);
 
-    // Semua grup hari ini "beres": di-tap & jam selesainya sudah lewat, ATAU
-    // sudah lewat batas tap (terlambat — tidak bisa di-tap lagi).
+    // Semua grup hari ini "beres": di-slide & jam selesainya sudah lewat, ATAU
+    // sudah lewat batas slide (terlambat — tidak bisa di-slide lagi).
     const semuaBeres = useMemo(() => groupedJadwals.length > 0 && groupedJadwals.every((g) => {
         const selesai = toMinutes(g.jamSelesaiLast) || (toMinutes(g.jam_mulai) + 60);
-        if (isGroupTapped(g)) return jamSekarang >= selesai;
-        const grace = g.unit_sekolah?.toleransi_tap_menit ?? TAP_GRACE_MINUTES;
+        if (isGroupSlid(g)) return jamSekarang >= selesai;
+        const grace = g.unit_sekolah?.toleransi_slide_menit ?? SLIDE_GRACE_MINUTES;
         return jamSekarang > selesai + grace;
-    }), [groupedJadwals, isGroupTapped, jamSekarang]);
+    }), [groupedJadwals, isGroupSlid, jamSekarang]);
 
     // Generic check: semua presensi hari ini sudah lengkap
     const allRecordsComplete = presensiHariIni.length > 0
@@ -137,12 +137,12 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         if (!pagiRecord) return FOTO_PAGI;
         if (pagiRecord.jam_keluar) return SELESAI;
         // Foto sore hanya ketika tidak ada lagi jadwal yang berlangsung/menunggu
-        // di-tap — cegah presensi keluar sebelum jam mengajar selesai.
+        // di-slide — cegah presensi keluar sebelum jam mengajar selesai.
         if (semuaBeres) return FOTO_SORE;
         // Tanpa jadwal sama sekali: foto sore tetap tersedia setelah jam sore tiba.
         if (jadwals.length === 0 && jamSekarang >= jamSore) return FOTO_SORE;
 
-        return TAP_JADWAL;
+        return SLIDE_JADWAL;
     }, [allRecordsComplete, pagiRecord, semuaBeres, jadwals.length, jamSekarang]);
 
     const lemburUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
@@ -334,15 +334,15 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         }
     }, [capturedPhoto, currentPosition, geoBlocked, geofence, posA, posAwal, motionSamples]);
 
-    // Tap seluruh grup secara atomik: optimis UI → kirim request untuk semua
+    // Slide seluruh grup secara atomik: optimis UI → kirim request untuk semua
     // jadwal_id dalam grup → rollback semua bila ADA satupun gagal (cegah partial state).
-    const handleTapGroup = useCallback(async (group, tipe = 'masuk') => {
-        setTapLoading(group.id);
+    const handleSlideGroup = useCallback(async (group, tipe = 'masuk') => {
+        setSlideLoading(group.id);
         setError(null);
         setSuccessMessage(null);
 
         if (!currentPosition) {
-            setTapLoading(null);
+            setSlideLoading(null);
             setError('Lokasi belum tersedia. Pastikan GPS aktif.');
             return;
         }
@@ -351,7 +351,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         if (tipe === 'keluar') {
             setClosedIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.add(id)); return next; });
         } else {
-            setTappedIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.add(id)); return next; });
+            setSlidIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.add(id)); return next; });
         }
 
         const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -359,7 +359,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
 
         for (const jadwalId of group.allIds) {
             try {
-                const res = await fetch(route('presensi.absen.tap'), {
+                const res = await fetch(route('presensi.absen.slide'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -382,7 +382,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                     allOk = false;
                     if (res.status === 419) throw { type: 'session_expired' };
                     const data = await res.json().catch(() => ({}));
-                    const msg = (data.errors && Object.values(data.errors)[0]?.[0]) || data.message || 'Gagal tap jadwal.';
+                    const msg = (data.errors && Object.values(data.errors)[0]?.[0]) || data.message || 'Gagal slide jadwal.';
                     setError(msg);
                     break;
                 }
@@ -406,7 +406,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             if (tipe === 'keluar') {
                 setClosedIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.delete(id)); return next; });
             } else {
-                setTappedIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.delete(id)); return next; });
+                setSlidIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.delete(id)); return next; });
             }
         } else {
             setSuccessMessage(tipe === 'keluar' ? 'Presensi pulang tercatat.' : 'Kehadiran tercatat.');
@@ -435,7 +435,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         return MAP_TILE_URL.replace('{z}', String(zoom)).replace('{x}', String(x)).replace('{y}', String(y));
     })() : null;
 
-    const faseLabel = phase === FOTO_PAGI ? 'Foto Pagi' : phase === TAP_JADWAL ? 'Tap Jadwal' : phase === FOTO_SORE ? 'Foto Sore' : 'Selesai';
+    const faseLabel = phase === FOTO_PAGI ? 'Foto Pagi' : phase === SLIDE_JADWAL ? 'Slide Jadwal' : phase === FOTO_SORE ? 'Foto Sore' : 'Selesai';
 
     return (
         <>
@@ -519,16 +519,16 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 <section aria-labelledby="jadwal-heading" className="mb-4">
                     <div className="mb-2 flex items-center justify-between">
                         <h2 id="jadwal-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Agenda Mengajar</h2>
-                        <span className="text-xs text-slate-500">{activeGroups.filter(isGroupTapped).length} dari {activeGroups.length} sudah di-tap</span>
+                        <span className="text-xs text-slate-500">{activeGroups.filter(isGroupSlid).length} dari {activeGroups.length} sudah di-slide</span>
                     </div>
-                    {phase === TAP_JADWAL && adaBerlangsung && !masihBisaTap && (
+                    {phase === SLIDE_JADWAL && adaBerlangsung && !masihBisaSlide && (
                         <div className="mb-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800">
                             Semua jadwal mengajar sudah terpenuhi. Presensi Foto pulang tersedia setelah jam mengajar selesai.
                         </div>
                     )}
                     <div className="space-y-2">
                         {activeGroups.map((g) => {
-                            const done = isGroupTapped(g);
+                            const done = isGroupSlid(g);
                             const closed = isGroupClosed(g);
                             const timeLabel = g.jam_mulai?.slice(0, 5) + (g.jamSelesaiLast ? '–' + g.jamSelesaiLast.slice(0, 5) : '');
                             const count = g.allIds.length;
@@ -544,13 +544,13 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                         </div>
                                         <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-primary">{timeLabel}</span>
                                     </div>
-                                    {!done && phase === TAP_JADWAL ? (
+                                    {!done && phase === SLIDE_JADWAL ? (
                                         <>
                                             <SlideToConfirm
-                                                onConfirm={() => handleTapGroup(g)}
-                                                disabled={tapLoading !== null || !currentPosition || !isInsideJadwal(g)}
+                                                onConfirm={() => handleSlideGroup(g)}
+                                                disabled={slideLoading !== null || !currentPosition || !isInsideJadwal(g)}
                                                 confirmed={false}
-                                                label={`Tap ${g.mata_pelajaran?.nama || 'jadwal'}${count > 1 ? ` (${count} jam)` : ''}`}
+                                                label={`Slide ${g.mata_pelajaran?.nama || 'jadwal'}${count > 1 ? ` (${count} jam)` : ''}`}
                                             />
                                             {(!currentPosition || !isInsideJadwal(g)) && (
                                                 <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
@@ -569,7 +569,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                             <CheckCircle className="h-4 w-4" /> Presensi mengajar lengkap
                                         </div>
                                     ) : (
-                                        <p className="text-xs text-slate-400">Tap masuk tersedia saat jam mengajar.</p>
+                                        <p className="text-xs text-slate-400">Slide masuk tersedia saat jam mengajar.</p>
                                     )}
                                 </div>
                             );
@@ -769,7 +769,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             )}
 
             {activeGroups.length === 0 && jadwals.length > 0 && phase !== SELESAI && (
-                <Empty icon={Clock} title="Tidak ada jadwal yang bisa di-tap" subtitle={semuaBeres ? 'Semua jadwal sudah berakhir — lanjut ke foto sore.' : 'Jadwal aktif akan muncul setelah jam mengajar tiba.'} />
+                <Empty icon={Clock} title="Tidak ada jadwal yang bisa di-slide" subtitle={semuaBeres ? 'Semua jadwal sudah berakhir — lanjut ke foto sore.' : 'Jadwal aktif akan muncul setelah jam mengajar tiba.'} />
             )}
             {jadwals.length === 0 && phase !== SELESAI && (
                 <Empty icon={Clock} title="Tidak ada jadwal hari ini" subtitle="Jika tidak ada jadwal, lanjut ke foto sore." />
@@ -781,7 +781,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                         <CheckCircle className="h-8 w-8" />
                     </div>
                     <h2 className="text-lg font-bold text-slate-900">Presensi hari ini selesai</h2>
-                    <p className="mt-1 text-sm text-slate-500">{tugasLuarDone ? 'Presensi dinas luar tercatat lengkap.' : 'Foto pagi, tap jadwal, dan foto sore sudah lengkap.'}</p>
+                    <p className="mt-1 text-sm text-slate-500">{tugasLuarDone ? 'Presensi dinas luar tercatat lengkap.' : 'Foto pagi, slide jadwal, dan foto sore sudah lengkap.'}</p>
                 </div>
             )}
 

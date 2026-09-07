@@ -15,7 +15,7 @@ use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class TapKeluarTest extends TestCase
+class SlideKeluarTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -35,7 +35,7 @@ class TapKeluarTest extends TestCase
             'radius_meter' => 100,
             'durasi_jp' => 45,
             'toleransi_menit' => 0,
-            'toleransi_tap_menit' => 15,
+            'toleransi_slide_menit' => 15,
         ]);
     }
 
@@ -67,7 +67,7 @@ class TapKeluarTest extends TestCase
         return $pegawai;
     }
 
-    public function test_tap_masuk_lalu_keluar_mengisi_jam_keluar(): void
+    public function test_slide_masuk_lalu_keluar_mengisi_jam_keluar(): void
     {
         Carbon::setTestNow('2026-08-21 12:00:00');
         $hari = Carbon::now()->locale('id')->dayName;
@@ -109,7 +109,7 @@ class TapKeluarTest extends TestCase
         ];
 
         $this->actingAs($pegawai->user, 'web_mobile')
-            ->postJson(route('presensi.absen.tap'), $payload)
+            ->postJson(route('presensi.absen.slide'), $payload)
             ->assertOk()->assertJson(['success' => true]);
 
         $mengajar = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jadwal->id)->first();
@@ -118,14 +118,14 @@ class TapKeluarTest extends TestCase
         $this->assertNull($mengajar->jam_keluar);
 
         $this->actingAs($pegawai->user, 'web_mobile')
-            ->postJson(route('presensi.absen.tap'), array_merge($payload, ['tipe' => 'keluar']))
+            ->postJson(route('presensi.absen.slide'), array_merge($payload, ['tipe' => 'keluar']))
             ->assertOk()->assertJson(['success' => true]);
 
         $this->assertNotNull($mengajar->fresh()->jam_keluar);
         Carbon::setTestNow();
     }
 
-    public function test_tap_keluar_tanpa_masuk_ditolak(): void
+    public function test_slide_keluar_tanpa_masuk_ditolak(): void
     {
         Carbon::setTestNow('2026-08-21 12:00:00');
         $hari = Carbon::now()->locale('id')->dayName;
@@ -159,7 +159,7 @@ class TapKeluarTest extends TestCase
         ]);
 
         $this->actingAs($pegawai->user, 'web_mobile')
-            ->postJson(route('presensi.absen.tap'), [
+            ->postJson(route('presensi.absen.slide'), [
                 'jadwal_id' => $jadwal->id,
                 'latitude' => -6.2,
                 'longitude' => 106.8,

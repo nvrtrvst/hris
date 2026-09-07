@@ -496,7 +496,7 @@ class RouteSmokeTest extends TestCase
             'jam_masuk_kantor' => '07:00',
             'jam_pulang_kantor' => '16:00',
             'max_jam_minggu' => 30,
-            'toleransi_tap_menit' => 15,
+            'toleransi_slide_menit' => 15,
         ]);
 
         $this->jabatan = Jabatan::create(['nama' => 'Guru', 'is_guru' => true]);
@@ -1275,7 +1275,7 @@ class RouteSmokeTest extends TestCase
                 'durasi_jp' => 35,
                 'max_jam_minggu' => 30,
                 'toleransi_menit' => 5,
-                'toleransi_tap_menit' => 15,
+                'toleransi_slide_menit' => 15,
                 'jam_masuk_kantor' => '07:00',
                 'jam_pulang_kantor' => '16:00',
             ],
@@ -1288,7 +1288,7 @@ class RouteSmokeTest extends TestCase
                 'durasi_jp' => 45,
                 'max_jam_minggu' => 30,
                 'toleransi_menit' => 0,
-                'toleransi_tap_menit' => 15,
+                'toleransi_slide_menit' => 15,
                 'jam_masuk_kantor' => '07:00',
                 'jam_pulang_kantor' => '16:00',
             ],
@@ -1353,7 +1353,7 @@ class RouteSmokeTest extends TestCase
                 'accuracy' => 15,
                 'foto' => $this->validFotoBase64(),
             ],
-            'presensi.absen.tap' => [
+            'presensi.absen.slide' => [
                 'jadwal_id' => $this->jadwal->id,
                 'latitude' => -6.2,
                 'longitude' => 106.8,

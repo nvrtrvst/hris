@@ -15,7 +15,7 @@ export default function Edit({ auth, unit }) {
         radius_meter: unit.radius_meter,
         durasi_jp: unit.durasi_jp || 45,
         toleransi_menit: unit.toleransi_menit ?? 0,
-        toleransi_tap_menit: unit.toleransi_tap_menit ?? 15,
+        toleransi_slide_menit: unit.toleransi_slide_menit ?? 15,
         max_jam_minggu: unit.max_jam_minggu ?? 30,
         jam_masuk_kantor: unit.jam_masuk_kantor?.slice(0, 5) || '07:30',
         jam_pulang_kantor: unit.jam_pulang_kantor?.slice(0, 5) || '15:00',

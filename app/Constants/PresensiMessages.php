@@ -64,13 +64,13 @@ class PresensiMessages
 
     public const UNIT_REGULER = 'reguler';
 
-    // Tap jadwal (pegawai tetap): jadwal hanya bisa di-tap dalam rentang
-    // [jam_mulai, jam_selesai + TAP_GRACE_MINUTES] — cegah presensi retroaktif.
-    public const TAP_GRACE_MINUTES = 15;
+    // Slide jadwal (pegawai tetap): jadwal hanya bisa di-slide dalam rentang
+    // [jam_mulai, jam_selesai + SLIDE_GRACE_MINUTES] — cegah presensi retroaktif.
+    public const SLIDE_GRACE_MINUTES = 15;
 
-    public const TAP_BELUM_DIMULAI = 'Jadwal belum dimulai.';
+    public const SLIDE_BELUM_DIMULAI = 'Jadwal belum dimulai.';
 
-    public const TAP_SUDAH_BERAKHIR = 'Jadwal sudah berakhir. Batas tap: %s.';
+    public const SLIDE_SUDAH_BERAKHIR = 'Jadwal sudah berakhir. Batas slide: %s.';
 
     // Tugas Luar
     public const LABEL_TUGAS_LUAR = 'Tugas Luar';

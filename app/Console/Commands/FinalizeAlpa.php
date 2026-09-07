@@ -88,7 +88,7 @@ class FinalizeAlpa extends Command
                     ->exists();
 
                 if ($presentAny) {
-                    // Sudah hadir -> tandai alpa per jadwal yang tak di-tap.
+                    // Sudah hadir -> tandai alpa per jadwal yang tak di-slide.
                     foreach ($pegawai->jadwals->filter(fn ($j) => $j->hari === $hariTarget) as $jadwal) {
                         $jadwalPresent = Presensi::where('pegawai_id', $pegawai->id)
                             ->where('jadwal_id', $jadwal->id)

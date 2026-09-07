@@ -14,7 +14,7 @@ export default function Create({ auth }) {
         radius_meter: 50,
         durasi_jp: 45,
         toleransi_menit: 0,
-        toleransi_tap_menit: 15,
+        toleransi_slide_menit: 15,
         max_jam_minggu: 30,
         jam_masuk_kantor: '07:30',
         jam_pulang_kantor: '15:00',

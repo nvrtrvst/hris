@@ -59,7 +59,7 @@ class PayrollOperatorAccessTest extends TestCase
             'jam_masuk_kantor' => '07:00',
             'jam_pulang_kantor' => '16:00',
             'max_jam_minggu' => 30,
-            'toleransi_tap_menit' => 15,
+            'toleransi_slide_menit' => 15,
         ]);
 
         $this->unitB = UnitSekolah::create([
@@ -73,7 +73,7 @@ class PayrollOperatorAccessTest extends TestCase
             'jam_masuk_kantor' => '07:00',
             'jam_pulang_kantor' => '16:00',
             'max_jam_minggu' => 30,
-            'toleransi_tap_menit' => 15,
+            'toleransi_slide_menit' => 15,
         ]);
 
         $jabatanBendahara = Jabatan::create(['nama' => 'Bendahara', 'is_guru' => false, 'is_payroll_operator' => true]);

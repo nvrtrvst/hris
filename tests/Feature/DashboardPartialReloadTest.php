@@ -71,7 +71,7 @@ class DashboardPartialReloadTest extends TestCase
             'radius_meter' => 100,
             'durasi_jp' => 45,
             'toleransi_menit' => 0,
-            'toleransi_tap_menit' => 15,
+            'toleransi_slide_menit' => 15,
         ]);
 
         $jabatan = Jabatan::create(['nama' => 'Guru']);

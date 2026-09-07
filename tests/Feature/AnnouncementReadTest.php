@@ -38,7 +38,7 @@ class AnnouncementReadTest extends TestCase
             'radius_meter' => 100,
             'durasi_jp' => 45,
             'toleransi_menit' => 0,
-            'toleransi_tap_menit' => 15,
+            'toleransi_slide_menit' => 15,
         ]);
 
         $this->user = User::factory()->create(['role' => 'pegawai']);
@@ -102,7 +102,7 @@ class AnnouncementReadTest extends TestCase
             'radius_meter' => 100,
             'durasi_jp' => 45,
             'toleransi_menit' => 0,
-            'toleransi_tap_menit' => 15,
+            'toleransi_slide_menit' => 15,
         ]);
         $this->makeAnnouncement('Umum 1'); // null = semua unit
         $this->makeAnnouncement('Khusus SMP', $this->unit->id);

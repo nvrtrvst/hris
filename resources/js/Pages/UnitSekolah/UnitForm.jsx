@@ -154,10 +154,10 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                         <input type="number" min="0" max="60" value={data.toleransi_menit ?? 0}
                             onChange={(e) => setData('toleransi_menit', e.target.value)} className={inputClass} />
                     </Field>
-                    <Field label="Batas Tap Jadwal (Menit)" error={errors.toleransi_tap_menit}
-                        hint="Tap jadwal mengajar hanya bisa sampai X menit setelah jam selesai (0-60). Default 15.">
-                        <input type="number" min="0" max="60" value={data.toleransi_tap_menit ?? 15}
-                            onChange={(e) => setData('toleransi_tap_menit', e.target.value)} className={inputClass} />
+                    <Field label="Batas Slide Jadwal (Menit)" error={errors.toleransi_slide_menit}
+                        hint="Slide jadwal mengajar hanya bisa sampai X menit setelah jam selesai (0-60). Default 15.">
+                        <input type="number" min="0" max="60" value={data.toleransi_slide_menit ?? 15}
+                            onChange={(e) => setData('toleransi_slide_menit', e.target.value)} className={inputClass} />
                     </Field>
                 </div>
             </SectionCard>

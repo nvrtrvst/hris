@@ -1108,12 +1108,12 @@ class MobileController extends Controller
         ]);
     }
 
-    public function tapJadwal(Request $request)
+    public function slideJadwal(Request $request)
     {
         $pegawai = $this->getPegawai();
         abort_unless($pegawai->status_kepegawaian === 'tetap', 403, 'Hanya pegawai tetap.');
 
-        // Blokir tap bila pegawai sedang izin/cuti/sakit yang disetujui —
+        // Blokir slide bila pegawai sedang izin/cuti/sakit yang disetujui —
         // dicek SEBELUM geofence agar pesan izin, bukan "di luar radius".
         $this->assertTidakSedangIzin($pegawai);
 
@@ -1140,19 +1140,19 @@ class MobileController extends Controller
         abort_unless($jadwal, 422, 'Jadwal tidak ditemukan.');
         abort_unless($jadwal->unitSekolah, 422, 'Unit jadwal tidak tersedia.');
 
-        // Tap hanya boleh dalam rentang [jam_mulai, jam_selesai + grace] —
+        // Slide hanya boleh dalam rentang [jam_mulai, jam_selesai + grace] —
         // cegah presensi retroaktif untuk jadwal yang sudah lama berakhir.
         $sekarang = Carbon::now()->format('H:i:s');
         if ($tipe !== 'keluar' && $jadwal->jam_mulai && $sekarang < $jadwal->jam_mulai) {
-            return response()->json(['success' => false, 'message' => PresensiMessages::TAP_BELUM_DIMULAI], 422);
+            return response()->json(['success' => false, 'message' => PresensiMessages::SLIDE_BELUM_DIMULAI], 422);
         }
         if ($tipe !== 'keluar' && $jadwal->jam_selesai) {
-            $graceTap = (int) ($jadwal->unitSekolah->toleransi_tap_menit ?? PresensiMessages::TAP_GRACE_MINUTES);
-            $batasTap = Carbon::parse($jadwal->jam_selesai)->addMinutes($graceTap)->format('H:i:s');
-            if ($sekarang > $batasTap) {
+            $graceSlide = (int) ($jadwal->unitSekolah->toleransi_slide_menit ?? PresensiMessages::SLIDE_GRACE_MINUTES);
+            $batasSlide = Carbon::parse($jadwal->jam_selesai)->addMinutes($graceSlide)->format('H:i:s');
+            if ($sekarang > $batasSlide) {
                 return response()->json([
                     'success' => false,
-                    'message' => sprintf(PresensiMessages::TAP_SUDAH_BERAKHIR, $batasTap),
+                    'message' => sprintf(PresensiMessages::SLIDE_SUDAH_BERAKHIR, $batasSlide),
                 ], 422);
             }
         }
@@ -1182,7 +1182,7 @@ class MobileController extends Controller
 
         // Anti-deadlock (pola sama dengan storeAbsenTransaction): tanpa SELECT FOR UPDATE
         // untuk insert; untuk checkout pakai lockForUpdate pada record yang ada.
-        // Unique index (pegawai_id, presensi_key) menolak tap ganda — race ditangkap di bawah.
+        // Unique index (pegawai_id, presensi_key) menolak slide ganda — race ditangkap di bawah.
         $status = DB::transaction(function () use ($pegawai, $jadwal, $distance, $request, $accuracy, $tipe) {
             if ($tipe === 'keluar') {
                 $presensi = Presensi::where('pegawai_id', $pegawai->id)
@@ -1228,10 +1228,10 @@ class MobileController extends Controller
 
                 return $presensi->status;
             } catch (UniqueConstraintViolationException $e) {
-                // Tap ganda: unique index (pegawai_id, presensi_key) menolak — driver-agnostic
+                // Slide ganda: unique index (pegawai_id, presensi_key) menolak — driver-agnostic
                 // (MySQL 1062 / SQLite 19). Tidak ada retry — ini bukan error concurrency.
 
-                throw ValidationException::withMessages(['jadwal_id' => 'Jadwal ini sudah di-tap.']);
+                throw ValidationException::withMessages(['jadwal_id' => 'Jadwal ini sudah di-slide.']);
             }
         }, 3);
 

@@ -90,7 +90,7 @@ export default function Index({ auth, units, stats }) {
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {unit.durasi_jp && <UnitBadge Icon={Clock3} label={`${unit.durasi_jp} mnt/JP`} />}
                                                         {unit.toleransi_menit > 0 && <UnitBadge Icon={MapPin} label={`Telat ${unit.toleransi_menit} mnt`} />}
-                                                        <UnitBadge Icon={Clock3} label={`Tap +${unit.toleransi_tap_menit} mnt`} />
+                                                        <UnitBadge Icon={Clock3} label={`Slide +${unit.toleransi_slide_menit} mnt`} />
                                                         {unit.max_jam_minggu && <UnitBadge Icon={CalendarClock} label={`Maks ${unit.max_jam_minggu} jam`} />}
                                                     </div>
                                                 </td>
@@ -137,7 +137,7 @@ export default function Index({ auth, units, stats }) {
                         <p className="text-xs leading-relaxed text-text-muted">
                             Koordinat & radius ini dipakai validasi <b>geofence</b> absen mobile (Haversine). Pegawai hanya bisa
                             presensi jika jarak GPS mereka ≤ radius dari titik pusat unit. Pengaturan waktu & toleransi dipakai
-                            untuk penentuan status hadir/telat dan batas tap jadwal.
+                            untuk penentuan status hadir/telat dan batas slide jadwal.
                         </p>
                     </div>
                 </div>

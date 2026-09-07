@@ -49,7 +49,7 @@ export default function SlideToConfirm({ onConfirm, disabled = false, confirmed 
         return (
             <div className="flex h-12 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 text-sm font-bold text-emerald-700 select-none">
                 <Check className="h-5 w-5" />
-                Sudah di-tap
+                Sudah di-slide
             </div>
         );
     }

@@ -107,7 +107,7 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
                             <button
                                 type="button"
                                 onClick={camera.switchCamera}
-                                title={camera.facing === 'user' ? 'Kamera depan — tap utk belakang' : 'Kamera belakang — tap utk depan'}
+                                title={camera.facing === 'user' ? 'Kamera depan — slide utk belakang' : 'Kamera belakang — slide utk depan'}
                                 className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1.5 text-xs font-semibold text-white"
                             >
                                 <SwitchCamera className="h-4 w-4" />

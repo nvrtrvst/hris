@@ -69,8 +69,8 @@ Route::middleware('auth:web_mobile')->group(function () {
         ->name('presensi.absen.store');
     Route::post('/absen-tetap', [MobileController::class, 'storeAbsenTetap'])
         ->middleware('throttle:10,1')->name('presensi.absen.tetap');
-    Route::post('/tap-jadwal', [MobileController::class, 'tapJadwal'])
-        ->middleware('throttle:30,1')->name('presensi.absen.tap');
+    Route::post('/slide-jadwal', [MobileController::class, 'slideJadwal'])
+        ->middleware('throttle:30,1')->name('presensi.absen.slide');
 
     Route::post('/tugas-luar/{presensi}/bukti', [PresensiController::class, 'storeBuktiTugasLuar'])
         ->middleware('throttle:10,1')->name('presensi.tugas-luar.bukti');
