@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileGajiController;
@@ -19,6 +20,14 @@ Route::get('/login', [MobileAuthController::class, 'create'])
     ->middleware('guest:web_mobile')->name('presensi.login');
 Route::post('/login', [MobileAuthController::class, 'store'])
     ->middleware('guest:web_mobile')->middleware('throttle:5,1')->name('presensi.login.store');
+// Client error telemetry (ErrorBoundary). Endpoint PUBLIK — user yang sesi-nya
+// expired tetap harus bisa kirim laporan error (kalau dibalik auth, justru
+// error pertama yang muncul setelah sesi jatuh tidak akan pernah tercatat).
+// Payload sudah aman: tidak ada PII (component stack + URL + user_agent saja).
+// Throttle 30/menit supaya error loop / device nakal tidak menuhin log.
+Route::post('/client-errors', [ClientErrorController::class, 'store'])
+    ->middleware('throttle:30,1')->name('presensi.client-errors.store');
+
 Route::post('/logout', [MobileAuthController::class, 'destroy'])
     ->middleware('auth:web_mobile')->name('presensi.logout');
 
@@ -75,6 +84,12 @@ Route::middleware('auth:web_mobile')->group(function () {
         ->middleware('throttle:60,1')->name('presensi.push.subscriptions');
     Route::post('/push/test', [PushSubscriptionController::class, 'test'])
         ->middleware('throttle:5,1')->name('presensi.push.test');
+
+    // Client error telemetry (ErrorBoundary). Endpoint publik di auth group —
+    // payload tidak PII (component stack + URL + user_agent). Throttle 30/menit
+    // supaya error loop / device nakal tidak menuhin log.
+    Route::post('/client-errors', [ClientErrorController::class, 'store'])
+        ->middleware('throttle:30,1')->name('presensi.client-errors.store');
     Route::get('/profile', function (Request $request) {
         $pegawai = $request->user()->pegawai;
         if ($pegawai) {

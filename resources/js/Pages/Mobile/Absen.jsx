@@ -169,6 +169,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
 
     useEffect(() => {
         if (sedangIzin) return;
+        // Pegawai tetap: TetapPresensi sudah punya camera+geolocation sendiri (anti-spoof ringkas).
+        // Skip double-stream — Android 10/Chrome 151 kehabisan MediaStream track saat dua hook jalan bareng.
+        if (pegawai?.status_kepegawaian === 'tetap') return;
         startCamera();
         setCurrentTime(new Date().toLocaleTimeString('id-ID', { hour12: false }));
         const clock = setInterval(() => {

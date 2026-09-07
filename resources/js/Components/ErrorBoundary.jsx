@@ -24,6 +24,43 @@ export class ErrorBoundary extends React.Component {
         this.setState({ error, errorInfo });
 
         console.error('Error caught by ErrorBoundary:', error, errorInfo);
+
+        // Fire-and-forget ke server: Admin tidak punya akses ke console HP user,
+        // jadi log ini satu-satunya jejak stack trace saat error React murni client-side.
+        // Pakai fetch (bukan axios) + keepalive — bisa jalan walau ErrorBoundary
+        // dipanggil saat Inertia/axios belum inisialisasi. Csrf token dibaca dari
+        // meta tag (standar Laravel) supaya request tidak ditolak middleware VerifyCsrfToken.
+        this.reportToServer(error, errorInfo);
+    }
+
+    reportToServer(error, errorInfo) {
+        try {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const payload = JSON.stringify({
+                name: error?.name || 'Error',
+                message: error?.message || String(error || ''),
+                stack: error?.stack || '',
+                component_stack: errorInfo?.componentStack || '',
+                url: window.location.href,
+                user_agent: navigator.userAgent,
+                timestamp: new Date().toISOString(),
+            });
+
+            // Blob + keepalive: payload > 1KB, navigator.sendBeacon unreliable untuk JSON.
+            fetch('/mobile/client-errors', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                    'Accept': 'application/json',
+                },
+                body: payload,
+                credentials: 'same-origin',
+                keepalive: true,
+            }).catch(() => { /* swallow — log client sudah dicatat */ });
+        } catch {
+            /* reportToServer dipanggil dari render error path; jangan throw lagi */
+        }
     }
 
     tryRecover = () => {

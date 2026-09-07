@@ -136,7 +136,15 @@ class PresensiController extends Controller
         }
 
         $perPage = min(max((int) $request->input('per_page', 100), 1), 100);
-        $presensis = $query->orderBy('tanggal', 'desc')->paginate($perPage)->withQueryString();
+        // Sort: tanggal DESC, lalu jam_masuk ASC untuk kronologis harian,
+        // lalu id ASC tie-breaker supaya baris jam_masuk sama (NULL/pulang tanpa masuk) deterministik.
+        // Hindari join jadwal (jam_mulai) — tambah N+1 + lockForUpdate tidak relevan di index read-only.
+        $presensis = $query
+            ->orderBy('tanggal', 'desc')
+            ->orderBy('jam_masuk', 'asc')
+            ->orderBy('id', 'asc')
+            ->paginate($perPage)
+            ->withQueryString();
         $presensis->load('pegawai.jabatans');
 
         $units = [];
