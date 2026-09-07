@@ -224,7 +224,7 @@ class PresensiController extends Controller
             'tipe' => 'required|in:masuk,keluar',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'foto' => ['required', 'string', 'regex:/^data:image\/\w+;base64,/'],
+            'foto' => ['required', 'string', 'max:'.PresensiMessages::MAX_FOTO_BASE64, 'regex:/^data:image\/\w+;base64,/'],
         ]);
 
         $jadwal = Jadwal::with('unitSekolah')->findOrFail($request->jadwal_id);
@@ -234,7 +234,7 @@ class PresensiController extends Controller
         $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);
 
         if ($distance > $unit->radius_meter) {
-            return back()->withErrors(['geofence' => "Anda berada di luar jangkauan Unit Sekolah. Jarak Anda: {$distance} meter (Batas: {$unit->radius_meter}m)"]);
+            return back()->withErrors(['geofence' => sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $distance, $unit->radius_meter)]);
         }
 
         $pegawai = Pegawai::findOrFail($request->pegawai_id);
@@ -271,7 +271,7 @@ class PresensiController extends Controller
 
                 if ($request->tipe === 'masuk') {
                     if ($presensi->jam_masuk) {
-                        throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen masuk untuk jadwal ini.']);
+                        throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_MASUK]);
                     }
                     $presensi->jam_masuk = Carbon::now()->format('H:i:s');
                     $presensi->latitude_masuk = $request->latitude;
@@ -282,10 +282,10 @@ class PresensiController extends Controller
                     $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $unit->toleransi_menit);
                 } else {
                     if (! $presensi->exists || ! $presensi->jam_masuk) {
-                        throw ValidationException::withMessages(['conflict' => 'Anda belum absen masuk.']);
+                        throw ValidationException::withMessages(['conflict' => PresensiMessages::BELUM_ABSEN_MASUK]);
                     }
                     if ($presensi->jam_keluar) {
-                        throw ValidationException::withMessages(['conflict' => 'Anda sudah melakukan absen keluar.']);
+                        throw ValidationException::withMessages(['conflict' => PresensiMessages::SUDAH_ABSEN_KELUAR]);
                     }
                     $presensi->jam_keluar = Carbon::now()->format('H:i:s');
                     $presensi->latitude_keluar = $request->latitude;
@@ -513,7 +513,7 @@ class PresensiController extends Controller
         }
 
         $request->validate([
-            'foto' => ['required', 'string', 'regex:/^data:image\/\w+;base64,/'],
+            'foto' => ['required', 'string', 'max:'.PresensiMessages::MAX_FOTO_BASE64, 'regex:/^data:image\/\w+;base64,/'],
             'keterangan' => ['nullable', 'string', 'max:500'],
             'latitude' => ['nullable', 'numeric'],
             'longitude' => ['nullable', 'numeric'],

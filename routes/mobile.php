@@ -103,10 +103,10 @@ Route::middleware('auth:web_mobile')->group(function () {
             'status' => session('status'),
         ]);
     })->name('presensi.profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('presensi.profile.update');
-    Route::patch('/profile/data', [ProfileController::class, 'updatePegawaiData'])->name('presensi.profile.data.update');
-    Route::put('/password', [PasswordController::class, 'update'])->name('presensi.password.update');
+    Route::patch('/profile', [ProfileController::class, 'update'])->middleware('throttle:10,1')->name('presensi.profile.update');
+    Route::patch('/profile/data', [ProfileController::class, 'updatePegawaiData'])->middleware('throttle:10,1')->name('presensi.profile.data.update');
+    Route::put('/password', [PasswordController::class, 'update'])->middleware('throttle:6,1')->name('presensi.password.update');
 
     Route::get('/lengkapi-data', [ProfileController::class, 'editPegawai'])->name('presensi.lengkapi-data');
-    Route::post('/lengkapi-data', [ProfileController::class, 'updatePegawai'])->name('presensi.lengkapi-data.store');
+    Route::post('/lengkapi-data', [ProfileController::class, 'updatePegawai'])->middleware('throttle:10,1')->name('presensi.lengkapi-data.store');
 });

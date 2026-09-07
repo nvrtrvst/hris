@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { subscribeRouter } from '@/Utils/routerEvents';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import StatCard from '@/Components/StatCard';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
@@ -25,19 +26,6 @@ import {
     UserX,
     X,
 } from 'lucide-react';
-
-const StatCard = ({ label, value, sub, Icon, iconBg, iconCls, alert }) => (
-    <div className="stat-card group hover:shadow-card-hover transition-shadow">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg} transition-transform group-hover:scale-105`}>
-            <Icon className={`h-5 w-5 ${iconCls}`} />
-        </div>
-        <div className="min-w-0">
-            <p className={`text-2xl font-extrabold leading-none tabular-nums ${alert ? 'text-danger' : 'text-primary'}`}>{value}</p>
-            <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary">{label}</p>
-            {sub && <p className="mt-0.5 text-[10px] text-text-muted">{sub}</p>}
-        </div>
-    </div>
-);
 
 const UserAvatar = ({ pegawai }) => (
     pegawai.foto_url ? (

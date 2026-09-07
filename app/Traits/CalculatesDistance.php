@@ -2,6 +2,8 @@
 
 namespace App\Traits;
 
+use App\Helpers\DistanceHelper;
+
 /**
  * Trait untuk menghitung jarak (Haversine formula) antara dua koordinat GPS.
  * Digunakan di PresensiController dan MobileController.
@@ -19,14 +21,6 @@ trait CalculatesDistance
      */
     private function calculateDistance($lat1, $lon1, $lat2, $lon2): int
     {
-        $earthRadius = 6371000; // Radius bumi dalam meter
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
-        $a = sin($dLat / 2) * sin($dLat / 2)
-           + cos(deg2rad($lat1)) * cos(deg2rad($lat2))
-           * sin($dLon / 2) * sin($dLon / 2);
-        $c = 2 * asin(sqrt($a));
-
-        return (int) round($earthRadius * $c);
+        return (int) round(DistanceHelper::haversine($lat1, $lon1, $lat2, $lon2));
     }
 }

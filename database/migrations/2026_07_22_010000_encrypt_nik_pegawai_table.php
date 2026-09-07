@@ -1,5 +1,8 @@
 <?php
 
+// ⚠️ DESTRUCTIVE — sudah jalan di produksi (batch 1/3). JANGAN hapus file ini.
+// Migration record sudah ada di tabel `migrations`; tidak akan jalan ulang.
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;

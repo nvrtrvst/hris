@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Constants\PresensiMessages;
+use App\Helpers\DistanceHelper;
 use App\Models\Presensi;
 use App\Services\ImageUploadService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -69,7 +70,7 @@ class ProcessPresensiFoto implements ShouldQueue
                         $reportedLat = $this->metadata['latitude'] ?? null;
                         $reportedLng = $this->metadata['longitude'] ?? null;
                         if ($exifLat !== null && $reportedLat !== null && $reportedLng !== null) {
-                            $distance = self::haversine($exifLat, $exifLng, (float) $reportedLat, (float) $reportedLng);
+                            $distance = DistanceHelper::haversine($exifLat, $exifLng, (float) $reportedLat, (float) $reportedLng);
                             if ($distance > 100) {
                                 $exifMeta['mismatch'] = true;
                                 $exifMeta['mismatch_distance_m'] = round($distance);
@@ -137,20 +138,6 @@ class ProcessPresensiFoto implements ShouldQueue
         }
 
         return (float) $rational;
-    }
-
-    /**
-     * Haversine distance (meter) antara dua koordinat.
-     */
-    private static function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float
-    {
-        $earthRadius = 6371000;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-
-        return $earthRadius * $c;
     }
 
     public function failed(\Throwable $e): void

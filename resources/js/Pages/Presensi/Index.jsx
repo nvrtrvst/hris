@@ -2,6 +2,7 @@ import React from 'react';
 import { subscribeRouter } from '@/Utils/routerEvents';
 import useNowEveryMinute from '@/Utils/useNowEveryMinute';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import StatCard from '@/Components/StatCard';
 import Pagination from '@/Components/Pagination';
 import Modal from '@/Components/Modal';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -323,22 +324,6 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
         );
     });
 };
-
-const StatCard = ({ label, value, Icon, iconBg, iconCls, onClick, active }) => (
-    <button
-        type="button"
-        onClick={onClick}
-        className={`stat-card group hover:shadow-card-hover transition-shadow text-left w-full ${active ? 'ring-2 ring-primary' : ''}`}
-    >
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg} transition-transform group-hover:scale-105`}>
-            <Icon className={`h-5 w-5 ${iconCls}`} />
-        </div>
-        <div className="min-w-0">
-            <p className="text-2xl font-extrabold leading-none text-primary tabular-nums">{value}</p>
-            <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary">{label}</p>
-        </div>
-    </button>
-);
 
 const StatusDistribution = ({ stats }) => {
     const items = [

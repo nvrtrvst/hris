@@ -47,7 +47,7 @@ Role: `superadmin` (all), `admin_unit` (view_*), `pegawai` (none).
   mapels (M2M), dokumen (1M), pengajuanIzins (1M), riwayat (1M), jadwals (1M, via pegawai_id).
   Accessor: `sisa_cuti`, `cuti_terpakai` (via PengajuanIzin).
   Field `encrypted`: no_rekening, nama_bank, npwp, no_bpjs_kesehatan, no_bpjs_ketenagakerjaan.
-- Jadwal: pegawai_id, unit_sekolah_id, mata_pelajaran_id, kelas_id, hari (Senin..Minggu), jam_mulai/selesai, `jenis_jadwal` VARCHAR (reguler|lembur) default 'reguler'.
+- Jadwal: pegawai_id, unit_sekolah_id, pegawai_mapel_id, kelas_label, hari (Senin..Minggu), jam_mulai/selesai, `jenis_jadwal` ENUM (mengajar|piket|ekskul|shift_satpam|shift_kebersihan|lainnya) default 'mengajar'.
 - Presensi: pegawai_id, jadwal_id (nullable untuk lembur), unit_sekolah_id, tanggal, jam_masuk/keluar, lat/long, foto (relative path, resolve via `FileHelper::fotoUrl()` di accessor), jarak_meter, status.
   Status enum: `hadir|telat|izin|sakit|alpa` (default `alpa`). Kolom anti-spoof: `akurasi_*`, `kecepatan_*`, `lokasi_perlu_review`, `captured_at`.
   Kolom lembur: `is_lembur` BOOLEAN, `lembur_status` VARCHAR(20) (pending|disetujui|ditolak) default NULL.
@@ -110,7 +110,7 @@ Semua di `PenggajianController` (`computeComponentNominal`, `computeAttendance`)
 - **persentase**: base = gaji pokok via helper `findKomponenByKode($globalKomponens, 'gaji_pokok', ['Gaji Pokok', 'Basic Salary'])`. `nominal = (nilai_default / 100) × baseSalary`. Base HANYA gaji pokok.
 - **dinamis_kehadiran**: gunakan helper `isKehadiranType()` untuk lookup. Priority: kode column → stripos(nama) fallback. Cek: `kehadiran_telat/alpa/sakit/izin/cuti/tunjangan_kehadiran`.
 - **dinamis_masa_bakti**: tenure = `tanggal_mulai_kerja->diffInYears($periodeEnd)`. Ambil skala PERTAMA dgn `masa_kerja_tahun <= yearsOfService` (skala DESC).
-- **dinamis_jam_mengajar**: `rate × totalJamBulanan`. Jam dari jadwal (skip `jenis_jadwal='lembur'`).
+- **dinamis_jam_mengajar**: `rate × totalJamBulanan`. Jam dari jadwal (skip jadwal non-mengajar: piket, ekskul, shift_satpam, shift_kebersihan, lainnya).
 - **dinamis_lembur**: `rate × totalJamLembur`. Jam dari Presensi dengan `is_lembur=true` AND `lembur_status='disetujui'`.
 
 **Attendance counts** (`computeAttendance`): hadir/telat/sakit/izin/cuti dari `Presensi::groupBy(status)`. Skip `is_lembur=true`. `alpa = manual_alpa + max(0, workingDays - (hadir+telat+sakit+izin+cuti))`. `workingDays` pakai formula O(1) di `countWeekdayInRange()`.

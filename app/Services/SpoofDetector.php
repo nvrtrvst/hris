@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\DistanceHelper;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -249,12 +250,6 @@ class SpoofDetector
 
     private function calculateDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
-        $earthRadius = 6371000;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-
-        return $earthRadius * $c;
+        return DistanceHelper::haversine($lat1, $lng1, $lat2, $lng2);
     }
 }

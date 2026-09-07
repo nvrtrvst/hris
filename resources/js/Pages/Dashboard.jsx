@@ -1,5 +1,6 @@
 import React, { useState, Component, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import StatCard from '@/Components/StatCard';
 import { Head, Link, router } from '@inertiajs/react';
 import usePolling from '@/Utils/usePolling';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -73,18 +74,6 @@ const StatusBadge = ({ status }) => {
         </span>
     );
 };
-
-const StatCard = ({ label, value, Icon, iconBg, iconCls, alert }) => (
-    <div className="stat-card group hover:shadow-card-hover transition-shadow">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg} transition-transform group-hover:scale-105`}>
-            <Icon className={`h-5 w-5 ${iconCls}`} />
-        </div>
-        <div className="min-w-0">
-            <p className={`text-2xl font-extrabold leading-none tabular-nums ${alert ? 'text-danger' : 'text-primary'}`}>{value}</p>
-            <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary">{label}</p>
-        </div>
-    </div>
-);
 
 export default function Dashboard(props) {
     return (

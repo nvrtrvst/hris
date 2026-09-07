@@ -3,6 +3,7 @@ import { subscribeRouter } from '@/Utils/routerEvents';
 import useNowEveryMinute from '@/Utils/useNowEveryMinute';
 import usePolling from '@/Utils/usePolling';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import StatCard from '@/Components/StatCard';
 import Modal from '@/Components/Modal';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
@@ -57,19 +58,6 @@ const fmtDurasi = (menit) => {
 
     return h > 0 ? `${h}j ${m}m` : `${m} mnt`;
 };
-
-const StatCard = ({ label, value, sub, Icon, iconBg, iconCls }) => (
-    <div className="stat-card group hover:shadow-card-hover transition-shadow">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg} transition-transform group-hover:scale-105`}>
-            <Icon className={`h-5 w-5 ${iconCls}`} />
-        </div>
-        <div className="min-w-0">
-            <p className="text-2xl font-extrabold leading-none text-primary tabular-nums">{value}</p>
-            <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary">{label}</p>
-            {sub && <p className="mt-0.5 text-[10px] text-text-muted truncate">{sub}</p>}
-        </div>
-    </div>
-);
 
 const toMinutes = (hms) => {
     if (!hms) return 0;

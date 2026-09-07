@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { subscribeRouter } from '@/Utils/routerEvents';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import StatCard from '@/Components/StatCard';
 import Pagination from '@/Components/Pagination';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { avatarTone, initials } from '@/Utils/avatar';
@@ -38,19 +39,6 @@ const StatusBadge = ({ status }) => {
         </span>
     );
 };
-
-const StatCard = ({ label, value, sub, Icon, iconBg, iconCls }) => (
-    <div className="stat-card group hover:shadow-card-hover transition-shadow">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg} transition-transform group-hover:scale-105`}>
-            <Icon className={`h-5 w-5 ${iconCls}`} />
-        </div>
-        <div className="min-w-0">
-            <p className="text-2xl font-extrabold leading-none text-primary tabular-nums">{value}</p>
-            <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary">{label}</p>
-            {sub && <p className="mt-0.5 text-[10px] text-text-muted truncate">{sub}</p>}
-        </div>
-    </div>
-);
 
 const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka || 0);
 
