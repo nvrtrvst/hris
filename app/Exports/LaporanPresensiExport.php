@@ -185,17 +185,16 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
             AfterSheet::class => function (AfterSheet $event) use ($lastCol) {
                 $sheet = $event->sheet->getDelegate();
 
-                $namaUnit = 'Semua Unit Sekolah';
-                if ($this->unit_id) {
-                    $unit = UnitSekolah::find($this->unit_id);
-                    $namaUnit = $unit ? $unit->nama : 'Semua Unit Sekolah';
-                }
+                // Kop: unit terpilih → data unit; semua unit → unit induk
+                // "Yayasan"; fallback config.
+                $kopUnit = $this->unit_id ? UnitSekolah::find($this->unit_id) : UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
+                $namaUnit = $kopUnit?->nama ?? 'Semua Unit Sekolah';
 
                 $periodeStr = Carbon::parse($this->start_date)->format('d/m/Y').' s/d '.Carbon::parse($this->end_date)->format('d/m/Y');
 
-                // Kop Yayasan
+                // Kop Yayasan/Unit
                 $sheet->mergeCells("A1:{$lastCol}1");
-                $sheet->setCellValue('A1', 'YAYASAN PENDIDIKAN'); // Ganti dengan nama yayasan asli
+                $sheet->setCellValue('A1', strtoupper($kopUnit?->nama ?? config('yayasan.name')));
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
@@ -205,7 +204,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells("A3:{$lastCol}3");
-                $sheet->setCellValue('A3', 'Periode: '.$periodeStr.' | Unit: '.$namaUnit);
+                $sheet->setCellValue('A3', 'Periode: '.$periodeStr.' | Unit: '.$namaUnit.($kopUnit?->alamat ? ' | '.$kopUnit->alamat : ''));
                 $sheet->getStyle('A3')->getFont()->setItalic(true);
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 

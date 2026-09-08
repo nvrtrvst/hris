@@ -115,16 +115,16 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
                 $sheet = $event->sheet->getDelegate();
 
                 $namaUnit = 'Semua Unit Sekolah';
-                if ($this->unit_id) {
-                    $unit = UnitSekolah::find($this->unit_id);
-                    $namaUnit = $unit ? $unit->nama : 'Semua Unit Sekolah';
+                $kopUnit = $this->unit_id ? UnitSekolah::find($this->unit_id) : UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
+                if ($kopUnit) {
+                    $namaUnit = $kopUnit->nama;
                 }
 
                 $periodeStr = Carbon::parse($this->start_date)->format('d/m/Y').' s/d '.Carbon::parse($this->end_date)->format('d/m/Y');
 
-                // Kop Yayasan
+                // Kop Yayasan/Unit
                 $sheet->mergeCells('A1:I1');
-                $sheet->setCellValue('A1', 'YAYASAN PENDIDIKAN');
+                $sheet->setCellValue('A1', strtoupper($kopUnit?->nama ?? config('yayasan.name')));
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 

@@ -27,13 +27,13 @@
     <div class="kop">
         @if($logoPath)
             <div class="kop-logo">
-                <img src="{{ $logoPath }}" alt="Logo Yayasan" style="height:64px;width:{{ $logoWidth }}px">
+                <img src="{{ $logoPath }}" alt="Logo" style="height:64px;width:{{ $logoWidth ?? 64 }}px">
             </div>
         @endif
-        <div class="kop-name">{{ config('yayasan.name') }}</div>
-        <div class="kop-tagline">{{ config('yayasan.tagline') }}</div>
-        <div class="kop-address">{{ config('yayasan.address') }}</div>
-        <div class="kop-contact">Telp: {{ config('yayasan.phone') }} &nbsp;|&nbsp; Email: {{ config('yayasan.email') }} &nbsp;|&nbsp; Web: {{ config('yayasan.website') }}</div>
+        <div class="kop-name">{{ $kop['name'] }}</div>
+        <div class="kop-tagline">{{ $kop['tagline'] }}</div>
+        <div class="kop-address">{{ $kop['address'] }}</div>
+        <div class="kop-contact">Telp: {{ $kop['phone'] }} &nbsp;|&nbsp; Email: {{ $kop['email'] }} &nbsp;|&nbsp; Web: {{ $kop['website'] }}</div>
     </div>
 
     <div class="doc-title">{{ $title }}</div>

@@ -144,16 +144,22 @@ class LaporanController extends Controller
         $rows = $export->collection()->map(fn ($item) => $export->map($item))->all();
         $headings = $export->headings();
 
-        $unitName = 'Semua Unit Sekolah';
+        // Kop surat: unit terpilih → data unit itu; semua unit → unit
+        // induk "Yayasan"; fallback terakhir → config env. Data (alamat,
+        // telepon, web, logo) dikelola lewat menu Unit Sekolah.
+        $kopUnit = null;
         if (! empty($validated['unit_sekolah_id'])) {
-            $unit = UnitSekolah::find($validated['unit_sekolah_id']);
-            $unitName = $unit ? $unit->nama : $unitName;
+            $kopUnit = UnitSekolah::find($validated['unit_sekolah_id']);
+            $unitName = $kopUnit?->nama ?? 'Semua Unit Sekolah';
+        } else {
+            $unitName = 'Semua Unit Sekolah';
+            $kopUnit = UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
         }
 
         $periodeStr = Carbon::parse($validated['start_date'])->format('d/m/Y')
             .' s/d '.Carbon::parse($validated['end_date'])->format('d/m/Y');
 
-        $logoPath = $this->resolveYayasanLogoPath();
+        $logoPath = $this->resolveUnitLogoPath($kopUnit) ?? $this->resolveYayasanLogoPath();
         $logoWidth = null;
         if ($logoPath && file_exists($logoPath)) {
             $sz = @getimagesize($logoPath);
@@ -161,6 +167,15 @@ class LaporanController extends Controller
                 $logoWidth = (int) round(64 * $sz[0] / $sz[1]);
             }
         }
+
+        $kop = [
+            'name' => $kopUnit?->nama ? strtoupper($kopUnit->nama) : config('yayasan.name'),
+            'tagline' => config('yayasan.tagline'),
+            'address' => $kopUnit?->alamat ?: config('yayasan.address'),
+            'phone' => $kopUnit?->telepon ?: config('yayasan.phone'),
+            'email' => config('yayasan.email'),
+            'website' => $kopUnit?->web ?: config('yayasan.website'),
+        ];
 
         $title = match ($type) {
             'presensi' => 'LAPORAN REKAPITULASI PRESENSI PEGAWAI',
@@ -177,7 +192,7 @@ class LaporanController extends Controller
         };
 
         try {
-            $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth'))
+            $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop'))
                 ->setPaper('A4', 'landscape');
 
             return $pdf->download($filename.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf');
@@ -268,6 +283,23 @@ class LaporanController extends Controller
             ->setPaper('A4', 'landscape');
 
         return $pdf->download('Laporan_KCD_'.$unit->singkatan.'_'.$validated['periode'].$suffix.'.pdf');
+    }
+
+    /**
+     * Resolve logo unit ke path file lokal untuk DOMPDF. Null bila unit
+     * tidak punya logo — caller fallback ke kop config.
+     */
+    protected function resolveUnitLogoPath(?UnitSekolah $unit): ?string
+    {
+        if (! $unit?->logo) {
+            return null;
+        }
+
+        $disk = config('filesystems.image_disk', 'public');
+        $root = config("filesystems.disks.$disk.root");
+        $path = rtrim($root, '/').'/'.ltrim($unit->logo, '/');
+
+        return file_exists($path) ? $path : null;
     }
 
     /**
