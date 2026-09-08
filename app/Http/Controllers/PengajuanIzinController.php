@@ -364,6 +364,9 @@ class PengajuanIzinController extends Controller
                 ],
                 [
                     'unit_sekolah_id' => $unitId,
+                    // Row izin/cuti/sakit = kehadiran harian (tanpa jadwal).
+                    // Eksplisit karena default kolom adalah 'mengajar'.
+                    'tipe_presensi' => 'kantor',
                     'keterangan' => 'Dari Pengajuan Izin/Cuti',
                 ]
             );

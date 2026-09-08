@@ -53,14 +53,15 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
     }
 
     /**
-     * Filter tipe presensi: kantor = kehadiran harian (tanpa jadwal),
-     * mengajar = presensi per JP. Null = semua.
+     * Filter tipe presensi: kantor = kehadiran harian (tanpa jadwal —
+     * termasuk row izin/cuti/sakit, termasuk legacy yang tipe_presensi-nya
+     * salah 'mengajar' dari default kolom lama), mengajar = presensi per JP.
+     * Null = semua.
      */
     protected function applyTipeFilter($query): void
     {
         if ($this->tipe === 'kantor') {
-            $query->whereNull('jadwal_id')
-                ->where(fn ($q) => $q->where('tipe_presensi', 'kantor')->orWhereNull('tipe_presensi'));
+            $query->whereNull('jadwal_id');
         } elseif ($this->tipe === 'mengajar') {
             $query->whereNotNull('jadwal_id')->where('tipe_presensi', 'mengajar');
         }
@@ -81,13 +82,15 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
     /**
      * Tipe presensi untuk laporan: fallback infer untuk row lama yang
-     * tipe_presensi-nya NULL (sebelum migrasi kolom ada).
+     * tipe_presensi-nya NULL (sebelum migrasi kolom ada) atau salah
+     * 'mengajar' padahal tanpa jadwal (default kolom lama menimpa row
+     * izin/cuti/sakit dari generatePresensi).
      */
     protected function tipePresensiLabel($presensi): string
     {
         $tipe = $presensi->tipe_presensi;
 
-        if (! $tipe) {
+        if (! $tipe || ($tipe === 'mengajar' && ! $presensi->jadwal_id)) {
             if ($presensi->is_lembur) {
                 return 'Lembur';
             }
@@ -96,6 +99,10 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
             }
 
             return $presensi->jadwal_id ? 'Mengajar' : 'Kantor';
+        }
+
+        if ($tipe === 'mengajar' && $presensi->jadwal_id) {
+            return 'Mengajar';
         }
 
         return ucfirst(str_replace('_', ' ', $tipe));
