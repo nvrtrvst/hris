@@ -115,6 +115,16 @@ const buildGroups = (data) => {
         map.get(key).push(p);
     }
 
+    // Kronologis per grup: JP auto-cover (jam_masuk NULL) sort di antara
+    // JP main via jam_mulai jadwal — bukan via jam_masuk presensi.
+    for (const group of map.values()) {
+        group.sort((a, b) => {
+            const ja = a.jadwal?.jam_mulai || a.jam_masuk || 'zz';
+            const jb = b.jadwal?.jam_mulai || b.jam_masuk || 'zz';
+            return ja.localeCompare(jb);
+        });
+    }
+
     return Array.from(map.values());
 };
 
@@ -398,11 +408,12 @@ const toMinutes = (hms) => {
 
 // Indikator status mengajar — konsisten dengan Dashboard mobile:
 // "Mengajar" (berlangsung) selama jam mengajar belum habis, "Selesai"
-// setelah jam_selesai lewat. Hanya untuk record yang sudah ada jam_masuk;
-// record tanpa absen cukup terbaca dari kolom Status.
+// setelah jam_selesai lewat. Berlaku juga untuk JP auto-cover
+// (1-slide-to-cover) yang jam_masuk-nya NULL — status diambil dari
+// jadwal, bukan dari jam absen.
 // Prop `now` (Date) membuat badge live-update tiap menit via useNowEveryMinute.
 const JadwalStatusBadge = ({ p, now }) => {
-    if (!p?.jadwal || !p.jam_masuk) return null;
+    if (!p?.jadwal) return null;
     const current = now || new Date();
     const nowMinutes = current.getHours() * 60 + current.getMinutes();
     // Badge "Mengajar" hanya bermakna untuk record hari ini — record hari
