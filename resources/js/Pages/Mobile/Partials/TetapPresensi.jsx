@@ -67,10 +67,10 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const [slidIds, setSlidIds] = useState(() => new Set(
         presensiHariIni.filter((p) => p.jadwal_id && !p.is_lembur).map((p) => p.jadwal_id)
     ));
-    // JP auto-cover tidak punya jam_masuk/jam_keluar — dianggap closed karena
-    // pulang grup hanya dicatat di row JP utama (yang punya jam_masuk).
+    // Slide pulang mencatat jam_keluar di row JP TERAKHIR grup — satu row
+    // ber-artifak-nya cukup untuk menandai seluruh grup closed.
     const [closedIds, setClosedIds] = useState(() => new Set(
-        presensiHariIni.filter((p) => p.jadwal_id && !p.is_lembur && (p.jam_keluar || !p.jam_masuk)).map((p) => p.jadwal_id)
+        presensiHariIni.filter((p) => p.jadwal_id && !p.is_lembur && p.jam_keluar).map((p) => p.jadwal_id)
     ));
     const [slideLoading, setSlideLoading] = useState(null);
     const [isTugasLuar, setIsTugasLuar] = useState(false);
@@ -101,8 +101,9 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
 
     // Helper: semua jadwal dalam grup sudah di-slide (jam_masuk tercatat).
     const isGroupSlid = useCallback((g) => g.allIds.every((id) => slidIds.has(id)), [slidIds]);
-    // Helper: semua jadwal dalam grup sudah closed (jam_keluar tercatat).
-    const isGroupClosed = useCallback((g) => g.allIds.every((id) => closedIds.has(id)), [closedIds]);
+    // Helper: grup closed bila MINIMAL satu row punya jam_keluar — jam_keluar
+    // hanya tercatat di row JP terakhir (slide pulang).
+    const isGroupClosed = useCallback((g) => g.allIds.some((id) => closedIds.has(id)), [closedIds]);
 
     // Grup "aktif" = SUDAH di-slide ATAU masih dalam jendela waktu slide.
     const activeGroups = useMemo(() => groupedJadwals.filter((g) => {

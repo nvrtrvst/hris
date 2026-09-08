@@ -1185,13 +1185,21 @@ class MobileController extends Controller
         // Unique index (pegawai_id, presensi_key) menolak slide ganda — race ditangkap di bawah.
         $result = DB::transaction(function () use ($pegawai, $jadwal, $distance, $request, $accuracy, $tipe, $hariIni, $sekarang) {
             if ($tipe === 'keluar') {
-                $presensi = Presensi::where('pegawai_id', $pegawai->id)
-                    ->where('jadwal_id', $jadwal->id)
-                    ->where('tanggal', Carbon::today()->toDateString())
-                    ->whereNotNull('jam_masuk')
-                    ->whereNull('jam_keluar')
-                    ->lockForUpdate()
-                    ->first();
+                // Slide pulang mencatat jam_keluar di row JP TERAKHIR grup
+                // (hari+kelas+mapel+unit sama) — row JP pertama hanya menyimpan
+                // jam masuk. Jadwal tunggal: JP terakhir = dirinya sendiri.
+                $target = $jadwal->jenis_jadwal === 'mengajar'
+                    ? $this->presensiKeluarTarget($pegawai, $jadwal, $hariIni)
+                    : null;
+
+                $presensi = $target
+                    ?? Presensi::where('pegawai_id', $pegawai->id)
+                        ->where('jadwal_id', $jadwal->id)
+                        ->where('tanggal', Carbon::today()->toDateString())
+                        ->whereNotNull('jam_masuk')
+                        ->whereNull('jam_keluar')
+                        ->lockForUpdate()
+                        ->first();
 
                 if (! $presensi) {
                     throw ValidationException::withMessages(['jadwal_id' => 'Belum ada presensi masuk untuk jadwal ini.']);
@@ -1251,6 +1259,51 @@ class MobileController extends Controller
             'cover_count' => count($result['covered']),
             'covered_jadwal_ids' => $result['covered'],
         ]);
+    }
+
+    /**
+     * Row presensi tujuan slide pulang: row milik JP TERAKHIR grup
+     * (hari + kelas_label + pegawai_mapel + unit sama, jenis mengajar).
+     * Jadwal tunggal → row jadwal itu sendiri. Null bila row belum ada
+     * (caller fallback ke lookup by jadwal_id) atau grup sudah pulang
+     * (ada jam_keluar → caller reject lewat fallback yang juga kosong).
+     */
+    private function presensiKeluarTarget(Pegawai $pegawai, Jadwal $jadwal, string $hariIni): ?Presensi
+    {
+        $grupSudahPulang = Presensi::where('pegawai_id', $pegawai->id)
+            ->where('tanggal', Carbon::today()->toDateString())
+            ->whereIn('jadwal_id', Jadwal::where('pegawai_id', $pegawai->id)
+                ->where('hari', $hariIni)
+                ->where('jenis_jadwal', 'mengajar')
+                ->where('unit_sekolah_id', $jadwal->unit_sekolah_id)
+                ->where('kelas_label', $jadwal->kelas_label)
+                ->where('pegawai_mapel_id', $jadwal->pegawai_mapel_id)
+                ->pluck('id'))
+            ->whereNotNull('jam_keluar')
+            ->exists();
+
+        if ($grupSudahPulang) {
+            throw ValidationException::withMessages(['jadwal_id' => 'Grup jadwal ini sudah di-slide pulang.']);
+        }
+
+        $lastJadwalId = Jadwal::where('pegawai_id', $pegawai->id)
+            ->where('hari', $hariIni)
+            ->where('jenis_jadwal', 'mengajar')
+            ->where('unit_sekolah_id', $jadwal->unit_sekolah_id)
+            ->where('kelas_label', $jadwal->kelas_label)
+            ->where('pegawai_mapel_id', $jadwal->pegawai_mapel_id)
+            ->orderByDesc('jam_mulai')
+            ->value('id');
+
+        if (! $lastJadwalId) {
+            return null;
+        }
+
+        return Presensi::where('pegawai_id', $pegawai->id)
+            ->where('jadwal_id', $lastJadwalId)
+            ->where('tanggal', Carbon::today()->toDateString())
+            ->lockForUpdate()
+            ->first();
     }
 
     /**

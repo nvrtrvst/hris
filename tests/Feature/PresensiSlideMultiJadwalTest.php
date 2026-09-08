@@ -142,7 +142,7 @@ class PresensiSlideMultiJadwalTest extends TestCase
         ]);
     }
 
-    private function postSlide(Jadwal $jadwal, float $lat = -6.2, float $lng = 106.8, float $accuracy = 15)
+    private function postSlide(Jadwal $jadwal, float $lat = -6.2, float $lng = 106.8, float $accuracy = 15, string $tipe = 'masuk')
     {
         return $this->actingAs($jadwal->pegawai->user, 'web_mobile')
             ->postJson(route('presensi.absen.slide'), [
@@ -150,6 +150,7 @@ class PresensiSlideMultiJadwalTest extends TestCase
                 'latitude' => $lat,
                 'longitude' => $lng,
                 'accuracy' => $accuracy,
+                'tipe' => $tipe,
             ]);
     }
 
@@ -379,6 +380,65 @@ class PresensiSlideMultiJadwalTest extends TestCase
     // ========================================================================
     // 4 RACE CONDITION HARDENING SCENARIOS
     // ========================================================================
+
+    public function test_slide_keluar_grup_mencatat_jam_keluar_di_jp_terakhir(): void
+    {
+        // Grup 3 JP: 08:00, 08:45, 09:30. Slide masuk A1 (cover semua), lalu
+        // slide keluar → jam_keluar HARUS di row JP terakhir (09:30), row JP
+        // pertama tetap hanya jam_masuk.
+        $hari = $this->hariIniIndo();
+        Carbon::setTestNow(Carbon::today()->setTime(9, 0));
+
+        $pegawai = $this->makePegawaiTetap();
+        $pegawaiMapel = $this->makeMapel($pegawai, $this->unitA);
+        $jpA1 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '08:00:00', '08:45:00');
+        $jpA2 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '08:45:00', '09:30:00');
+        $jpA3 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '09:30:00', '10:15:00');
+
+        $this->postSlide($jpA1)->assertOk();
+
+        Carbon::setTestNow(Carbon::today()->setTime(10, 30));
+        $res = $this->postSlide($jpA1, tipe: 'keluar');
+        $res->assertOk()->assertJson(['success' => true]);
+
+        // JP pertama: hanya jam_masuk.
+        $rowA1 = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA1->id)->first();
+        $this->assertNotNull($rowA1->jam_masuk);
+        $this->assertNull($rowA1->jam_keluar);
+
+        // JP tengah: tetap NULL/NULL.
+        $rowA2 = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA2->id)->first();
+        $this->assertNull($rowA2->jam_masuk);
+        $this->assertNull($rowA2->jam_keluar);
+
+        // JP terakhir: hanya jam_keluar (10:30).
+        $rowA3 = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA3->id)->first();
+        $this->assertNull($rowA3->jam_masuk);
+        $this->assertNotNull($rowA3->jam_keluar);
+        $this->assertSame('10:30:00', $rowA3->jam_keluar);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_slide_keluar_grup_dobel_ditolak(): void
+    {
+        $hari = $this->hariIniIndo();
+        Carbon::setTestNow(Carbon::today()->setTime(9, 0));
+
+        $pegawai = $this->makePegawaiTetap();
+        $pegawaiMapel = $this->makeMapel($pegawai, $this->unitA);
+        $jpA1 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '08:00:00', '08:45:00');
+        $jpA2 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '08:45:00', '09:30:00');
+
+        $this->postSlide($jpA1)->assertOk();
+
+        Carbon::setTestNow(Carbon::today()->setTime(9, 45));
+        $this->postSlide($jpA1, tipe: 'keluar')->assertOk();
+        // Slide pulang kedua → 422 (grup sudah pulang).
+        $this->postSlide($jpA1, tipe: 'keluar')->assertStatus(422);
+
+        Carbon::setTestNow();
+    }
 
     public function test_pre_flight_check_skip_jp_yang_sudah_ada_presensinya(): void
     {
