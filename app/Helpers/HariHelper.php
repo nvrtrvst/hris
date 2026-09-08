@@ -18,6 +18,9 @@ class HariHelper
             'Saturday' => 'Sabtu',
         ];
 
-        return $hariMap[Carbon::now()->format('l')];
+        // Timezone eksplisit — dashboard/presensi membandingkan hari dengan
+        // tanggal Asia/Jakarta; server dengan TZ lain (mis. UTC) akan
+        // mengembalikan hari sebelumnya antara 17:00-24:00 WIB.
+        return $hariMap[Carbon::now('Asia/Jakarta')->format('l')];
     }
 }
