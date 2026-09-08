@@ -29,6 +29,7 @@ import {
     Upload,
     Users,
     UserRound,
+    School,
 } from 'lucide-react';
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -93,7 +94,7 @@ const JadwalLiveBadge = ({ jadwal, presensi, now }) => {
     );
 };
 
-export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, stats = {}, filters = {}, presensiHariIni = [], canMutateJadwal = false }) {
+export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, stats = {}, filters = {}, presensiHariIni = [], canMutateJadwal = false, needsUnitFilter = false }) {
     const isAdmin = auth.permissions?.includes('view_jadwal') || auth.permissions?.includes('manage_jadwal');
     const { flash = {}, errors = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
@@ -401,8 +402,19 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                         </div>
                     )}
 
+                    {/* ─── ADMIN: prompt pilih unit (skip load semua unit) ─── */}
+                    {isAdmin && needsUnitFilter && (
+                        <div className="card p-12 text-center">
+                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-surface">
+                                <School className="h-8 w-8 text-border" />
+                            </div>
+                            <p className="mt-4 text-base font-bold text-primary">Pilih unit terlebih dahulu</p>
+                            <p className="mt-1 text-sm text-text-secondary">Data jadwal semua unit tidak dimuat secara default agar halaman tetap ringan. Gunakan filter <span className="font-semibold">Unit</span> di atas untuk menampilkan jadwal.</p>
+                        </div>
+                    )}
+
                     {/* ─── ADMIN: Per Guru View ─── */}
-                    {isAdmin && viewMode === 'guru' && (
+                    {isAdmin && !needsUnitFilter && viewMode === 'guru' && (
                         <div className="space-y-3">
                             {pegawais.length === 0 ? (
                                 <div className="card p-12 text-center">
@@ -501,7 +513,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                     </div>
 
                     {/* ─── ADMIN: Matrix Table Board ─── */}
-                    {isAdmin && viewMode === 'matrix' && (
+                    {isAdmin && !needsUnitFilter && viewMode === 'matrix' && (
                         <div className={`card p-0 overflow-hidden transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
                         <div className="overflow-x-auto max-h-[72vh] overflow-y-auto print:max-h-none print:overflow-visible">
                                 <table className="w-full table-fixed divide-y divide-gray-200 bg-white text-sm">

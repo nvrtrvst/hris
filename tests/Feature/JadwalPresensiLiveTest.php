@@ -125,15 +125,17 @@ class JadwalPresensiLiveTest extends TestCase
         // status di-$guarded — set langsung setelah create
         $presensi->forceFill(['status' => 'hadir'])->save();
 
-        return compact('jadwal', 'presensi');
+        return compact('unit', 'jadwal', 'presensi');
     }
 
     public function test_load_penuh_jadwal_admin_mengandung_presensi_hari_ini(): void
     {
         $this->seedData();
+        $unit = UnitSekolah::first();
 
+        // Superadmin tanpa unit = data tidak dimuat (perf) — kirim filter unit.
         $this->actingAs($this->superadmin, 'web_admin')
-            ->get(route('jadwal.index'))
+            ->get(route('jadwal.index', ['unit_sekolah_id' => $unit->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Jadwal/Index')
@@ -162,10 +164,11 @@ class JadwalPresensiLiveTest extends TestCase
 
     public function test_partial_reload_presensi_hari_ini_berisi_data_segar(): void
     {
-        [$jadwal] = array_values($this->seedData());
+        ['jadwal' => $jadwal] = $this->seedData();
+        $unit = UnitSekolah::first();
 
         $this->actingAs($this->superadmin, 'web_admin')
-            ->get(route('jadwal.index'), $this->partialHeaders('presensiHariIni'))
+            ->get(route('jadwal.index', ['unit_sekolah_id' => $unit->id]), $this->partialHeaders('presensiHariIni'))
             ->assertOk()
             ->assertJsonPath('component', 'Jadwal/Index')
             ->assertJsonPath('props.presensiHariIni.0.jadwal_id', $jadwal->id)

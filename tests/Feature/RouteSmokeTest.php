@@ -1577,6 +1577,9 @@ class RouteSmokeTest extends TestCase
             'laporan.preview', 'laporan.presensi', 'laporan.penggajian', 'laporan.lemburan', 'laporan.rekap-mengajar', 'laporan.pdf' => array_merge(['type' => 'presensi'], $range),
             'penggajian.export-bank' => ['periode_bulan' => now()->format('m-Y')],
             'jadwal.kelas-by-unit' => ['q' => 'smoke'],
+            // Superadmin tanpa unit → jadwal.index skip load (perf) — smoke
+            // butuh props terisi, jadi kirim filter unit.
+            'jadwal.index' => ['unit_sekolah_id' => $this->unit->id],
             'presensi.jadwal.kelas' => ['jadwal_id' => $this->jadwal->id],
             'laporan.kcd.preview', 'laporan.kcd.pdf' => [
                 'unit_sekolah_id' => $this->unit->id,

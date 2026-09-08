@@ -29,6 +29,10 @@ class JadwalController extends Controller
 
         $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'pegawaiMapel.mataPelajaran:id,nama']);
 
+        // Superadmin tanpa filter unit: skip load jadwal (bisa ribuan row di
+        // semua unit → lambat). Halaman menampilkan prompt pilih unit;
+        // admin_unit/pimpinan/pegawai tetap load langsung (scope-nya kecil).
+        $needsUnitFilter = false;
         if ($this->isPimpinanReadOnly($user)) {
             // Pimpinan (kepsek/kepala TU/ketua yayasan): HANYA jadwal bawahan langsung.
             $this->scopePimpinanBawahan($query, $user);
@@ -43,6 +47,9 @@ class JadwalController extends Controller
             $query->where('unit_sekolah_id', $user->unit_sekolah_id);
         } elseif ($request->filled('unit_sekolah_id')) {
             $query->where('unit_sekolah_id', $request->unit_sekolah_id);
+        } elseif ($search === '') {
+            $needsUnitFilter = true;
+            $query->where('id', -1);
         }
 
         if ($request->filled('kelas_label')) {
@@ -99,6 +106,8 @@ class JadwalController extends Controller
             $pegawaiQuery->whereHas('units', function ($q) use ($request) {
                 $q->where('unit_sekolah.id', $request->unit_sekolah_id);
             });
+        } elseif ($needsUnitFilter) {
+            $pegawaiQuery->where('id', -1);
         }
 
         if ($search !== '') {
@@ -145,7 +154,9 @@ class JadwalController extends Controller
         $presensiHariIni = Presensi::where('tanggal', now()->toDateString())
             ->whereNotNull('jadwal_id')
             ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status']);
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+        if ($needsUnitFilter) {
+            $presensiHariIni->where('id', -1);
+        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $presensiHariIni->where('unit_sekolah_id', $user->unit_sekolah_id);
         } elseif ($request->filled('unit_sekolah_id')) {
             $presensiHariIni->where('unit_sekolah_id', $request->unit_sekolah_id);
@@ -161,6 +172,7 @@ class JadwalController extends Controller
             'presensiHariIni' => $presensiHariIni->get()->toArray(),
             'filters' => $request->only(['unit_sekolah_id', 'kelas_label', 'search', 'jenis_filter']),
             'canMutateJadwal' => (bool) $user?->can('manage_jadwal'),
+            'needsUnitFilter' => $needsUnitFilter,
         ]);
     }
 
