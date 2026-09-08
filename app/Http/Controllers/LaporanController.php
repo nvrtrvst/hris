@@ -176,10 +176,23 @@ class LaporanController extends Controller
             'rekap_mengajar' => 'Laporan_Rekap_Mengajar',
         };
 
-        $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth'))
-            ->setPaper('A4', 'landscape');
+        try {
+            $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth'))
+                ->setPaper('A4', 'landscape');
 
-        return $pdf->download($filename.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf');
+            return $pdf->download($filename.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf');
+        } catch (\Throwable $e) {
+            // Full trace ke log (untuk diagnosis prod), pesan ringkas ke user.
+            \Log::error('PDF laporan gagal', [
+                'type' => $type,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile().':'.$e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response('PDF gagal dibuat: '.substr($e->getMessage(), 0, 300), 500)
+                ->header('Content-Type', 'text/plain');
+        }
     }
 
     public function kcdIndex()

@@ -142,7 +142,7 @@ export default function LaporanIndex({ auth, units }) {
         window.location.href = `${url}?${params.toString()}`;
     };
 
-    const handleDownloadPdf = () => {
+    const handleDownloadPdf = async () => {
         const url = route('laporan.pdf');
         const params = new URLSearchParams();
         params.append('type', filter.report_type);
@@ -154,8 +154,30 @@ export default function LaporanIndex({ auth, units }) {
         if (filter.jenis_filter) {
             params.append('jenis_filter', filter.jenis_filter);
         }
+        if (filter.tipe_filter) {
+            params.append('tipe_filter', filter.tipe_filter);
+        }
 
-        window.location.href = `${url}?${params.toString()}`;
+        // Fetch dulu supaya error 500 (bukan PDF) bisa dibaca pesannya —
+        // window.location langsung hanya menampilkan halaman error blank.
+        try {
+            const res = await fetch(`${url}?${params.toString()}`);
+            if (!res.ok) {
+                const text = await res.text();
+                alert(text.startsWith('PDF gagal dibuat') ? text : 'PDF gagal dibuat. Coba lagi atau hubungi administrator.');
+                return;
+            }
+            const blob = await res.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${filter.report_type}_${filter.start_date}_to_${filter.end_date}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(a.href);
+        } catch {
+            alert('Koneksi terputus saat membuat PDF.');
+        }
     };
 
     const REPORT_LABELS = {
