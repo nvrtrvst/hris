@@ -59,7 +59,9 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
             $query->whereHas('pegawai', fn ($q) => $q->nonGuru());
         }
 
-        return $query->get();
+        return $query->orderByRaw('LOWER(nama_lengkap) asc')
+            ->join('pegawai', 'pegawai.id', '=', 'penggajian.pegawai_id')
+            ->get();
     }
 
     public function map($penggajian): array

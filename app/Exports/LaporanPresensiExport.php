@@ -49,7 +49,10 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
         $this->applyJenisFilter($query);
         $this->applyTipeFilter($query);
 
-        return $query->orderBy('tanggal', 'asc')->get();
+        return $query->orderBy('tanggal', 'asc')
+            ->orderByRaw('LOWER(nama_lengkap) asc')
+            ->join('pegawai', 'pegawai.id', '=', 'presensi.pegawai_id')
+            ->get();
     }
 
     /**

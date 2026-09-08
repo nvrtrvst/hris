@@ -57,7 +57,10 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
             $query->whereHas('pegawai', fn ($q) => $q->nonGuru());
         }
 
-        return $query->orderBy('tanggal')->get();
+        return $query->orderBy('tanggal')
+            ->orderByRaw('LOWER(nama_lengkap) asc')
+            ->join('pegawai', 'pegawai.id', '=', 'presensi.pegawai_id')
+            ->get();
     }
 
     public function map($presensi): array
