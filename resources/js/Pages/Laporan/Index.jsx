@@ -94,6 +94,7 @@ export default function LaporanIndex({ auth, units }) {
     const [previewData, setPreviewData] = useState(null);
     const [activePreview, setActivePreview] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [viewMode, setViewMode] = useState('rekap');
 
     const handlePreview = async () => {
         setLoading(true);
@@ -299,7 +300,96 @@ export default function LaporanIndex({ auth, units }) {
                                         Periode: {activePreview.start_date} s/d {activePreview.end_date}
                                     </p>
                                 </div>
+                                {activePreview.report_type === 'rekap_mengajar' && previewData.calendar && (
+                                    <div className="inline-flex rounded-xl border border-border bg-surface p-1">
+                                        {[
+                                            { k: 'rekap', label: 'Rekap' },
+                                            { k: 'kalender', label: 'Kalender' },
+                                        ].map((v) => (
+                                            <button
+                                                key={v.k}
+                                                type="button"
+                                                onClick={() => setViewMode(v.k)}
+                                                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${viewMode === v.k ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:text-primary'}`}
+                                            >
+                                                {v.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
+
+                            {activePreview.report_type === 'rekap_mengajar' && viewMode === 'kalender' && previewData.calendar && (() => {
+                                const cal = previewData.calendar;
+                                const dateLabel = (ds) => {
+                                    const dt = new Date(ds + 'T00:00:00');
+                                    return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+                                };
+                                const dayShort = (ds) => {
+                                    const dt = new Date(ds + 'T00:00:00');
+                                    return ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][dt.getDay()];
+                                };
+                                const cellStyle = (cell) => {
+                                    if (!cell) return 'bg-border/40 text-text-muted';
+                                    const [jp, hadir, telat, alpa] = cell;
+                                    if (alpa > 0) return 'bg-red-100 text-red-800';
+                                    if (telat > 0) return 'bg-amber-100 text-amber-800';
+                                    if (hadir >= jp) return 'bg-green-100 text-green-800';
+                                    return 'bg-slate-100 text-slate-700';
+                                };
+                                return (
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-border">
+                                            <thead className="bg-surface">
+                                                <tr>
+                                                    <th className="sticky left-0 z-10 bg-surface px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Nama Guru</th>
+                                                    {cal.dates.map((ds) => (
+                                                        <th key={ds} className="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider text-text-muted">
+                                                            <div>{dayShort(ds)}</div>
+                                                            <div className="font-extrabold text-text-secondary">{dateLabel(ds)}</div>
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border bg-white">
+                                                {cal.guru.map((g) => (
+                                                    <tr key={g.id ?? g.nama} className="transition-colors hover:bg-surface">
+                                                        <td className="sticky left-0 z-10 bg-white px-4 py-2.5 text-sm font-semibold text-text-primary whitespace-nowrap">{g.nama}</td>
+                                                        {cal.dates.map((ds) => {
+                                                            const cell = g.cells[ds];
+                                                            const [jp, hadir, telat, alpa] = cell || [0, 0, 0, 0];
+                                                            const title = cell
+                                                                ? `${jp} JP: ${hadir} hadir, ${telat} telat, ${alpa} alpa`
+                                                                : 'Tidak ada jadwal mengajar';
+                                                            return (
+                                                                <td key={ds} className="px-1 py-1.5 text-center" title={title}>
+                                                                    <span className={`inline-flex min-w-[2.2rem] items-center justify-center rounded-lg px-1.5 py-1 text-[11px] font-bold tabular-nums ${cellStyle(cell)}`}>
+                                                                        {cell ? `${hadir + telat}/${jp}` : '—'}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                ))}
+                                                {cal.guru.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={cal.dates.length + 1} className="px-4 py-10 text-center text-sm text-text-muted">
+                                                            Tidak ada data mengajar untuk periode ini.
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                        <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border px-6 py-3 text-xs text-text-secondary">
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-green-400" /> Semua JP hadir</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-amber-400" /> Ada telat</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-red-400" /> Ada alpa</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-border" /> Tanpa jadwal</span>
+                                            <span className="ml-auto text-text-muted">Format: hadir+telat / JP</span>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             {activePreview.report_type === 'presensi' && (() => {
                                 const s = computePresensiSummary(previewData.data, previewData.headings);
@@ -353,6 +443,7 @@ export default function LaporanIndex({ auth, units }) {
                                 );
                             })()}
 
+                            {!(activePreview.report_type === 'rekap_mengajar' && viewMode === 'kalender') && (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface">
@@ -394,6 +485,7 @@ export default function LaporanIndex({ auth, units }) {
                                     </tbody>
                                 </table>
                             </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -127,17 +127,78 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
         return collect(array_values($byPegawai))->sortBy(fn ($d) => $d['pegawai']->nama_lengkap ?? '')->values();
     }
 
+    /**
+     * Data kalender untuk grid FE: daftar tanggal periode (weekday) +
+     * per guru per tanggal ringkasan {jp, hadir, telat, alpa}.
+     * Dipakai preview (controller) — bukan oleh Maatwebsite.
+     */
+    public function calendarData(Collection $rows): array
+    {
+        $dates = [];
+        $cursor = Carbon::parse($this->start_date);
+        $end = Carbon::parse($this->end_date);
+        while ($cursor <= $end) {
+            if (! $cursor->isWeekend()) {
+                $dates[] = $cursor->toDateString();
+            }
+            $cursor->addDay();
+        }
+
+        $cells = [];
+        $rawQuery = Presensi::whereBetween('tanggal', [$this->start_date, $this->end_date])
+            ->whereNotNull('jadwal_id')
+            ->where('tipe_presensi', 'mengajar')
+            ->selectRaw('pegawai_id, tanggal, COUNT(*) as jp,
+                SUM(CASE WHEN status = "hadir" THEN 1 ELSE 0 END) as hadir,
+                SUM(CASE WHEN status = "telat" THEN 1 ELSE 0 END) as telat,
+                SUM(CASE WHEN status = "alpa" THEN 1 ELSE 0 END) as alpa')
+            ->groupBy('pegawai_id', 'tanggal');
+
+        if ($this->unit_id) {
+            $rawQuery->where('unit_sekolah_id', $this->unit_id);
+        }
+        if ($this->jenis === 'pendidik') {
+            $rawQuery->whereHas('pegawai', fn ($q) => $q->guru());
+        } elseif ($this->jenis === 'kependidikan') {
+            $rawQuery->whereHas('pegawai', fn ($q) => $q->nonGuru());
+        }
+
+        foreach ($rawQuery->get() as $c) {
+            $tanggal = $c->tanggal instanceof \DateTimeInterface
+                ? $c->tanggal->format('Y-m-d')
+                : (string) $c->tanggal;
+            $cells[$c->pegawai_id][$tanggal] = [
+                (int) $c->jp, (int) $c->hadir, (int) $c->telat, (int) $c->alpa,
+            ];
+        }
+
+        $guru = [];
+        foreach ($rows as $d) {
+            $guru[] = [
+                'id' => $d['pegawai']?->id,
+                'nama' => $d['pegawai']?->nama_lengkap ?? '-',
+                'cells' => $d['pegawai'] ? ($cells[$d['pegawai']->id] ?? []) : [],
+            ];
+        }
+
+        return [
+            'dates' => $dates,
+            'guru' => $guru,
+        ];
+    }
+
     public function map($d): array
     {
         $hadirPersen = $d['total']['terjadwal'] > 0
             ? round((($d['total']['hadir'] + $d['total']['telat']) / $d['total']['terjadwal']) * 100)
             : 0;
 
+        $pegawai = $d['pegawai'];
         $row = [
-            $d['pegawai']->nama_lengkap ?? '-',
-            $d['pegawai']->nip ?? '-',
-            $d['pegawai'] ? $d['pegawai']->jenisPegawaiLabel() : '-',
-            $d['pegawai']->mapels->pluck('nama')->unique()->implode(', ') ?: '-',
+            $pegawai?->nama_lengkap ?? '-',
+            $pegawai?->nip ?? '-',
+            $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
+            $pegawai?->mapels?->pluck('nama')->unique()->implode(', ') ?: '-',
             $d['total']['terjadwal'],
             $d['total']['hadir'],
             $d['total']['telat'],

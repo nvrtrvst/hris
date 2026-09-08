@@ -70,10 +70,18 @@ class LaporanController extends Controller
             return $export->map($item);
         });
 
-        return response()->json([
+        $payload = [
             'headings' => $headings,
             'data' => $mappedData,
-        ]);
+        ];
+
+        // Khusus rekap mengajar: sertakan data kalender (guru × tanggal)
+        // untuk tampilan grid mingguan di frontend.
+        if ($validated['type'] === 'rekap_mengajar') {
+            $payload['calendar'] = $export->calendarData($data);
+        }
+
+        return response()->json($payload);
     }
 
     public function exportPresensi(LaporanGenerateRequest $request)
@@ -120,6 +128,11 @@ class LaporanController extends Controller
     {
         $validated = $request->validated();
         $type = $validated['type'];
+
+        // DOMPDF membangun seluruh dokumen di memori — data besar (ribuan
+        // row presensi multi-unit) bisa exhaust memory default.
+        set_time_limit(300);
+        ini_set('memory_limit', '512M');
 
         $export = match ($type) {
             'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null),
