@@ -25,12 +25,15 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
     protected $jenis;
 
-    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null)
+    protected $tipe;
+
+    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $tipe = null)
     {
         $this->start_date = $start_date;
         $this->end_date = $end_date;
         $this->unit_id = $unit_id;
         $this->jenis = $jenis;
+        $this->tipe = $tipe;
     }
 
     public function collection()
@@ -44,8 +47,23 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
         }
 
         $this->applyJenisFilter($query);
+        $this->applyTipeFilter($query);
 
         return $query->orderBy('tanggal', 'asc')->get();
+    }
+
+    /**
+     * Filter tipe presensi: kantor = kehadiran harian (tanpa jadwal),
+     * mengajar = presensi per JP. Null = semua.
+     */
+    protected function applyTipeFilter($query): void
+    {
+        if ($this->tipe === 'kantor') {
+            $query->whereNull('jadwal_id')
+                ->where(fn ($q) => $q->where('tipe_presensi', 'kantor')->orWhereNull('tipe_presensi'));
+        } elseif ($this->tipe === 'mengajar') {
+            $query->whereNotNull('jadwal_id')->where('tipe_presensi', 'mengajar');
+        }
     }
 
     /**

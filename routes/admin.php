@@ -219,8 +219,10 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('laporan/presensi', [LaporanController::class, 'exportPresensi'])->name('laporan.presensi');
     Route::get('laporan/penggajian', [LaporanController::class, 'exportPenggajian'])->name('laporan.penggajian');
     Route::get('laporan/lemburan', [LaporanController::class, 'exportLemburan'])->name('laporan.lemburan');
-    Route::get('laporan/pdf', [LaporanController::class, 'exportPdf'])->name('laporan.pdf');
 
+    Route::get('laporan/rekap-mengajar', [LaporanController::class, 'exportRekapMengajar'])->name('laporan.rekap-mengajar');
+
+    Route::get('laporan/pdf', [LaporanController::class, 'exportPdf'])->name('laporan.pdf');
     // Laporan KCD (daftar hadir bulanan untuk sertifikasi KCD)
     Route::middleware('can:view_laporan_kcd')->group(function () {
         Route::get('laporan/kcd', [LaporanController::class, 'kcdIndex'])->name('laporan.kcd');

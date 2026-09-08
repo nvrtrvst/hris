@@ -31,11 +31,12 @@ class LaporanGenerateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => 'required|in:presensi,penggajian,lemburan',
+            'type' => 'required|in:presensi,penggajian,lemburan,rekap_mengajar',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
             'jenis_filter' => 'nullable|in:pendidik,kependidikan',
+            'tipe_filter' => 'nullable|in:kantor,mengajar',
         ];
     }
 
@@ -51,6 +52,7 @@ class LaporanGenerateRequest extends FormRequest
             'end_date.after_or_equal' => 'Tanggal akhir harus sama atau setelah tanggal awal',
             'unit_sekolah_id.exists' => 'Unit sekolah tidak ditemukan',
             'jenis_filter.in' => 'Jenis pegawai harus salah satu dari: pendidik, kependidikan',
+            'tipe_filter.in' => 'Tipe presensi harus salah satu dari: kantor, mengajar',
         ];
     }
 

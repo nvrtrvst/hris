@@ -87,7 +87,8 @@ export default function LaporanIndex({ auth, units }) {
         end_date: today,
         report_type: 'presensi',
         unit_sekolah_id: '',
-        jenis_filter: ''
+        jenis_filter: '',
+        tipe_filter: ''
     });
 
     const [previewData, setPreviewData] = useState(null);
@@ -103,7 +104,8 @@ export default function LaporanIndex({ auth, units }) {
                     start_date: filter.start_date,
                     end_date: filter.end_date,
                     unit_sekolah_id: filter.unit_sekolah_id,
-                    jenis_filter: filter.jenis_filter
+                    jenis_filter: filter.jenis_filter,
+                    tipe_filter: filter.tipe_filter
                 }
             });
             setPreviewData(res.data);
@@ -120,6 +122,7 @@ export default function LaporanIndex({ auth, units }) {
         if (filter.report_type === 'presensi') url = route('laporan.presensi');
         if (filter.report_type === 'penggajian') url = route('laporan.penggajian');
         if (filter.report_type === 'lemburan') url = route('laporan.lemburan');
+        if (filter.report_type === 'rekap_mengajar') url = route('laporan.rekap-mengajar');
 
         const params = new URLSearchParams();
         params.append('type', filter.report_type);
@@ -130,6 +133,9 @@ export default function LaporanIndex({ auth, units }) {
         }
         if (filter.jenis_filter) {
             params.append('jenis_filter', filter.jenis_filter);
+        }
+        if (filter.tipe_filter) {
+            params.append('tipe_filter', filter.tipe_filter);
         }
 
         window.location.href = `${url}?${params.toString()}`;
@@ -155,6 +161,7 @@ export default function LaporanIndex({ auth, units }) {
         presensi: 'Presensi',
         penggajian: 'Rekap Gaji',
         lemburan: 'Detail Lembur & Potongan',
+        rekap_mengajar: 'Rekap Mengajar',
     };
 
     return (
@@ -181,9 +188,10 @@ export default function LaporanIndex({ auth, units }) {
                                     <select
                                         className="select-field pl-9"
                                         value={filter.report_type}
-                                        onChange={(e) => setFilter({ ...filter, report_type: e.target.value })}
+                                        onChange={(e) => setFilter({ ...filter, report_type: e.target.value, tipe_filter: e.target.value === 'presensi' ? filter.tipe_filter : '' })}
                                     >
                                         <option value="presensi">Laporan Presensi</option>
+                                        <option value="rekap_mengajar">Rekap Presensi Mengajar</option>
                                         <option value="penggajian">Laporan Rekap Gaji</option>
                                         <option value="lemburan">Laporan Detail Lembur & Potongan</option>
                                     </select>
@@ -240,6 +248,22 @@ export default function LaporanIndex({ auth, units }) {
                                     </select>
                                 </div>
                             </Field>
+                            {filter.report_type === 'presensi' && (
+                                <Field label="Tipe Presensi (Opsional)">
+                                    <div className="relative">
+                                        <FileText className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                        <select
+                                            className="select-field pl-9"
+                                            value={filter.tipe_filter}
+                                            onChange={(e) => setFilter({ ...filter, tipe_filter: e.target.value })}
+                                        >
+                                            <option value="">Semua (Kantor + Mengajar)</option>
+                                            <option value="kantor">Kantor (Harian)</option>
+                                            <option value="mengajar">Mengajar (per JP)</option>
+                                        </select>
+                                    </div>
+                                </Field>
+                            )}
                         </div>
 
                         <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row">

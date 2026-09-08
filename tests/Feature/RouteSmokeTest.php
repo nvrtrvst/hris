@@ -1574,7 +1574,7 @@ class RouteSmokeTest extends TestCase
         ];
 
         return match ($name) {
-            'laporan.preview', 'laporan.presensi', 'laporan.penggajian', 'laporan.lemburan', 'laporan.pdf' => array_merge(['type' => 'presensi'], $range),
+            'laporan.preview', 'laporan.presensi', 'laporan.penggajian', 'laporan.lemburan', 'laporan.rekap-mengajar', 'laporan.pdf' => array_merge(['type' => 'presensi'], $range),
             'penggajian.export-bank' => ['periode_bulan' => now()->format('m-Y')],
             'jadwal.kelas-by-unit' => ['q' => 'smoke'],
             'presensi.jadwal.kelas' => ['jadwal_id' => $this->jadwal->id],
