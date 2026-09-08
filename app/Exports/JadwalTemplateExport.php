@@ -63,8 +63,12 @@ class JadwalTemplateExport implements FromArray, ShouldAutoSize, WithStyles
             );
         }
 
-        // Kolom waktu tampil rapi sebagai hh:mm.
-        $sheet->getStyle('E2:G500')->getNumberFormat()->setFormatCode('hh:mm');
+        // Kolom Jumlah JP (F) harus plain number — tanpa ini Excel menafsirkan
+        // angka yang diketik sebagai tanggal (mis. 2 → 02/01/1900). Kolom jam
+        // (E, G) tetap hh:mm. Jangan format range E:G utuh.
+        $sheet->getStyle('F2:F500')->getNumberFormat()->setFormatCode('0');
+        $sheet->getStyle('E2:E500')->getNumberFormat()->setFormatCode('hh:mm');
+        $sheet->getStyle('G2:G500')->getNumberFormat()->setFormatCode('hh:mm');
 
         return [
             1 => ['font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']], 'fill' => ['fillType' => 'solid', 'startColor' => ['argb' => 'FF0F3D3E']]],
