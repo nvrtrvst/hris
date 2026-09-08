@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\JadwalTemplateExport;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
+use App\Imports\JadwalImport;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
@@ -16,6 +18,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
 
 class JadwalController extends Controller
 {
@@ -875,12 +879,23 @@ class JadwalController extends Controller
         }
 
         $unitName = 'Semua Unit';
+        $unitObj = null;
         if (! empty($request->unit_sekolah_id)) {
-            $unit = UnitSekolah::find($request->unit_sekolah_id);
-            $unitName = $unit?->nama ?? $unitName;
+            $unitObj = UnitSekolah::find($request->unit_sekolah_id);
+            $unitName = $unitObj?->nama ?? $unitName;
         } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $unit = UnitSekolah::find($user->unit_sekolah_id);
-            $unitName = $unit?->nama ?? $unitName;
+            $unitObj = UnitSekolah::find($user->unit_sekolah_id);
+            $unitName = $unitObj?->nama ?? $unitName;
+        }
+
+        // Kepala sekolah unit (untuk blok tanda tangan): pegawai berjabatan
+        // "Kepala Sekolah" yang terdaftar di unit jadwal.
+        $kepalaSekolah = null;
+        if ($unitObj) {
+            $kepalaSekolah = Pegawai::whereHas('jabatans', fn ($q) => $q->where('jabatan.nama', 'Kepala Sekolah'))
+                ->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitObj->id))
+                ->where('status_aktif', 'aktif')
+                ->first(['id', 'nama_lengkap', 'nip']);
         }
 
         $tahunAjaran = $jadwals->first()?->tahun_ajaran ?? date('Y').'/'.(date('Y') + 1);
@@ -888,7 +903,7 @@ class JadwalController extends Controller
 
         $pdf = Pdf::loadView('exports.pdf-jadwal', compact(
             'matrix', 'perGuru', 'kelasList', 'DAYS', 'jamSlotLabels',
-            'logoPath', 'logoWidth', 'unitName', 'tahunAjaran', 'semester'
+            'logoPath', 'logoWidth', 'unitName', 'tahunAjaran', 'semester', 'kepalaSekolah'
         ))->setPaper('a4', 'landscape');
 
         $safeName = preg_replace('#[/\\\\]#', '-', "Jadwal_Pelajaran_{$unitName}_{$tahunAjaran}_S{$semester}");
@@ -1055,9 +1070,81 @@ class JadwalController extends Controller
         return back()->with('message', $message);
     }
 
+    /**
+     * Template Excel import jadwal (dropdown hari + jenis jadwal).
+     */
+    public function downloadTemplate()
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('manage_jadwal')) {
+            abort(403);
+        }
+
+        $response = Excel::download(new JadwalTemplateExport, 'template_import_jadwal.xlsx');
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+
+        return $response;
+    }
+
+    /**
+     * Import jadwal massal via Excel (semua unit — jalur umum karena tiap
+     * unit beda format file asli). Baris gagal dilaporkan, bukan abort.
+     */
+    public function importExcel(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('manage_jadwal')) {
+            abort(403);
+        }
+
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:5120',
+            'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
+            'tahun_ajaran' => 'nullable|string|max:10',
+            'semester' => 'nullable|integer|in:1,2',
+            'delete_existing' => 'nullable|boolean',
+        ]);
+
+        $unitId = (int) $request->unit_sekolah_id;
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $unitId = $user->unit_sekolah_id;
+        }
+
+        $tahunAjaran = $request->input('tahun_ajaran') ?: null;
+        $semester = $request->input('semester') ?: null;
+
+        if ($request->boolean('delete_existing')) {
+            Jadwal::where('unit_sekolah_id', $unitId)
+                ->when($tahunAjaran, fn ($q) => $q->where('tahun_ajaran', $tahunAjaran))
+                ->when($semester, fn ($q) => $q->where('semester', $semester))
+                ->delete();
+        }
+
+        try {
+            $import = new JadwalImport($unitId, $tahunAjaran, $semester);
+            Excel::import($import, $request->file('file'));
+        } catch (ValidationException $e) {
+            $msg = $e->errors()['import'][0] ?? 'Import gagal.';
+            $this->clearJadwalCacheForUnit($unitId);
+
+            return back()->with('message', $msg);
+        }
+
+        $this->clearJadwalCacheForUnit($unitId);
+
+        return back()->with('message', "Import selesai: {$import->getCreated()} jadwal dibuat, {$import->getSkipped()} duplikat dilewati.");
+    }
+
     // ──────────────────────────────────────────
     //  Private helpers
     // ──────────────────────────────────────────
+
+    private function clearJadwalCacheForUnit(int $unitId): void
+    {
+        Jadwal::where('unit_sekolah_id', $unitId)
+            ->pluck('pegawai_id')->unique()
+            ->each(fn ($pid) => $this->clearJadwalCache($pid));
+    }
 
     private function getJamSlot(string $jamMulai): ?int
     {

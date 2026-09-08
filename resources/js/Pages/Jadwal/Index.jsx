@@ -14,6 +14,7 @@ import {
     CheckCircle2,
     ChevronDown,
     Clock3,
+    Download,
     GraduationCap,
     Info,
     LayoutGrid,
@@ -138,9 +139,12 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
     // Modal Import
     const [showImportModal, setShowImportModal] = useState(false);
+    const [importMode, setImportMode] = useState('excel');
     const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
         file: null,
         unit_sekolah_id: '',
+        tahun_ajaran: '',
+        semester: '',
         delete_existing: false,
     });
 
@@ -271,7 +275,8 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
     const handleImportSubmit = (e) => {
         e.preventDefault();
-        postImport(route('jadwal.import-pdf'), {
+        const url = importMode === 'excel' ? route('jadwal.import') : route('jadwal.import-pdf');
+        postImport(url, {
             onSuccess: () => {
                 setShowImportModal(false);
                 resetImport();
@@ -1081,12 +1086,35 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                             <Upload className="w-5 h-5 text-blue-600" />
                                         </div>
                                         <div>
-                                            <h3 className="page-title">Import Jadwal dari PDF</h3>
-                                            <p className="page-subtitle">Upload file PDF jadwal pelajaran. Sistem akan mengekstrak data secara otomatis.</p>
+                                            <h3 className="page-title">Import Jadwal</h3>
+                                            <p className="page-subtitle">Upload massal — pilih format sesuai unit Anda.</p>
                                         </div>
                                     </div>
 
+                                    {/* Mode: Excel (umum) / PDF (layout SMK) */}
+                                    <div className="mb-4 inline-flex rounded-xl border border-border bg-surface p-1">
+                                        {[
+                                            { k: 'excel', label: 'Excel (Semua Unit)' },
+                                            { k: 'pdf', label: 'PDF (Format SMK)' },
+                                        ].map((m) => (
+                                            <button
+                                                key={m.k}
+                                                type="button"
+                                                onClick={() => setImportMode(m.k)}
+                                                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${importMode === m.k ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:text-primary'}`}
+                                            >
+                                                {m.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
                                     <div className="space-y-4">
+                                        {importMode === 'excel' && (
+                                            <a href={route('jadwal.template')} className="flex items-center gap-2 rounded-xl border border-info/30 bg-info-light px-4 py-2.5 text-sm font-semibold text-info hover:bg-info/10">
+                                                <Download className="h-4 w-4" /> Unduh Template Excel
+                                            </a>
+                                        )}
+
                                         <div>
                                             <label className="form-label mb-1">Unit Sekolah <span className="text-danger">*</span></label>
                                             <select
@@ -1102,16 +1130,45 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                         </div>
 
                                         <div>
-                                            <label className="form-label mb-1">File PDF (.pdf) <span className="text-danger">*</span></label>
+                                            <label className="form-label mb-1">
+                                                {importMode === 'excel' ? 'File Excel (.xlsx/.xls/.csv)' : 'File PDF (.pdf)'} <span className="text-danger">*</span>
+                                            </label>
                                             <input
                                                 type="file"
-                                                accept=".pdf"
+                                                accept={importMode === 'excel' ? '.xlsx,.xls,.csv' : '.pdf'}
                                                 onChange={(e) => setImportData('file', e.target.files[0])}
                                                 className="mt-1 block w-full text-sm text-text-muted file:mr-4 file:rounded-lg file:border-0 file:bg-primary-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary-100"
                                                 required
                                             />
                                             {importErrors.file && <p className="form-error">{importErrors.file}</p>}
                                         </div>
+
+                                        {importMode === 'excel' && (
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="form-label mb-1">Tahun Ajaran (opsional)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={importData.tahun_ajaran}
+                                                        onChange={(e) => setImportData('tahun_ajaran', e.target.value)}
+                                                        placeholder="mis. 2026/2027"
+                                                        className="input-field"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="form-label mb-1">Semester (opsional)</label>
+                                                    <select
+                                                        value={importData.semester}
+                                                        onChange={(e) => setImportData('semester', e.target.value)}
+                                                        className="select-field"
+                                                    >
+                                                        <option value="">Default</option>
+                                                        <option value="1">1</option>
+                                                        <option value="2">2</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="flex items-center gap-2">
                                             <input
@@ -1128,7 +1185,11 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                                         <div className="flex items-start gap-2 rounded-xl border border-info/30 bg-info-light p-3 text-xs text-info">
                                             <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                                            <span>File PDF harus berupa jadwal pelajaran dengan format tabel. Duplikat akan dilewati otomatis.</span>
+                                            <span>
+                                                {importMode === 'excel'
+                                                    ? 'Isi sesuai template: Hari, Kelas, Nama Guru, Mata Pelajaran, Jam Mulai, Jam Selesai, Jenis Jadwal, Tahun Ajaran, Semester. Guru & mapel harus sudah terdaftar. Duplikat & bentrok waktu dilewati/dilaporkan per baris.'
+                                                    : 'File PDF harus berupa jadwal pelajaran dengan format tabel SMK. Duplikat akan dilewati otomatis.'}
+                                            </span>
                                         </div>
 
                                         {importErrors.import && (

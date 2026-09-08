@@ -44,6 +44,13 @@
     .section-title { font-size: 11px; font-weight: 800; margin: 8px 0 4px; text-transform: uppercase; color: #0f3d3e; }
     .footer { margin-top: 8px; font-size: 6.5px; color: #9ca3af; text-align: right; border-top: 1px solid #e5e7eb; padding-top: 3px; }
     .empty-msg { text-align: center; padding: 12px; color: #9ca3af; font-size: 8px; }
+
+    /* Tanda tangan kepala sekolah */
+    .ttd { width: 100%; margin-top: 16px; page-break-inside: avoid; }
+    .ttd .ttd-slot { width: 40%; }
+    .ttd .ttd-kolom { text-align: center; font-size: 8px; line-height: 1.5; }
+    .ttd .ttd-nama { font-weight: 700; text-decoration: underline; margin-top: 40px; }
+    .ttd .ttd-nip { font-size: 7px; color: #374151; }
 </style>
 </head>
 <body>
@@ -158,6 +165,26 @@
 
         <div class="footer">{{ config('yayasan.name') }} &mdash; Dicetak: {{ now()->format('d/m/Y H:i') }}</div>
     @endforeach
+@endif
+
+{{-- Tanda tangan kepala sekolah unit --}}
+@if($kepalaSekolah ?? null)
+    <table class="ttd">
+        <tr>
+            <td class="ttd-slot"></td>
+            <td class="ttd-slot">
+                <div class="ttd-kolom">
+                    <div>{{ $unitName }}, {{ now()->format('d/m/Y') }}</div>
+                    <div>Kepala Sekolah</div>
+                    <div class="ttd-nama">{{ $kepalaSekolah->nama_lengkap }}</div>
+                    @if($kepalaSekolah->nip)
+                        <div class="ttd-nip">NIP. {{ $kepalaSekolah->nip }}</div>
+                    @endif
+                </div>
+            </td>
+            <td></td>
+        </tr>
+    </table>
 @endif
 
 </body>

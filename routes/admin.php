@@ -127,6 +127,8 @@ Route::middleware('auth:web_admin')->group(function () {
         ->name('jadwal.kelas-by-unit');
     Route::get('jadwal/export-pdf', [JadwalController::class, 'exportPdf'])
         ->name('jadwal.export-pdf');
+    Route::get('jadwal/template', [JadwalController::class, 'downloadTemplate'])->name('jadwal.template');
+    Route::post('jadwal/import', [JadwalController::class, 'importExcel'])->name('jadwal.import');
     Route::post('jadwal/import-pdf', [JadwalController::class, 'importPdf'])
         ->middleware('throttle:10,1')
         ->name('jadwal.import-pdf');
