@@ -43,6 +43,23 @@ const StatusBadge = ({ status }) => {
     );
 };
 
+const TIPE_STYLES = {
+    mengajar: 'bg-emerald-100 text-emerald-800 ring-emerald-600/20',
+    kantor: 'bg-slate-100 text-slate-700 ring-slate-500/20',
+    lembur: 'bg-amber-100 text-amber-800 ring-amber-600/20',
+    'tugas luar': 'bg-sky-100 text-sky-800 ring-sky-600/20',
+};
+
+const TipeBadge = ({ tipe }) => {
+    const key = String(tipe ?? '').toLowerCase();
+    const cls = TIPE_STYLES[key] || 'bg-gray-100 text-gray-700 ring-gray-500/20';
+    return (
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${cls}`}>
+            {tipe || '-'}
+        </span>
+    );
+};
+
 const computePresensiSummary = (data, headings) => {
     const statusIdx = headings.findIndex((h) => String(h).toLowerCase() === 'status');
     const tally = { hadir: 0, telat: 0, izin: 0, sakit: 0, cuti: 0, alpa: 0 };
@@ -327,6 +344,7 @@ export default function LaporanIndex({ auth, units }) {
                                                 {row.map((cell, cellIdx) => {
                                                     const headerStr = previewData.headings[cellIdx] ? previewData.headings[cellIdx].toLowerCase() : '';
                                                     const isStatus = headerStr === 'status';
+                                                    const isTipe = headerStr === 'tipe presensi';
                                                     const isCurrency = headerStr.includes('(rp)') || headerStr.includes('nominal') || headerStr.includes('rp)');
                                                     let displayValue = cell;
 
@@ -336,7 +354,7 @@ export default function LaporanIndex({ auth, units }) {
 
                                                     return (
                                                         <td key={cellIdx} className="whitespace-nowrap px-4 py-3 text-sm text-text-secondary tabular-nums">
-                                                            {isStatus ? <StatusBadge status={cell} /> : displayValue}
+                                                            {isStatus ? <StatusBadge status={cell} /> : isTipe ? <TipeBadge tipe={cell} /> : displayValue}
                                                         </td>
                                                     );
                                                 })}
