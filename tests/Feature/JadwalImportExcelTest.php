@@ -61,7 +61,7 @@ class JadwalImportExcelTest extends TestCase
     private function makeXlsx(array $rows): UploadedFile
     {
         $all = array_merge([
-            ['Hari', 'Kelas', 'Nama Guru', 'Mata Pelajaran', 'Jam Mulai', 'Jam Selesai', 'Jenis Jadwal', 'Tahun Ajaran', 'Semester'],
+            ['Hari', 'Kelas', 'Nama Guru', 'Mata Pelajaran', 'Jam Mulai', 'Jumlah JP', 'Jam Selesai', 'Jenis Jadwal', 'Tahun Ajaran', 'Semester'],
         ], $rows);
         Excel::store(new class($all) implements FromArray
         {
@@ -77,11 +77,14 @@ class JadwalImportExcelTest extends TestCase
         return new UploadedFile($path, 'test-import.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
     }
 
-    public function test_import_excel_sukses(): void
+    public function test_import_excel_sukses_jam_selesai_auto_dari_jumlah_jp(): void
     {
+        // durasi_jp unit = 40 menit → 07:00 + 2 JP = 08:20 (JP lanjut 08:20).
+        $this->unit->forceFill(['durasi_jp' => 40])->save();
+
         $file = $this->makeXlsx([
-            ['Senin', '7 - A', 'Guru Import', 'Matematika', '08:00', '08:45', 'mengajar', '2026/2027', 1],
-            ['Senin', '7 - A', 'Guru Import', 'Matematika', '08:45', '09:30', 'mengajar', '2026/2027', 1],
+            ['Senin', '7 - A', 'Guru Import', 'Matematika', '07:00', 2, '', 'mengajar', '2026/2027', 1],
+            ['Senin', '7 - A', 'Guru Import', 'Matematika', '08:20', 2, '', 'mengajar', '2026/2027', 1],
         ]);
 
         $res = $this->actingAs($this->admin, 'web_admin')
@@ -94,11 +97,48 @@ class JadwalImportExcelTest extends TestCase
 
         $res->assertRedirect();
         $this->assertSame(2, Jadwal::where('pegawai_id', $this->guru->id)->count());
+        $this->assertDatabaseHas('jadwal', ['pegawai_id' => $this->guru->id, 'jam_mulai' => '07:00:00', 'jam_selesai' => '08:20:00']);
+        $this->assertDatabaseHas('jadwal', ['pegawai_id' => $this->guru->id, 'jam_mulai' => '08:20:00', 'jam_selesai' => '09:40:00']);
+    }
+
+    public function test_import_excel_jam_selesai_manual_non_mengajar(): void
+    {
+        // Piket: Jumlah JP kosong, Jam Selesai manual di kolom G.
+        $file = $this->makeXlsx([
+            ['Selasa', '', 'Guru Import', '', '07:00', '', '15:00', 'piket', '2026/2027', 1],
+        ]);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('jadwal.import'), [
+                'file' => $file,
+                'unit_sekolah_id' => $this->unit->id,
+            ]);
+
         $this->assertDatabaseHas('jadwal', [
             'pegawai_id' => $this->guru->id,
-            'kelas_label' => '7 - A',
-            'hari' => 'Senin',
+            'jenis_jadwal' => 'piket',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '15:00:00',
+        ]);
+    }
+
+    public function test_import_excel_template_lama_tetap_didukung(): void
+    {
+        // Template lama: tanpa Jumlah JP — jenis jadwal di kolom G (index 6).
+        $file = $this->makeXlsx([
+            ['Senin', '7 - A', 'Guru Import', 'Matematika', '08:00', '08:45', 'mengajar', '2026/2027', 1],
+        ]);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('jadwal.import'), [
+                'file' => $file,
+                'unit_sekolah_id' => $this->unit->id,
+            ]);
+
+        $this->assertDatabaseHas('jadwal', [
+            'pegawai_id' => $this->guru->id,
             'jam_mulai' => '08:00:00',
+            'jam_selesai' => '08:45:00',
         ]);
     }
 
@@ -107,8 +147,8 @@ class JadwalImportExcelTest extends TestCase
         // Two-pass all-or-nothing: baris 2 bentrok dengan baris 1 →
         // SELURUH file ditolak dengan laporan baris bermasalah.
         $file = $this->makeXlsx([
-            ['Senin', '7 - A', 'Guru Import', 'Matematika', '08:00', '09:00', 'mengajar', '2026/2027', 1],
-            ['Senin', '7 - B', 'Guru Import', 'Matematika', '08:30', '09:30', 'mengajar', '2026/2027', 1],
+            ['Senin', '7 - A', 'Guru Import', 'Matematika', '08:00', '', '09:00', 'mengajar', '2026/2027', 1],
+            ['Senin', '7 - B', 'Guru Import', 'Matematika', '08:30', '', '09:30', 'mengajar', '2026/2027', 1],
         ]);
 
         $res = $this->actingAs($this->admin, 'web_admin')
@@ -127,7 +167,7 @@ class JadwalImportExcelTest extends TestCase
     public function test_import_excel_guru_tidak_ditemukan_error_per_baris(): void
     {
         $file = $this->makeXlsx([
-            ['Senin', '7 - A', 'Guru Tak Ada', 'Matematika', '08:00', '08:45', 'mengajar', '2026/2027', 1],
+            ['Senin', '7 - A', 'Guru Tak Ada', 'Matematika', '08:00', '', '08:45', 'mengajar', '2026/2027', 1],
         ]);
 
         $res = $this->actingAs($this->admin, 'web_admin')
@@ -145,7 +185,7 @@ class JadwalImportExcelTest extends TestCase
     public function test_import_excel_auto_create_pegawai_mapel(): void
     {
         $file = $this->makeXlsx([
-            ['Selasa', '8 - A', 'Guru Import', 'Matematika', '09:00', '09:45', 'mengajar', '2026/2027', 1],
+            ['Selasa', '8 - A', 'Guru Import', 'Matematika', '09:00', 1, '', 'mengajar', '2026/2027', 1],
         ]);
 
         $this->actingAs($this->admin, 'web_admin')

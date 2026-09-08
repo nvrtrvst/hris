@@ -6,6 +6,7 @@ use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\PegawaiMapel;
+use App\Models\UnitSekolah;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -16,7 +17,10 @@ use Maatwebsite\Excel\Concerns\WithStartRow;
  * asli, jadi template seragam ini jadi jalur umum).
  *
  * Kolom (baris 1 = header, data mulai baris 2):
- *   Hari | Kelas | Nama Guru | Mata Pelajaran | Jam Mulai | Jam Selesai | Jenis Jadwal | Tahun Ajaran | Semester
+ *   Hari | Kelas | Nama Guru | Mata Pelajaran | Jam Mulai | Jumlah JP | Jam Selesai | Jenis Jadwal | Tahun Ajaran | Semester
+ *
+ * Jam selesai otomatis bila Jumlah JP terisi: mulai + JP × durasi_jp unit.
+ * Template lama (tanpa Jumlah JP, jam selesai di kolom F) tetap didukung.
  */
 class JadwalImport implements ToCollection, WithStartRow
 {
@@ -33,6 +37,9 @@ class JadwalImport implements ToCollection, WithStartRow
 
     protected int $skipped = 0;
 
+    /** Durasi 1 JP unit (menit) — dipakai hitung jam selesai dari Jumlah JP. */
+    protected int $durasiJpMenit = 40;
+
     public function __construct(int $unitId, ?string $tahunAjaran = null, ?int $semester = null)
     {
         $this->unitId = $unitId;
@@ -40,6 +47,7 @@ class JadwalImport implements ToCollection, WithStartRow
             ? now()->year.'/'.(now()->year + 1)
             : (now()->year - 1).'/'.now()->year);
         $this->defaultSemester = $semester ?: (now()->month >= 7 || now()->month <= 1 ? 1 : 2);
+        $this->durasiJpMenit = (int) (UnitSekolah::find($unitId)?->durasi_jp ?: 40);
     }
 
     public function startRow(): int
@@ -78,10 +86,31 @@ class JadwalImport implements ToCollection, WithStartRow
             $namaGuru = trim((string) ($row[2] ?? ''));
             $namaMapel = trim((string) ($row[3] ?? ''));
             $jamMulai = $this->normalizeTime((string) ($row[4] ?? ''));
-            $jamSelesai = $this->normalizeTime((string) ($row[5] ?? ''));
-            $jenis = trim((string) ($row[6] ?? '')) ?: 'mengajar';
-            $tahunAjaran = trim((string) ($row[7] ?? '')) ?: $this->defaultTahunAjaran;
-            $semester = (int) (trim((string) ($row[8] ?? '')) ?: $this->defaultSemester);
+
+            // Template baru (dengan Jumlah JP): kolom H (index 7) berisi jenis
+            // jadwal yang valid. Template lama: jenis ada di kolom G (index 6).
+            $jenisDiH = trim((string) ($row[7] ?? ''));
+            $isNewTemplate = $jenisDiH !== '' && in_array($jenisDiH, ['mengajar', 'piket', 'ekskul', 'shift_satpam', 'shift_kebersihan', 'lainnya'], true);
+
+            if ($isNewTemplate) {
+                $jumlahJp = (int) (is_numeric($row[5] ?? null) ? $row[5] : 0);
+                $jamSelesai = $this->normalizeTime((string) ($row[6] ?? ''));
+                // Auto-hitung: mulai + JP × durasi_jp unit (template juga
+                // punya formula Excel; server hitung ulang sebagai sumber
+                // kebenaran — formula bisa tidak dievaluasi saat upload).
+                if ($jumlahJp > 0) {
+                    $jamSelesai = $this->addMenit($jamMulai, $jumlahJp * $this->durasiJpMenit);
+                }
+                $jenis = $jenisDiH;
+                $tahunAjaran = trim((string) ($row[8] ?? '')) ?: $this->defaultTahunAjaran;
+                $semester = (int) (trim((string) ($row[9] ?? '')) ?: $this->defaultSemester);
+            } else {
+                $jumlahJp = 0;
+                $jamSelesai = $this->normalizeTime((string) ($row[5] ?? ''));
+                $jenis = trim((string) ($row[6] ?? '')) ?: 'mengajar';
+                $tahunAjaran = trim((string) ($row[7] ?? '')) ?: $this->defaultTahunAjaran;
+                $semester = (int) (trim((string) ($row[8] ?? '')) ?: $this->defaultSemester);
+            }
 
             // Baris kosong penuh → skip diam.
             if ($hari === '' && $namaGuru === '' && $jamMulai === null) {
@@ -231,6 +260,21 @@ class JadwalImport implements ToCollection, WithStartRow
         }
 
         return null;
+    }
+
+    /**
+     * Tambah menit ke jam H:i — wrap lintas hari tidak relevan (jadwal
+     * sehari), cukup modulo 24 jam.
+     */
+    protected function addMenit(?string $jamMulai, int $menit): ?string
+    {
+        if (! $jamMulai) {
+            return null;
+        }
+        [$h, $m] = array_map('intval', explode(':', $jamMulai));
+        $total = ($h * 60 + $m + $menit) % (24 * 60);
+
+        return sprintf('%02d:%02d', intdiv($total, 60), $total % 60);
     }
 
     protected function fail(int $row, string $value, array $allowed, string $message): bool
