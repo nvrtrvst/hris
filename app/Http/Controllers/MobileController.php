@@ -1183,7 +1183,7 @@ class MobileController extends Controller
         // Anti-deadlock (pola sama dengan storeAbsenTransaction): tanpa SELECT FOR UPDATE
         // untuk insert; untuk checkout pakai lockForUpdate pada record yang ada.
         // Unique index (pegawai_id, presensi_key) menolak slide ganda — race ditangkap di bawah.
-        $status = DB::transaction(function () use ($pegawai, $jadwal, $distance, $request, $accuracy, $tipe) {
+        $result = DB::transaction(function () use ($pegawai, $jadwal, $distance, $request, $accuracy, $tipe, $hariIni, $sekarang) {
             if ($tipe === 'keluar') {
                 $presensi = Presensi::where('pegawai_id', $pegawai->id)
                     ->where('jadwal_id', $jadwal->id)
@@ -1205,7 +1205,7 @@ class MobileController extends Controller
                 $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 5;
                 $presensi->save();
 
-                return $presensi->status;
+                return ['status' => $presensi->status, 'covered' => []];
             }
 
             try {
@@ -1225,22 +1225,83 @@ class MobileController extends Controller
                 $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 5;
                 $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $jadwal->unitSekolah->toleransi_menit);
                 $presensi->save();
-
-                return $presensi->status;
             } catch (UniqueConstraintViolationException $e) {
                 // Slide ganda: unique index (pegawai_id, presensi_key) menolak — driver-agnostic
                 // (MySQL 1062 / SQLite 19). Tidak ada retry — ini bukan error concurrency.
 
                 throw ValidationException::withMessages(['jadwal_id' => 'Jadwal ini sudah di-slide.']);
             }
+
+            // 1-slide-to-cover: slide JP mengajar juga mencatat JP lain dalam grup
+            // (hari+kelas+mapel+unit sama). Di luar try di atas supaya violation
+            // pada JP cover di-skip per-JP, bukan membatalkan slide utama.
+            $covered = $jadwal->jenis_jadwal === 'mengajar'
+                ? $this->coverGroupJadwal($pegawai, $jadwal, $hariIni, $sekarang)
+                : [];
+
+            return ['status' => $presensi->status, 'covered' => $covered];
         }, 3);
 
         return response()->json([
             'success' => true,
             'message' => $tipe === 'keluar'
                 ? 'Presensi pulang jadwal tercatat.'
-                : ($status === 'telat' ? 'Kehadiran jadwal tercatat (telat).' : 'Kehadiran jadwal tercatat.'),
-            'status' => $status,
+                : ($result['status'] === 'telat' ? 'Kehadiran jadwal tercatat (telat).' : 'Kehadiran jadwal tercatat.'),
+            'status' => $result['status'],
+            'cover_count' => count($result['covered']),
+            'covered_jadwal_ids' => $result['covered'],
         ]);
+    }
+
+    /**
+     * Cover otomatis JP lain dalam grup slide (hari + kelas_label + pegawai_mapel
+     * + unit sama, jenis mengajar): 1 slide mencatat seluruh grup. JP yang sudah
+     * punya presensi hari itu di-skip (pre-flight); race double-insert ditangkap
+     * unique index (pegawai_id, presensi_key) dan di-skip per-JP.
+     *
+     * JP cover TIDAK menyimpan jam/lokasi/foto — payroll jam mengajar hanya butuh
+     * keberadaan row presensi per jadwal.
+     *
+     * @return array<int, int> ID jadwal yang tercatat oleh cover.
+     */
+    private function coverGroupJadwal(Pegawai $pegawai, Jadwal $jadwal, string $hariIni, string $sekarang): array
+    {
+        $sudahAda = Presensi::where('pegawai_id', $pegawai->id)
+            ->where('tanggal', Carbon::today()->toDateString())
+            ->whereNotNull('jadwal_id')
+            ->pluck('jadwal_id');
+
+        $grup = Jadwal::with('unitSekolah')
+            ->where('pegawai_id', $pegawai->id)
+            ->where('hari', $hariIni)
+            ->where('jenis_jadwal', 'mengajar')
+            ->where('unit_sekolah_id', $jadwal->unit_sekolah_id)
+            ->whereKeyNot($jadwal->id)
+            ->orderBy('jam_mulai')
+            ->get()
+            ->filter(fn ($jp) => $jp->kelas_label === $jadwal->kelas_label
+                && $jp->pegawai_mapel_id === $jadwal->pegawai_mapel_id)
+            ->reject(fn ($jp) => $sudahAda->contains($jp->id));
+
+        $covered = [];
+        foreach ($grup as $jp) {
+            try {
+                $presensi = new Presensi([
+                    'pegawai_id' => $pegawai->id,
+                    'jadwal_id' => $jp->id,
+                    'unit_sekolah_id' => $jp->unit_sekolah_id,
+                    'tanggal' => Carbon::today()->toDateString(),
+                    'tipe_presensi' => 'mengajar',
+                ]);
+                $presensi->is_lembur = false;
+                $presensi->status = Presensi::statusAt($sekarang, $jp->jam_mulai, (int) ($jp->unitSekolah->toleransi_menit ?? 0));
+                $presensi->save();
+                $covered[] = $jp->id;
+            } catch (UniqueConstraintViolationException) {
+                // Race: JP sudah tercatat request lain — skip, jangan rollback grup.
+            }
+        }
+
+        return $covered;
     }
 }

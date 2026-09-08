@@ -62,11 +62,15 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const [currentTime, setCurrentTime] = useState('');
     const [posA, setPosA] = useState(null);
     const [posAwal, setPosAwal] = useState(null);
+    // JP auto-cover (1-slide-to-cover) tidak punya jam_masuk — cukup ada row
+    // presensi mengajar di jadwal itu untuk dianggap sudah di-slide.
     const [slidIds, setSlidIds] = useState(() => new Set(
-        presensiHariIni.filter((p) => p.jadwal_id && p.jam_masuk).map((p) => p.jadwal_id)
+        presensiHariIni.filter((p) => p.jadwal_id && !p.is_lembur).map((p) => p.jadwal_id)
     ));
+    // JP auto-cover tidak punya jam_masuk/jam_keluar — dianggap closed karena
+    // pulang grup hanya dicatat di row JP utama (yang punya jam_masuk).
     const [closedIds, setClosedIds] = useState(() => new Set(
-        presensiHariIni.filter((p) => p.jadwal_id && p.jam_keluar).map((p) => p.jadwal_id)
+        presensiHariIni.filter((p) => p.jadwal_id && !p.is_lembur && (p.jam_keluar || !p.jam_masuk)).map((p) => p.jadwal_id)
     ));
     const [slideLoading, setSlideLoading] = useState(null);
     const [isTugasLuar, setIsTugasLuar] = useState(false);
@@ -334,8 +338,8 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         }
     }, [capturedPhoto, currentPosition, geoBlocked, geofence, posA, posAwal, motionSamples]);
 
-    // Slide seluruh grup secara atomik: optimis UI → kirim request untuk semua
-    // jadwal_id dalam grup → rollback semua bila ADA satupun gagal (cegah partial state).
+    // Slide grup: backend mencatat seluruh grup (1-slide-to-cover) dalam 1 request —
+    // response berisi cover_count/covered_jadwal_ids untuk sinkron UI.
     const handleSlideGroup = useCallback(async (group, tipe = 'masuk') => {
         setSlideLoading(group.id);
         setError(null);
@@ -355,64 +359,70 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         }
 
         const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-        let allOk = true;
 
-        for (const jadwalId of group.allIds) {
-            try {
-                const res = await fetch(route('presensi.absen.slide'), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': token,
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    body: JSON.stringify({
-                        _token: token,
-                        jadwal_id: jadwalId,
-                        tipe,
-                        latitude: currentPosition.latitude,
-                        longitude: currentPosition.longitude,
-                        accuracy: currentPosition.accuracy,
-                        mock_suspect: currentPosition.accuracy === 0,
-                    }),
-                });
+        // Kirim ke jadwal pertama grup — backend cover sisanya otomatis.
+        const jadwalId = group.allIds[0];
+        let data = null;
+        try {
+            const res = await fetch(route('presensi.absen.slide'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    _token: token,
+                    jadwal_id: jadwalId,
+                    tipe,
+                    latitude: currentPosition.latitude,
+                    longitude: currentPosition.longitude,
+                    accuracy: currentPosition.accuracy,
+                    mock_suspect: currentPosition.accuracy === 0,
+                }),
+            });
 
-                if (!res.ok) {
-                    allOk = false;
-                    if (res.status === 419) throw { type: 'session_expired' };
-                    const data = await res.json().catch(() => ({}));
-                    const msg = (data.errors && Object.values(data.errors)[0]?.[0]) || data.message || 'Gagal slide jadwal.';
-                    setError(msg);
-                    break;
-                }
+            if (res.status === 419) throw { type: 'session_expired' };
 
-                const data = await res.json();
-                if (!data.success) {
-                    allOk = false;
-                    setError(data.message || 'Gagal.');
-                    break;
-                }
-            } catch (err) {
-                allOk = false;
-                if (err.type === 'session_expired') setError('Sesi habis.');
-                else setError('Gagal terhubung ke server.');
-                break;
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) throw { type: 'bad_response' };
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                const msg = (data.errors && Object.values(data.errors)[0]?.[0]) || data.message || 'Gagal slide jadwal.';
+                throw { type: 'slide_failed', message: msg };
             }
-        }
-
-        if (!allOk) {
+        } catch (err) {
             // Rollback SEMUA jadwal dalam grup — partial state tidak diperbolehkan.
             if (tipe === 'keluar') {
                 setClosedIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.delete(id)); return next; });
             } else {
                 setSlidIds((prev) => { const next = new Set(prev); group.allIds.forEach((id) => next.delete(id)); return next; });
             }
-        } else {
-            setSuccessMessage(tipe === 'keluar' ? 'Presensi pulang tercatat.' : 'Kehadiran tercatat.');
-            setTimeout(() => setSuccessMessage(null), 2000);
+
+            if (err.type === 'session_expired') setError('Sesi habis. Refresh dan login ulang.');
+            else if (err.type === 'bad_response') setError('Server merespon halaman HTML. Refresh halaman.');
+            else setError(err.message || 'Gagal terhubung ke server.');
+            setSlideLoading(null);
+            return;
         }
 
+        // Sinkron: tampilkan semua jadwal grup sebagai tercatat.
+        const coveredIds = data?.covered_jadwal_ids?.length ? data.covered_jadwal_ids : [];
+        const allCoveredIds = [jadwalId, ...coveredIds];
+        if (tipe === 'keluar') {
+            setClosedIds((prev) => { const next = new Set(prev); allCoveredIds.forEach((id) => next.add(id)); return next; });
+        } else {
+            setSlidIds((prev) => { const next = new Set(prev); allCoveredIds.forEach((id) => next.add(id)); return next; });
+        }
+
+        const count = allCoveredIds.length;
+        setSuccessMessage(tipe === 'keluar'
+            ? 'Presensi pulang tercatat.'
+            : (count > 1 ? `Kehadiran tercatat (${count} jam).` : 'Kehadiran tercatat.'));
+        setTimeout(() => setSuccessMessage(null), 2000);
+        setSlideLoading(null);
         setTapLoading(null);
     }, [currentPosition]);
 
