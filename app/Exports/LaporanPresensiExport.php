@@ -107,47 +107,58 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
         $tipeLabel = $this->tipePresensiLabel($presensi);
 
-        // Laporan mengajar: sertakan mapel + kelas supaya baris "Mengajar"
-        // informatif, bukan cuma label.
-        $mapel = '-';
-        $kelas = '-';
-        if ($presensi->jadwal) {
-            $mapel = $presensi->jadwal->mata_pelajaran?->nama ?? '-';
-            $kelas = $presensi->jadwal->kelas_label ?? '-';
-        }
-
-        return [
+        $row = [
             $presensi->tanggal->format('d/m/Y'),
             $pegawai?->nama_lengkap ?? '-',
             $pegawai?->nip ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $tipeLabel,
-            $mapel,
-            $kelas,
-            $presensi->unitSekolah?->nama ?? '-',
-            $presensi->jam_masuk ?? '-',
-            $presensi->jam_keluar ?? '-',
-            ucfirst($presensi->status),
-            $presensi->keterangan ?? '-',
         ];
+
+        // Kolom Mapel/Kelas hanya relevan untuk presensi mengajar —
+        // laporan tipe kantor (harian) menyembunyikannya.
+        if ($this->tipe !== 'kantor') {
+            $mapel = '-';
+            $kelas = '-';
+            if ($presensi->jadwal) {
+                $mapel = $presensi->jadwal->mata_pelajaran?->nama ?? '-';
+                $kelas = $presensi->jadwal->kelas_label ?? '-';
+            }
+            $row[] = $mapel;
+            $row[] = $kelas;
+        }
+
+        $row[] = $presensi->unitSekolah?->nama ?? '-';
+        $row[] = $presensi->jam_masuk ?? '-';
+        $row[] = $presensi->jam_keluar ?? '-';
+        $row[] = ucfirst($presensi->status);
+        $row[] = $presensi->keterangan ?? '-';
+
+        return $row;
     }
 
     public function headings(): array
     {
-        return [
+        $heads = [
             'Tanggal',
             'Nama Pegawai',
             'NIP',
             'Jenis',
             'Tipe Presensi',
-            'Mata Pelajaran',
-            'Kelas',
-            'Unit Sekolah',
-            'Jam Masuk',
-            'Jam Keluar',
-            'Status',
-            'Keterangan',
         ];
+
+        if ($this->tipe !== 'kantor') {
+            $heads[] = 'Mata Pelajaran';
+            $heads[] = 'Kelas';
+        }
+
+        $heads[] = 'Unit Sekolah';
+        $heads[] = 'Jam Masuk';
+        $heads[] = 'Jam Keluar';
+        $heads[] = 'Status';
+        $heads[] = 'Keterangan';
+
+        return $heads;
     }
 
     public function startCell(): string
@@ -157,8 +168,11 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
     public function registerEvents(): array
     {
+        // Kolom terakhir menyesuaikan jumlah headings (kantor = 10, lainnya = 12).
+        $lastCol = chr(ord('A') + count($this->headings()) - 1);
+
         return [
-            AfterSheet::class => function (AfterSheet $event) {
+            AfterSheet::class => function (AfterSheet $event) use ($lastCol) {
                 $sheet = $event->sheet->getDelegate();
 
                 $namaUnit = 'Semua Unit Sekolah';
@@ -170,23 +184,23 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
                 $periodeStr = Carbon::parse($this->start_date)->format('d/m/Y').' s/d '.Carbon::parse($this->end_date)->format('d/m/Y');
 
                 // Kop Yayasan
-                $sheet->mergeCells('A1:L1');
+                $sheet->mergeCells("A1:{$lastCol}1");
                 $sheet->setCellValue('A1', 'YAYASAN PENDIDIKAN'); // Ganti dengan nama yayasan asli
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A2:L2');
+                $sheet->mergeCells("A2:{$lastCol}2");
                 $sheet->setCellValue('A2', 'LAPORAN REKAPITULASI PRESENSI PEGAWAI');
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A3:L3');
+                $sheet->mergeCells("A3:{$lastCol}3");
                 $sheet->setCellValue('A3', 'Periode: '.$periodeStr.' | Unit: '.$namaUnit);
                 $sheet->getStyle('A3')->getFont()->setItalic(true);
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                // Styling for Headings (A6:L6)
-                $sheet->getStyle('A6:L6')->applyFromArray([
+                // Styling for Headings
+                $sheet->getStyle("A6:{$lastCol}6")->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
