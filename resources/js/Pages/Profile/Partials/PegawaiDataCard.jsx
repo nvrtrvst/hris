@@ -6,7 +6,7 @@ import ComboSelect from '@/Components/ComboSelect';
 import {
     Pencil, X, IdCard, User, Mail, Phone, Building2, BadgeCheck, CalendarDays,
     CalendarClock, GraduationCap, ShieldAlert, Landmark, CreditCard, Users, Home,
-    Baby, Briefcase, MapPin, Save, Loader2,
+    Baby, Briefcase, MapPin, Save, Loader2, FileText,
 } from 'lucide-react';
 
 const inputClass =
@@ -107,6 +107,10 @@ export default function PegawaiDataCard() {
         tanggal_akhir_kontrak: pegawai?.tanggal_akhir_kontrak || '',
         pendidikan_terakhir: pegawai?.pendidikan_terakhir || '',
         pendidikan_jurusan: pegawai?.pendidikan_jurusan || '',
+        pendidikan_tahun_lulus: pegawai?.pendidikan_tahun_lulus || '',
+        pendidikan_asal_sekolah: pegawai?.pendidikan_asal_sekolah || '',
+        sk_nomor: pegawai?.sk_nomor || '',
+        sk_tanggal: pegawai?.sk_tanggal || '',
         nama_bank: pegawai?.nama_bank || '',
         no_rekening: pegawai?.no_rekening || '',
         npwp: pegawai?.npwp || '',
@@ -280,6 +284,16 @@ export default function PegawaiDataCard() {
                                 <input value={form.data.pendidikan_jurusan} onChange={(e) => form.setData('pendidikan_jurusan', e.target.value)} className={inputClass} placeholder="Misal: Pendidikan Matematika" />
                                 {labelErr(form.errors, 'pendidikan_jurusan')}
                             </div>
+                            <div>
+                                <label className={labelClass}>Tahun Lulus</label>
+                                <input type="number" min="1950" max="2100" value={form.data.pendidikan_tahun_lulus} onChange={(e) => form.setData('pendidikan_tahun_lulus', e.target.value)} className={inputClass} placeholder="Misal: 2020" />
+                                {labelErr(form.errors, 'pendidikan_tahun_lulus')}
+                            </div>
+                            <div>
+                                <label className={labelClass}>Asal Sekolah</label>
+                                <input value={form.data.pendidikan_asal_sekolah} onChange={(e) => form.setData('pendidikan_asal_sekolah', e.target.value)} className={inputClass} placeholder="Misal: UIN Syarif Hidayatullah" />
+                                {labelErr(form.errors, 'pendidikan_asal_sekolah')}
+                            </div>
                         </div>
                     </Section>
 
@@ -372,6 +386,10 @@ export default function PegawaiDataCard() {
                             label="Pendidikan"
                             value={[pegawai?.pendidikan_terakhir, pegawai?.pendidikan_jurusan].filter(Boolean).join(' — ') || null}
                         />
+                        <Field icon={GraduationCap} label="Asal Sekolah" value={pegawai?.pendidikan_asal_sekolah} />
+                        <Field icon={CalendarDays} label="Tahun Lulus" value={pegawai?.pendidikan_tahun_lulus} />
+                        <Field icon={FileText} label="No. SK" value={pegawai?.sk_nomor} />
+                        <Field icon={CalendarDays} label="Tanggal SK" value={fmtDate(pegawai?.sk_tanggal)} />
                     </Section>
 
                     <Section title="Keuangan">

@@ -94,6 +94,10 @@ export default function LengkapiData({ auth, pegawai }) {
         tanggal_akhir_kontrak: pegawai?.tanggal_akhir_kontrak || '',
         pendidikan_terakhir: pegawai?.pendidikan_terakhir || '',
         pendidikan_jurusan: pegawai?.pendidikan_jurusan || '',
+        pendidikan_tahun_lulus: pegawai?.pendidikan_tahun_lulus || '',
+        pendidikan_asal_sekolah: pegawai?.pendidikan_asal_sekolah || '',
+        sk_nomor: pegawai?.sk_nomor || '',
+        sk_tanggal: pegawai?.sk_tanggal || '',
         nama_bank: pegawai?.nama_bank || '',
         no_rekening: pegawai?.no_rekening || '',
     });
@@ -196,6 +200,12 @@ export default function LengkapiData({ auth, pegawai }) {
                         </Field>
                         <Field label="Jurusan / Program Studi *" error={errors.pendidikan_jurusan}>
                             <input type="text" value={data.pendidikan_jurusan} onChange={(e) => setData('pendidikan_jurusan', e.target.value)} className={inputClass} placeholder="Misal: Pendidikan Matematika" />
+                        </Field>
+                        <Field label="Tahun Lulus" error={errors.pendidikan_tahun_lulus}>
+                            <input type="number" min="1950" max="2100" value={data.pendidikan_tahun_lulus} onChange={(e) => setData('pendidikan_tahun_lulus', e.target.value)} className={inputClass} placeholder="Misal: 2020" />
+                        </Field>
+                        <Field label="Asal Sekolah / Perguruan Tinggi" error={errors.pendidikan_asal_sekolah}>
+                            <input type="text" value={data.pendidikan_asal_sekolah} onChange={(e) => setData('pendidikan_asal_sekolah', e.target.value)} className={inputClass} placeholder="Misal: UIN Syarif Hidayatullah" />
                         </Field>
                     </SectionCard>
 

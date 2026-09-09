@@ -500,6 +500,10 @@ class PegawaiController extends Controller
             'no_hp_darurat' => 'nullable|string|max:20',
             'tanggal_akhir_kontrak' => 'nullable|date|after_or_equal:tanggal_mulai_kerja',
             'pendidikan_jurusan' => 'nullable|string|max:255',
+            'pendidikan_tahun_lulus' => 'nullable|integer|min:1950|max:2100',
+            'pendidikan_asal_sekolah' => 'nullable|string|max:255',
+            'sk_nomor' => 'nullable|string|max:100',
+            'sk_tanggal' => 'nullable|date',
             'nama_bank' => 'nullable|string|max:255',
             'no_rekening' => 'nullable|string|max:50',
         ]);

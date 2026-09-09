@@ -326,6 +326,10 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                 <InfoRow label="Pendidikan Terakhir">
                                     {[pegawai.pendidikan_terakhir, pegawai.pendidikan_jurusan].filter(Boolean).join(' — ') || '—'}
                                 </InfoRow>
+                                <InfoRow label="Asal Sekolah">{pegawai.pendidikan_asal_sekolah || '—'}</InfoRow>
+                                <InfoRow label="Tahun Lulus">{pegawai.pendidikan_tahun_lulus || '—'}</InfoRow>
+                                <InfoRow label="No. SK">{pegawai.sk_nomor || '—'}</InfoRow>
+                                <InfoRow label="Tanggal SK">{fmtDate(pegawai.sk_tanggal)}</InfoRow>
                                 <InfoRow label="Mulai Bekerja">{fmtDate(pegawai.tanggal_mulai_kerja)}</InfoRow>
                                 <InfoRow label="Dibuat oleh">
                                     {pegawai.created_by?.name ? `${pegawai.created_by.name} • ${fmtDate(pegawai.created_at)}` : fmtDate(pegawai.created_at)}

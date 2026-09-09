@@ -61,6 +61,10 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         tanggal_mulai_kerja: pegawai.tanggal_mulai_kerja,
         pendidikan_terakhir: pegawai.pendidikan_terakhir,
         pendidikan_jurusan: pegawai.pendidikan_jurusan || '',
+        pendidikan_tahun_lulus: pegawai.pendidikan_tahun_lulus || '',
+        pendidikan_asal_sekolah: pegawai.pendidikan_asal_sekolah || '',
+        sk_nomor: pegawai.sk_nomor || '',
+        sk_tanggal: pegawai.sk_tanggal || '',
         jumlah_tanggungan: pegawai.jumlah_tanggungan ?? 0,
         alamat_domisili: pegawai.alamat_domisili || '',
         no_hp_darurat: pegawai.no_hp_darurat || '',
@@ -335,6 +339,25 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                                 <input type="text" value={data.pendidikan_jurusan}
                                     onChange={(e) => setData('pendidikan_jurusan', e.target.value)} className={inputClass}
                                     placeholder="Misal: Pendidikan Matematika" />
+                            </Field>
+                            <Field label="Tahun Lulus" error={errors.pendidikan_tahun_lulus}>
+                                <input type="number" min="1950" max="2100" value={data.pendidikan_tahun_lulus}
+                                    onChange={(e) => setData('pendidikan_tahun_lulus', e.target.value)} className={inputClass}
+                                    placeholder="Misal: 2020" />
+                            </Field>
+                            <Field label="Asal Sekolah / Perguruan Tinggi" error={errors.pendidikan_asal_sekolah}>
+                                <input type="text" value={data.pendidikan_asal_sekolah}
+                                    onChange={(e) => setData('pendidikan_asal_sekolah', e.target.value)} className={inputClass}
+                                    placeholder="Misal: UIN Syarif Hidayatullah" />
+                            </Field>
+                            <Field label="Nomor SK" error={errors.sk_nomor}>
+                                <input type="text" value={data.sk_nomor}
+                                    onChange={(e) => setData('sk_nomor', e.target.value)} className={inputClass}
+                                    placeholder="Nomor SK Pengangkatan" />
+                            </Field>
+                            <Field label="Tanggal SK" error={errors.sk_tanggal}>
+                                <input type="date" value={data.sk_tanggal}
+                                    onChange={(e) => setData('sk_tanggal', e.target.value)} className={inputClass} />
                             </Field>
                         </SectionCard>
 
