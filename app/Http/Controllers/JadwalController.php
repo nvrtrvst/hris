@@ -1071,16 +1071,26 @@ class JadwalController extends Controller
     }
 
     /**
-     * Template Excel import jadwal (dropdown hari + jenis jadwal).
+     * Template Excel import jadwal (dropdown hari, jenis, guru per-unit,
+     * mapel semua). Param unit opsional menentukan daftar guru & durasi JP.
      */
-    public function downloadTemplate()
+    public function downloadTemplate(Request $request)
     {
         $user = auth()->user();
         if (! $user || ! $user->can('manage_jadwal')) {
             abort(403);
         }
 
-        $response = Excel::download(new JadwalTemplateExport, 'template_import_jadwal.xlsx');
+        $unitId = $request->filled('unit_sekolah_id') ? (int) $request->unit_sekolah_id : null;
+
+        // Admin unit dipaksa unit sendiri.
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $unitId = $user->unit_sekolah_id;
+        }
+
+        $export = JadwalTemplateExport::build($unitId);
+
+        $response = Excel::download($export, 'template_import_jadwal.xlsx');
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 
         return $response;

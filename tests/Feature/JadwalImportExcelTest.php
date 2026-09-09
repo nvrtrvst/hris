@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
 class JadwalImportExcelTest extends TestCase
@@ -198,6 +199,95 @@ class JadwalImportExcelTest extends TestCase
             'pegawai_id' => $this->guru->id,
             'unit_sekolah_id' => $this->unit->id,
         ]);
+    }
+
+    public function test_import_excel_mapel_baru_auto_create_title_case(): void
+    {
+        // Mapel belum terdaftar → auto-create "Bahasa Arab" (bukan error).
+        $file = $this->makeXlsx([
+            ['Senin', '7 - A', 'Guru Import', 'bahasa arab', '07:00', 1, '', 'mengajar', '2026/2027', 1],
+        ]);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('jadwal.import'), [
+                'file' => $file,
+                'unit_sekolah_id' => $this->unit->id,
+            ]);
+
+        $this->assertDatabaseHas('mata_pelajaran', [
+            'nama' => 'Bahasa Arab',
+            'unit_sekolah_id' => $this->unit->id,
+        ]);
+    }
+
+    public function test_import_excel_mapel_case_insensitive_tidak_duplikat(): void
+    {
+        // "MATEMATIKA" harus match "Matematika" existing — bukan create baru.
+        MataPelajaran::firstOrCreate(['nama' => 'Matematika']);
+
+        $file = $this->makeXlsx([
+            ['Senin', '7 - A', 'Guru Import', 'MATEMATIKA', '07:00', 1, '', 'mengajar', '2026/2027', 1],
+        ]);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('jadwal.import'), [
+                'file' => $file,
+                'unit_sekolah_id' => $this->unit->id,
+            ]);
+
+        $this->assertSame(1, MataPelajaran::whereRaw('LOWER(nama) = ?', ['matematika'])->count());
+    }
+
+    public function test_template_berisi_sheet_referensi_dan_guru_unit(): void
+    {
+        // Guru kedua di unit lain — tidak boleh masuk template unit ini.
+        $jabatan = Jabatan::first();
+        $user2 = User::factory()->create();
+        $guruLuar = Pegawai::create([
+            'user_id' => $user2->id,
+            'nik' => '1234567890000102',
+            'nama_lengkap' => 'Guru Unit Lain',
+            'tempat_lahir' => 'Jakarta',
+            'tanggal_lahir' => '1990-01-01',
+            'jenis_kelamin' => 'L',
+            'agama' => 'Islam',
+            'status_pernikahan' => 'Belum Menikah',
+            'alamat_ktp' => 'Jl. Test',
+            'no_hp' => '081234567891',
+            'status_kepegawaian' => 'tetap',
+            'tanggal_mulai_kerja' => '2020-01-01',
+            'status_aktif' => 'aktif',
+            'pendidikan_terakhir' => 'S1',
+        ]);
+        $unitLain = UnitSekolah::create(['nama' => 'SMA Test', 'singkatan' => 'SMA', 'latitude' => -6.2, 'longitude' => 106.8, 'radius_meter' => 100]);
+        $guruLuar->units()->attach($unitLain->id, ['jabatan_id' => $jabatan->id, 'is_primary' => true]);
+
+        $response = $this->actingAs($this->admin, 'web_admin')
+            ->get(route('jadwal.template', ['unit_sekolah_id' => $this->unit->id]));
+        $response->assertOk();
+
+        // Parse xlsx: 2 sheet, Referensi berisi guru unit & tidak berisi guru luar.
+        $tmp = config('filesystems.disks.local.root').'/tpl-check.xlsx';
+        file_put_contents($tmp, $response->getFile()->getContent());
+        $ss = IOFactory::load($tmp);
+
+        $this->assertSame(['Jadwal', 'Referensi'], $ss->getSheetNames());
+
+        $ref = $ss->getSheetByName('Referensi');
+        $colB = [];
+        for ($r = 3; $r <= 100; $r++) {
+            $v = $ref->getCell("B{$r}")->getValue();
+            if ($v) {
+                $colB[] = $v;
+            }
+        }
+        $this->assertContains('Guru Import', $colB);
+        $this->assertNotContains('Guru Unit Lain', $colB);
+
+        // Formula Jam Selesai merujuk durasi Referensi!D2.
+        $jadwal = $ss->getSheetByName('Jadwal');
+        $this->assertStringContainsString('Referensi!$D$2', (string) $jadwal->getCell('G2')->getValue());
+        unlink($tmp);
     }
 
     public function test_template_download(): void

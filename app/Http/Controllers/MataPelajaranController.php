@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\MataPelajaran;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class MataPelajaranController extends Controller
 {
@@ -27,7 +26,17 @@ class MataPelajaranController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nama' => 'required|string|max:255|unique:mata_pelajaran,nama',
+            'nama' => [
+                'required',
+                'string',
+                'max:255',
+                // Case-insensitive — cegah duplikat "matematika" vs "Matematika".
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if (MataPelajaran::whereRaw('LOWER(TRIM(nama)) = ?', [mb_strtolower(trim((string) $value))])->exists()) {
+                        $fail('Mata pelajaran "'.trim((string) $value).'" sudah ada (penulisan berbeda dianggap sama).');
+                    }
+                },
+            ],
         ]);
 
         MataPelajaran::create($validated);
@@ -38,7 +47,19 @@ class MataPelajaranController extends Controller
     public function update(Request $request, MataPelajaran $mata_pelajaran)
     {
         $validated = $request->validate([
-            'nama' => ['required', 'string', 'max:255', Rule::unique('mata_pelajaran', 'nama')->ignore($mata_pelajaran->id)],
+            'nama' => [
+                'required',
+                'string',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail) use ($mata_pelajaran) {
+                    $exists = MataPelajaran::whereRaw('LOWER(TRIM(nama)) = ?', [mb_strtolower(trim((string) $value))])
+                        ->where('id', '!=', $mata_pelajaran->id)
+                        ->exists();
+                    if ($exists) {
+                        $fail('Mata pelajaran "'.trim((string) $value).'" sudah ada (penulisan berbeda dianggap sama).');
+                    }
+                },
+            ],
         ]);
 
         $mata_pelajaran->update($validated);

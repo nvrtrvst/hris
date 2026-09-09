@@ -1110,9 +1110,19 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                                     <div className="space-y-4">
                                         {importMode === 'excel' && (
-                                            <a href={route('jadwal.template')} className="flex items-center gap-2 rounded-xl border border-info/30 bg-info-light px-4 py-2.5 text-sm font-semibold text-info hover:bg-info/10">
-                                                <Download className="h-4 w-4" /> Unduh Template Excel
-                                            </a>
+                                            <div className="space-y-2">
+                                                <a
+                                                    href={route('jadwal.template', importData.unit_sekolah_id ? { unit_sekolah_id: importData.unit_sekolah_id } : {})}
+                                                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold ${importData.unit_sekolah_id ? 'border-info/30 bg-info-light text-info hover:bg-info/10' : 'border-border bg-surface text-text-secondary'}`}
+                                                >
+                                                    <Download className="h-4 w-4" /> Unduh Template Excel
+                                                </a>
+                                                {!importData.unit_sekolah_id && (
+                                                    <p className="text-xs text-amber-600">
+                                                        Pilih unit dulu sebelum unduh — daftar guru &amp; durasi JP di template mengikuti unit.
+                                                    </p>
+                                                )}
+                                            </div>
                                         )}
 
                                         <div>

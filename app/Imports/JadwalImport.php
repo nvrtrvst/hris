@@ -60,10 +60,13 @@ class JadwalImport implements ToCollection, WithStartRow
         // Prefetch lookup — 3 query, bukan per-baris.
         $pegawaiByName = Pegawai::query()->where('status_aktif', 'aktif')
             ->get()->keyBy(fn ($p) => trim($p->nama_lengkap));
+        // Match mapel case-insensitive ("pjok" == "PJOK") supaya typo kapital
+        // tidak bikin duplikat baru.
         $mapelByNama = MataPelajaran::query()
             ->where('unit_sekolah_id', $this->unitId)
             ->orWhereNull('unit_sekolah_id')
-            ->get()->keyBy(fn ($m) => trim($m->nama));
+            ->get()
+            ->keyBy(fn ($m) => mb_strtolower(trim($m->nama)));
 
         // Jadwal existing unit+periode untuk cek duplikat & bentrok (1 query).
         // Baris file yang lolos validasi juga di-push ke sini supaya
@@ -146,13 +149,18 @@ class JadwalImport implements ToCollection, WithStartRow
             }
 
             // Mapel wajib untuk mengajar, opsional untuk jenis lain.
+            // Tidak ketemu → auto-create dengan nama Title Case rapi
+            // ("bahasa arab" → "Bahasa Arab") terikat unit import.
             $mapelId = null;
             if ($jenis === 'mengajar') {
-                $mapel = $mapelByNama[$namaMapel] ?? null;
+                $mapelKey = mb_strtolower(trim($namaMapel));
+                $mapel = $mapelByNama[$mapelKey] ?? null;
                 if (! $mapel) {
-                    $this->failures[] = "Baris {$excelRow}: Mapel '{$namaMapel}' tidak ditemukan";
-
-                    continue;
+                    $mapel = MataPelajaran::create([
+                        'nama' => $this->titleCase($namaMapel),
+                        'unit_sekolah_id' => $this->unitId,
+                    ]);
+                    $mapelByNama[$mapelKey] = $mapel;
                 }
                 $mapelId = $mapel->id;
             }
@@ -260,6 +268,22 @@ class JadwalImport implements ToCollection, WithStartRow
         }
 
         return null;
+    }
+
+    /**
+     * Title Case rapi untuk nama mapel: "bahasa  arab" → "Bahasa Arab",
+     * "BAHASA ARAB" → "Bahasa Arab". Singkatan pendek all-caps (PJOK, PPKN,
+     * BK) dipertahankan.
+     */
+    protected function titleCase(string $value): string
+    {
+        $value = preg_replace('/\s+/u', ' ', trim($value)) ?? $value;
+
+        return collect(explode(' ', $value))
+            ->map(fn ($word) => mb_strlen($word) <= 5 && $word === mb_strtoupper($word)
+                ? $word
+                : mb_convert_case($word, MB_CASE_TITLE, 'UTF-8'))
+            ->implode(' ');
     }
 
     /**
