@@ -147,9 +147,8 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         if (allRecordsComplete) return SELESAI;
         if (!pagiRecord) return FOTO_PAGI;
         if (pagiRecord.jam_keluar) return SELESAI;
-        // Foto sore hanya ketika tidak ada lagi jadwal yang berlangsung/menunggu
-        // di-slide — cegah presensi keluar sebelum jam mengajar selesai.
-        if (semuaBeres) return FOTO_SORE;
+        // Foto sore hanya setelah semua jadwal selesai DAN lewat jam pulang kantor.
+        if (semuaBeres && jamSekarang >= jamSore) return FOTO_SORE;
         // Tanpa jadwal sama sekali: foto sore tetap tersedia setelah jam sore tiba.
         if (jadwals.length === 0 && jamSekarang >= jamSore) return FOTO_SORE;
 

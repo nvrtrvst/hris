@@ -78,4 +78,7 @@ class PresensiMessages
     public const TUJUAN_REQUIRED = 'Tujuan tugas luar wajib diisi.';
 
     public const TUJUAN_LUAR_RADIUS = 'Tugas luar dikecualikan dari cek radius. Pastikan foto & akurasi valid.';
+
+    // Pulang kantor
+    public const PULANG_SEBELUM_JAM_KANTOR = 'Anda belum bisa pulang. Jam pulang kantor: %s.';
 }

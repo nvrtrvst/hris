@@ -867,11 +867,10 @@ class MobileController extends Controller
                     $jamPulang = Carbon::now()->isSaturday() && $unit->jam_kerja_sabtu_selesai
                         ? $unit->jam_kerja_sabtu_selesai
                         : $unit->jam_pulang_kantor;
-                    if ($jamPulang) {
-                        $batasPulang = Carbon::parse($jamPulang)->subMinutes(30)->format('H:i:s');
-                        if ($presensi->jam_keluar < $batasPulang) {
-                            $lokasiPerluReview = true;
-                        }
+                    if ($jamPulang && $presensi->jam_keluar < $jamPulang) {
+                        throw ValidationException::withMessages([
+                            'conflict' => sprintf(PresensiMessages::PULANG_SEBELUM_JAM_KANTOR, substr($jamPulang, 0, 5)),
+                        ]);
                     }
                 }
 
