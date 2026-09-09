@@ -137,8 +137,14 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
             lastMasuk: presensiMap[g.guru?.id]?.jam_masuk || '',
         }));
 
-        // Belum datang paling bawah; yang datang paling baru paling atas.
-        return groups.sort((a, b) => (b.lastMasuk || '99:99').localeCompare(a.lastMasuk || '99:99'));
+        // Prioritas: (1) guru yang SUDAH hadir selalu di atas yang belum,
+        // (2) di antara yang hadir — terakhir datang paling atas,
+        // (3) yang belum hadir di bawah (di antara mereka, urut nama).
+        const rank = (g) => (g.lastMasuk ? 0 : 1);
+        return groups.sort((a, b) =>
+            rank(a) - rank(b)
+            || (b.lastMasuk || '99:99').localeCompare(a.lastMasuk || '99:99')
+            || (a.guru?.nama_lengkap || '').localeCompare(b.guru?.nama_lengkap || ''));
     }, [jadwalHariIni, presensiMap]);
 
     const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka || 0);
