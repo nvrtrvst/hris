@@ -243,10 +243,12 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                     const isTL = c.is_tugas_luar;
                     // Child terakhir grup: border bawah tegas — batas visual
                     // antar grup saat expand (grup berikutnya jelas terpisah).
+                    // Highlight kuning hanya untuk presensi harian (parent
+                    // kantor) — JP mengajar telat cukup terbaca dari badge.
                     const isLast = ci === children.length - 1;
 
                     return (
-                        <tr key={c.id} className={`${c.status === 'telat' ? 'bg-amber-50' : 'bg-surface/40'} ${isLast ? 'border-b-2 border-border' : ''}`}>
+                        <tr key={c.id} className={`bg-surface/40 ${isLast ? 'border-b-2 border-border' : ''}`}>
                             <td className="px-4 py-3 whitespace-nowrap pl-12">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{isTL ? 'Tugas Luar' : 'Mengajar'}</span>
                             </td>
@@ -839,7 +841,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                             const nama = p.pegawai?.nama_lengkap || '-';
 
                                             return (
-                                                <tr key={p.id} className={`group transition-colors ${p.status === 'telat' ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-surface/70'}`}>
+                                                <tr key={p.id} className={`group transition-colors ${p.status === 'telat' && !p.jadwal_id ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-surface/70'}`}>
                                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                                         <div className="flex items-center gap-3">
                                                             <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold ${avatarTone(nama)}`}>
