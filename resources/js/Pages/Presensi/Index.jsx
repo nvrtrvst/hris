@@ -132,17 +132,22 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
     const groups = buildGroups(data);
 
     return groups.map((group) => {
-        const parent = group.find((g) => g.tipe_presensi === 'kantor' && !g.is_lembur && !g.is_tugas_luar) || group[0];
+        // Parent = row kantor (bukan fallback group[0]): highlight telat
+        // parent hanya mengikuti status KANTOR, bukan JP — mencegah grup
+        // tanpa row kantor mewarnai header grup dengan status JP pertama.
+        const kantorRow = group.find((g) => g.tipe_presensi === 'kantor' && !g.is_lembur && !g.is_tugas_luar);
+        const parent = kantorRow || group[0];
         const children = group.filter((g) => g !== parent);
         const key = `${parent.pegawai_id}__${parent.tanggal}`;
         const isOpen = Boolean(expanded[key]);
         const lembur = group.find((g) => g.is_lembur);
         const tugasLuar = group.find((g) => g.is_tugas_luar);
         const nama = parent.pegawai?.nama_lengkap || '-';
+        const parentTelat = kantorRow ? kantorRow.status === 'telat' : false;
 
         return (
             <React.Fragment key={key}>
-                <tr className={`group transition-colors ${parent.status === 'telat' ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-surface/70'}`}>
+                <tr className={`group transition-colors ${parentTelat ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-surface/70'}`}>
                     <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                             <button type="button" onClick={() => setExpanded((s) => ({ ...s, [key]: !s[key] }))} className="rounded-md px-1 text-text-secondary transition-colors hover:text-primary" title={isOpen ? 'Tutup' : 'Buka'}>
@@ -234,11 +239,14 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         </div>
                     </td>
                 </tr>
-                {isOpen && children.map((c) => {
+                {isOpen && children.map((c, ci) => {
                     const isTL = c.is_tugas_luar;
+                    // Child terakhir grup: border bawah tegas — batas visual
+                    // antar grup saat expand (grup berikutnya jelas terpisah).
+                    const isLast = ci === children.length - 1;
 
                     return (
-                        <tr key={c.id} className={c.status === 'telat' ? 'bg-amber-50' : 'bg-surface/40'}>
+                        <tr key={c.id} className={`${c.status === 'telat' ? 'bg-amber-50' : 'bg-surface/40'} ${isLast ? 'border-b-2 border-border' : ''}`}>
                             <td className="px-4 py-3 whitespace-nowrap pl-12">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{isTL ? 'Tugas Luar' : 'Mengajar'}</span>
                             </td>
