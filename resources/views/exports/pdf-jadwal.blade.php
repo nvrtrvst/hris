@@ -177,8 +177,8 @@
                     <div>{{ $unitName }}, {{ now()->format('d/m/Y') }}</div>
                     <div>Kepala Sekolah</div>
                     <div class="ttd-nama">{{ $kepalaSekolah->nama_lengkap }}</div>
-                    @if($kepalaSekolah->nip)
-                        <div class="ttd-nip">NIP. {{ $kepalaSekolah->nip }}</div>
+                    @if($kepalaSekolah->nuptk)
+                        <div class="ttd-nip">NIP. {{ $kepalaSekolah->nuptk }}</div>
                     @endif
                 </div>
             </td>

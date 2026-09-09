@@ -33,7 +33,7 @@ class PegawaiSeeder extends Seeder
                 ['nik' => '1234567890123456'],
                 [
                     'user_id' => $user->id,
-                    'nip' => '199001012020121001',
+                    'nuptk' => '199001012020121001',
                     'nama_lengkap' => 'Budi Santoso, S.Pd',
                     'tempat_lahir' => 'Jakarta',
                     'tanggal_lahir' => '1990-01-01',

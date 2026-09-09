@@ -1235,7 +1235,7 @@ class RouteSmokeTest extends TestCase
             ],
             'pegawai.update' => [
                 'nik' => '8899001122334455',
-                'nip' => '',
+                'nuptk' => '',
                 'nama_lengkap' => 'Guru Smoke Test Updated',
                 'email' => $this->mobileUser->email,
                 'tempat_lahir' => 'Bandung',

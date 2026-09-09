@@ -114,9 +114,9 @@ export default function RunPayrollWorksheet({ auth, month, year, periode }) {
 
         return rows.filter((r) => {
             const nama = (r.pegawai?.nama_lengkap || '').toLowerCase();
-            const nip = (r.pegawai?.nip || '').toLowerCase();
+            const nuptk = (r.pegawai?.nuptk || '').toLowerCase();
 
-            return nama.includes(q) || nip.includes(q);
+            return nama.includes(q) || nuptk.includes(q);
         });
     }, [rows, search]);
 
@@ -444,7 +444,7 @@ export default function RunPayrollWorksheet({ auth, month, year, periode }) {
                                                             <div className="min-w-0">
                                                                 <div className="truncate text-[11px] font-bold text-text-primary max-w-[150px]">{p.pegawai?.nama_lengkap || 'Unknown'}</div>
                                                                 <div className="text-[9px] text-text-muted">
-                                                                    {p.pegawai?.units?.[0]?.singkatan || p.pegawai?.units?.[0]?.nama || p.pegawai?.nip || '-'}
+                                                                    {p.pegawai?.units?.[0]?.singkatan || p.pegawai?.units?.[0]?.nama || p.pegawai?.nuptk || '-'}
                                                                 </div>
                                                             </div>
                                                         </div>

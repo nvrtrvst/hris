@@ -39,8 +39,8 @@ export default function Matrix({ auth, pegawais, komponens, unitSekolahs = [] })
         return pegawais.filter((p) => {
             if (q) {
                 const s = p.nama_lengkap?.toLowerCase() || '';
-                const nip = p.nip?.toLowerCase() || '';
-                if (!s.includes(q) && !nip.includes(q)) return false;
+                const nuptk = p.nuptk?.toLowerCase() || '';
+                if (!s.includes(q) && !nuptk.includes(q)) return false;
             }
             if (filterUnit && !p.units?.some((u) => u.id === parseInt(filterUnit, 10))) return false;
 
@@ -149,7 +149,7 @@ export default function Matrix({ auth, pegawais, komponens, unitSekolahs = [] })
                                             <tr key={p.id} className={`group transition-colors ${pIdx % 2 !== 0 ? 'bg-surface/50' : 'bg-white'} hover:bg-primary-50/30`}>
                                                 <td className={`sticky left-0 z-10 px-3 py-2 whitespace-nowrap border-r border-border shadow-[1px_0_0_0_var(--color-border)] ${pIdx % 2 !== 0 ? 'bg-surface/50' : 'bg-white'} group-hover:bg-primary-50/30`}>
                                                     <div className="text-[11px] font-bold text-text-primary">{p.nama_lengkap}</div>
-                                                    <div className="text-[9px] text-text-muted">{p.nip || '-'}</div>
+                                                    <div className="text-[9px] text-text-muted">{p.nuptk || '-'}</div>
                                                     {p.units && p.units.length > 0 && (
                                                         <div className="text-[9px] text-primary font-bold mt-0.5 uppercase">{p.units[0].nama}</div>
                                                     )}

@@ -343,7 +343,7 @@ export default function PegawaiDataCard() {
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     <Section title="Identitas">
                         <Field icon={IdCard} label="NIK" value={pegawai?.nik_masked} />
-                        <Field icon={IdCard} label="NIP" value={pegawai?.nip} />
+                        <Field icon={IdCard} label="NIP" value={pegawai?.nuptk} />
                         <Field icon={Building2} label="Unit" value={primaryUnit?.nama || primaryUnit?.nama_unit} />
                         <Field icon={Briefcase} label="Jabatan" value={primaryJabatan?.nama} />
                         <Field

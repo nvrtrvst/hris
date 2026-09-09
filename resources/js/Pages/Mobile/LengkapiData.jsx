@@ -71,7 +71,7 @@ const Field = ({ label, children, error }) => (
 export default function LengkapiData({ auth, pegawai }) {
     const { data, setData, post, processing, errors } = useForm({
         nik: '',
-        nip: pegawai?.nip || '',
+        nuptk: pegawai?.nuptk || '',
         nama_lengkap: pegawai?.nama_lengkap || '',
         tempat_lahir: pegawai?.tempat_lahir || '',
         tanggal_lahir: pegawai?.tanggal_lahir || '',
@@ -114,8 +114,8 @@ export default function LengkapiData({ auth, pegawai }) {
                         <Field label="NIK *" error={errors.nik}>
                             <input type="text" maxLength={16} value={data.nik} onChange={(e) => setData('nik', e.target.value)} className={inputClass} placeholder="16 digit NIK" />
                         </Field>
-                        <Field label="NIP" error={errors.nip}>
-                            <input type="text" value={data.nip} onChange={(e) => setData('nip', e.target.value)} className={inputClass} placeholder="Nomor Induk Pegawai" />
+                        <Field label="NIP" error={errors.nuptk}>
+                            <input type="text" value={data.nuptk} onChange={(e) => setData('nuptk', e.target.value)} className={inputClass} placeholder="Nomor Induk Pegawai" />
                         </Field>
                         <Field label="Nama Lengkap *" error={errors.nama_lengkap}>
                             <input type="text" value={data.nama_lengkap} onChange={(e) => setData('nama_lengkap', e.target.value)} className={inputClass} placeholder="Nama sesuai KTP" />

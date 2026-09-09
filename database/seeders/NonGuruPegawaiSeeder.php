@@ -132,7 +132,7 @@ class NonGuruPegawaiSeeder extends Seeder
                     'nik' => $nik,
                     // Prefix '2000' — terpisah dari NIP lain (yang berawalan '19'),
                     // sehingga unik dan tidak mungkin bentrok dengan seeder lain.
-                    'nip' => '2000'.str_pad((string) $index, 6, '0', STR_PAD_LEFT),
+                    'nuptk' => '2000'.str_pad((string) $index, 6, '0', STR_PAD_LEFT),
                     'nama_lengkap' => $nama,
                     'tempat_lahir' => 'Bandung',
                     'tanggal_lahir' => now()->subYears(24 + ($index % 22))->subDays($index)->toDateString(),

@@ -65,7 +65,7 @@ export default function Show({ auth, penggajian }) {
                                             </tr>
                                             <tr>
                                                 <td className="py-1 text-text-secondary">NIP</td>
-                                                <td className="py-1 font-bold text-text-primary">: {penggajian.pegawai.nip || '—'}</td>
+                                                <td className="py-1 font-bold text-text-primary">: {penggajian.pegawai.nuptk || '—'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="py-1 text-text-secondary">Status</td>

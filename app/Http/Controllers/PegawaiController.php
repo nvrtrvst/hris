@@ -470,7 +470,7 @@ class PegawaiController extends Controller
             'nik' => $canViewSensitive
                 ? 'required|string|size:16|unique:pegawai,nik,'.$pegawai->id
                 : 'nullable|string|size:16|unique:pegawai,nik,'.$pegawai->id,
-            'nip' => 'nullable|string|max:50|unique:pegawai,nip,'.$pegawai->id,
+            'nuptk' => 'nullable|string|max:50|unique:pegawai,nuptk,'.$pegawai->id,
             'nama_lengkap' => 'required|string|max:255',
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($pegawai->user_id)],
             'tempat_lahir' => 'required|string|max:255',
@@ -597,7 +597,7 @@ class PegawaiController extends Controller
                 $userAcc->update([
                     'name' => $validated['nama_lengkap'],
                     'email' => $validated['email'],
-                    'username' => ! empty($validated['nip'] ?? null) ? $validated['nip'] : $validated['nik'],
+                    'username' => ! empty($validated['nuptk'] ?? null) ? $validated['nuptk'] : $validated['nik'],
                 ]);
             }
         }

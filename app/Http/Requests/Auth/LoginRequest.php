@@ -28,7 +28,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'login' => ['required', 'string'],
+            'email' => ['required', 'email'],
             'password' => ['required', 'string'],
         ];
     }
@@ -47,14 +47,13 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited($guard);
 
-        $login = $this->input('login');
-        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+        $login = $this->input('email');
 
-        if (! Auth::guard($guard)->attempt([$field => $login, 'password' => $this->input('password')], $this->boolean('remember'))) {
+        if (! Auth::guard($guard)->attempt(['email' => $login, 'password' => $this->input('password')], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey($guard));
 
             throw ValidationException::withMessages([
-                'login' => 'Email/No Induk atau kata sandi yang Anda masukkan tidak sesuai.',
+                'email' => 'Email atau kata sandi yang Anda masukkan tidak sesuai.',
             ]);
         }
 
@@ -77,7 +76,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey($guard));
 
         throw ValidationException::withMessages([
-            'login' => 'Terlalu banyak percobaan masuk. Silakan coba lagi dalam '.ceil($seconds / 60).' menit.',
+            'email' => 'Terlalu banyak percobaan masuk. Silakan coba lagi dalam '.ceil($seconds / 60).' menit.',
         ]);
     }
 
@@ -86,6 +85,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(string $guard = 'web_admin'): string
     {
-        return Str::transliterate(Str::lower($this->string('login')).'|'.$guard.'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('email')).'|'.$guard.'|'.$this->ip());
     }
 }

@@ -25,7 +25,7 @@ class PegawaiProfileUpdateRequest extends FormRequest
     {
         return [
             'nik' => 'sometimes|nullable|string|size:16',
-            'nip' => 'sometimes|nullable|string|max:50',
+            'nuptk' => 'sometimes|nullable|string|max:50',
             'nama_lengkap' => 'sometimes|nullable|string|max:255',
             'email' => ['sometimes', 'nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->user()?->id)],
             'tempat_lahir' => 'sometimes|nullable|string|max:255',

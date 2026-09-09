@@ -92,7 +92,7 @@ class MassivePegawaiSeeder extends Seeder
                         'tmt_mengajar' => now()->subYears(1 + ($index % 8))->toDateString(),
                         'pendidikan_terakhir' => 'S1',
                         'pendidikan_jurusan' => $index % 2 === 0 ? 'Pendidikan Matematika' : 'Pendidikan Bahasa Indonesia',
-                        'nip' => '19'.str_pad((string) (1980 + $index), 7, '0', STR_PAD_LEFT),
+                        'nuptk' => '19'.str_pad((string) (1980 + $index), 7, '0', STR_PAD_LEFT),
                     ]);
                 }
 

@@ -74,7 +74,7 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
         $pegawai = $penggajian->pegawai;
 
         return [
-            $pegawai?->nip ?? '-',
+            $pegawai?->nuptk ?? '-',
             $pegawai?->nama_lengkap ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $unitName,

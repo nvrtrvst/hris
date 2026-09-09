@@ -15,7 +15,7 @@ class PegawaiSelfUpdateRequest extends FormRequest
     {
         return [
             'nik' => 'required|string|size:16',
-            'nip' => 'nullable|string|max:50',
+            'nuptk' => 'nullable|string|max:50',
             'nama_lengkap' => 'required|string|max:255',
             'tempat_lahir' => 'required|string|max:255',
             'tanggal_lahir' => 'required|date',

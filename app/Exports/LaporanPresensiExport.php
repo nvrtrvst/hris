@@ -120,7 +120,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
         $row = [
             $presensi->tanggal->format('d/m/Y'),
             $pegawai?->nama_lengkap ?? '-',
-            $pegawai?->nip ?? '-',
+            $pegawai?->nuptk ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $tipeLabel,
         ];

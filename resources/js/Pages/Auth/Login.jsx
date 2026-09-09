@@ -12,7 +12,7 @@ const TRUST_ITEMS = [
 
 export default function Login({ status, canResetPassword }) {
     const { data, setData, post, processing, errors, reset } = useForm({
-        login: '',
+        email: '',
         password: '',
         remember: true,
     });
@@ -79,7 +79,7 @@ export default function Login({ status, canResetPassword }) {
         >
             <div className="mb-5">
                 <h2 className="text-xl font-bold tracking-tight text-slate-950">Masuk ke akun</h2>
-                <p className="mt-1 text-sm text-slate-500">Gunakan email atau nomor induk pegawai.</p>
+                <p className="mt-1 text-sm text-slate-500">Gunakan email untuk masuk.</p>
             </div>
 
             {status && (
@@ -91,20 +91,20 @@ export default function Login({ status, canResetPassword }) {
 
             <form onSubmit={submit} autoComplete="on" className="space-y-4">
                 <AuthField
-                    id="login"
-                    name="login"
-                    label="Email atau No. Induk"
+                    id="email"
+                    name="email"
+                    label="Email"
                     icon={Mail}
-                    type="text"
+                    type="email"
                     inputMode="email"
-                    autoComplete="username"
+                    autoComplete="email"
                     autoCapitalize="none"
                     spellCheck="false"
                     autoFocus
                     placeholder="admin@yayasan.sch.id"
-                    value={data.login}
-                    error={errors.login}
-                    onChange={(event) => setData('login', event.target.value)}
+                    value={data.email}
+                    error={errors.email}
+                    onChange={(event) => setData('email', event.target.value)}
                 />
 
                 <AuthField
@@ -151,7 +151,7 @@ export default function Login({ status, canResetPassword }) {
 
                 <button
                     type="submit"
-                    disabled={processing || !data.login || !data.password}
+                    disabled={processing || !data.email || !data.password}
                     className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
                 >
                     {processing ? (

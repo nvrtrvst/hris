@@ -53,7 +53,7 @@ class PegawaiExport implements FromCollection, WithHeadings, WithStyles
             ->map(function ($p) {
                 return [
                     $this->withNik ? $this->plainNik($p) : $p->nik_masked,
-                    $p->nip ?? '',
+                    $p->nuptk ?? '',
                     $p->nama_lengkap,
                     $p->jenisPegawaiLabel(),
                     $p->units->pluck('nama')->implode(', '),

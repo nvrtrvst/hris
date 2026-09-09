@@ -213,7 +213,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                             </span>
                                         )}
                                         {nikError && <span className="text-rose-600">{nikError}</span>}
-                                        {pegawai.nip && <span className="inline-flex items-center gap-1"><BadgeCheck className="h-3 w-3" /> NIP: {pegawai.nip}</span>}
+                                        {pegawai.nuptk && <span className="inline-flex items-center gap-1"><BadgeCheck className="h-3 w-3" /> NIP: {pegawai.nuptk}</span>}
                                     </div>
                                     <div className="mt-3 flex flex-wrap gap-2">                                                    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${kep.badge}`}>
                                                         {kep.label}

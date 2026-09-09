@@ -141,7 +141,7 @@ class PegawaiExportTest extends TestCase
         $pegawai = Pegawai::create([
             'user_id' => $user->id,
             'nik' => $nik,
-            'nip' => $nik,
+            'nuptk' => $nik,
             'nama_lengkap' => $nama,
             'tempat_lahir' => 'Jakarta',
             'tanggal_lahir' => '1990-01-01',

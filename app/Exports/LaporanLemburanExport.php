@@ -76,7 +76,7 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
         $totalHours = round($totalMinutes / 60, 2);
 
         return [
-            $pegawai?->nip ?? '-',
+            $pegawai?->nuptk ?? '-',
             $pegawai?->nama_lengkap ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $unitName,

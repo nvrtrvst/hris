@@ -895,7 +895,7 @@ class JadwalController extends Controller
             $kepalaSekolah = Pegawai::whereHas('jabatans', fn ($q) => $q->where('jabatan.nama', 'Kepala Sekolah'))
                 ->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitObj->id))
                 ->where('status_aktif', 'aktif')
-                ->first(['id', 'nama_lengkap', 'nip']);
+                ->first(['id', 'nama_lengkap', 'nuptk']);
         }
 
         $tahunAjaran = $jadwals->first()?->tahun_ajaran ?? date('Y').'/'.(date('Y') + 1);

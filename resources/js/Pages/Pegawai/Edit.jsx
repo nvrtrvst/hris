@@ -43,7 +43,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
     const { data, setData, post, processing, errors } = useForm({
         _method: 'put',
         nik: canViewSensitive ? pegawai.nik_plain ?? pegawai.nik : '',
-        nip: pegawai.nip || '',
+        nuptk: pegawai.nuptk || '',
         nama_lengkap: pegawai.nama_lengkap,
         email: pegawai.user?.email || '',
         tempat_lahir: pegawai.tempat_lahir,
@@ -210,8 +210,8 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                                     onChange={(e) => setData('nik', e.target.value)}
                                     className={inputClass} disabled={!canViewSensitive} readOnly={!canViewSensitive} />
                             </Field>
-                            <Field label="NIP / No Induk Guru" error={errors.nip}>
-                                <input type="text" value={data.nip} onChange={(e) => setData('nip', e.target.value)}
+                            <Field label="NIP / No Induk Guru" error={errors.nuptk}>
+                                <input type="text" value={data.nuptk} onChange={(e) => setData('nuptk', e.target.value)}
                                     className={inputClass} placeholder="NIP / No Induk (Opsional)" />
                             </Field>
                             <Field label="Nama Lengkap" required error={errors.nama_lengkap}>

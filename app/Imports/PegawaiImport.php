@@ -172,7 +172,7 @@ class PegawaiImport implements ToCollection
         // === STEP 4: Validate ===
         $validator = Validator::make($data, [
             '*.0' => 'required|regex:/^\d{16}$/',
-            '*.1' => 'nullable|string|max:50|unique:pegawai,nip',
+            '*.1' => 'nullable|string|max:50|unique:pegawai,nuptk',
             '*.2' => 'required|string|max:255',
             '*.3' => 'required|string|max:255',
             '*.4' => 'required|date',
@@ -302,7 +302,7 @@ class PegawaiImport implements ToCollection
                 $pegawai = Pegawai::create([
                     'user_id' => $user->id,
                     'nik' => $row[0],
-                    'nip' => $row[1],
+                    'nuptk' => $row[1],
                     'nama_lengkap' => $row[2],
                     'tempat_lahir' => $row[3],
                     'tanggal_lahir' => $row[4],

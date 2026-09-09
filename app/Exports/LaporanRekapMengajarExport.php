@@ -196,7 +196,7 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
         $pegawai = $d['pegawai'];
         $row = [
             $pegawai?->nama_lengkap ?? '-',
-            $pegawai?->nip ?? '-',
+            $pegawai?->nuptk ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $pegawai?->mapels?->pluck('nama')->unique()->implode(', ') ?: '-',
             $d['total']['terjadwal'],
