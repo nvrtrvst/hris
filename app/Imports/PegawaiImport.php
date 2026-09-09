@@ -12,33 +12,54 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
+/**
+ * Import pegawai dari template Excel (format GTYS Yayasan, 17 kolom A–Q).
+ *
+ * Kolom 4 (JENJANG / JURUSAN) di-parse dengan delimiter " / ".
+ * Jika hanya ada satu token → pendidikan_jurusan NULL.
+ * Lookup dropdown Jabatan, Unit via tabel master (case-insensitive).
+ *
+ * Tidak ada NIK/Agama/Status Pernikahan di template — field itu
+ * diisi belakangan via Edit Page.
+ *
+ * Validasi SELURUH file dalam satu Validator (semua error dikumpulkan,
+ * tidak throw di tengah jalan) — admin bisa perbaiki semua error sekaligus.
+ */
 class PegawaiImport implements ToCollection
 {
     protected $unitSekolahId;
 
     /** Kolom nama untuk pesan error yang mudah dipahami. */
     protected const COLUMN_NAMES = [
-        0 => 'NIK',
-        1 => 'NIP',
-        2 => 'Nama Lengkap',
-        3 => 'Tempat Lahir',
-        4 => 'Tanggal Lahir',
-        5 => 'Jenis Kelamin',
-        6 => 'Agama',
-        7 => 'Status Pernikahan',
-        8 => 'No HP',
-        9 => 'Alamat KTP',
-        10 => 'Status Kepegawaian',
-        11 => 'Tanggal Mulai Kerja',
-        12 => 'Pendidikan Terakhir',
-        13 => 'Nama Jabatan',
-        14 => 'Unit Sekolah',
-        15 => 'Email',
+        0 => 'NAMA',
+        1 => 'TEMPAT LAHIR',
+        2 => 'TANGGAL LAHIR',
+        3 => 'JENIS KELAMIN',
+        4 => 'JENJANG / JURUSAN',
+        5 => 'TAHUN LULUS',
+        6 => 'ASAL SEKOLAH / PERGURUAN TINGGI',
+        7 => 'NOMOR SK',
+        8 => 'TANGGAL SK',
+        9 => 'TMT MENGAJAR',
+        10 => 'JABATAN',
+        11 => 'NUPTK',
+        12 => 'ALAMAT',
+        13 => 'EMAIL',
+        14 => 'KONTAK',
+        15 => 'STATUS',
+        16 => 'UNIT SEKOLAH',
     ];
+
+    /** Lookup Jabatan di-prefetch sekali (di collection()) — bukan per-row. */
+    protected array $jabatanByName = [];
+
+    /** Lookup Unit di-prefetch sekali (superadmin) — bukan per-row. */
+    protected array $unitByName = [];
 
     /**
      * @param  int|null  $unitSekolahId  Unit default (dari pilihan modal).
@@ -76,27 +97,71 @@ class PegawaiImport implements ToCollection
         }
     }
 
-    private function normalizeNik($value): ?string
+    /**
+     * Parse "JENJANG / JURUSAN" → [pendidikan_terakhir, pendidikan_jurusan].
+     * Lookup pendidikan_terakhir ke PegawaiConstants::PENDIDIKAN_TERAKHIR
+     * (case-insensitive, trim). Jika token pertama tidak cocok dengan
+     * daftar valid → return [raw_token, null] agar Validator tangkap di
+     * `in:` rule. Jika tidak ada delimiter → [token, null].
+     */
+    private function parseJenjangJurusan(string $raw): array
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return [null, null];
+        }
+
+        if (str_contains($raw, '/')) {
+            [$jenjang, $jurusan] = array_map('trim', explode('/', $raw, 2));
+        } else {
+            $jenjang = $raw;
+            $jurusan = null;
+        }
+
+        // Validasi jenjang ada di PENDIDIKAN_TERAKHIR.
+        $valid = PegawaiConstants::PENDIDIKAN_TERAKHIR;
+        $match = collect($valid)->first(
+            fn ($p) => strcasecmp($p, $jenjang) === 0
+        );
+
+        // Jika tidak match → return null di slot jenjang agar Validator
+        // tangkap dengan pesan jelas (bukan value mentah yang lolos).
+        return [$match !== null ? $match : null, $jurusan !== '' ? $jurusan : null];
+    }
+
+    private function parseYear($value): ?int
     {
         if ($value === null || $value === '' || $value === false) {
             return null;
         }
 
-        $cleaned = preg_replace('/[^0-9]/', '', (string) $value);
+        if (is_numeric($value)) {
+            $year = (int) $value;
+            if ($year >= 1900 && $year <= 2100) {
+                return $year;
+            }
+        }
 
-        return $cleaned !== '' ? $cleaned : null;
+        try {
+            $year = (int) Carbon::parse((string) $value)->format('Y');
+            if ($year >= 1900 && $year <= 2100) {
+                return $year;
+            }
+        } catch (\Exception $e) {
+            // fall through
+        }
+
+        return null;
     }
 
     public function collection(Collection $rows)
     {
         Log::debug('[Import] Raw rows received', [
             'count' => $rows->count(),
-            'has_header' => $rows->isNotEmpty(),
         ]);
 
         // === STEP 1: Validate header ===
-        // Template pegawai WAJIB punya header "NIK", "Nama Lengkap", "Email".
-        // Kalau tidak ada → file salah (bisa hidden sheet dropdown, atau file lain).
+        // Template pegawai WAJIB punya header "NAMA", "EMAIL", "JABATAN".
         if ($rows->isEmpty()) {
             throw ValidationException::withMessages([
                 'import' => 'File kosong. Silakan download template dari menu Pegawai dan isi datanya.',
@@ -104,14 +169,12 @@ class PegawaiImport implements ToCollection
         }
 
         $firstRowValues = collect($rows->first())->map(fn ($v) => strtolower(trim((string) ($v ?? ''))));
-        $hasNikHeader = $firstRowValues->contains('nik');
-        $hasNamaHeader = $firstRowValues->contains('nama lengkap');
-        $hasEmailHeader = $firstRowValues->contains('email');
+        $hasNamaHeader = $firstRowValues->contains('nama');
+        $hasEmailHeader = $firstRowValues->contains(fn ($v) => str_contains($v, 'email'));
+        $hasJabatanHeader = $firstRowValues->contains('jabatan');
 
-        if (! $hasNikHeader && ! $hasNamaHeader && ! $hasEmailHeader) {
-            // Header tidak dikenali — kemungkinan: hidden sheet dropdown, atau file bukan template
+        if (! $hasNamaHeader && ! $hasEmailHeader && ! $hasJabatanHeader) {
             $firstRowPreview = collect($rows->first())->filter()->values()->take(4)->implode(', ');
-
             Log::warning('[Import] Invalid template uploaded');
 
             throw ValidationException::withMessages([
@@ -124,7 +187,7 @@ class PegawaiImport implements ToCollection
         // === STEP 2: Skip header row(s) ===
         while ($rows->isNotEmpty()) {
             $firstRow = collect($rows->first())->map(fn ($v) => strtolower(trim((string) ($v ?? ''))));
-            if ($firstRow->contains('nik') || $firstRow->contains('nama lengkap') || $firstRow->contains('email')) {
+            if ($firstRow->contains('nama') || $firstRow->contains('email') || $firstRow->contains('jabatan')) {
                 $rows->shift();
             } else {
                 break;
@@ -137,24 +200,37 @@ class PegawaiImport implements ToCollection
             ]);
         }
 
-        Log::debug('[Import] Data after header skip', [
-            'count' => $rows->count(),
-        ]);
-
         // === STEP 3: Normalize data ===
         $data = $rows->map(function ($row) {
-            $row = collect($row)->pad(16, null)->map(fn ($v) => $v === null ? null : (string) $v);
+            // Pad ke 17 kolom (index 0..16).
+            $row = collect($row)->pad(17, null)->map(fn ($v) => $v === null ? null : (string) $v);
 
-            // Skip baris kosong
+            // Skip baris kosong.
             $nonEmpty = $row->filter(fn ($v) => $v !== null && trim($v) !== '')->values();
             if ($nonEmpty->isEmpty()) {
                 return null;
             }
 
-            $row[0] = $this->normalizeNik($row[0]);
-            $row[4] = $this->parseDate($row[4]);
-            $row[11] = $this->parseDate($row[11]);
+            // Parse JENJANG/JURUSAN → [pendidikan_terakhir, pendidikan_jurusan].
+            // Disimpan sebagai array sementara di index 4, dipecah di langkah insert.
+            [$jenjang, $jurusan] = $this->parseJenjangJurusan((string) ($row[4] ?? ''));
+            $row[4] = $jenjang;
+            $row['_jurusan'] = $jurusan;
+
+            // TAHUN LULUS (numeric year).
+            $row[5] = $this->parseYear($row[5]);
+
+            // TANGGAL (string 'YYYY-MM-DD').
+            $row[2] = $this->parseDate($row[2]);
+            $row[8] = $this->parseDate($row[8]);
+            $row[9] = $this->parseDate($row[9]);
+
+            // NUPTK, kontak, email → trim.
+            $row[11] = empty(trim((string) ($row[11] ?? ''))) ? null : trim((string) $row[11]);
+            $row[13] = empty(trim((string) ($row[13] ?? ''))) ? null : trim((string) $row[13]);
+            $row[14] = empty(trim((string) ($row[14] ?? ''))) ? null : trim((string) $row[14]);
             $row[15] = empty(trim((string) ($row[15] ?? ''))) ? null : trim((string) $row[15]);
+            $row[16] = empty(trim((string) ($row[16] ?? ''))) ? null : trim((string) $row[16]);
 
             return $row->toArray();
         })->filter()->values()->toArray();
@@ -165,110 +241,115 @@ class PegawaiImport implements ToCollection
             ]);
         }
 
-        Log::debug('[Import] Parsed data', [
-            'count' => count($data),
-        ]);
+        Log::debug('[Import] Parsed data', ['count' => count($data)]);
 
-        // === STEP 4: Validate ===
+        // === STEP 4: Validate (semua baris dalam satu Validator) ===
         $validator = Validator::make($data, [
-            '*.0' => 'required|regex:/^\d{16}$/',
-            '*.1' => 'nullable|string|max:50|unique:pegawai,nuptk',
-            '*.2' => 'required|string|max:255',
-            '*.3' => 'required|string|max:255',
-            '*.4' => 'required|date',
-            '*.5' => 'required|in:L,P',
-            '*.6' => 'required|string|max:255',
-            '*.7' => 'required|string|max:255',
-            '*.8' => 'required|string|max:20',
-            '*.9' => 'required|string',
-            '*.10' => 'required|in:'.implode(',', PegawaiConstants::STATUS_KEPEGAWAIAN),
-            '*.11' => 'required|date',
-            '*.12' => 'required|string|max:255',
-            '*.13' => 'required|string|max:255',
-            '*.14' => 'nullable|string|max:255',
-            '*.15' => 'required|email|max:191|unique:users,email',
+            '*.0' => 'required|string|max:255',
+            '*.1' => 'required|string|max:255',
+            '*.2' => 'required|date',
+            '*.3' => 'required|in:L,P',
+            '*.4' => 'required|in:'.implode(',', PegawaiConstants::PENDIDIKAN_TERAKHIR),
+            '*.5' => 'nullable|integer|min:1900|max:2100',
+            '*.6' => 'nullable|string|max:255',
+            '*.7' => 'nullable|string|max:255',
+            '*.8' => 'nullable|date',
+            '*.9' => 'required|date',
+            '*.10' => 'required|string|max:255',
+            '*.11' => 'nullable|string|max:50|unique:pegawai,nuptk',
+            '*.12' => 'required|string',
+            '*.13' => 'required|email|max:191|unique:users,email',
+            '*.14' => 'required|string|max:20',
+            '*.15' => 'required|in:'.implode(',', PegawaiConstants::STATUS_KEPEGAWAIAN),
+            '*.16' => 'nullable|string|max:255',
         ], [
-            '*.0.required' => 'NIK wajib diisi.',
-            '*.0.regex' => 'NIK harus tepat 16 digit angka.',
-            '*.2.required' => 'Nama Lengkap wajib diisi.',
-            '*.3.required' => 'Tempat Lahir wajib diisi.',
-            '*.4.required' => 'Tanggal Lahir wajib diisi.',
-            '*.4.date' => 'Tanggal Lahir format tidak valid.',
-            '*.5.required' => 'Jenis Kelamin wajib diisi.',
-            '*.5.in' => 'Jenis Kelamin harus L atau P.',
-            '*.6.required' => 'Agama wajib diisi.',
-            '*.7.required' => 'Status Pernikahan wajib diisi.',
-            '*.8.required' => 'No HP wajib diisi.',
-            '*.9.required' => 'Alamat KTP wajib diisi.',
-            '*.10.required' => 'Status Kepegawaian wajib diisi.',
-            '*.10.in' => 'Status Kepegawaian tidak valid.',
-            '*.11.required' => 'Tanggal Mulai Kerja wajib diisi.',
-            '*.11.date' => 'Tanggal Mulai Kerja format tidak valid.',
-            '*.12.required' => 'Pendidikan Terakhir wajib diisi.',
-            '*.13.required' => 'Nama Jabatan wajib diisi.',
-            '*.15.required' => 'Email wajib diisi.',
-            '*.15.email' => 'Format email tidak valid.',
-            '*.15.unique' => 'Email sudah terdaftar dalam sistem.',
+            '*.0.required' => 'Nama Lengkap wajib diisi.',
+            '*.1.required' => 'Tempat Lahir wajib diisi.',
+            '*.2.required' => 'Tanggal Lahir wajib diisi.',
+            '*.2.date' => 'Tanggal Lahir format tidak valid.',
+            '*.3.required' => 'Jenis Kelamin wajib diisi.',
+            '*.3.in' => 'Jenis Kelamin harus L atau P.',
+            '*.4.required' => 'Jenjang (kolom JENJANG / JURUSAN) wajib diisi.',
+            '*.4.in' => 'Jenjang tidak valid. Pilih dari dropdown di template.',
+            '*.5.integer' => 'Tahun Lulus harus angka (YYYY).',
+            '*.5.min' => 'Tahun Lulus minimal 1900.',
+            '*.5.max' => 'Tahun Lulus maksimal 2100.',
+            '*.8.date' => 'Tanggal SK format tidak valid.',
+            '*.9.required' => 'TMT Mengajar wajib diisi.',
+            '*.9.date' => 'TMT Mengajar format tidak valid.',
+            '*.10.required' => 'Nama Jabatan wajib diisi.',
+            '*.11.unique' => 'NUPTK sudah terdaftar di sistem.',
+            '*.12.required' => 'Alamat wajib diisi.',
+            '*.13.required' => 'Email wajib diisi.',
+            '*.13.email' => 'Format email tidak valid.',
+            '*.13.unique' => 'Email sudah terdaftar dalam sistem.',
+            '*.14.required' => 'Kontak wajib diisi.',
+            '*.15.required' => 'Status wajib diisi.',
+            '*.15.in' => 'Status Kepegawaian tidak valid.',
         ]);
 
-        if ($validator->fails()) {
-            $this->throwGroupedValidationException($validator);
-        }
-
-        // Validate jabatan
-        $jabatanNames = collect($data)->pluck(13)->unique()->toArray();
-        $jabatans = Jabatan::whereIn('nama', $jabatanNames)->get()->keyBy(fn ($item) => strtolower($item->nama));
+        // Prefetch Jabatan (sebelum validasi custom agar tahu daftar).
+        $jabatanNames = collect($data)->pluck(10)->map(fn ($v) => trim((string) $v))->filter()->unique()->values();
+        $this->jabatanByName = Jabatan::whereIn('nama', $jabatanNames)
+            ->get()
+            ->keyBy(fn ($item) => strtolower($item->nama))
+            ->all();
 
         $allJabatanNames = Jabatan::orderBy('nama')->pluck('nama');
         $availableHint = $allJabatanNames->take(10)->implode(', ').($allJabatanNames->count() > 10 ? ', ...' : '');
 
         foreach ($data as $index => $row) {
-            $namaJabatan = strtolower(trim($row[13]));
-            if (! $jabatans->has($namaJabatan)) {
-                $validator->errors()->add($index.'.13', "Jabatan '{$row[13]}' tidak ditemukan. Jabatan yang tersedia: {$availableHint}");
+            $namaJabatan = strtolower(trim((string) ($row[10] ?? '')));
+            if ($namaJabatan !== '' && ! isset($this->jabatanByName[$namaJabatan])) {
+                $validator->errors()->add($index.'.10', "Jabatan '{$row[10]}' tidak ditemukan. Jabatan yang tersedia: {$availableHint}");
             }
         }
 
-        // Validate unit
-        $units = collect();
+        // Prefetch Unit (hanya jika superadmin).
         if ($this->allowUnitOverride) {
-            $unitNames = collect($data)->pluck(14)->map(fn ($v) => trim((string) $v))->filter()->unique();
-            $units = UnitSekolah::whereIn('nama', $unitNames)->get()->keyBy(fn ($u) => strtolower($u->nama));
+            $unitNames = collect($data)->pluck(16)->map(fn ($v) => trim((string) $v))->filter()->unique()->values();
+            $this->unitByName = UnitSekolah::whereIn('nama', $unitNames)
+                ->get()
+                ->keyBy(fn ($u) => strtolower($u->nama))
+                ->all();
+
             $allUnitNames = UnitSekolah::orderBy('nama')->pluck('nama');
             $unitHint = $allUnitNames->take(10)->implode(', ').($allUnitNames->count() > 10 ? ', ...' : '');
 
             foreach ($data as $index => $row) {
-                $unitName = strtolower(trim((string) ($row[14] ?? '')));
-                if ($unitName !== '' && ! $units->has($unitName)) {
-                    $validator->errors()->add($index.'.14', "Unit '{$row[14]}' tidak ditemukan. Unit yang tersedia: {$unitHint}");
+                $unitName = strtolower(trim((string) ($row[16] ?? '')));
+                if ($unitName !== '' && ! isset($this->unitByName[$unitName])) {
+                    $validator->errors()->add($index.'.16', "Unit '{$row[16]}' tidak ditemukan. Unit yang tersedia: {$unitHint}");
                 }
             }
         }
 
-        // Duplicate NIK check
-        $nikHashes = collect($data)->pluck(0)->map(fn ($nik) => Pegawai::nikHash((string) $nik))->filter();
-        $existingHashes = Pegawai::whereIn('nik_hash', $nikHashes)->pluck('nik_hash')->flip();
-        $seen = [];
-        foreach ($data as $index => $row) {
-            $hash = Pegawai::nikHash((string) $row[0]);
-            if ($hash !== null && ($existingHashes->has($hash) || isset($seen[$hash]))) {
-                $validator->errors()->add($index.'.0', 'NIK sudah terdaftar pada baris '.($index + 2).'.');
-            }
-            $seen[$hash] = true;
-        }
-
-        // Duplicate email check
+        // Duplicate email check (across rows).
         $seenEmails = [];
         foreach ($data as $index => $row) {
-            $email = $row[15];
+            $email = $row[13] ?? null;
             if ($email === null) {
                 continue;
             }
             $key = strtolower($email);
             if (isset($seenEmails[$key])) {
-                $validator->errors()->add($index.'.15', 'Email sudah dipakai pada baris '.($seenEmails[$key] + 2).'.');
+                $validator->errors()->add($index.'.13', 'Email sudah dipakai pada baris '.($seenEmails[$key] + 2).'.');
             } else {
                 $seenEmails[$key] = $index;
+            }
+        }
+
+        // Duplicate NUPTK check (across rows).
+        $seenNuptk = [];
+        foreach ($data as $index => $row) {
+            $nuptk = $row[11] ?? null;
+            if ($nuptk === null) {
+                continue;
+            }
+            if (isset($seenNuptk[$nuptk])) {
+                $validator->errors()->add($index.'.11', 'NUPTK sudah dipakai pada baris '.($seenNuptk[$nuptk] + 2).'.');
+            } else {
+                $seenNuptk[$nuptk] = $index;
             }
         }
 
@@ -281,18 +362,23 @@ class PegawaiImport implements ToCollection
         foreach ($data as $index => $row) {
             try {
                 $unitId = $this->unitSekolahId;
-                if ($this->allowUnitOverride && trim((string) ($row[14] ?? '')) !== '') {
-                    $unitId = $units[strtolower(trim($row[14]))]->id;
+                if ($this->allowUnitOverride && trim((string) ($row[16] ?? '')) !== '') {
+                    $unitId = $this->unitByName[strtolower(trim($row[16]))]->id;
                 }
 
                 if ($unitId === null) {
                     throw ValidationException::withMessages(['unit_sekolah_id' => 'Tidak ada unit untuk baris '.($index + 2).'.']);
                 }
 
+                $username = ! empty($row[11]) ? $row[11] : explode('@', $row[13])[0];
+                // password: default seragam > NUPTK > random.
+                $password = $this->defaultPassword ?? ($row[11] ?: Str::random(12));
+
                 $user = User::create([
-                    'name' => $row[2],
-                    'email' => $row[15],
-                    'password' => Hash::make($this->defaultPassword ?? $row[0]),
+                    'name' => $row[0],
+                    'email' => $row[13],
+                    'username' => $username,
+                    'password' => Hash::make($password),
                     'role' => 'pegawai',
                     'unit_sekolah_id' => $unitId,
                     'force_password_change' => $this->defaultPassword !== null,
@@ -301,25 +387,34 @@ class PegawaiImport implements ToCollection
 
                 $pegawai = Pegawai::create([
                     'user_id' => $user->id,
-                    'nik' => $row[0],
-                    'nuptk' => $row[1],
-                    'nama_lengkap' => $row[2],
-                    'tempat_lahir' => $row[3],
-                    'tanggal_lahir' => $row[4],
-                    'jenis_kelamin' => $row[5],
-                    'agama' => $row[6],
-                    'status_pernikahan' => $row[7],
-                    'no_hp' => $row[8],
-                    'alamat' => $row[9],
-                    'status_kepegawaian' => $row[10],
-                    'tmt_mengajar' => $row[11],
-                    'pendidikan_terakhir' => $row[12],
+                    'nama_lengkap' => $row[0],
+                    'tempat_lahir' => $row[1],
+                    'tanggal_lahir' => $row[2],
+                    'jenis_kelamin' => $row[3],
+                    'pendidikan_terakhir' => $row[4],
+                    'pendidikan_jurusan' => $row['_jurusan'] ?? null,
+                    'pendidikan_tahun_lulus' => $row[5],
+                    'pendidikan_asal_sekolah' => $row[6],
+                    'sk_nomor' => $row[7],
+                    'sk_tanggal' => $row[8],
+                    'tmt_mengajar' => $row[9],
+                    'nuptk' => $row[11],
+                    'alamat' => $row[12],
+                    'email' => $row[13],
+                    'no_hp' => $row[14],
+                    'status_kepegawaian' => $row[15],
                     'status_aktif' => 'aktif',
                     'jumlah_tanggungan' => 0,
                 ]);
 
-                $jabatanId = $jabatans[strtolower(trim($row[13]))]->id;
+                $jabatanId = $this->jabatanByName[strtolower(trim($row[10]))]->id;
                 $pegawai->units()->attach($unitId, ['jabatan_id' => $jabatanId, 'is_primary' => true]);
+
+                // Update username User kalau berbeda dengan default.
+                if ($user->username !== $username) {
+                    $user->username = $username;
+                    $user->save();
+                }
 
                 $imported++;
             } catch (\Throwable $e) {
@@ -329,7 +424,7 @@ class PegawaiImport implements ToCollection
                 ]);
 
                 throw ValidationException::withMessages([
-                    'import' => 'Gagal import baris '.($index + 2)." ({$row[2]}): ".$e->getMessage(),
+                    'import' => 'Gagal import baris '.($index + 2)." ({$row[0]}): ".$e->getMessage(),
                 ]);
             }
         }
@@ -373,9 +468,7 @@ class PegawaiImport implements ToCollection
             $uniqueRows = array_values(array_unique($group['rows']));
             sort($uniqueRows);
 
-            if (count($uniqueRows) <= 5) {
-                $rowStr = 'baris '.implode(', ', $uniqueRows);
-            } elseif (count($uniqueRows) <= 10) {
+            if (count($uniqueRows) <= 10) {
                 $rowStr = 'baris '.implode(', ', $uniqueRows);
             } else {
                 $rowStr = 'baris '.implode(', ', array_slice($uniqueRows, 0, 5)).' ... ('.count($uniqueRows).' baris)';

@@ -37,10 +37,17 @@ class PegawaiImportTest extends TestCase
         ]);
     }
 
+    /**
+     * Template GTYS 17 kolom (A..Q).
+     * Kolom: NAMA, TEMPAT LAHIR, TANGGAL LAHIR, JENIS KELAMIN,
+     *        JENJANG / JURUSAN, TAHUN LULUS, ASAL SEKOLAH, NOMOR SK,
+     *        TANGGAL SK, TMT MENGAJAR, JABATAN, NUPTK, ALAMAT, EMAIL,
+     *        KONTAK, STATUS, UNIT SEKOLAH.
+     */
     private function csvFile(): UploadedFile
     {
-        $csv = "NIK,NIP,Nama,Tmp,Lhr,JK,Agama,St,HP,Alamat,Stk,Tgl,Didik,Jab,Unit,Email\n"
-            ."8899776655443322,,Budi Santoso,Solo,1990-01-01,L,Islam,kawin,081299887766,Jl A,tetap,2020-01-01,S1,Guru,,budi.real@yayasan.com\n";
+        $csv = "NAMA,TEMPAT LAHIR,TANGGAL LAHIR,JENIS KELAMIN,JENJANG / JURUSAN,TAHUN LULUS,ASAL SEKOLAH,NOMOR SK,TANGGAL SK,TMT MENGAJAR,JABATAN,NUPTK,ALAMAT,EMAIL,KONTAK,STATUS,UNIT SEKOLAH\n"
+            ."Budi Santoso,Solo,1990-01-01,L,S1 / PENDIDIKAN,2015,UPI,SK/2020/001,2020-01-01,2020-01-01,Guru,1234567890,Jl A,budi.real@yayasan.com,081299887766,guru_tetap_yayasan,\n";
 
         return UploadedFile::fake()->createWithContent('pegawai.csv', $csv, 'text/csv');
     }
@@ -54,12 +61,12 @@ class PegawaiImportTest extends TestCase
 
         $user = User::where('email', 'budi.real@yayasan.com')->first();
         $this->assertNotNull($user, 'User harus dibuat dari import.');
-        $this->assertSame('budi.real@yayasan.com', $user->email, 'Email diambil dari kolom template (bukan fallback NIK).');
+        $this->assertSame('budi.real@yayasan.com', $user->email, 'Email diambil dari kolom template (bukan fallback NUPTK).');
         $this->assertTrue(Hash::check('SmkNm@160', $user->password), 'Password harus = default seragam (hash).');
         $this->assertTrue($user->force_password_change, 'User wajib ganti password saat login pertama.');
     }
 
-    public function test_tanpa_password_default_pakai_nik_dan_tidak_wajib_ganti(): void
+    public function test_tanpa_password_default_username_dari_nuptk_dan_tidak_wajib_ganti(): void
     {
         Jabatan::create(['nama' => 'Guru']);
         $unit = $this->makeUnit();
@@ -68,7 +75,8 @@ class PegawaiImportTest extends TestCase
 
         $user = User::where('email', 'budi.real@yayasan.com')->first();
         $this->assertNotNull($user);
-        $this->assertTrue(Hash::check('8899776655443322', $user->password), 'Tanpa default: password = NIK.');
+        $this->assertTrue(Hash::check('1234567890', $user->password), 'Tanpa default: password = NUPTK.');
+        $this->assertSame('1234567890', $user->username, 'Username = NUPTK.');
         $this->assertFalse($user->force_password_change, 'Tanpa default: tidak wajib ganti password.');
     }
 
@@ -77,9 +85,9 @@ class PegawaiImportTest extends TestCase
         Jabatan::create(['nama' => 'Guru']);
         $unit = $this->makeUnit();
 
-        $csv = "NIK,NIP,Nama,Tmp,Lhr,JK,Agama,St,HP,Alamat,Stk,Tgl,Didik,Jab,Unit,Email\n"
-            ."8899776655443322,,Budi Santoso,Solo,1990-01-01,L,Islam,kawin,081299887766,Jl A,tetap,2020-01-01,S1,Guru,,sama@yayasan.com\n"
-            ."8899776655443323,,Siti Aminah,Solo,1990-01-01,L,Islam,kawin,081299887766,Jl A,tetap,2020-01-01,S1,Guru,,sama@yayasan.com\n";
+        $csv = "NAMA,TEMPAT LAHIR,TANGGAL LAHIR,JENIS KELAMIN,JENJANG / JURUSAN,TAHUN LULUS,ASAL SEKOLAH,NOMOR SK,TANGGAL SK,TMT MENGAJAR,JABATAN,NUPTK,ALAMAT,EMAIL,KONTAK,STATUS,UNIT SEKOLAH\n"
+            ."Budi Santoso,Solo,1990-01-01,L,S1,2015,UPI,SK1,2020-01-01,2020-01-01,Guru,1111111111,Jl A,sama@yayasan.com,081299887766,guru_tetap_yayasan,\n"
+            ."Siti Aminah,Solo,1990-01-01,L,S1,2015,UPI,SK2,2020-01-01,2020-01-01,Guru,2222222222,Jl A,sama@yayasan.com,081299887767,guru_tidak_tetap,\n";
 
         $file = UploadedFile::fake()->createWithContent('pegawai.csv', $csv, 'text/csv');
 

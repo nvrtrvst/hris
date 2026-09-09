@@ -234,7 +234,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                                     <option value="P">Perempuan</option>
                                 </select>
                             </Field>
-                            <Field label="Agama" required error={errors.agama}>
+                            <Field label="Agama" error={errors.agama}>
                                 <select value={data.agama} onChange={(e) => setData('agama', e.target.value)} className={selectClass}>
                                     <option value="">Pilih Agama</option>
                                     <option value="Islam">Islam</option>
@@ -245,7 +245,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                                     <option value="Konghucu">Konghucu</option>
                                 </select>
                             </Field>
-                            <Field label="Status Pernikahan" required error={errors.status_pernikahan}>
+                            <Field label="Status Pernikahan" error={errors.status_pernikahan}>
                                 <select value={data.status_pernikahan} onChange={(e) => setData('status_pernikahan', e.target.value)} className={selectClass}>
                                     <option value="">Pilih Status</option>
                                     <option value="Belum Menikah">Belum Menikah</option>

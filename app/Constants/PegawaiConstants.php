@@ -9,23 +9,31 @@ namespace App\Constants;
 class PegawaiConstants
 {
     /**
-     * Status kepegawaian (Dapodik): dropdown template + validasi in:.
+     * Status kepegawaian (format GTYS Yayasan): dropdown template + validasi in:.
+     *
+     * Tiga opsi untuk guru: GTYS (Guru Tetap Yayasan), GTT (Guru Tidak Tetap),
+     * Guru Pemula. Tiga opsi untuk non-guru (staf/pegawai): PTT (Pegawai Tidak
+     * Tetap), Pegawai Tidak Tetap, Pegawai Pemula.
      */
     public const STATUS_KEPEGAWAIAN = [
-        'tetap',
-        'kontrak',
-        'honorer',
-        'gtt',
+        'guru_tetap_yayasan',
+        'guru_tidak_tetap',
+        'guru_pemula',
+        'ptt',
+        'pegawai_tidak_tetap',
+        'pegawai_pemula',
     ];
 
     /**
-     * Label tampilan status kepegawaian (dipakai export Excel).
+     * Label tampilan status kepegawaian (dipakai export Excel + React).
      */
     public const STATUS_KEPEGAWAIAN_LABELS = [
-        'tetap' => 'Tetap',
-        'kontrak' => 'Kontrak',
-        'honorer' => 'Honorer',
-        'gtt' => 'GTT (Guru Tidak Tetap)',
+        'guru_tetap_yayasan' => 'GTYS (Guru Tetap Yayasan)',
+        'guru_tidak_tetap' => 'GTT (Guru Tidak Tetap)',
+        'guru_pemula' => 'Guru Pemula',
+        'ptt' => 'PTT (Pegawai Tidak Tetap)',
+        'pegawai_tidak_tetap' => 'Pegawai Tidak Tetap',
+        'pegawai_pemula' => 'Pegawai Pemula',
     ];
 
     /**

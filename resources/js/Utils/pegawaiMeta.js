@@ -6,10 +6,12 @@
  */
 
 export const STATUS_KEPEGAWAIAN_LABELS = {
-    tetap: 'Tetap',
-    kontrak: 'Kontrak',
-    honorer: 'Honorer',
-    gtt: 'GTT (Guru Tidak Tetap)',
+    guru_tetap_yayasan: 'GTYS (Guru Tetap Yayasan)',
+    guru_tidak_tetap: 'GTT (Guru Tidak Tetap)',
+    guru_pemula: 'Guru Pemula',
+    ptt: 'PTT (Pegawai Tidak Tetap)',
+    pegawai_tidak_tetap: 'Pegawai Tidak Tetap',
+    pegawai_pemula: 'Pegawai Pemula',
 };
 
 export const statusKepegawaianLabel = (value) => STATUS_KEPEGAWAIAN_LABELS[value] ?? value;

@@ -12,27 +12,41 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\NamedRange;
 
+/**
+ * Template Excel import pegawai — format GTYS Yayasan.
+ *
+ * 17 kolom (A–Q). Kolom wajib: A–Q. NIK, Agama, Status Pernikahan tidak
+ * ada di template (diisi manual via Edit Page bila perlu).
+ *
+ * Kolom dengan dropdown validasi: E (Pendidikan), K (Jabatan),
+ * P (Status Kepegawaian), Q (Unit Sekolah).
+ *
+ * Referensi dropdown ditulis di kolom V–Y (sembunyi) pada sheet yang
+ * SAMA — bukan sheet terpisah — supaya import tidak salah baca ketika
+ * user save di Excel/LibreOffice/WPS (lihat commit terkait).
+ */
 class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
 {
     public function headings(): array
     {
         return [
-            'NIK',
-            'NIP',
-            'Nama Lengkap',
-            'Tempat Lahir',
-            'Tanggal Lahir (YYYY-MM-DD)',
-            'Jenis Kelamin (L/P)',
-            'Agama',
-            'Status Pernikahan',
-            'No HP',
-            'Alamat KTP',
-            'Status Kepegawaian (dropdown)',
-            'Tanggal Mulai Kerja (YYYY-MM-DD)',
-            'Pendidikan Terakhir (dropdown)',
-            'Nama Jabatan (pilih dari dropdown)',
-            'Unit Sekolah (dropdown — kosongkan jika satu unit)',
-            'Email (wajib — untuk login pegawai)',
+            'NAMA',
+            'TEMPAT LAHIR',
+            'TANGGAL LAHIR (YYYY-MM-DD)',
+            'JENIS KELAMIN (L/P)',
+            'JENJANG / JURUSAN',
+            'TAHUN LULUS',
+            'ASAL SEKOLAH / PERGURUAN TINGGI',
+            'NOMOR SK',
+            'TANGGAL SK (YYYY-MM-DD)',
+            'TMT MENGAJAR (YYYY-MM-DD)',
+            'JABATAN',
+            'NUPTK',
+            'ALAMAT',
+            'EMAIL (untuk login pegawai)',
+            'KONTAK',
+            'STATUS (dropdown)',
+            'UNIT SEKOLAH',
         ];
     }
 
@@ -40,40 +54,23 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
     {
         return [
             [
-                '1234567890123456',
-                '198001012020011001',
-                'Budi Santoso',
-                'Jakarta',
-                '1980-01-01',
+                'Rizal Trismawan',
+                'Garut',
+                '1988-02-28',
                 'L',
-                'Islam',
-                'Menikah',
-                '081234567890',
-                'Jl. Contoh Alamat No. 123',
-                'tetap',
-                '2020-01-01',
-                'S1',
+                'S2 / B.INDONESIA',
+                '2015',
+                'UPI Bandung',
+                '001/SK/YYS/2015',
+                '2015-03-01',
+                '2015-03-01',
                 'Guru Mata Pelajaran',
+                '1234567890123456',
+                'Jl. Contoh Alamat No. 123, Garut',
+                'rizal.trismawan@yayasan.com',
+                '081234567890',
+                'guru_tetap_yayasan',
                 'SMP',
-                'budi.santoso@yayasan.com',
-            ],
-            [
-                '1234567890123457',
-                '199205012023011002',
-                'Siti Aminah',
-                'Bandung',
-                '1992-05-01',
-                'P',
-                'Islam',
-                'Menikah',
-                '081298765432',
-                'Jl. Contoh Alamat No. 456',
-                'kontrak',
-                '2023-01-01',
-                'SMK/Sederajat',
-                'Kasir',
-                'SMA',
-                'siti.aminah@yayasan.com',
             ],
         ];
     }
@@ -85,7 +82,7 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 $sheet = $event->sheet->getDelegate();
                 $spreadsheet = $sheet->getParent();
 
-                // Load master data for dropdowns
+                // Load master data for dropdowns.
                 $jabatanNames = Jabatan::orderBy('nama')->pluck('nama')->values();
                 $unitNames = UnitSekolah::orderBy('nama')->pluck('nama')->values();
                 $pendidikan = collect(PegawaiConstants::PENDIDIKAN_TERAKHIR);
@@ -95,30 +92,24 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                     return;
                 }
 
-                // ================================================================
-                // IMPORTANT: Reference data goes on the SAME sheet (columns R-U).
-                // NOT on a separate hidden sheet — PhpSpreadsheet/LibreOffice/WPS
-                // may switch active sheet on save, causing import to read wrong data.
-                // ================================================================
+                // Reference data on the SAME sheet (columns V–Y, hidden).
+                // Row 1: headers for reference data.
+                $sheet->setCellValue('V1', '_Jabatan');
+                $sheet->setCellValue('W1', '_Pendidikan');
+                $sheet->setCellValue('X1', '_Status');
+                $sheet->setCellValue('Y1', '_Unit');
 
-                // Row 1: headers for reference data
-                $sheet->setCellValue('R1', '_Jabatan');
-                $sheet->setCellValue('S1', '_Pendidikan');
-                $sheet->setCellValue('T1', '_Status');
-                $sheet->setCellValue('U1', '_Unit');
-
-                // Fill reference data
                 foreach ($jabatanNames as $i => $name) {
-                    $sheet->setCellValue('R'.($i + 2), $name);
+                    $sheet->setCellValue('V'.($i + 2), $name);
                 }
                 foreach ($pendidikan as $i => $p) {
-                    $sheet->setCellValue('S'.($i + 2), $p);
+                    $sheet->setCellValue('W'.($i + 2), $p);
                 }
                 foreach ($statusList as $i => $s) {
-                    $sheet->setCellValue('T'.($i + 2), $s);
+                    $sheet->setCellValue('X'.($i + 2), $s);
                 }
                 foreach ($unitNames as $i => $u) {
-                    $sheet->setCellValue('U'.($i + 2), $u);
+                    $sheet->setCellValue('Y'.($i + 2), $u);
                 }
 
                 $lastJabatan = $jabatanNames->count() + 1;
@@ -126,18 +117,18 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 $lastStatus = $statusList->count() + 1;
                 $lastUnit = $unitNames->count() + 1;
 
-                // Hide reference columns (R-U) — data is there but invisible to user
-                $sheet->getColumnDimension('R')->setVisible(false);
-                $sheet->getColumnDimension('S')->setVisible(false);
-                $sheet->getColumnDimension('T')->setVisible(false);
-                $sheet->getColumnDimension('U')->setVisible(false);
+                // Hide reference columns.
+                $sheet->getColumnDimension('V')->setVisible(false);
+                $sheet->getColumnDimension('W')->setVisible(false);
+                $sheet->getColumnDimension('X')->setVisible(false);
+                $sheet->getColumnDimension('Y')->setVisible(false);
 
-                // Named ranges on the SAME sheet — fully compatible across Excel/LibreOffice/WPS
+                // Named ranges on the SAME sheet.
                 $sheetName = $sheet->getTitle();
-                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_JABATAN', $sheet, "'{$sheetName}'!\$R\$2:\$R\${$lastJabatan}"));
-                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_PENDIDIKAN', $sheet, "'{$sheetName}'!\$S\$2:\$S\${$lastPendidikan}"));
-                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_STATUS', $sheet, "'{$sheetName}'!\$T\$2:\$T\${$lastStatus}"));
-                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_UNIT', $sheet, "'{$sheetName}'!\$U\$2:\$U\${$lastUnit}"));
+                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_JABATAN', $sheet, "'{$sheetName}'!\$V\$2:\$V\${$lastJabatan}"));
+                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_PENDIDIKAN', $sheet, "'{$sheetName}'!\$W\$2:\$W\${$lastPendidikan}"));
+                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_STATUS', $sheet, "'{$sheetName}'!\$X\$2:\$X\${$lastStatus}"));
+                $spreadsheet->addNamedRange(new NamedRange('DAFTAR_UNIT', $sheet, "'{$sheetName}'!\$Y\$2:\$Y\${$lastUnit}"));
 
                 $listValidation = function (string $formula, string $errorTitle, string $error) {
                     $validation = new DataValidation;
@@ -152,11 +143,12 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                     return $validation;
                 };
 
-                // Apply dropdown validation to data columns
-                $sheet->setDataValidation('N2:N500', $listValidation('DAFTAR_JABATAN', 'Jabatan tidak valid', 'Pilih jabatan dari daftar yang tersedia.'));
-                $sheet->setDataValidation('M2:M500', $listValidation('DAFTAR_PENDIDIKAN', 'Pendidikan tidak valid', 'Pilih jenjang pendidikan dari daftar yang tersedia.'));
-                $sheet->setDataValidation('K2:K500', $listValidation('DAFTAR_STATUS', 'Status tidak valid', 'Pilih status kepegawaian dari daftar yang tersedia.'));
-                $sheet->setDataValidation('O2:O500', $listValidation('DAFTAR_UNIT', 'Unit tidak valid', 'Pilih unit dari daftar yang tersedia.'));
+                // Apply dropdown validation to data columns (A..Q → 1..17).
+                // E = Pendidikan, K = Jabatan, P = Status, Q = Unit.
+                $sheet->setDataValidation('K2:K500', $listValidation('DAFTAR_JABATAN', 'Jabatan tidak valid', 'Pilih jabatan dari daftar yang tersedia.'));
+                $sheet->setDataValidation('E2:E500', $listValidation('DAFTAR_PENDIDIKAN', 'Jenjang tidak valid', 'Pilih jenjang dari daftar. Jurusan (jika ada) ketik manual dipisah dengan " / ". Contoh: "S2 / B.INDONESIA".'));
+                $sheet->setDataValidation('P2:P500', $listValidation('DAFTAR_STATUS', 'Status tidak valid', 'Pilih status kepegawaian dari daftar yang tersedia.'));
+                $sheet->setDataValidation('Q2:Q500', $listValidation('DAFTAR_UNIT', 'Unit tidak valid', 'Pilih unit dari daftar yang tersedia.'));
             },
         ];
     }
