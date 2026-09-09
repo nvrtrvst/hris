@@ -75,6 +75,8 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const [slideLoading, setSlideLoading] = useState(null);
     const [isTugasLuar, setIsTugasLuar] = useState(false);
     const [tujuan, setTujuan] = useState('');
+    const tujuanRef = useRef(null);
+    const [tujuanKosong, setTujuanKosong] = useState(false);
 
     const errorRef = useRef(null);
 
@@ -132,6 +134,10 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         const grace = g.unit_sekolah?.toleransi_slide_menit ?? SLIDE_GRACE_MINUTES;
         return jamSekarang > selesai + grace;
     }), [groupedJadwals, isGroupSlid, jamSekarang]);
+
+    // Untuk peringatan tugas luar: ada jam mengajar berjalan/hari ini yang
+    // belum lengkap di-slide.
+    const adaGrupAktifBelumSlide = masihBisaSlide || (adaBerlangsung && !semuaBeres);
 
     // Generic check: semua presensi hari ini sudah lengkap
     const allRecordsComplete = presensiHariIni.length > 0
@@ -242,7 +248,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             clearGeolocation();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [phase]);
+    }, [phase, isTugasLuar]);
 
     useEffect(() => {
         if (showLive && videoRef.current && streamRef.current) {
@@ -257,7 +263,15 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
 
         if (!capturedPhoto) { setError('Silakan ambil foto terlebih dahulu.'); return; }
         if (!currentPosition) { setError('Lokasi belum tersedia. Pastikan GPS aktif.'); return; }
-        if (isDinasLuarFlow && !tugasLuarRecord && !tujuan.trim()) { setError('Tujuan tugas luar wajib diisi.'); return; }
+        if (isDinasLuarFlow && !tugasLuarRecord && !tujuan.trim()) {
+            setTujuanKosong(true);
+            setError('Tujuan tugas luar wajib diisi.');
+            // Scroll otomatis ke kolom wajib yang kosong + langsung fokus.
+            tujuanRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => tujuanRef.current?.focus({ preventScroll: true }), 350);
+            return;
+        }
+        setTujuanKosong(false);
         if (!isTugasLuar && geoBlocked) { setError(`Anda di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m).`); return; }
 
         setIsSubmitting(true);
@@ -491,6 +505,15 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 </Card>
             )}
 
+            {isTugasLuar && !tugasLuarRecord && adaGrupAktifBelumSlide && (
+                <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                        Tugas luar aktif di tengah jam mengajar. JP yang belum di-slide tidak akan tercatat hadir — presensi mengajar tersimpan sampai terakhir di-slide.
+                    </span>
+                </div>
+            )}
+
             {tugasLuarRecord ? (
                 <div className="mb-4">
                     <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tujuan tugas luar</label>
@@ -504,15 +527,24 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             ) : (
                 isTugasLuar && (
                     <div className="mb-4">
-                        <label htmlFor="tujuan" className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tujuan tugas luar</label>
+                        <label htmlFor="tujuan" className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+                            Tujuan tugas luar <span className="text-rose-500" aria-hidden="true">*</span>
+                            <span className="sr-only">(wajib diisi)</span>
+                        </label>
                         <input
                             id="tujuan"
+                            ref={tujuanRef}
                             type="text"
                             value={tujuan}
-                            onChange={(e) => setTujuan(e.target.value)}
+                            onChange={(e) => { setTujuan(e.target.value); setTujuanKosong(false); }}
+                            aria-required="true"
+                            aria-invalid={tujuanKosong}
                             placeholder="Contoh: Rapat dinas di Dinas Pendidikan"
-                            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-200"
+                            className={`w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-4 ${tujuanKosong ? 'border-rose-400 focus-visible:ring-rose-200' : 'border-slate-300 focus-visible:ring-sky-200'}`}
                         />
+                        {tujuanKosong && (
+                            <p className="mt-1.5 text-xs font-semibold text-rose-600">Tujuan wajib diisi sebelum mengirim presensi.</p>
+                        )}
                     </div>
                 )
             )}
