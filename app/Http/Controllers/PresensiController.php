@@ -681,6 +681,12 @@ class PresensiController extends Controller
                 'ip_geo' => $presensi->ip_geo,
                 'exif_meta' => $presensi->exif_meta,
                 'foto_kegiatan_urls' => $presensi->foto_kegiatan_urls,
+                // Dinas luar fields
+                'is_tugas_luar' => $presensi->is_tugas_luar,
+                'tujuan' => $presensi->tujuan,
+                'keterangan' => $presensi->keterangan,
+                'tugas_luar_status' => $presensi->tugas_luar_status,
+                'foto_kegiatan' => $presensi->foto_kegiatan,
             ],
         ]);
     }

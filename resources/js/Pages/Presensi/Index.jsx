@@ -64,7 +64,7 @@ const LemburBadge = ({ status }) => {
     );
 };
 
-const TugasLuarBadge = ({ status }) => {
+const TugasLuarBadge = ({ status, onClick }) => {
     const map = {
         pending: 'bg-sky-50 text-sky-700 border-sky-200',
         disetujui: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -72,33 +72,21 @@ const TugasLuarBadge = ({ status }) => {
     };
 
     return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${map[status] || map.pending}`}>
+        <button
+            type="button"
+            onClick={onClick}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-opacity hover:opacity-80 cursor-pointer ${map[status] || map.pending}`}
+        >
             Tugas Luar {status || 'Pending'}
-        </span>
+        </button>
     );
 };
 
-const TugasLuarCell = ({ p }) => (
+const TugasLuarCell = ({ p, openTugasLuar }) => (
     <td className="hidden lg:table-cell px-4 py-3.5 whitespace-nowrap">
         {p.is_tugas_luar ? (
             <div>
-                <TugasLuarBadge status={p.tugas_luar_status} />
-                {p.tugas_luar_status === 'pending' && (
-                    <div className="mt-1.5 flex gap-1">
-                        <button
-                            onClick={() => router.post(route('presensi.approveTugasLuar', p.id), {}, { preserveState: true })}
-                            className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-emerald-600"
-                        >
-                            Setuju
-                        </button>
-                        <button
-                            onClick={() => router.post(route('presensi.rejectTugasLuar', p.id), {}, { preserveState: true })}
-                            className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-600"
-                        >
-                            Tolak
-                        </button>
-                    </div>
-                )}
+                <TugasLuarBadge status={p.tugas_luar_status} onClick={() => openTugasLuar(p)} />
                 {p.tujuan && (
                     <p className="mt-1 max-w-[160px] text-[10px] leading-tight text-text-secondary">{p.tujuan}</p>
                 )}
@@ -128,7 +116,7 @@ const buildGroups = (data) => {
     return Array.from(map.values());
 };
 
-const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openAudit, setConfirmStatus }) => {
+const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openAudit, openTugasLuar, setConfirmStatus }) => {
     const groups = buildGroups(data);
 
     return groups.map((group) => {
@@ -205,12 +193,9 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                     <td className="hidden lg:table-cell px-4 py-3.5 whitespace-nowrap">
                         {tugasLuar ? (
                             <div>
-                                <TugasLuarBadge status={tugasLuar.tugas_luar_status} />
-                                {tugasLuar.tugas_luar_status === 'pending' && (
-                                    <div className="mt-1.5 flex gap-1">
-                                        <button onClick={() => router.post(route('presensi.approveTugasLuar', tugasLuar.id), {}, { preserveState: true })} className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-emerald-600">Setuju</button>
-                                        <button onClick={() => router.post(route('presensi.rejectTugasLuar', tugasLuar.id), {}, { preserveState: true })} className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-600">Tolak</button>
-                                    </div>
+                                <TugasLuarBadge status={tugasLuar.tugas_luar_status} onClick={() => openTugasLuar(tugasLuar)} />
+                                {tugasLuar.tujuan && (
+                                    <p className="mt-1 max-w-[160px] text-[10px] leading-tight text-text-secondary">{tugasLuar.tujuan}</p>
                                 )}
                             </div>
                         ) : <span className="text-xs text-text-secondary">—</span>}
@@ -300,13 +285,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             <td className="px-4 py-3.5 whitespace-nowrap">
                                 {isTL ? (
                                     <div>
-                                        <TugasLuarBadge status={c.tugas_luar_status} />
-                                        {c.tugas_luar_status === 'pending' && (
-                                            <div className="mt-1.5 flex gap-1">
-                                                <button onClick={() => router.post(route('presensi.approveTugasLuar', c.id), {}, { preserveState: true })} className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-emerald-600">Setuju</button>
-                                                <button onClick={() => router.post(route('presensi.rejectTugasLuar', c.id), {}, { preserveState: true })} className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-600">Tolak</button>
-                                            </div>
-                                        )}
+                                        <TugasLuarBadge status={c.tugas_luar_status} onClick={() => openTugasLuar(c)} />
                                         {c.tujuan && <p className="mt-1 max-w-[160px] text-[10px] leading-tight text-text-secondary">{c.tujuan}</p>}
                                     </div>
                                 ) : <span className="text-xs text-text-secondary">—</span>}
@@ -483,6 +462,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [auditModal, setAuditModal] = React.useState({ show: false, loading: false, data: [], presensi: null });
     const [auditPegawai, setAuditPegawai] = React.useState('');
     const [reviewModal, setReviewModal] = React.useState({ show: false, loading: false, data: null });
+    const [tugasLuarModal, setTugasLuarModal] = React.useState({ show: false, loading: false, data: null });
 
     const hasFilter = Boolean(search || statusFilter || jadwalFilter || jenisFilter || unitId || lemburFilter || lokasiFilter || suspiciousFilter || startDate || endDate);
 
@@ -592,6 +572,14 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
             .then((r) => r.json())
             .then((res) => setReviewModal({ show: true, loading: false, data: res.presensi || null }))
             .catch(() => setReviewModal({ show: true, loading: false, data: null }));
+    };
+
+    const openTugasLuar = (p) => {
+        setTugasLuarModal({ show: true, loading: true, data: null });
+        fetch(route('presensi.review', p.id))
+            .then((r) => r.json())
+            .then((res) => setTugasLuarModal({ show: true, loading: false, data: res.presensi || null }))
+            .catch(() => setTugasLuarModal({ show: true, loading: false, data: null }));
     };
 
     const s = stats || { total: 0, hadir: 0, telat: 0, sakit: 0, izin: 0, cuti: 0, alpa: 0, lembur_pending: 0, perlu_review: 0 };
@@ -834,7 +822,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     </thead>
                                     <tbody className={`divide-y divide-border/50 ${processing ? 'opacity-60 pointer-events-none transition-opacity' : ''}`}>
                                         {sorted.length === 0 ? null : viewMode === 'ringkas' ? (
-                                            <RingkasBody data={sorted} auth={auth} now={now} expanded={expanded} setExpanded={setExpanded} openReview={openReview} openAudit={openAudit} setConfirmStatus={setConfirmStatus} />
+                                            <RingkasBody data={sorted} auth={auth} now={now} expanded={expanded} setExpanded={setExpanded} openReview={openReview} openAudit={openAudit} openTugasLuar={openTugasLuar} setConfirmStatus={setConfirmStatus} />
                                         ) : sorted.map((p) => {
                                             const durasi = kerjaDurasi(p.jam_masuk, p.jam_keluar);
                                             const flagReview = p.lokasi_perlu_review || p.posisi_mencurigakan || p.motion_suspect;
@@ -935,7 +923,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             </div>
                                                         ) : <span className="text-xs text-text-secondary">—</span>}
                                                     </td>
-                                                    <TugasLuarCell p={p} />
+                                                    <TugasLuarCell p={p} openTugasLuar={openTugasLuar} />
                                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                                         {auth.permissions?.includes('manage_master_data') ? (
                                                             <select
@@ -1364,6 +1352,166 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                     <div><span className="text-text-secondary">DateTimeOriginal:</span> <b className="text-primary">{d.exif_meta.datetime_original || '-'}</b></div>
                                                     {d.exif_meta.mismatch && <div className="col-span-2"><span className="font-bold text-danger">⚠ Mismatch {d.exif_meta.mismatch_distance_m}m dengan koordinat reported</span></div>}
                                                 </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    </Modal>
+
+                    {/* ─── MODAL: Detail Dinas Luar ─── */}
+                    <Modal show={tugasLuarModal.show} onClose={() => setTugasLuarModal({ show: false, loading: false, data: null })} maxWidth="lg">
+                        <div className="p-6">
+                            <div className="mb-6 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
+                                        <MapPin className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-primary">Detail Dinas Luar</h3>
+                                        {tugasLuarModal.data && <p className="mt-0.5 text-sm text-text-secondary">{tugasLuarModal.data.pegawai_nama} · {tugasLuarModal.data.tanggal}</p>}
+                                    </div>
+                                </div>
+                                <button onClick={() => setTugasLuarModal({ show: false, loading: false, data: null })} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            {tugasLuarModal.loading ? (
+                                <div className="space-y-4 py-4">
+                                    {[1, 2, 3].map((i) => (
+                                        <div key={i} className="flex animate-pulse gap-4">
+                                            <div className="flex-1 space-y-2">
+                                                <div className="h-3 w-24 rounded bg-surface" />
+                                                <div className="h-4 w-40 rounded bg-surface" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : !tugasLuarModal.data ? (
+                                <div className="py-12 text-center">
+                                    <p className="text-sm text-text-secondary">Data detail tidak tersedia.</p>
+                                </div>
+                            ) : (() => {
+                                const d = tugasLuarModal.data;
+                                return (
+                                    <div className="space-y-5">
+                                        {/* Status badge */}
+                                        <div className="flex flex-wrap gap-2">
+                                            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${
+                                                d.tugas_luar_status === 'disetujui' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                : d.tugas_luar_status === 'ditolak' ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                : 'bg-sky-50 text-sky-700 border-sky-200'
+                                            }`}>
+                                                {d.tugas_luar_status === 'disetujui' ? '✓ Disetujui' : d.tugas_luar_status === 'ditolak' ? '✗ Ditolak' : '⏳ Pending'}
+                                            </span>
+                                        </div>
+
+                                        {/* Tujuan */}
+                                        <div className="rounded-lg bg-surface p-4">
+                                            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-secondary">Tujuan</p>
+                                            <p className="text-sm font-semibold text-primary">{d.tujuan || '-'}</p>
+                                        </div>
+
+                                        {/* Keterangan */}
+                                        {d.keterangan && (
+                                            <div className="rounded-lg bg-surface p-4">
+                                                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-secondary">Keterangan</p>
+                                                <p className="text-sm text-primary leading-relaxed">{d.keterangan}</p>
+                                            </div>
+                                        )}
+
+                                        {/* Foto masuk */}
+                                        <div className="rounded-lg bg-surface p-4">
+                                            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-secondary">Foto Masuk (Overlay)</p>
+                                            {d.foto_masuk_url ? (
+                                                <a href={d.foto_masuk_url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-border transition-shadow hover:ring-2 hover:ring-primary">
+                                                    <img src={d.foto_masuk_url} alt="Foto masuk" className="aspect-[3/4] w-full max-w-[240px] object-cover" loading="lazy" />
+                                                </a>
+                                            ) : (
+                                                <div className="flex aspect-[3/4] w-full max-w-[240px] items-center justify-center rounded-lg border border-dashed border-border bg-white">
+                                                    <span className="text-xs text-text-secondary">Tidak tersedia</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Foto kegiatan */}
+                                        {(d.foto_kegiatan || []).length > 0 && (
+                                            <div className="rounded-lg bg-surface p-4">
+                                                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-text-secondary">Foto Kegiatan ({d.foto_kegiatan.length})</p>
+                                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                                    {d.foto_kegiatan.map((item, i) => {
+                                                        const url = d.foto_kegiatan_urls?.[i];
+                                                        return url ? (
+                                                            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-border transition-shadow hover:ring-2 hover:ring-primary" title={item.keterangan || 'Bukti kegiatan'}>
+                                                                <img src={url} alt={`Kegiatan ${i + 1}`} className="aspect-[3/4] w-full object-cover" loading="lazy" />
+                                                                {item.keterangan && <p className="px-1.5 py-1 text-[10px] leading-tight text-text-secondary">{item.keterangan}</p>}
+                                                            </a>
+                                                        ) : null;
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* GPS */}
+                                        <div className="rounded-lg bg-surface p-4">
+                                            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Lokasi</p>
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-text-secondary">Akurasi</span>
+                                                    <b className="text-primary">{d.akurasi_masuk ?? '-'} m</b>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-text-secondary">Kecepatan</span>
+                                                    <b className="text-primary">{d.kecepatan_masuk ?? '-'} m/s</b>
+                                                </div>
+                                                <div className="col-span-2 flex items-center justify-between gap-2">
+                                                    <span className="text-text-secondary">Koordinat</span>
+                                                    {d.latitude_masuk != null && d.longitude_masuk != null ? (
+                                                        <a
+                                                            href={`https://www.google.com/maps?q=${d.latitude_masuk},${d.longitude_masuk}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            title="Buka di Google Maps"
+                                                            className="inline-flex items-center gap-1 font-mono text-primary underline decoration-dotted underline-offset-2 transition-colors hover:text-primary/80"
+                                                        >
+                                                            <MapPin className="h-3.5 w-3.5" />
+                                                            {d.latitude_masuk}, {d.longitude_masuk}
+                                                        </a>
+                                                    ) : (
+                                                        <b className="font-mono text-primary">-</b>
+                                                    )}
+                                                </div>
+                                                {d.captured_at && (
+                                                    <div className="col-span-2 flex items-center justify-between">
+                                                        <span className="text-text-secondary">Waktu Capture</span>
+                                                        <b className="text-primary">{format(new Date(d.captured_at), 'dd/MM/yyyy, HH.mm.ss', { locale: id })}</b>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Tombol approve/reject (jika pending) */}
+                                        {d.tugas_luar_status === 'pending' && (
+                                            <div className="flex justify-end gap-3 border-t border-border pt-4">
+                                                <button
+                                                    onClick={() => {
+                                                        router.post(route('presensi.rejectTugasLuar', d.id), {}, { preserveState: true });
+                                                        setTugasLuarModal({ show: false, loading: false, data: null });
+                                                    }}
+                                                    className="rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-50"
+                                                >
+                                                    Tolak
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        router.post(route('presensi.approveTugasLuar', d.id), {}, { preserveState: true });
+                                                        setTugasLuarModal({ show: false, loading: false, data: null });
+                                                    }}
+                                                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                                                >
+                                                    Setujui
+                                                </button>
                                             </div>
                                         )}
                                     </div>
