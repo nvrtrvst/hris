@@ -38,7 +38,7 @@ class ApprovalHelperTest extends TestCase
             'nik' => '3273'.str_pad((string) random_int(0, 999999999999), 12, '0', STR_PAD_LEFT),
             'nama_lengkap' => $nama,
             'jenis_kelamin' => 'L',
-            'status_kepegawaian' => 'tetap',
+            'status_kepegawaian' => 'guru_tetap_yayasan',
             'status_aktif' => 'aktif',
             'tmt_mengajar' => '2020-01-01',
             'wajib_kantor' => true,

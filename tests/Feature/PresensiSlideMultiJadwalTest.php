@@ -83,7 +83,7 @@ class PresensiSlideMultiJadwalTest extends TestCase
             'jumlah_tanggungan' => 2,
             'alamat' => 'Jl. Test No. 1',
             'no_hp' => '081234567890',
-            'status_kepegawaian' => 'tetap',
+            'status_kepegawaian' => 'guru_tetap_yayasan',
             'tmt_mengajar' => '2020-01-01',
             'status_aktif' => 'aktif',
             'pendidikan_terakhir' => 'S1',

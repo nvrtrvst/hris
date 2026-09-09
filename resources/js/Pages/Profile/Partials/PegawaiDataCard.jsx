@@ -15,14 +15,7 @@ const labelClass = 'mb-1 block text-xs font-bold text-gray-600';
 const labelErr = (errors, key) => (errors[key] ? <p className="mt-1 text-xs text-red-500">{errors[key]}</p> : null);
 
 const jkLabel = (v) => (v === 'L' ? 'Laki-laki' : v === 'P' ? 'Perempuan' : v);
-const kepegLabel = { tetap: 'Tetap', kontrak: 'Kontrak', honorer: 'Honorer', gtt: 'GTT' };
 
-const kepegOptions = [
-    { value: 'tetap', label: 'Tetap' },
-    { value: 'kontrak', label: 'Kontrak' },
-    { value: 'honorer', label: 'Honorer' },
-    { value: 'gtt', label: 'GTT' },
-];
 const pendidikanOptions = [
     { value: 'SD/Sederajat', label: 'SD/Sederajat' },
     { value: 'SMP/Sederajat', label: 'SMP/Sederajat' },
@@ -81,8 +74,12 @@ function fmtDate(value) {
 }
 
 export default function PegawaiDataCard() {
-    const user = usePage().props.auth.user;
+    const { props } = usePage();
+    const user = props.auth.user;
     const pegawai = user?.pegawai;
+    const statusOptions = props.statusKepegawaian || [];
+    const kepegOptions = statusOptions.map((s) => ({ value: s.kode, label: s.label }));
+    const kepegLabel = (value) => statusOptions.find((o) => o.kode === value)?.label ?? value;
 
     const primaryUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0];
     const primaryJabatan = pegawai?.jabatans?.find((j) => j.pivot?.is_primary) ?? pegawai?.jabatans?.[0];
@@ -135,7 +132,7 @@ export default function PegawaiDataCard() {
         );
     }
 
-    const kontrakAktif = ['honorer', 'kontrak', 'gtt'].includes(pegawai?.status_kepegawaian) && pegawai?.tanggal_akhir_kontrak;
+    const kontrakAktif = !pegawai?.is_tetap && pegawai?.tanggal_akhir_kontrak;
     const sisaKontrak = kontrakAktif
         ? Math.max(0, Math.ceil((new Date(pegawai.tanggal_akhir_kontrak) - new Date()) / (1000 * 60 * 60 * 24)))
         : null;
@@ -365,7 +362,7 @@ export default function PegawaiDataCard() {
                     </Section>
 
                     <Section title="Kepegawaian">
-                        <Field icon={MapPin} label="Status Kepegawaian" value={kepegLabel[pegawai?.status_kepegawaian] || pegawai?.status_kepegawaian} />
+                        <Field icon={MapPin} label="Status Kepegawaian" value={kepegLabel(pegawai?.status_kepegawaian)} />
                         <Field icon={CalendarDays} label="Mulai Kerja" value={fmtDate(pegawai?.tanggal_mulai_kerja)} />
                         {kontrakAktif && (
                             <Field

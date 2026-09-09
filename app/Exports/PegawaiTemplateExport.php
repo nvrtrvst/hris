@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Constants\PegawaiConstants;
 use App\Models\Jabatan;
+use App\Models\StatusKepegawaian;
 use App\Models\UnitSekolah;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -86,7 +87,7 @@ class PegawaiTemplateExport implements FromArray, WithEvents, WithHeadings
                 $jabatanNames = Jabatan::orderBy('nama')->pluck('nama')->values();
                 $unitNames = UnitSekolah::orderBy('nama')->pluck('nama')->values();
                 $pendidikan = collect(PegawaiConstants::PENDIDIKAN_TERAKHIR);
-                $statusList = collect(PegawaiConstants::STATUS_KEPEGAWAIAN);
+                $statusList = StatusKepegawaian::activeOptions()->pluck('kode');
 
                 if ($jabatanNames->isEmpty()) {
                     return;

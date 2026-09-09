@@ -38,7 +38,7 @@ class KcdReportTest extends TestCase
             'status_pernikahan' => 'kawin',
             'alamat' => 'Jl. Test',
             'no_hp' => '08123456789',
-            'status_kepegawaian' => 'tetap',
+            'status_kepegawaian' => 'guru_tetap_yayasan',
             'tmt_mengajar' => '2020-01-01',
             'status_aktif' => 'aktif',
             'pendidikan_terakhir' => 'S1',
@@ -154,7 +154,7 @@ class KcdReportTest extends TestCase
 
         $this->makePegawai($unit, $guruTetap, ['nama_lengkap' => 'Guru Tetap']);
         $this->makePegawai($unit, $tendik, ['nama_lengkap' => 'Tendik']);
-        $this->makePegawai($unit, $guruTetap, ['nama_lengkap' => 'Guru Honor', 'status_kepegawaian' => 'honorer']);
+        $this->makePegawai($unit, $guruTetap, ['nama_lengkap' => 'Guru Honor', 'status_kepegawaian' => 'guru_pemula']);
 
         $this->actingAs($user, 'web_admin');
 

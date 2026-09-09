@@ -179,7 +179,7 @@ export default function MobileProfile({ status }) {
                         <p className="mt-1 text-sm font-bold text-emerald-600">
                             {pegawai?.status_aktif ? 'Aktif' : 'Nonaktif'}
                         </p>
-                        <p className="text-[11px] text-slate-400">{pegawai?.status_kepegawaian || '-'}</p>
+                        <p className="text-[11px] text-slate-400">{pegawai?.statusRef?.label || pegawai?.status_kepegawaian || '-'}</p>
                     </Card>
                 </div>
 
@@ -205,7 +205,7 @@ export default function MobileProfile({ status }) {
                             ? format(parseISO(pegawai.tanggal_mulai_kerja), 'd MMMM yyyy', { locale: idLocale })
                             : null}
                     />
-                    {['honorer', 'kontrak', 'gtt'].includes(pegawai?.status_kepegawaian) && pegawai?.tanggal_akhir_kontrak && (
+                    {!pegawai?.is_tetap && pegawai?.tanggal_akhir_kontrak && (
                         <Field
                             icon={CalendarClock}
                             label="Akhir Kontrak"

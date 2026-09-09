@@ -80,7 +80,7 @@ class PresensiAuditIdorTest extends TestCase
             'jumlah_tanggungan' => 0,
             'alamat' => 'Jl. IDOR Test No. 1',
             'no_hp' => '0812'.substr($nik, -7),
-            'status_kepegawaian' => 'honorer',
+            'status_kepegawaian' => 'guru_pemula',
             'tmt_mengajar' => '2021-01-01',
             'status_aktif' => 'aktif',
             'pendidikan_terakhir' => 'S1',

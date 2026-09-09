@@ -34,7 +34,7 @@ class PegawaiNikPlaintextTest extends TestCase
             'nik' => $nik,
             'nama_lengkap' => 'Uji NIK',
             'jenis_kelamin' => 'L',
-            'status_kepegawaian' => 'tetap',
+            'status_kepegawaian' => 'guru_tetap_yayasan',
             'status_aktif' => 'aktif',
             'tmt_mengajar' => '2020-01-01',
         ]);

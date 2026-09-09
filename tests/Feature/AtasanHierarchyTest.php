@@ -48,7 +48,7 @@ class AtasanHierarchyTest extends TestCase
             'nik' => '3273'.str_pad((string) random_int(0, 999999999999), 12, '0', STR_PAD_LEFT),
             'nama_lengkap' => $nama,
             'jenis_kelamin' => 'L',
-            'status_kepegawaian' => 'tetap',
+            'status_kepegawaian' => 'guru_tetap_yayasan',
             'status_aktif' => 'aktif',
             'tmt_mengajar' => '2020-01-01',
             'wajib_kantor' => true,
@@ -167,7 +167,7 @@ class AtasanHierarchyTest extends TestCase
     {
         $kepsek = $this->makePegawai('Kepsek SD', $this->sd, 'Kepala Sekolah');
         $guru = $this->makePegawai('Guru Honorer', $this->sd, 'Guru Mata Pelajaran');
-        $guru->update(['status_kepegawaian' => 'honorer', 'tanggal_akhir_kontrak' => now()->addDays(10), 'atasan_langsung_id' => $kepsek->id]);
+        $guru->update(['status_kepegawaian' => 'guru_pemula', 'tanggal_akhir_kontrak' => now()->addDays(10), 'atasan_langsung_id' => $kepsek->id]);
 
         // Superadmin → boleh lihat
         $superadmin = User::factory()->create();
@@ -197,10 +197,10 @@ class AtasanHierarchyTest extends TestCase
     {
         $kepsek = $this->makePegawai('Kepsek SD', $this->sd, 'Kepala Sekolah');
         $bawahan = $this->makePegawai('Bawahan', $this->sd, 'Tenaga Administrasi (TU)');
-        $bawahan->update(['status_kepegawaian' => 'honorer', 'tanggal_akhir_kontrak' => now()->addDays(5), 'atasan_langsung_id' => $kepsek->id]);
+        $bawahan->update(['status_kepegawaian' => 'guru_pemula', 'tanggal_akhir_kontrak' => now()->addDays(5), 'atasan_langsung_id' => $kepsek->id]);
 
         $bukanBawahan = $this->makePegawai('Bukan Bawahan', $this->sd, 'Tenaga Administrasi (TU)');
-        $bukanBawahan->update(['status_kepegawaian' => 'honorer', 'tanggal_akhir_kontrak' => now()->addDays(6)]);
+        $bukanBawahan->update(['status_kepegawaian' => 'guru_pemula', 'tanggal_akhir_kontrak' => now()->addDays(6)]);
 
         // Admin unit = kepala sekolah (punya pegawai record sebagai atasan)
         $userKepsek = User::factory()->create(['unit_sekolah_id' => $this->sd->id]);

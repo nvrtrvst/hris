@@ -2,7 +2,7 @@
 
 namespace App\Exports;
 
-use App\Constants\PegawaiConstants;
+use App\Models\Pegawai;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -58,7 +58,7 @@ class PegawaiExport implements FromCollection, WithHeadings, WithStyles
                     $p->jenisPegawaiLabel(),
                     $p->units->pluck('nama')->implode(', '),
                     $p->jabatans->pluck('nama')->implode(', '),
-                    PegawaiConstants::STATUS_KEPEGAWAIAN_LABELS[$p->status_kepegawaian] ?? $p->status_kepegawaian,
+                    $p->statusRef?->label ?? $p->status_kepegawaian,
                     $p->status_aktif,
                     $p->tempat_lahir ?? '',
                     $p->tanggal_lahir,

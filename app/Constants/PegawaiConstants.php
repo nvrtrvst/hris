@@ -5,37 +5,13 @@ namespace App\Constants;
 /**
  * Master-data pegawai yang tidak punya tabel sendiri.
  * Satu-satunya sumber kebenaran — dipakai form, template import, dan validasi.
+ *
+ * Status kepegawaian TIDAK lagi di sini — sudah pindah ke tabel referensi
+ * `status_kepegawaian` (lihat App\Models\StatusKepegawaian, Tier B) supaya
+ * label/kelompok bisa diubah lewat DB tanpa deploy.
  */
 class PegawaiConstants
 {
-    /**
-     * Status kepegawaian (format GTYS Yayasan): dropdown template + validasi in:.
-     *
-     * Tiga opsi untuk guru: GTYS (Guru Tetap Yayasan), GTT (Guru Tidak Tetap),
-     * Guru Pemula. Tiga opsi untuk non-guru (staf/pegawai): PTT (Pegawai Tidak
-     * Tetap), Pegawai Tidak Tetap, Pegawai Pemula.
-     */
-    public const STATUS_KEPEGAWAIAN = [
-        'guru_tetap_yayasan',
-        'guru_tidak_tetap',
-        'guru_pemula',
-        'ptt',
-        'pegawai_tidak_tetap',
-        'pegawai_pemula',
-    ];
-
-    /**
-     * Label tampilan status kepegawaian (dipakai export Excel + React).
-     */
-    public const STATUS_KEPEGAWAIAN_LABELS = [
-        'guru_tetap_yayasan' => 'GTYS (Guru Tetap Yayasan)',
-        'guru_tidak_tetap' => 'GTT (Guru Tidak Tetap)',
-        'guru_pemula' => 'Guru Pemula',
-        'ptt' => 'PTT (Pegawai Tidak Tetap)',
-        'pegawai_tidak_tetap' => 'Pegawai Tidak Tetap',
-        'pegawai_pemula' => 'Pegawai Pemula',
-    ];
-
     /**
      * Jenjang pendidikan terakhir (standar Dapodik).
      * Dipakai dropdown template import supaya data konsisten.

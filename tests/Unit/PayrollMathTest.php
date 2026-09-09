@@ -25,6 +25,11 @@ class TestablePenggajianController extends PenggajianController
         return $this->countWeekdayInRange($hari, $start, $end);
     }
 
+    public function setTetapKodeCache(array $kodes): void
+    {
+        $this->tetapKodeCache = $kodes;
+    }
+
     public function pubComputeComponentNominal(
         KomponenGaji $komponen,
         Pegawai $pegawai,
@@ -76,7 +81,7 @@ class PayrollMathTest extends TestCase
     {
         $p = new Pegawai(array_merge([
             'nama_lengkap' => 'Test Pegawai',
-            'status_kepegawaian' => 'honorer',
+            'status_kepegawaian' => 'guru_pemula',
             'status_aktif' => 'aktif',
             'tmt_mengajar' => '2020-01-01',
         ], $attrs));
@@ -254,11 +259,15 @@ class PayrollMathTest extends TestCase
     public function test_komponen_applies_only_to_matching_status(): void
     {
         $komponen = $this->makeKomponen(['id' => 8, 'kode' => 'insentif_tetap', 'nama' => 'Insentif Tetap', 'jenis' => 'fixed', 'nilai_default' => 100000, 'applies_to_status_kepegawaian' => 'tetap']);
-        $pegawai = $this->makePegawai(['status_kepegawaian' => 'honorer']);
+        $pegawai = $this->makePegawai(['status_kepegawaian' => 'guru_pemula']);
         $periodeEnd = Carbon::create(2026, 8, 31);
         $periodeStart = Carbon::create(2026, 8, 1);
 
-        $nominal = $this->controller()->pubComputeComponentNominal(
+        $controller = $this->controller();
+        // Inject cache kode tetap — unit test tanpa DB (ref table).
+        $controller->setTetapKodeCache(['guru_tetap_yayasan', 'pegawai_tetap_yayasan']);
+
+        $nominal = $controller->pubComputeComponentNominal(
             $komponen, $pegawai, new Collection, new Collection, [],
             new Collection, $periodeEnd, $periodeStart, $periodeEnd
         );

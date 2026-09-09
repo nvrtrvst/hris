@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\StatusKepegawaian;
 use Illuminate\Foundation\Http\FormRequest;
 
 class PegawaiSelfUpdateRequest extends FormRequest
@@ -26,7 +27,7 @@ class PegawaiSelfUpdateRequest extends FormRequest
             'alamat' => 'required|string|max:500',
             'no_hp' => 'required|string|max:20',
             'no_hp_darurat' => 'nullable|string|max:20',
-            'status_kepegawaian' => 'required|in:tetap,kontrak,honorer,gtt',
+            'status_kepegawaian' => 'required|in:'.implode(',', StatusKepegawaian::activeKodes()),
             'tmt_mengajar' => 'required|date',
             'tanggal_akhir_kontrak' => 'nullable|date|after_or_equal:tmt_mengajar',
             'pendidikan_terakhir' => 'required|string|max:255',

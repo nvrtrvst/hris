@@ -23,13 +23,6 @@ const statusNikahOptions = [
     { value: 'Cerai Mati', label: 'Cerai Mati' },
 ];
 
-const statusKepegOptions = [
-    { value: 'tetap', label: 'Tetap' },
-    { value: 'kontrak', label: 'Kontrak' },
-    { value: 'honorer', label: 'Honorer' },
-    { value: 'gtt', label: 'GTT' },
-];
-
 const pendidikanOptions = [
     { value: 'SMA/SMK', label: 'SMA/SMK' },
     { value: 'D1', label: 'D1' },
@@ -68,7 +61,8 @@ const Field = ({ label, children, error }) => (
     </div>
 );
 
-export default function LengkapiData({ auth, pegawai }) {
+export default function LengkapiData({ auth, pegawai, statusKepegawaian }) {
+    const statusKepegOptions = (statusKepegawaian || []).map((s) => ({ value: s.kode, label: s.label }));
     const { data, setData, post, processing, errors } = useForm({
         nik: '',
         nuptk: pegawai?.nuptk || '',

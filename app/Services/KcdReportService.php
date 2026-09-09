@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
+use App\Models\StatusKepegawaian;
 use App\Models\UnitSekolah;
 use Carbon\Carbon;
 
@@ -28,7 +29,7 @@ class KcdReportService
 
         $pegawais = Pegawai::query()
             ->where('status_aktif', 'aktif')
-            ->where('status_kepegawaian', 'tetap')
+            ->whereIn('status_kepegawaian', StatusKepegawaian::activeTetapKodes())
             ->whereHas('jabatans', fn ($q) => $q->where('is_guru', true))
             ->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unit->id))
             ->orderBy('nama_lengkap')

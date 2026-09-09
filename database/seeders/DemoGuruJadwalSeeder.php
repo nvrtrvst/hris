@@ -78,7 +78,7 @@ class DemoGuruJadwalSeeder extends Seeder
             'no_hp' => '081234567899',
             'email' => self::EMAIL,
             'status_aktif' => 'aktif',
-            'status_kepegawaian' => 'tetap',
+            'status_kepegawaian' => 'guru_tetap_yayasan',
             'wajib_kantor' => true,
             'tmt_mengajar' => '2020-01-01',
             'pendidikan_terakhir' => 'S1',

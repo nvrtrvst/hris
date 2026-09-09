@@ -42,7 +42,7 @@ class PegawaiSeeder extends Seeder
                     'status_pernikahan' => 'Menikah',
                     'alamat' => 'Jl. Merdeka No. 10, Jakarta',
                     'no_hp' => '081234567890',
-                    'status_kepegawaian' => 'tetap',
+                    'status_kepegawaian' => 'guru_tetap_yayasan',
                     'status_aktif' => 'aktif',
                     'tmt_mengajar' => '2020-01-01',
                     'pendidikan_terakhir' => 'S1',

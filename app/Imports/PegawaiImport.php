@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Constants\PegawaiConstants;
 use App\Models\Jabatan;
 use App\Models\Pegawai;
+use App\Models\StatusKepegawaian;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Carbon\Carbon;
@@ -260,7 +261,7 @@ class PegawaiImport implements ToCollection
             '*.12' => 'required|string',
             '*.13' => 'required|email|max:191|unique:users,email',
             '*.14' => 'required|string|max:20',
-            '*.15' => 'required|in:'.implode(',', PegawaiConstants::STATUS_KEPEGAWAIAN),
+            '*.15' => 'required|in:'.implode(',', StatusKepegawaian::activeKodes()),
             '*.16' => 'nullable|string|max:255',
         ], [
             '*.0.required' => 'Nama Lengkap wajib diisi.',

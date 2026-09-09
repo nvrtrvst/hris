@@ -65,7 +65,7 @@ class Pegawai extends Model
     // (pengajuanIzins). Kalau auto-append, setiap serialisasi (termasuk auth.user.pegawai
     // di HandleInertiaRequests) memicu query per request. Append eksplisit di controller
     // yang butuh, dengan eager-load pengajuanIzins.
-    protected $appends = ['foto_url', 'nik_masked'];
+    protected $appends = ['foto_url', 'nik_masked', 'is_tetap'];
 
     /**
      * Muat data cuti + append accessor sisa_cuti/cuti_terpakai.
@@ -201,6 +201,25 @@ class Pegawai extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Referensi status kepegawaian (Tier B — match by kode, bukan FK id).
+     * Eager-load 'statusRef' di titik yang meng-serialize pegawai supaya
+     * accessor is_tetap tidak memicu query per baris.
+     */
+    public function statusRef(): BelongsTo
+    {
+        return $this->belongsTo(StatusKepegawaian::class, 'status_kepegawaian', 'kode');
+    }
+
+    /**
+     * Grup "tetap" (GTYS/PTY) — gate presensi pagi/sore + slide jadwal.
+     * Baca flag dari tabel referensi, bukan nama status.
+     */
+    public function getIsTetapAttribute(): bool
+    {
+        return (bool) ($this->statusRef?->is_tetap);
     }
 
     public function createdBy(): BelongsTo

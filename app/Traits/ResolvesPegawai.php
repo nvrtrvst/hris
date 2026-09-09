@@ -21,7 +21,7 @@ trait ResolvesPegawai
      */
     private function getPegawai(): Pegawai
     {
-        $pegawai = Pegawai::where('user_id', Auth::id())->first();
+        $pegawai = Pegawai::with('statusRef')->where('user_id', Auth::id())->first();
         if ($pegawai) {
             return $pegawai;
         }

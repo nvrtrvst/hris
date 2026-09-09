@@ -24,7 +24,7 @@ class PegawaiProfileUpdateTest extends TestCase
             'nik' => '3273000000000001',
             'nama_lengkap' => 'Nama Lama',
             'jenis_kelamin' => 'L',
-            'status_kepegawaian' => 'honorer',
+            'status_kepegawaian' => 'guru_pemula',
             'status_aktif' => 'aktif',
             'tmt_mengajar' => '2020-01-01',
             'alamat' => 'Alamat Lama',
@@ -63,7 +63,7 @@ class PegawaiProfileUpdateTest extends TestCase
             'nik' => '3273000000000001',
             'nama_lengkap' => 'Nama',
             'jenis_kelamin' => 'L',
-            'status_kepegawaian' => 'tetap',
+            'status_kepegawaian' => 'guru_tetap_yayasan',
             'status_aktif' => 'aktif',
             'tmt_mengajar' => '2020-01-01',
         ]);

@@ -44,7 +44,7 @@ class PresensiBlockedOnLeaveTest extends TestCase
             'nik' => '1234567890'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT),
             'nama_lengkap' => 'Guru Test',
             'jenis_kelamin' => 'L',
-            'status_kepegawaian' => 'tetap',
+            'status_kepegawaian' => 'guru_tetap_yayasan',
             'status_aktif' => 'aktif',
             'tmt_mengajar' => '2020-01-01',
             'wajib_kantor' => true,

@@ -11,6 +11,7 @@ use App\Models\Jabatan;
 use App\Models\KomponenGaji;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\StatusKepegawaian;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -100,7 +101,7 @@ class PegawaiController extends Controller
      * Query pegawai dengan semua filter index (search, unit, mapel, jabatan, jenis).
      * Dipakai index() dan export() agar hasil export selalu sama dengan yang terlihat.
      */
-    private function pegawaiQuery(Request $request, array $with = ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama'])
+    private function pegawaiQuery(Request $request, array $with = ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'statusRef:kode,label,is_tetap'])
     {
         $request->validate([
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
@@ -173,7 +174,7 @@ class PegawaiController extends Controller
     {
         Gate::authorize('view_pegawai');
 
-        $query = $this->pegawaiQuery($request, ['units:id,nama', 'jabatans:id,nama', 'user:id,email']);
+        $query = $this->pegawaiQuery($request, ['units:id,nama', 'jabatans:id,nama', 'user:id,email', 'statusRef:kode,label,is_tetap']);
 
         $withNik = (bool) (auth()->user()?->can('view_sensitive_data'));
         $pegawais = $query->get();
@@ -197,14 +198,15 @@ class PegawaiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = $this->pegawaiQuery($request, ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'user:id,email,username']);
+        $query = $this->pegawaiQuery($request, ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'user:id,email,username', 'statusRef:kode,label,is_tetap']);
         $user = auth()->user();
 
         // Stats ringkasan: 1 query agregat + 1 count ringan (kontrak berakhir)
         $agg = (clone $query)->selectRaw("COUNT(*) as total, SUM(CASE WHEN status_aktif = 'aktif' THEN 1 ELSE 0 END) as aktif")->first();
         $kontrakEnd = now()->addDays(30)->format('Y-m-d');
         $kontrakBerakhir = (clone $query)
-            ->where('status_kepegawaian', 'kontrak')
+            ->whereIn('status_kepegawaian', StatusKepegawaian::activeKodes())
+            ->whereNotIn('status_kepegawaian', StatusKepegawaian::activeTetapKodes())
             ->whereNotNull('tanggal_akhir_kontrak')
             ->where('tanggal_akhir_kontrak', '<=', $kontrakEnd)
             ->count();
@@ -273,7 +275,7 @@ class PegawaiController extends Controller
         return inertia('Pegawai/Create', [
             'unitSekolahs' => $unitSekolahs,
             'jabatans' => $jabatans,
-            'statusKepegawaian' => PegawaiConstants::STATUS_KEPEGAWAIAN,
+            'statusKepegawaian' => StatusKepegawaian::activeOptions(),
             'pendidikanTerakhir' => PegawaiConstants::PENDIDIKAN_TERAKHIR,
         ]);
     }
@@ -295,7 +297,7 @@ class PegawaiController extends Controller
             'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
             'jabatan_id' => 'required|exists:jabatan,id',
             'role' => 'required|in:pegawai,admin_unit,pimpinan',
-            'status_kepegawaian' => 'required|in:'.implode(',', PegawaiConstants::STATUS_KEPEGAWAIAN),
+            'status_kepegawaian' => 'required|in:'.implode(',', StatusKepegawaian::activeKodes()),
             'atasan_langsung_id' => 'nullable|integer|exists:pegawai,id',
         ]);
 
@@ -356,6 +358,7 @@ class PegawaiController extends Controller
             'dokumen' => fn ($q) => $q->select('id', 'pegawai_id', 'nama_dokumen', 'jenis', 'created_at'),
             'riwayat' => fn ($q) => $q->latest('id')->limit(30),
             'atasanLangsung' => fn ($q) => $q->select('id', 'nama_lengkap', 'foto'),
+            'statusRef',
         ])->findOrFail($id);
 
         $user = auth()->user();
@@ -386,7 +389,7 @@ class PegawaiController extends Controller
 
     public function edit(string $id)
     {
-        $pegawai = Pegawai::with(['user', 'units', 'jabatans', 'mapels'])->findOrFail($id);
+        $pegawai = Pegawai::with(['user', 'units', 'jabatans', 'mapels', 'statusRef'])->findOrFail($id);
 
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
@@ -444,7 +447,7 @@ class PegawaiController extends Controller
             'jabatans' => $jabatans,
             'mapels' => $mapels,
             'atasanCandidates' => $atasanCandidates,
-            'statusKepegawaian' => PegawaiConstants::STATUS_KEPEGAWAIAN,
+            'statusKepegawaian' => StatusKepegawaian::activeOptions(),
             'pendidikanTerakhir' => PegawaiConstants::PENDIDIKAN_TERAKHIR,
         ]);
     }
@@ -480,7 +483,7 @@ class PegawaiController extends Controller
             'status_pernikahan' => 'nullable|string|max:255',
             'alamat' => 'required|string',
             'no_hp' => 'required|string|max:20',
-            'status_kepegawaian' => 'required|in:'.implode(',', PegawaiConstants::STATUS_KEPEGAWAIAN),
+            'status_kepegawaian' => 'required|in:'.implode(',', StatusKepegawaian::activeKodes()),
             'jatah_cuti_tahunan' => 'nullable|integer|min:0',
             'wajib_kantor' => 'boolean',
             'status_aktif' => 'required|in:aktif,cuti,nonaktif,resign',

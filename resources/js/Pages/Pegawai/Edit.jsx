@@ -4,7 +4,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, BadgeCheck, Camera, Landmark, Loader2, Save, Trash2, User, X as XIcon } from 'lucide-react';
 import { MapelSection } from '@/Pages/Pegawai/Partials/MapelSection';
 import { UnitAssignmentSection } from '@/Pages/Pegawai/Partials/UnitAssignmentSection';
-import { statusKepegawaianLabel } from '@/Utils/pegawaiMeta';
+import { statusLabelFrom } from '@/Utils/pegawaiMeta';
 import { validateUpload } from '@/Utils/file';
 
 const inputClass = 'input-field';
@@ -274,11 +274,11 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                         {/* Status Kepegawaian */}
                         <SectionCard Icon={BadgeCheck} title="Status Kepegawaian">
                             <Field label="Status Kepegawaian" error={errors.status_kepegawaian}>
-                                <select value={data.status_kepegawaian} onChange={(e) => setData('status_kepegawaian', e.target.value)} className={selectClass}>
-                                    {(statusKepegawaian || []).map((s) => (
-                                        <option key={s} value={s}>{statusKepegawaianLabel(s)}</option>
-                                    ))}
-                                </select>
+                                        <select value={data.status_kepegawaian} onChange={(e) => setData('status_kepegawaian', e.target.value)} className={selectClass}>
+                                            {(statusKepegawaian || []).map((s) => (
+                                                <option key={s.kode} value={s.kode}>{s.label}</option>
+                                            ))}
+                                        </select>
                             </Field>
                             <Field label="Atasan Langsung" error={errors.atasan_langsung_id} hint="Kepala Sekolah/Kepala TU sesuai struktur organisasi.">
                                 <select value={data.atasan_langsung_id} onChange={(e) => setData('atasan_langsung_id', e.target.value)} className={selectClass}>

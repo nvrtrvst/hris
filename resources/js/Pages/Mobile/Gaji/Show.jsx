@@ -25,7 +25,7 @@ export default function GajiShow({ auth, penggajian }) {
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2"><User className="h-4 w-4 text-white/60" /> {pegawai?.nama_lengkap || '-'}</div>
                     <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-white/60" /> {primaryUnit?.nama || '-'}</div>
-                    <div className="flex items-center gap-2"><Hash className="h-4 w-4 text-white/60" /> {pegawai?.status_kepegawaian || '-'}</div>
+                    <div className="flex items-center gap-2"><Hash className="h-4 w-4 text-white/60" /> {pegawai?.statusRef?.label || pegawai?.status_kepegawaian || '-'}</div>
                     <div className="flex items-center gap-2"><BadgeCheck className="h-4 w-4 text-white/60" /> {p.status}</div>
                 </div>
             </Card>

@@ -69,7 +69,7 @@ export default function Show({ auth, penggajian }) {
                                             </tr>
                                             <tr>
                                                 <td className="py-1 text-text-secondary">Status</td>
-                                                <td className="py-1 font-bold text-text-primary uppercase">: {penggajian.pegawai.status_kepegawaian}</td>
+                                                <td className="py-1 font-bold text-text-primary uppercase">: {penggajian.pegawai.statusRef?.label || penggajian.pegawai.status_kepegawaian}</td>
                                             </tr>
                                         </tbody>
                                     </table>

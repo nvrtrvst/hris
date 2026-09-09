@@ -87,7 +87,7 @@ class DashboardPartialReloadTest extends TestCase
             'jumlah_tanggungan' => 0,
             'alamat' => 'Jl. Live Test No. 1',
             'no_hp' => '081211223344',
-            'status_kepegawaian' => 'honorer',
+            'status_kepegawaian' => 'guru_pemula',
             'tmt_mengajar' => '2021-01-01',
             'status_aktif' => 'aktif',
             'pendidikan_terakhir' => 'S1',

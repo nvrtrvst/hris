@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\StatusKepegawaian;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -37,7 +38,7 @@ class PegawaiProfileUpdateRequest extends FormRequest
             'alamat' => 'sometimes|nullable|string|max:500',
             'no_hp' => 'sometimes|nullable|string|max:20',
             'no_hp_darurat' => 'sometimes|nullable|string|max:20',
-            'status_kepegawaian' => 'sometimes|nullable|in:tetap,kontrak,honorer,gtt',
+            'status_kepegawaian' => ['sometimes', 'nullable', Rule::in(StatusKepegawaian::activeKodes())],
             'tmt_mengajar' => 'sometimes|nullable|date',
             'tanggal_akhir_kontrak' => 'sometimes|nullable|date|after_or_equal:tmt_mengajar',
             'pendidikan_terakhir' => 'sometimes|nullable|string|max:255',

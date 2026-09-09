@@ -950,7 +950,7 @@ class MobileController extends Controller
     {
         $pegawai = $this->getPegawai();
         $this->assertTidakSedangIzin($pegawai);
-        abort_unless($pegawai->status_kepegawaian === 'tetap', 403, 'Hanya pegawai tetap.');
+        abort_unless($pegawai->is_tetap, 403, 'Hanya pegawai tetap.');
 
         $request->validate([
             'tipe' => 'required|in:masuk,keluar',
@@ -1110,7 +1110,7 @@ class MobileController extends Controller
     public function slideJadwal(Request $request)
     {
         $pegawai = $this->getPegawai();
-        abort_unless($pegawai->status_kepegawaian === 'tetap', 403, 'Hanya pegawai tetap.');
+        abort_unless($pegawai->is_tetap, 403, 'Hanya pegawai tetap.');
 
         // Blokir slide bila pegawai sedang izin/cuti/sakit yang disetujui —
         // dicek SEBELUM geofence agar pesan izin, bukan "di luar radius".

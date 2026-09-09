@@ -11,6 +11,7 @@ use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Penggajian;
 use App\Models\Presensi;
+use App\Models\StatusKepegawaian;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Carbon\Carbon;
@@ -265,11 +266,12 @@ class DashboardController extends Controller
                 $pengeluaranGaji = $totalPegawai * $baseSalary;
             }
 
-            // 5. Kontrak Berakhir (30 hari ke depan) — kontrak/honorer/gtt.
+            // 5. Kontrak Berakhir (30 hari ke depan) — status non-tetap (ref table).
             // Visibilitas: superadmin semua (filter unit opsional); selain itu
             // HANYA bawahan langsung (aturan: kontrak hanya untuk atasan,
             // superadmin, dan dirinya sendiri).
-            $kontrakQuery = Pegawai::whereIn('status_kepegawaian', ['kontrak', 'honorer', 'gtt'])
+            $kontrakQuery = Pegawai::whereIn('status_kepegawaian', StatusKepegawaian::activeKodes())
+                ->whereNotIn('status_kepegawaian', StatusKepegawaian::activeTetapKodes())
                 ->whereNotNull('tanggal_akhir_kontrak')
                 ->where('tanggal_akhir_kontrak', '<=', Carbon::today('Asia/Jakarta')->addDays(30))
                 ->with('units');

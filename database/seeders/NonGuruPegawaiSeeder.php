@@ -40,48 +40,48 @@ class NonGuruPegawaiSeeder extends Seeder
      */
     private const TENDIK = [
         // Yayasan (kantor pusat)
-        [1, 'YAYASAN', 'Ayu Puspitasari', 'P', 'Kasir', 'tetap'],
-        [2, 'YAYASAN', 'Hendra Wijaya', 'L', 'Tenaga Administrasi (TU)', 'tetap'],
+        [1, 'YAYASAN', 'Ayu Puspitasari', 'P', 'Kasir', 'pegawai_tetap_yayasan'],
+        [2, 'YAYASAN', 'Hendra Wijaya', 'L', 'Tenaga Administrasi (TU)', 'pegawai_tetap_yayasan'],
 
         // LPQ
-        [3, 'LPQ', 'Rina Kurniasari', 'P', 'Operator / Pranata Komputer', 'honorer'],
+        [3, 'LPQ', 'Rina Kurniasari', 'P', 'Operator / Pranata Komputer', 'pegawai_pemula'],
 
         // TK
-        [4, 'TK', 'Siti Maryam', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
+        [4, 'TK', 'Siti Maryam', 'P', 'Tenaga Administrasi (TU)', 'pegawai_tetap_yayasan'],
 
         // SD
-        [5, 'SD', 'Dewi Anggraini', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
-        [6, 'SD', 'Fajar Ramadhan', 'L', 'Operator / Pranata Komputer', 'honorer'],
-        [7, 'SD', 'Nur Hidayah', 'P', 'Pustakawan', 'honorer'],
-        [8, 'SD', 'Supriyadi', 'L', 'Petugas Kebersihan', 'honorer'],
+        [5, 'SD', 'Dewi Anggraini', 'P', 'Tenaga Administrasi (TU)', 'pegawai_tetap_yayasan'],
+        [6, 'SD', 'Fajar Ramadhan', 'L', 'Operator / Pranata Komputer', 'pegawai_pemula'],
+        [7, 'SD', 'Nur Hidayah', 'P', 'Pustakawan', 'pegawai_pemula'],
+        [8, 'SD', 'Supriyadi', 'L', 'Petugas Kebersihan', 'pegawai_pemula'],
 
         // SMP
-        [9, 'SMP', 'Endang Lestari', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
-        [10, 'SMP', 'Sri Wahyuni', 'P', 'Bendahara', 'tetap'],
-        [11, 'SMP', 'Agus Setiawan', 'L', 'Operator / Pranata Komputer', 'tetap'],
-        [12, 'SMP', 'Rahmawati', 'P', 'Pustakawan', 'honorer'],
-        [13, 'SMP', 'Dedi Kurniawan', 'L', 'Laboran', 'honorer'],
-        [14, 'SMP', 'Bambang Sutrisno', 'L', 'Satpam / Petugas Keamanan', 'honorer'],
-        [15, 'SMP', 'Joko Prasetyo', 'L', 'Pesuruh / Office Boy', 'honorer'],
+        [9, 'SMP', 'Endang Lestari', 'P', 'Tenaga Administrasi (TU)', 'pegawai_tetap_yayasan'],
+        [10, 'SMP', 'Sri Wahyuni', 'P', 'Bendahara', 'pegawai_tetap_yayasan'],
+        [11, 'SMP', 'Agus Setiawan', 'L', 'Operator / Pranata Komputer', 'pegawai_tetap_yayasan'],
+        [12, 'SMP', 'Rahmawati', 'P', 'Pustakawan', 'pegawai_pemula'],
+        [13, 'SMP', 'Dedi Kurniawan', 'L', 'Laboran', 'pegawai_pemula'],
+        [14, 'SMP', 'Bambang Sutrisno', 'L', 'Satpam / Petugas Keamanan', 'pegawai_pemula'],
+        [15, 'SMP', 'Joko Prasetyo', 'L', 'Pesuruh / Office Boy', 'pegawai_pemula'],
 
         // SMA
-        [16, 'SMA', 'Yuni Astuti', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
-        [17, 'SMA', 'Fitri Handayani', 'P', 'Bendahara', 'tetap'],
-        [18, 'SMA', 'Rizky Pratama', 'L', 'Operator / Pranata Komputer', 'honorer'],
-        [19, 'SMA', 'Hj. Nurjanah', 'P', 'Kepala Perpustakaan', 'tetap'],
-        [20, 'SMA', 'Hendra Gunawan', 'L', 'Laboran', 'honorer'],
-        [21, 'SMA', 'Teguh Santoso', 'L', 'Satpam / Petugas Keamanan', 'honorer'],
-        [22, 'SMA', 'Karyono', 'L', 'Tukang Kebun', 'honorer'],
+        [16, 'SMA', 'Yuni Astuti', 'P', 'Tenaga Administrasi (TU)', 'pegawai_tetap_yayasan'],
+        [17, 'SMA', 'Fitri Handayani', 'P', 'Bendahara', 'pegawai_tetap_yayasan'],
+        [18, 'SMA', 'Rizky Pratama', 'L', 'Operator / Pranata Komputer', 'pegawai_pemula'],
+        [19, 'SMA', 'Hj. Nurjanah', 'P', 'Kepala Perpustakaan', 'pegawai_tetap_yayasan'],
+        [20, 'SMA', 'Hendra Gunawan', 'L', 'Laboran', 'pegawai_pemula'],
+        [21, 'SMA', 'Teguh Santoso', 'L', 'Satpam / Petugas Keamanan', 'pegawai_pemula'],
+        [22, 'SMA', 'Karyono', 'L', 'Tukang Kebun', 'pegawai_pemula'],
 
         // SMK
-        [23, 'SMK', 'Lilis Suryani', 'P', 'Tenaga Administrasi (TU)', 'tetap'],
-        [24, 'SMK', 'Ratna Dewi', 'P', 'Bendahara', 'tetap'],
-        [25, 'SMK', 'Arif Hidayat', 'L', 'Operator / Pranata Komputer', 'honorer'],
-        [26, 'SMK', 'Siti Aminah', 'P', 'Pustakawan', 'honorer'],
-        [27, 'SMK', 'Yusuf Maulana', 'L', 'Laboran', 'honorer'],
-        [28, 'SMK', 'Slamet Riyadi', 'L', 'Satpam / Petugas Keamanan', 'honorer'],
-        [29, 'SMK', 'Wahyu Nugroho', 'L', 'Pesuruh / Office Boy', 'honorer'],
-        [30, 'SMK', 'Tutik Wulandari', 'P', 'Petugas Kebersihan', 'honorer'],
+        [23, 'SMK', 'Lilis Suryani', 'P', 'Tenaga Administrasi (TU)', 'pegawai_tetap_yayasan'],
+        [24, 'SMK', 'Ratna Dewi', 'P', 'Bendahara', 'pegawai_tetap_yayasan'],
+        [25, 'SMK', 'Arif Hidayat', 'L', 'Operator / Pranata Komputer', 'pegawai_pemula'],
+        [26, 'SMK', 'Siti Aminah', 'P', 'Pustakawan', 'pegawai_pemula'],
+        [27, 'SMK', 'Yusuf Maulana', 'L', 'Laboran', 'pegawai_pemula'],
+        [28, 'SMK', 'Slamet Riyadi', 'L', 'Satpam / Petugas Keamanan', 'pegawai_pemula'],
+        [29, 'SMK', 'Wahyu Nugroho', 'L', 'Pesuruh / Office Boy', 'pegawai_pemula'],
+        [30, 'SMK', 'Tutik Wulandari', 'P', 'Petugas Kebersihan', 'pegawai_pemula'],
     ];
 
     public function run(): void

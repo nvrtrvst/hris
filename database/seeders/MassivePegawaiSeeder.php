@@ -86,7 +86,7 @@ class MassivePegawaiSeeder extends Seeder
                         'alamat' => 'Alamat demo '.$index,
                         'no_hp' => '08'.str_pad((string) $index, 10, '0', STR_PAD_LEFT),
                         'email' => $email,
-                        'status_kepegawaian' => $index % 3 === 0 ? 'honorer' : 'tetap',
+                        'status_kepegawaian' => $index % 3 === 0 ? 'guru_pemula' : 'guru_tetap_yayasan',
                         'wajib_kantor' => $index % 3 !== 0,
                         'status_aktif' => 'aktif',
                         'tmt_mengajar' => now()->subYears(1 + ($index % 8))->toDateString(),

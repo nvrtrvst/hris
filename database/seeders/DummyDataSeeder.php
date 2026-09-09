@@ -65,7 +65,7 @@ class DummyDataSeeder extends Seeder
                 'no_hp' => $faker->phoneNumber,
                 'email' => $faker->unique()->safeEmail,
                 'status_aktif' => 'aktif',
-                'status_kepegawaian' => $faker->randomElement(['tetap', 'kontrak', 'honorer']),
+                'status_kepegawaian' => $faker->randomElement(['guru_tetap_yayasan', 'guru_tidak_tetap', 'guru_pemula']),
                 'tmt_mengajar' => $faker->dateTimeBetween('-5 years', '-1 year')->format('Y-m-d'),
                 'nama_bank' => $faker->randomElement(['BCA', 'Mandiri', 'BRI', 'BNI']),
                 'no_rekening' => $faker->numerify('##########'),

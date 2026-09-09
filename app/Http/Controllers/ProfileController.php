@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PegawaiProfileUpdateRequest;
 use App\Http\Requests\PegawaiSelfUpdateRequest;
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\StatusKepegawaian;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+            'statusKepegawaian' => StatusKepegawaian::activeOptions(),
         ]);
     }
 
@@ -102,10 +104,11 @@ class ProfileController extends Controller
     public function editPegawai(Request $request): Response
     {
         $user = $request->user();
-        $pegawai = $user?->pegawai;
+        $pegawai = $user?->pegawai?->load('statusRef');
 
         return Inertia::render($request->is('mobile*') ? 'Mobile/LengkapiData' : 'Profile/LengkapiData', [
             'pegawai' => $pegawai,
+            'statusKepegawaian' => StatusKepegawaian::activeOptions(),
         ]);
     }
 

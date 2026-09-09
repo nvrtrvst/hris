@@ -2,7 +2,6 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Briefcase, Info, Loader2, Mail, Phone, Save, User } from 'lucide-react';
-import { statusKepegawaianLabel } from '@/Utils/pegawaiMeta';
 
 const inputClass = 'input-field';
 const selectClass = 'select-field';
@@ -35,6 +34,7 @@ const roleOptions = [
 ];
 
 export default function Create({ auth, unitSekolahs, jabatans, statusKepegawaian }) {
+    const statusOptions = statusKepegawaian || [];
     const { data, setData, post, processing, errors } = useForm({
         nama_lengkap: '',
         email: '',
@@ -43,7 +43,7 @@ export default function Create({ auth, unitSekolahs, jabatans, statusKepegawaian
         unit_sekolah_id: '',
         jabatan_id: '',
         role: 'pegawai',
-        status_kepegawaian: 'tetap',
+        status_kepegawaian: statusOptions[0]?.kode ?? '',
     });
 
     const submit = (e) => {
@@ -115,11 +115,11 @@ export default function Create({ auth, unitSekolahs, jabatans, statusKepegawaian
                             </Field>
                             <div className="sm:col-span-2">
                                 <Field label="Status Kepegawaian" required error={errors.status_kepegawaian}>
-                                    <select value={data.status_kepegawaian} onChange={(e) => setData('status_kepegawaian', e.target.value)} className={selectClass}>
-                                        {(statusKepegawaian || []).map((s) => (
-                                            <option key={s} value={s}>{statusKepegawaianLabel(s)}</option>
-                                        ))}
-                                    </select>
+                                            <select value={data.status_kepegawaian} onChange={(e) => setData('status_kepegawaian', e.target.value)} className={selectClass}>
+                                                {statusOptions.map((s) => (
+                                                    <option key={s.kode} value={s.kode}>{s.label}</option>
+                                                ))}
+                                            </select>
                                 </Field>
                             </div>
                         </SectionCard>

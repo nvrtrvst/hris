@@ -10,6 +10,7 @@ use App\Models\Pegawai;
 use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
 use App\Models\SkalaMasaBakti;
+use App\Models\StatusKepegawaian;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Services\PresensiAggregator;
@@ -25,9 +26,27 @@ class PenggajianController extends Controller
 {
     use ScopesPimpinan;
 
+    /**
+     * Cache kode status tetap (ref table) per-request — dipakai loop payroll
+     * agar tidak query berulang per komponen × pegawai. Injectable utk test.
+     *
+     * @var list<string>|null
+     */
+    protected ?array $tetapKodeCache = null;
+
     public function __construct(
         private readonly PresensiAggregator $presensiAggregator,
     ) {}
+
+    /**
+     * Kode status grup tetap (GTYS/PTY) — cache per-request.
+     *
+     * @return list<string>
+     */
+    protected function tetapKodes(): array
+    {
+        return $this->tetapKodeCache ??= StatusKepegawaian::activeTetapKodes();
+    }
 
     public function index(Request $request)
     {
@@ -463,7 +482,7 @@ class PenggajianController extends Controller
         $user = auth()->user();
         $isSuperadmin = $user && $user->can('view_all_units');
         $isPayrollAdmin = $user && $this->isPayrollAdmin($user);
-        $penggajian = Penggajian::with(['pegawai.jabatans', 'pegawai.units', 'details'])->findOrFail($id);
+        $penggajian = Penggajian::with(['pegawai.jabatans', 'pegawai.units', 'pegawai.statusRef', 'details'])->findOrFail($id);
 
         if ($isPayrollAdmin && ! $isSuperadmin) {
             if (! $this->userCanAccessPegawai($penggajian->pegawai_id)) {
@@ -634,10 +653,15 @@ class PenggajianController extends Controller
     {
         $nominal = 0;
 
-        // Filter by status kepegawaian
-        if ($komponen->applies_to_status_kepegawaian
-            && $komponen->applies_to_status_kepegawaian !== $pegawai->status_kepegawaian) {
-            return 0;
+        // Filter by grup status kepegawaian (group-key, bukan kode individual):
+        // 'tetap' = grup tetap (GTYS/PTY), 'honorer' = grup non-tetap.
+        // Nilai legacy di DB tetap valid — match via flag tabel referensi.
+        if ($komponen->applies_to_status_kepegawaian) {
+            $isTetap = in_array($pegawai->status_kepegawaian, $this->tetapKodes(), true);
+            $grupPegawai = $isTetap ? 'tetap' : 'honorer';
+            if ($komponen->applies_to_status_kepegawaian !== $grupPegawai) {
+                return 0;
+            }
         }
 
         if ($komponen->jenis === 'fixed') {

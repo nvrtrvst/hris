@@ -216,8 +216,8 @@ export default function Komponen({ auth, komponens, units }) {
                                         <Field label="Status Kepegawaian" error={errors.applies_to_status_kepegawaian}>
                                             <select value={data.applies_to_status_kepegawaian} onChange={(e) => setData('applies_to_status_kepegawaian', e.target.value)} className={selectClass}>
                                                 <option value="">Semua</option>
-                                                <option value="tetap">Tetap / GTYS</option>
-                                                <option value="honorer">Honorer</option>
+                                                <option value="tetap">Tetap (GTYS / PTY)</option>
+                                                <option value="honorer">Non-Tetap</option>
                                             </select>
                                         </Field>
                                         <Field label="Urutan Matrix" error={errors.urutan}>
@@ -327,7 +327,7 @@ export default function Komponen({ auth, komponens, units }) {
                                                                 <p className="truncate text-sm font-bold text-text-primary">{k.nama}</p>
                                                                 <div className="mt-0.5 flex flex-wrap gap-1">
                                                                     {k.kode && <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] font-semibold text-text-muted">{k.kode}</span>}
-                                                                    {k.applies_to_status_kepegawaian && <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">{k.applies_to_status_kepegawaian}</span>}
+                                                                    {k.applies_to_status_kepegawaian && <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">{k.applies_to_status_kepegawaian === 'tetap' ? 'Tetap (GTYS/PTY)' : 'Non-Tetap'}</span>}
                                                                     {k.syarat_bayar_jam_mengajar && <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">{k.syarat_bayar_jam_mengajar === 'hanya_hadir' ? 'Bayar Hadir' : 'Bayar Semua'}</span>}
                                                                     {k.unit_sekolah_id && <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">Unit Tertentu</span>}
                                                                     {k.is_taxable == 1 && <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] font-semibold text-text-muted">Taxable</span>}

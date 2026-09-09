@@ -36,7 +36,7 @@ class PimpinanRoleTest extends TestCase
             'nik' => '3273'.str_pad((string) random_int(0, 999999999999), 12, '0', STR_PAD_LEFT),
             'nama_lengkap' => $nama,
             'jenis_kelamin' => 'L',
-            'status_kepegawaian' => 'honorer',
+            'status_kepegawaian' => 'guru_pemula',
             'status_aktif' => 'aktif',
             'tmt_mengajar' => '2020-01-01',
             'tanggal_akhir_kontrak' => now()->addDays(15),
@@ -96,7 +96,7 @@ class PimpinanRoleTest extends TestCase
                 'no_hp' => '081200000001',
                 'unit_sekolah_id' => $this->sd->id,
                 'jabatan_id' => Jabatan::first()->id,
-                'status_kepegawaian' => 'honorer',
+                'status_kepegawaian' => 'guru_pemula',
             ])
             ->assertForbidden();
 

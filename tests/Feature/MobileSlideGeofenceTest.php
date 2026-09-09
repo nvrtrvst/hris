@@ -63,7 +63,7 @@ class MobileSlideGeofenceTest extends TestCase
             'jumlah_tanggungan' => 2,
             'alamat' => 'Jl. Test No. 1',
             'no_hp' => '081234567890',
-            'status_kepegawaian' => 'tetap',
+            'status_kepegawaian' => 'guru_tetap_yayasan',
             'tmt_mengajar' => '2020-01-01',
             'status_aktif' => 'aktif',
             'pendidikan_terakhir' => 'S1',
@@ -329,7 +329,7 @@ class MobileSlideGeofenceTest extends TestCase
             'jumlah_tanggungan' => 0,
             'alamat' => 'Jl. Test No. 2',
             'no_hp' => '081298765432',
-            'status_kepegawaian' => 'honorer',
+            'status_kepegawaian' => 'guru_pemula',
             'tmt_mengajar' => '2022-01-01',
             'status_aktif' => 'aktif',
             'pendidikan_terakhir' => 'SMA',
@@ -346,5 +346,29 @@ class MobileSlideGeofenceTest extends TestCase
             ]);
 
         $res->assertForbidden();
+    }
+
+    /**
+     * Gate presensi pakai flag is_tetap dari tabel referensi — bukan nama status.
+     * PTY (pegawai_tetap_yayasan, staf) HARUS lolos gate yang sama dengan GTYS.
+     */
+    public function test_slide_jadwal_diizinkan_untuk_pegawai_tetap_yayasan_pty(): void
+    {
+        $pegawai = $this->makePegawaiTetap();
+        $pegawai->update(['status_kepegawaian' => 'pegawai_tetap_yayasan']);
+        $this->assertTrue($pegawai->fresh()->load('statusRef')->is_tetap);
+        $jadwal = $this->makeJadwalHariIni($pegawai);
+
+        Carbon::setTestNow(Carbon::today()->setTime(8, 30));
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.slide'), [
+                'jadwal_id' => $jadwal->id,
+                'latitude' => -6.2,
+                'longitude' => 106.8,
+                'accuracy' => 15,
+            ]);
+
+        $res->assertOk()->assertJson(['success' => true]);
     }
 }
