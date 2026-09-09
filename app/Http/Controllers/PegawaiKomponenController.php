@@ -126,8 +126,8 @@ class PegawaiKomponenController extends Controller
 
         $pegawais = $pegawais->map(function ($pegawai) use ($skalas, $masaBaktiKomponens) {
             $dynamic_defaults = [];
-            if ($pegawai->tanggal_mulai_kerja && ! empty($masaBaktiKomponens)) {
-                $yearsOfService = Carbon::parse($pegawai->tanggal_mulai_kerja)->diffInYears(Carbon::now());
+            if ($pegawai->tmt_mengajar && ! empty($masaBaktiKomponens)) {
+                $yearsOfService = Carbon::parse($pegawai->tmt_mengajar)->diffInYears(Carbon::now());
                 $skala = $skalas->firstWhere('masa_kerja_tahun', '<=', $yearsOfService);
                 $nominal = $skala ? $skala->nominal_gaji : 0;
 

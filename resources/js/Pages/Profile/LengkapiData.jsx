@@ -85,8 +85,7 @@ export default function LengkapiData({ auth, pegawai }) {
         agama: pegawai?.agama || '',
         status_pernikahan: pegawai?.status_pernikahan || '',
         jumlah_tanggungan: pegawai?.jumlah_tanggungan ?? 0,
-        alamat_ktp: pegawai?.alamat_ktp || '',
-        alamat_domisili: pegawai?.alamat_domisili || '',
+        alamat: pegawai?.alamat || '',
         no_hp: pegawai?.no_hp || '',
         no_hp_darurat: pegawai?.no_hp_darurat || '',
         status_kepegawaian: pegawai?.status_kepegawaian || '',
@@ -170,11 +169,8 @@ export default function LengkapiData({ auth, pegawai }) {
                     </SectionCard>
 
                     <SectionCard title="Alamat & Kontak" desc="Alamat dan nomor telepon">
-                        <Field label="Alamat KTP *" error={errors.alamat_ktp} full>
-                            <textarea value={data.alamat_ktp} onChange={(e) => setData('alamat_ktp', e.target.value)} className={inputClass} rows={3} />
-                        </Field>
-                        <Field label="Alamat Domisili" error={errors.alamat_domisili} full>
-                            <textarea value={data.alamat_domisili} onChange={(e) => setData('alamat_domisili', e.target.value)} className={inputClass} rows={3} />
+                        <Field label="Alamat KTP *" error={errors.alamat} full>
+                            <textarea value={data.alamat} onChange={(e) => setData('alamat', e.target.value)} className={inputClass} rows={3} />
                         </Field>
                         <Field label="No. HP *" error={errors.no_hp}>
                             <input type="text" value={data.no_hp} onChange={(e) => setData('no_hp', e.target.value)} className={inputClass} placeholder="08xxxxxxxxxx" />

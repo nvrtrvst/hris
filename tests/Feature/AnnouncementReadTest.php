@@ -54,9 +54,9 @@ class AnnouncementReadTest extends TestCase
             'agama' => 'Islam',
             'status_pernikahan' => 'Menikah',
             'no_hp' => '081234567890',
-            'alamat_ktp' => 'Jl. Contoh No. 1',
+            'alamat' => 'Jl. Contoh No. 1',
             'status_kepegawaian' => 'tetap',
-            'tanggal_mulai_kerja' => '2020-01-01',
+            'tmt_mengajar' => '2020-01-01',
             'pendidikan_terakhir' => 'S1',
             'status_aktif' => 'aktif',
         ]);

@@ -50,7 +50,7 @@ class AtasanHierarchyTest extends TestCase
             'jenis_kelamin' => 'L',
             'status_kepegawaian' => 'tetap',
             'status_aktif' => 'aktif',
-            'tanggal_mulai_kerja' => '2020-01-01',
+            'tmt_mengajar' => '2020-01-01',
             'wajib_kantor' => true,
         ]);
         $pegawai->units()->attach($unit->id, ['jabatan_id' => $jabatan->id, 'is_primary' => true]);
@@ -117,11 +117,11 @@ class AtasanHierarchyTest extends TestCase
                 'jenis_kelamin' => 'L',
                 'agama' => 'Islam',
                 'status_pernikahan' => 'Belum Menikah',
-                'alamat_ktp' => 'Jl. Uji 1',
+                'alamat' => 'Jl. Uji 1',
                 'no_hp' => '081200000001',
                 'status_kepegawaian' => 'honorer',
                 'status_aktif' => 'aktif',
-                'tanggal_mulai_kerja' => '2020-01-01',
+                'tmt_mengajar' => '2020-01-01',
                 'pendidikan_terakhir' => 'S1',
                 'atasan_langsung_id' => $kepsek->id,
             ])
@@ -150,11 +150,11 @@ class AtasanHierarchyTest extends TestCase
                 'jenis_kelamin' => 'L',
                 'agama' => 'Islam',
                 'status_pernikahan' => 'Belum Menikah',
-                'alamat_ktp' => 'Jl. Uji 1',
+                'alamat' => 'Jl. Uji 1',
                 'no_hp' => '081200000001',
                 'status_kepegawaian' => 'honorer',
                 'status_aktif' => 'aktif',
-                'tanggal_mulai_kerja' => '2020-01-01',
+                'tmt_mengajar' => '2020-01-01',
                 'pendidikan_terakhir' => 'S1',
                 'atasan_langsung_id' => $kepsekLain->id,
             ])

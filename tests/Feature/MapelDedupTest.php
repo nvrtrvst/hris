@@ -44,10 +44,10 @@ class MapelDedupTest extends TestCase
                 'jenis_kelamin' => 'L',
                 'agama' => 'Islam',
                 'status_pernikahan' => 'Belum Menikah',
-                'alamat_ktp' => 'Jl. Test',
+                'alamat' => 'Jl. Test',
                 'no_hp' => '08123456789'.$i,
                 'status_kepegawaian' => 'tetap',
-                'tanggal_mulai_kerja' => '2020-01-01',
+                'tmt_mengajar' => '2020-01-01',
                 'status_aktif' => 'aktif',
                 'pendidikan_terakhir' => 'S1',
             ]);

@@ -26,8 +26,8 @@ class PegawaiProfileUpdateTest extends TestCase
             'jenis_kelamin' => 'L',
             'status_kepegawaian' => 'honorer',
             'status_aktif' => 'aktif',
-            'tanggal_mulai_kerja' => '2020-01-01',
-            'alamat_ktp' => 'Alamat Lama',
+            'tmt_mengajar' => '2020-01-01',
+            'alamat' => 'Alamat Lama',
         ]);
         $pegawai->units()->attach($unit->id, ['jabatan_id' => $jabatan->id, 'is_primary' => true]);
 
@@ -37,7 +37,7 @@ class PegawaiProfileUpdateTest extends TestCase
                 'nama_lengkap' => 'Nama Baru',
                 'email' => 'baru@yayasan.com',
                 'no_hp' => '081200000099',
-                'alamat_ktp' => '',
+                'alamat' => '',
             ])
             ->assertRedirect(route('presensi.profile.edit'));
 
@@ -47,7 +47,7 @@ class PegawaiProfileUpdateTest extends TestCase
         $this->assertSame('Nama Baru', $pegawai->nama_lengkap);
         $this->assertSame('081200000099', $pegawai->no_hp);
         // Alamat KTP kosong = biarkan apa adanya (tidak dihapus).
-        $this->assertSame('Alamat Lama', $pegawai->alamat_ktp);
+        $this->assertSame('Alamat Lama', $pegawai->alamat);
         // User tersinkron (nama & email login).
         $this->assertSame('Nama Baru', $user->name);
         $this->assertSame('baru@yayasan.com', $user->email);
@@ -65,7 +65,7 @@ class PegawaiProfileUpdateTest extends TestCase
             'jenis_kelamin' => 'L',
             'status_kepegawaian' => 'tetap',
             'status_aktif' => 'aktif',
-            'tanggal_mulai_kerja' => '2020-01-01',
+            'tmt_mengajar' => '2020-01-01',
         ]);
 
         $this->actingAs($user, 'web_mobile')

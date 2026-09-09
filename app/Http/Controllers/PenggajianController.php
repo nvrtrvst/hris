@@ -688,8 +688,8 @@ class PenggajianController extends Controller
             if ($pegawaiKomponens->has($komponen->id) && $pegawaiKomponens[$komponen->id]->pivot->nominal !== null) {
                 $nominal = $pegawaiKomponens[$komponen->id]->pivot->nominal;
             } else {
-                if ($pegawai->tanggal_mulai_kerja) {
-                    $joinDate = Carbon::parse($pegawai->tanggal_mulai_kerja);
+                if ($pegawai->tmt_mengajar) {
+                    $joinDate = Carbon::parse($pegawai->tmt_mengajar);
                     $yearsOfService = $joinDate->diffInYears($periodeEnd);
 
                     $skala = $skalas->first(function ($item) use ($yearsOfService) {

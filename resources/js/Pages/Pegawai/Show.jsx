@@ -266,10 +266,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                     <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3 text-primary" /> {pegawai.user?.email || '—'}</span>
                                 </InfoRow>
                                 <InfoRow label="Alamat">
-                                    <span className="inline-flex items-start gap-1"><MapPin className="mt-0.5 h-3 w-3 shrink-0 text-primary" /> {pegawai.alamat_ktp || '—'}</span>
-                                </InfoRow>
-                                <InfoRow label="Alamat Domisili">
-                                    <span className="inline-flex items-start gap-1"><MapPin className="mt-0.5 h-3 w-3 shrink-0 text-primary" /> {pegawai.alamat_domisili || '—'}</span>
+                                    <span className="inline-flex items-start gap-1"><MapPin className="mt-0.5 h-3 w-3 shrink-0 text-primary" /> {pegawai.alamat || '—'}</span>
                                 </InfoRow>
                                 <InfoRow label="No. HP Darurat">
                                     <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3 text-primary" /> {pegawai.no_hp_darurat || '—'}</span>

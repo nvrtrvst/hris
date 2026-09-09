@@ -38,7 +38,7 @@ class PimpinanRoleTest extends TestCase
             'jenis_kelamin' => 'L',
             'status_kepegawaian' => 'honorer',
             'status_aktif' => 'aktif',
-            'tanggal_mulai_kerja' => '2020-01-01',
+            'tmt_mengajar' => '2020-01-01',
             'tanggal_akhir_kontrak' => now()->addDays(15),
             'atasan_langsung_id' => $atasan?->id,
         ]);

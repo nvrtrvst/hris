@@ -82,10 +82,10 @@ class JadwalPresensiLiveTest extends TestCase
             'agama' => 'Islam',
             'status_pernikahan' => 'kawin',
             'jumlah_tanggungan' => 0,
-            'alamat_ktp' => 'Jl. Live Test No. 1',
+            'alamat' => 'Jl. Live Test No. 1',
             'no_hp' => '081211223344',
             'status_kepegawaian' => 'honorer',
-            'tanggal_mulai_kerja' => '2021-01-01',
+            'tmt_mengajar' => '2021-01-01',
             'status_aktif' => 'aktif',
             'pendidikan_terakhir' => 'S1',
         ]);

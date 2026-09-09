@@ -36,7 +36,7 @@ class PegawaiNikPlaintextTest extends TestCase
             'jenis_kelamin' => 'L',
             'status_kepegawaian' => 'tetap',
             'status_aktif' => 'aktif',
-            'tanggal_mulai_kerja' => '2020-01-01',
+            'tmt_mengajar' => '2020-01-01',
         ]);
     }
 

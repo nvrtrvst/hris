@@ -98,8 +98,7 @@ export default function PegawaiDataCard() {
         agama: pegawai?.agama || '',
         status_pernikahan: pegawai?.status_pernikahan || '',
         jumlah_tanggungan: pegawai?.jumlah_tanggungan ?? 0,
-        alamat_ktp: pegawai?.alamat_ktp || '',
-        alamat_domisili: pegawai?.alamat_domisili || '',
+        alamat: pegawai?.alamat || '',
         no_hp: pegawai?.no_hp || '',
         no_hp_darurat: pegawai?.no_hp_darurat || '',
         status_kepegawaian: pegawai?.status_kepegawaian || '',
@@ -234,13 +233,8 @@ export default function PegawaiDataCard() {
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="sm:col-span-2">
                                 <label className={labelClass}>Alamat KTP</label>
-                                <textarea rows="2" value={form.data.alamat_ktp} onChange={(e) => form.setData('alamat_ktp', e.target.value)} className={inputClass} />
-                                {labelErr(form.errors, 'alamat_ktp')}
-                            </div>
-                            <div className="sm:col-span-2">
-                                <label className={labelClass}>Alamat Domisili</label>
-                                <textarea rows="2" value={form.data.alamat_domisili} onChange={(e) => form.setData('alamat_domisili', e.target.value)} className={inputClass} />
-                                {labelErr(form.errors, 'alamat_domisili')}
+                                <textarea rows="2" value={form.data.alamat} onChange={(e) => form.setData('alamat', e.target.value)} className={inputClass} />
+                                {labelErr(form.errors, 'alamat')}
                             </div>
                             <div>
                                 <label className={labelClass}>No. HP</label>
@@ -364,8 +358,7 @@ export default function PegawaiDataCard() {
                     </Section>
 
                     <Section title="Alamat & Kontak">
-                        <Field icon={Home} label="Alamat KTP" value={pegawai?.alamat_ktp} />
-                        <Field icon={Home} label="Alamat Domisili" value={pegawai?.alamat_domisili} />
+                        <Field icon={Home} label="Alamat KTP" value={pegawai?.alamat} />
                         <Field icon={Phone} label="No. HP" value={pegawai?.no_hp} />
                         <Field icon={Phone} label="No. HP Darurat" value={pegawai?.no_hp_darurat} />
                         <Field icon={Mail} label="Email" value={user?.email} />

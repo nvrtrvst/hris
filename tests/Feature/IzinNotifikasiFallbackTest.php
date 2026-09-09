@@ -62,10 +62,10 @@ class IzinNotifikasiFallbackTest extends TestCase
             'agama' => 'Islam',
             'status_pernikahan' => 'kawin',
             'jumlah_tanggungan' => 0,
-            'alamat_ktp' => 'Jl. Test No. 2',
+            'alamat' => 'Jl. Test No. 2',
             'no_hp' => '081211223344',
             'status_kepegawaian' => 'honorer',
-            'tanggal_mulai_kerja' => '2022-01-01',
+            'tmt_mengajar' => '2022-01-01',
             'status_aktif' => 'aktif',
             'pendidikan_terakhir' => 'S1',
         ]);

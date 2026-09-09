@@ -78,7 +78,7 @@ class PayrollMathTest extends TestCase
             'nama_lengkap' => 'Test Pegawai',
             'status_kepegawaian' => 'honorer',
             'status_aktif' => 'aktif',
-            'tanggal_mulai_kerja' => '2020-01-01',
+            'tmt_mengajar' => '2020-01-01',
         ], $attrs));
         $p->id = $attrs['id'] ?? 42;
         $p->setRelation('units', new Collection);
@@ -214,7 +214,7 @@ class PayrollMathTest extends TestCase
     {
         $komponen = $this->makeKomponen(['id' => 6, 'kode' => 'masa_bakti', 'nama' => 'Masa Bakti', 'jenis' => 'dinamis_masa_bakti']);
         // Mulai kerja 2020-08-10 → per 2026-08-31 ≈ 6 tahun.
-        $pegawai = $this->makePegawai(['tanggal_mulai_kerja' => '2020-08-10']);
+        $pegawai = $this->makePegawai(['tmt_mengajar' => '2020-08-10']);
 
         $skala5 = new SkalaMasaBakti(['masa_kerja_tahun' => 5, 'nominal_gaji' => 50000]);
         $skala10 = new SkalaMasaBakti(['masa_kerja_tahun' => 10, 'nominal_gaji' => 100000]);

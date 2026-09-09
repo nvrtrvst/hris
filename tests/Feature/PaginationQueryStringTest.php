@@ -56,10 +56,10 @@ class PaginationQueryStringTest extends TestCase
             'agama' => 'Islam',
             'status_pernikahan' => 'kawin',
             'jumlah_tanggungan' => 0,
-            'alamat_ktp' => 'Jl. Pagination Test No. 1',
+            'alamat' => 'Jl. Pagination Test No. 1',
             'no_hp' => '0812'.substr($nik, -7),
             'status_kepegawaian' => 'honorer',
-            'tanggal_mulai_kerja' => '2021-01-01',
+            'tmt_mengajar' => '2021-01-01',
             'status_aktif' => 'aktif',
             'pendidikan_terakhir' => 'S1',
         ]);

@@ -46,7 +46,7 @@ class ThreadChatTest extends TestCase
             'jenis_kelamin' => 'L',
             'status_kepegawaian' => 'tetap',
             'status_aktif' => 'aktif',
-            'tanggal_mulai_kerja' => '2020-01-01',
+            'tmt_mengajar' => '2020-01-01',
             'wajib_kantor' => true,
         ]);
         $pegawai->units()->attach($this->unit->id, ['jabatan_id' => $jabatan->id, 'is_primary' => true]);

@@ -51,7 +51,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         jenis_kelamin: pegawai.jenis_kelamin,
         agama: pegawai.agama,
         status_pernikahan: pegawai.status_pernikahan,
-        alamat_ktp: pegawai.alamat_ktp,
+        alamat: pegawai.alamat,
         no_hp: pegawai.no_hp,
         status_kepegawaian: pegawai.status_kepegawaian,
         atasan_langsung_id: pegawai.atasan_langsung_id ?? '',
@@ -66,7 +66,6 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         sk_nomor: pegawai.sk_nomor || '',
         sk_tanggal: pegawai.sk_tanggal || '',
         jumlah_tanggungan: pegawai.jumlah_tanggungan ?? 0,
-        alamat_domisili: pegawai.alamat_domisili || '',
         no_hp_darurat: pegawai.no_hp_darurat || '',
         tanggal_akhir_kontrak: pegawai.tanggal_akhir_kontrak || '',
         nama_bank: pegawai.nama_bank || '',
@@ -261,12 +260,8 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                             <Field label="No. HP Darurat" error={errors.no_hp_darurat}>
                                 <input type="text" value={data.no_hp_darurat} onChange={(e) => setData('no_hp_darurat', e.target.value)} className={inputClass} />
                             </Field>
-                            <Field label="Alamat KTP" required error={errors.alamat_ktp} className="sm:col-span-2">
-                                <textarea value={data.alamat_ktp} onChange={(e) => setData('alamat_ktp', e.target.value)}
-                                    rows={3} className={inputClass} />
-                            </Field>
-                            <Field label="Alamat Domisili" error={errors.alamat_domisili} className="sm:col-span-2">
-                                <textarea value={data.alamat_domisili} onChange={(e) => setData('alamat_domisili', e.target.value)}
+                            <Field label="Alamat KTP" required error={errors.alamat} className="sm:col-span-2">
+                                <textarea value={data.alamat} onChange={(e) => setData('alamat', e.target.value)}
                                     rows={3} className={inputClass} />
                             </Field>
                             <Field label="Jumlah Tanggungan" error={errors.jumlah_tanggungan}>

@@ -34,13 +34,12 @@ class Pegawai extends Model
         'agama',
         'status_pernikahan',
         'jumlah_tanggungan',
-        'alamat_ktp',
-        'alamat_domisili',
+        'alamat',
         'no_hp',
         'no_hp_darurat',
         'email',
         'status_kepegawaian',
-        'tanggal_mulai_kerja',
+        'tmt_mengajar',
         'tanggal_akhir_kontrak',
         'atasan_langsung_id',
         'status_aktif',
@@ -91,7 +90,7 @@ class Pegawai extends Model
 
     protected $casts = [
         'tanggal_lahir' => 'date',
-        'tanggal_mulai_kerja' => 'date',
+        'tmt_mengajar' => 'date',
         'tanggal_akhir_kontrak' => 'date',
         'sk_tanggal' => 'date',
         'nik' => 'encrypted',
@@ -460,7 +459,7 @@ class Pegawai extends Model
         $required = [
             'nik', 'nama_lengkap', 'tempat_lahir', 'tanggal_lahir',
             'jenis_kelamin', 'agama', 'status_pernikahan', 'jumlah_tanggungan',
-            'alamat_ktp', 'no_hp', 'status_kepegawaian', 'tanggal_mulai_kerja',
+            'alamat', 'no_hp', 'status_kepegawaian', 'tmt_mengajar',
             'pendidikan_terakhir',
             'nama_bank', 'no_rekening',
         ];

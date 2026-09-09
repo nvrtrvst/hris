@@ -74,14 +74,13 @@ class DemoGuruJadwalSeeder extends Seeder
             'jenis_kelamin' => 'L',
             'agama' => 'Islam',
             'status_pernikahan' => 'Belum Menikah',
-            'alamat_ktp' => 'Jl. Demo No. 1',
-            'alamat_domisili' => 'Jl. Demo No. 1',
+            'alamat' => 'Jl. Demo No. 1',
             'no_hp' => '081234567899',
             'email' => self::EMAIL,
             'status_aktif' => 'aktif',
             'status_kepegawaian' => 'tetap',
             'wajib_kantor' => true,
-            'tanggal_mulai_kerja' => '2020-01-01',
+            'tmt_mengajar' => '2020-01-01',
             'pendidikan_terakhir' => 'S1',
         ]);
         $pegawai->units()->attach($unit->id, [
