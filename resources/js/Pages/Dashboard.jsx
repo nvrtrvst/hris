@@ -117,6 +117,30 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
         return map;
     }, [presensiHariIni]);
 
+    // Grup jadwal hari ini per guru (seperti tabel /presensi): dalam grup
+    // urut jam mulai + mapel; antar grup — guru yang TERAKHIR datang paling atas.
+    const jadwalGroups = useMemo(() => {
+        const byGuru = new Map();
+        (jadwalHariIni || []).forEach((j) => {
+            const pid = j.pegawai_id;
+            if (!byGuru.has(pid)) byGuru.set(pid, { guru: j.pegawai, items: [] });
+            byGuru.get(pid).items.push(j);
+        });
+
+        const groups = [...byGuru.values()].map((g) => ({
+            ...g,
+            items: g.items.sort((a, b) =>
+                (a.jam_mulai || '').localeCompare(b.jam_mulai || '')
+                || (a.pegawaiMapel?.mataPelajaran?.nama || a.jenis_jadwal || '').localeCompare(b.pegawaiMapel?.mataPelajaran?.nama || b.jenis_jadwal || '')
+            ),
+            // Jam datang guru = jam_masuk terakhir (presensi apa pun hari ini).
+            lastMasuk: presensiMap[g.guru?.id]?.jam_masuk || '',
+        }));
+
+        // Belum datang paling bawah; yang datang paling baru paling atas.
+        return groups.sort((a, b) => (b.lastMasuk || '99:99').localeCompare(a.lastMasuk || '99:99'));
+    }, [jadwalHariIni, presensiMap]);
+
     const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka || 0);
 
     const todayString = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -244,7 +268,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                             </span>
                         </div>
 
-                        {jadwalHariIni && jadwalHariIni.length > 0 ? (
+                        {jadwalGroups.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border text-sm">
                                     <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">
@@ -259,36 +283,53 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/50">
-                                        {jadwalHariIni.map((j, i) => {
-                                            const ngajar = presensiByJadwal[j.id];
-                                            const harian = presensiMap[j.pegawai_id];
+                                        {jadwalGroups.map((g) => {
+                                            const isExpanded = detailPresensi === g.guru?.id;
+                                            const harian = presensiMap[g.guru?.id];
 
-                                            return (
-                                                <tr
-                                                    key={j.id || i}
-                                                    onClick={() => setDetailPresensi(detailPresensi === j.pegawai_id ? null : j.pegawai_id)}
-                                                    className={`hover:bg-surface/70 transition-colors cursor-pointer ${detailPresensi === j.pegawai_id ? 'bg-surface/70' : ''}`}
-                                                >
-                                                    <td className="px-4 py-3 font-mono text-sm font-semibold text-primary whitespace-nowrap">
-                                                        {j.jam_mulai?.substring(0, 5)}–{j.jam_selesai?.substring(0, 5)}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <span className="font-medium text-text-primary">{j.mata_pelajaran?.nama || j.jenis_jadwal || '-'}</span>
-                                                    </td>
-                                                    <td className="hidden sm:table-cell px-4 py-3 text-text-secondary">{j.kelas_label || '-'}</td>
-                                                    <td className="px-4 py-3 whitespace-nowrap">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold ${avatarTone(j.pegawai?.nama_lengkap)}`}>
-                                                                {initials(j.pegawai?.nama_lengkap)}
-                                                            </span>
-                                                            <span className="font-semibold text-text-primary">{j.pegawai?.nama_lengkap || '-'}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="hidden md:table-cell px-4 py-3 text-xs text-text-muted">{j.unit_sekolah?.singkatan || j.unit_sekolah?.nama || '-'}</td>
-                                                    <td className="px-4 py-3 text-center">{ngajar ? <StatusBadge status={ngajar.status} /> : <span className="text-xs text-text-muted">—</span>}</td>
-                                                    <td className="px-4 py-3 text-center">{harian ? <StatusBadge status={harian.status} /> : <span className="text-xs text-text-muted">—</span>}</td>
-                                                </tr>
-                                            );
+                                            return g.items.map((j, idx) => {
+                                                const ngajar = presensiByJadwal[j.id];
+
+                                                return (
+                                                    <tr
+                                                        key={j.id || `${g.guru?.id}-${idx}`}
+                                                        onClick={() => setDetailPresensi(isExpanded ? null : g.guru?.id)}
+                                                        className={`transition-colors cursor-pointer ${isExpanded ? 'bg-surface/70' : 'hover:bg-surface/70'} ${g.items.length > 1 && idx > 0 ? 'border-t-0' : ''}`}
+                                                    >
+                                                        <td className="px-4 py-3 font-mono text-sm font-semibold text-primary whitespace-nowrap">
+                                                            {j.jam_mulai?.substring(0, 5)}–{j.jam_selesai?.substring(0, 5)}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className="font-medium text-text-primary">{j.mata_pelajaran?.nama || j.jenis_jadwal || '-'}</span>
+                                                        </td>
+                                                        <td className="hidden sm:table-cell px-4 py-3 text-text-secondary">{j.kelas_label || '-'}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap">
+                                                            {idx === 0 ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold ${avatarTone(g.guru?.nama_lengkap)}`}>
+                                                                        {initials(g.guru?.nama_lengkap)}
+                                                                    </span>
+                                                                    <div className="min-w-0">
+                                                                        <span className="font-semibold text-text-primary">{g.guru?.nama_lengkap || '-'}</span>
+                                                                        {g.items.length > 1 && (
+                                                                            <span className="ml-1.5 rounded-full bg-primary/5 px-1.5 py-0.5 text-[10px] font-bold text-primary">{g.items.length} JP</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs text-text-muted">↳ lanjutan</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="hidden md:table-cell px-4 py-3 text-xs text-text-muted">{j.unit_sekolah?.singkatan || j.unit_sekolah?.nama || '-'}</td>
+                                                        <td className="px-4 py-3 text-center">{ngajar ? <StatusBadge status={ngajar.status} /> : <span className="text-xs text-text-muted">—</span>}</td>
+                                                        {idx === 0 ? (
+                                                            <td rowSpan={g.items.length} className="px-4 py-3 text-center align-top">
+                                                                {harian ? <StatusBadge status={harian.status} /> : <span className="text-xs text-text-muted">—</span>}
+                                                            </td>
+                                                        ) : null}
+                                                    </tr>
+                                                );
+                                            });
                                         })}
                                     </tbody>
                                 </table>
