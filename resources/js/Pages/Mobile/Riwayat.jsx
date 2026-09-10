@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, SectionTitle, Badge, Empty } from '@/Components/MobileUI';
@@ -34,16 +34,12 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
     const formatJam = (j) => (j ? j.substring(0, 5) : '-');
     const dayName = (t) => capitalize(format(parseISO(t), 'EEEE', { locale: id }));
 
-    const grouped = useMemo(() => {
-        const g = {};
-        (presensi || []).forEach((p) => {
-            if (!g[p.tanggal]) g[p.tanggal] = [];
-            g[p.tanggal].push(p);
-        });
-        return Object.keys(g)
-            .sort((a, b) => (a < b ? 1 : -1))
-            .map((t) => ({ tanggal: t, items: g[t] }));
-    }, [presensi]);
+    const [selectedDate, setSelectedDate] = useState(null);
+
+    const selectedItems = useMemo(() => {
+        if (!selectedDate) return [];
+        return (presensi || []).filter((p) => p.tanggal === selectedDate);
+    }, [presensi, selectedDate]);
 
     const dailyStatus = useMemo(() => {
         const priority = { hadir: 1, cuti: 2, izin: 2, sakit: 2, telat: 3, alpa: 4 };
@@ -140,10 +136,11 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                     {calendarDays.map((day) => {
                         const key = format(day, 'yyyy-MM-dd');
                         const status = dailyStatus[key];
+                        const isSelected = selectedDate === key;
                         return (
-                            <div key={key} aria-label={`${format(day, 'd MMMM', { locale: id })}: ${status ? getStatusBadge(status).label : 'Tidak ada catatan'}`} className={`flex aspect-square items-center justify-center rounded-lg text-xs font-bold tabular-nums ring-1 ${status ? calendarTone[status] : 'bg-slate-50 text-slate-400 ring-slate-100'}`}>
+                            <button key={key} type="button" onClick={() => setSelectedDate(isSelected ? null : key)} aria-label={`${format(day, 'd MMMM', { locale: id })}: ${status ? getStatusBadge(status).label : 'Tidak ada catatan'}`} className={`flex aspect-square items-center justify-center rounded-lg text-xs font-bold tabular-nums ring-1 transition-all ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''} ${status ? calendarTone[status] : 'bg-slate-50 text-slate-400 ring-slate-100'}`}>
                                 {format(day, 'd')}
-                            </div>
+                            </button>
                         );
                     })}
                 </div>
@@ -154,48 +151,44 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                 </div>
             </Card>
 
-            {/* List */}
-            {grouped.length === 0 ? (
-                <Empty icon={History} title="Belum ada riwayat" subtitle="Presensi akan tercatat di sini." />
-            ) : (
-                <div className="space-y-5">
-                    {grouped.map(({ tanggal, items }) => (
-                        <div key={tanggal}>
-                            <div className="mb-2 flex items-center gap-2 px-1">
-                                <CalendarDays className="h-4 w-4 text-emerald-400" />
-                                <p className="text-sm font-extrabold text-slate-700">{formatTanggal(tanggal)}</p>
-                                <span className="text-xs font-medium text-slate-400">• {dayName(tanggal)}</span>
-                            </div>
-                            <div className="space-y-2.5">
-                                {items.map((p) => {
-                                    const b = getStatusBadge(p.status);
-                                    const label = p.jadwal?.mata_pelajaran?.nama
-                                        || (p.is_lembur ? 'Lembur' : p.tipe_presensi === 'kantor' ? 'Presensi Kantor' : 'Presensi');
-                                    const kelas = p.jadwal?.kelas_label;
-                                    const isKantor = p.tipe_presensi === 'kantor';
-                                    const belumPulang = Boolean(p.jam_masuk) && !p.jam_keluar;
-                                    const badge = isKantor && belumPulang
-                                        ? { tone: 'amber', label: 'Belum pulang', icon: Clock }
-                                        : b;
-                                    return (
-                                        <Card key={p.id} className="flex items-center justify-between py-3.5">
-                                            <div className="min-w-0">
-                                                <p className="truncate font-bold text-slate-800">{label}</p>
-                                                <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
-                                                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{formatJam(p.jam_masuk)}–{formatJam(p.jam_keluar)}</span>
-                                                    {kelas && <span className="inline-flex items-center gap-1 text-slate-400">{kelas}</span>}
-                                                    {p.jarak_meter != null && (
-                                                        <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-400" />{p.jarak_meter}m</span>
-                                                    )}
-                                                </p>
-                                            </div>
-                                            <Badge tone={badge.tone} icon={badge.icon}>{badge.label}</Badge>
-                                        </Card>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    ))}
+            {/* Detail per tanggal */}
+            {selectedDate && (
+                <div className="mt-2 space-y-2.5">
+                    <div className="flex items-center gap-2 px-1">
+                        <CalendarDays className="h-4 w-4 text-emerald-400" />
+                        <p className="text-sm font-extrabold text-slate-700">{formatTanggal(selectedDate)}</p>
+                        <span className="text-xs font-medium text-slate-400">• {dayName(selectedDate)}</span>
+                    </div>
+                    {selectedItems.length === 0 ? (
+                        <Empty icon={History} title="Tidak ada presensi" subtitle="Belum ada catatan kehadiran untuk tanggal ini." />
+                    ) : (
+                        selectedItems.map((p) => {
+                            const b = getStatusBadge(p.status);
+                            const label = p.jadwal?.mata_pelajaran?.nama
+                                || (p.is_lembur ? 'Lembur' : p.tipe_presensi === 'kantor' ? 'Presensi Kantor' : 'Presensi');
+                            const kelas = p.jadwal?.kelas_label;
+                            const isKantor = p.tipe_presensi === 'kantor';
+                            const belumPulang = Boolean(p.jam_masuk) && !p.jam_keluar;
+                            const badge = isKantor && belumPulang
+                                ? { tone: 'amber', label: 'Belum pulang', icon: Clock }
+                                : b;
+                            return (
+                                <Card key={p.id} className="flex items-center justify-between py-3.5">
+                                    <div className="min-w-0">
+                                        <p className="truncate font-bold text-slate-800">{label}</p>
+                                        <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
+                                            <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{formatJam(p.jam_masuk)}–{formatJam(p.jam_keluar)}</span>
+                                            {kelas && <span className="inline-flex items-center gap-1 text-slate-400">{kelas}</span>}
+                                            {p.jarak_meter != null && (
+                                                <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-400" />{p.jarak_meter}m</span>
+                                            )}
+                                        </p>
+                                    </div>
+                                    <Badge tone={badge.tone} icon={badge.icon}>{badge.label}</Badge>
+                                </Card>
+                            );
+                        })
+                    )}
                 </div>
             )}
         </MobileLayout>
