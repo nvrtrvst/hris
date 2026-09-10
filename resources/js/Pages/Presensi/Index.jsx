@@ -381,7 +381,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                                         <div className="font-mono text-[11px] text-text-secondary">{timeRange} ({mg.items.length} JP)</div>
                                     </div>
                                 </td>
-                                <td className="px-4 py-2.5 whitespace-nowrap" colSpan="5"></td>
+                                <td className="px-4 py-2.5 whitespace-nowrap" colSpan="7"></td>
                             </tr>
                         );
 
