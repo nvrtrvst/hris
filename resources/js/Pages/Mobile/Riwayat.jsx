@@ -47,7 +47,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
 
     const dailyStatus = useMemo(() => {
         const priority = { hadir: 1, cuti: 2, izin: 2, sakit: 2, telat: 3, alpa: 4 };
-        return (presensi || []).filter((p) => !p.is_lembur).reduce((days, p) => {
+        return (presensi || []).filter((p) => !p.is_lembur && !p.jadwal_id).reduce((days, p) => {
             const current = days[p.tanggal];
             if (!current || (priority[p.status] || 0) > (priority[current] || 0)) days[p.tanggal] = p.status;
             return days;
@@ -127,7 +127,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
             <Card press={false} className="mb-6 p-4">
                 <div className="mb-4 flex items-center justify-between">
                     <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Kalender Kehadiran</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Kalender Kehadiran Harian</p>
                         <p className="mt-1 text-base font-extrabold text-slate-900">{format(parseISO(`${activeMonth}-01`), 'MMMM yyyy', { locale: id })}</p>
                     </div>
                     <CalendarDays className="h-5 w-5 text-primary" />
