@@ -169,7 +169,7 @@ export default function Create({ pegawai }) {
                 {/* Bukti */}
                 <div>
                     <label className="mb-1 block text-sm font-semibold text-slate-700">
-                        Bukti / Surat Dokter {data.jenis_izin === 'sakit' && <span className="text-rose-500">*wajib</span>}
+                        Bukti / Surat Dokter
                     </label>
                     <div
                         onClick={() => fileInputRef.current.click()}

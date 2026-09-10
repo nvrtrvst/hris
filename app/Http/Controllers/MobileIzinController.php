@@ -90,10 +90,6 @@ class MobileIzinController extends Controller
             'bukti_foto' => ['nullable', 'string', 'max:'.PresensiMessages::MAX_FOTO_BASE64, 'regex:/^data:image\/\w+;base64,/'],
         ]);
 
-        if ($request->jenis_izin === 'sakit' && ! $request->bukti_foto) {
-            return back()->withErrors(['bukti_foto' => 'Surat keterangan dokter / bukti foto wajib dilampirkan untuk pengajuan Sakit.']);
-        }
-
         // ── Validasi overlap: cegah pengajuan untuk tanggal yg sudah ada pengajuan pending/disetujui ──
         $existingIzin = PengajuanIzin::where('pegawai_id', $pegawai->id)
             ->whereIn('status', ['pending', 'disetujui'])
