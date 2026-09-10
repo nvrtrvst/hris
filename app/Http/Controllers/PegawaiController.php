@@ -487,7 +487,7 @@ class PegawaiController extends Controller
             'jatah_cuti_tahunan' => 'nullable|integer|min:0',
             'wajib_kantor' => 'boolean',
             'status_aktif' => 'required|in:aktif,cuti,nonaktif,resign',
-            'tmt_mengajar' => 'required|date',
+            'tmt_mengajar' => 'nullable|date',
             'pendidikan_terakhir' => 'required|string|max:255',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'units' => 'nullable|array',

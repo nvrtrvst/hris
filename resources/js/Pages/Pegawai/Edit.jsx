@@ -41,7 +41,6 @@ function SectionCard({ Icon, title, description, children }) {
 export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, statusKepegawaian, pendidikanTerakhir, atasanCandidates = [] }) {
     const canViewSensitive = auth.permissions?.includes('view_sensitive_data');
     const { data, setData, put, processing, errors } = useForm({
-        _method: 'put',
         nik: canViewSensitive ? pegawai.nik_plain ?? pegawai.nik : '',
         nuptk: pegawai.nuptk || '',
         nama_lengkap: pegawai.nama_lengkap,
@@ -58,6 +57,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         wajib_kantor: pegawai.wajib_kantor ?? false,
         jatah_cuti_tahunan: pegawai.jatah_cuti_tahunan ?? 12,
         status_aktif: pegawai.status_aktif,
+        tmt_mengajar: pegawai.tmt_mengajar || '',
         tanggal_mulai_kerja: pegawai.tanggal_mulai_kerja,
         pendidikan_terakhir: pegawai.pendidikan_terakhir,
         pendidikan_jurusan: pegawai.pendidikan_jurusan || '',
