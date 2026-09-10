@@ -166,35 +166,23 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         return SLIDE_JADWAL;
     }, [allRecordsComplete, pagiRecord, semuaBeres, jadwals.length, jamSekarang]);
 
-    const lemburUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
-
     const tugasLuarOpen = useMemo(() => presensiHariIni.some((p) => p.is_tugas_luar && p.jam_masuk && !p.jam_keluar), [presensiHariIni]);
     const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_luar && p.jam_masuk), [presensiHariIni]);
     const tugasLuarDone = useMemo(() => presensiHariIni.some((p) => p.is_tugas_luar && p.jam_masuk && p.jam_keluar), [presensiHariIni]);
     const isDinasLuarFlow = tugasLuarOpen || (isTugasLuar && !tugasLuarRecord);
 
     const geofence = useMemo(() => {
-        if (!currentPosition || !lemburUnit) return null;
-        const lat = parseFloat(lemburUnit.latitude);
-        const lon = parseFloat(lemburUnit.longitude);
+        if (!currentPosition || !primaryUnit) return null;
+        const lat = parseFloat(primaryUnit.latitude);
+        const lon = parseFloat(primaryUnit.longitude);
         if (isNaN(lat) || isNaN(lon)) return null;
-        const radius = lemburUnit.radius_meter ?? 50;
+        const radius = primaryUnit.radius_meter ?? 50;
         const { inside, distance } = checkGeofence(currentPosition.latitude, currentPosition.longitude, lat, lon, radius);
-        return { name: lemburUnit.nama_unit || lemburUnit.nama || 'Unit Sekolah', distance, radius, inside };
-    }, [currentPosition, lemburUnit]);
+        return { name: primaryUnit.nama_unit || primaryUnit.nama || 'Unit Sekolah', distance, radius, inside };
+    }, [currentPosition, primaryUnit]);
 
     const geoBlocked = isTugasLuar ? false : (geofence && !geofence.inside);
     const geoReady = geofence !== null;
-
-    const isInsideJadwal = useCallback(() => {
-        if (!currentPosition || !lemburUnit) return false;
-        const lat = parseFloat(lemburUnit.latitude);
-        const lon = parseFloat(lemburUnit.longitude);
-        if (isNaN(lat) || isNaN(lon)) return false;
-        const radius = lemburUnit.radius_meter ?? 50;
-        const { inside } = checkGeofence(currentPosition.latitude, currentPosition.longitude, lat, lon, radius);
-        return inside;
-    }, [currentPosition, lemburUnit]);
 
     const camera = useCamera({
         canCapture: Boolean(currentPosition && (geofence?.inside || isTugasLuar)),
@@ -599,11 +587,11 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                         <>
                                             <SlideToConfirm
                                                 onConfirm={() => handleSlideGroup(g)}
-                                                disabled={slideLoading !== null || !currentPosition || !isInsideJadwal()}
+                                                disabled={slideLoading !== null || !geofence?.inside}
                                                 confirmed={false}
                                                 label={`Slide ${g.mata_pelajaran?.nama || 'jadwal'}${count > 1 ? ` (${count} jam)` : ''}`}
                                             />
-                                            {(!currentPosition || !isInsideJadwal()) && (
+                                            {!geofence?.inside && (
                                                 <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
                                                     <MapPin className="h-3 w-3 shrink-0" />
                                                     {!currentPosition ? 'Tunggu GPS aktif…' : 'Di luar radius unit — geser tidak aktif'}
@@ -737,7 +725,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                 <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-3">
                                     <div className="rounded-lg bg-white/90 px-3 py-2 text-slate-900 shadow-sm backdrop-blur-sm">
                                         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">Lokasi presensi</p>
-                                        <p className="mt-1 text-xs font-semibold">{lemburUnit?.nama || lemburUnit?.nama_unit || 'Unit'}</p>
+                                        <p className="mt-1 text-xs font-semibold">{primaryUnit?.nama || primaryUnit?.nama_unit || 'Unit'}</p>
                                         <p className="mt-1 font-mono text-[10px] tabular-nums text-slate-500">{currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}</p>
                                     </div>
                                     <div className={`rounded-lg px-2.5 py-2 text-[10px] font-bold ${geoReady && geofence.inside ? 'bg-emerald-400 text-emerald-950' : 'bg-rose-400 text-rose-950'}`}>
@@ -767,7 +755,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                 <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-3">
                                     <div className="rounded-lg bg-white/90 px-3 py-2 text-slate-900 shadow-sm backdrop-blur-sm">
                                         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">Lokasi presensi</p>
-                                        <p className="mt-1 text-xs font-semibold">{lemburUnit?.nama || lemburUnit?.nama_unit || 'Unit'}</p>
+                                        <p className="mt-1 text-xs font-semibold">{primaryUnit?.nama || primaryUnit?.nama_unit || 'Unit'}</p>
                                         <p className="mt-1 font-mono text-[10px] tabular-nums text-slate-500">{currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}</p>
                                     </div>
                                     <div className={`rounded-lg px-2.5 py-2 text-[10px] font-bold ${geoReady && geofence.inside ? 'bg-emerald-400 text-emerald-950' : 'bg-rose-400 text-rose-950'}`}>
