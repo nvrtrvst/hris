@@ -114,8 +114,8 @@ class MobileController extends Controller
             ->orderBy('tanggal', 'desc')
             ->get();
 
-        // Ringkasan kehadiran bulan ini (F5)
-        $countsCount = $presensi->filter(fn ($p) => ! $p->is_lembur)->groupBy('status')->map->count();
+        // Ringkasan kehadiran bulan ini (F5) — hanya presensi harian (jadwal_id=null)
+        $countsCount = $presensi->filter(fn ($p) => ! $p->is_lembur && ! $p->jadwal_id)->groupBy('status')->map->count();
         $hadir = (int) ($countsCount['hadir'] ?? 0);
         $telat = (int) ($countsCount['telat'] ?? 0);
         $sakit = (int) ($countsCount['sakit'] ?? 0);
