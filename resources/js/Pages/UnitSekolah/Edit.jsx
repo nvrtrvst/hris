@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import UnitForm from './UnitForm';
 
 export default function Edit({ auth, unit }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, put, processing, errors } = useForm({
         _method: 'put',
         nama: unit.nama,
         singkatan: unit.singkatan,
@@ -28,7 +28,7 @@ export default function Edit({ auth, unit }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('unit-sekolah.update', unit.id), { forceFormData: true });
+        put(route('unit-sekolah.update', unit.id), { forceFormData: true });
     };
 
     return (
