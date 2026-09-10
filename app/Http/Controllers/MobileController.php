@@ -1359,8 +1359,9 @@ class MobileController extends Controller
     }
 
     /**
-     * Ambil sesi mengajar: rantai JP konsekutif mengandung $anchor,
+     * Ambil sesi mengajar: rantai JP konsekutif DARI $anchor ke depan,
      * gap antar JP ≤ GAP_SESI_MENIT, kriteria sama (hari+unit+kelas+mapel).
+     * Forward-only: JP sebelum anchor TIDAK di-cover.
      * Kembalikan Collection terurut jam_mulai ASC.
      */
     private function sesiMengajar(Pegawai $pegawai, Jadwal $anchor, string $hari): Collection
@@ -1388,17 +1389,6 @@ class MobileController extends Controller
             $cur = $kandidat[$i];
             if ($this->toMinutes($cur->jam_mulai) - $this->toMinutes($prev->jam_selesai) <= $gapMax) {
                 $chain->push($cur);
-            } else {
-                break;
-            }
-        }
-
-        // Backward: extend ke JP sebelumnya selama gap ≤ gapMax
-        for ($i = $anchorIdx - 1; $i >= 0; $i--) {
-            $next = $kandidat[$i + 1];
-            $cur = $kandidat[$i];
-            if ($this->toMinutes($next->jam_mulai) - $this->toMinutes($cur->jam_selesai) <= $gapMax) {
-                $chain->prepend($cur);
             } else {
                 break;
             }

@@ -515,54 +515,27 @@ class PresensiSlideMultiJadwalTest extends TestCase
 
     public function test_cover_jp_di_luar_radius_per_unit_di_skip(): void
     {
-        // Skenario: guru mengajar di unitA (radius check) dan unitB (radius check terpisah).
-        // Jika guru hanya di lokasi unitA, slide A1 (unitA) harus cover A2 (unitA) tapi SKIP
-        // A3 (unitB) karena di luar radius unitB.
-        //
-        // Implementasi: setiap JP dicek geofence terhadap unitSekolah JP itu sendiri.
-        // Pre-conditions:
-        //   - pegawai ada di unitA (primary).
-        //   - JP A1, A2 di unitA.
-        //   - JP A3 di unitB (beda unit, beda lokasi).
-        //   - lokasi saat slide = lokasi unitA (lat=-6.2, lng=106.8).
-        // Expected:
-        //   - A1, A2: covered (dalam radius unitA).
-        //   - A3: NOT covered (di luar radius unitB, tapi tidak boleh fail keseluruhan).
+        // Skenario: guru mengajar di unitA dan unitB.
+        // Slide A1 (unitA) harus cover A2 (unitA) tapi SKIP A3 (unitB).
+        // Forward-only: JP sebelum anchor tidak di-cover.
         $hari = $this->hariIniIndo();
         Carbon::setTestNow(Carbon::today()->setTime(9, 0));
 
         $pegawai = $this->makePegawaiTetap();
         $pegawaiMapelA = $this->makeMapel($pegawai, $this->unitA);
-        // mapel berbeda untuk unitB (constraint grouping key: mapel_id/unit_id).
         $pegawaiMapelB = $this->makeMapel($pegawai, $this->unitB, 'IPA');
 
-        // Override: A1, A2 di unitA (sama mapel); A3 di unitB (mapel beda).
-        // Karena grouping key termasuk unit_sekolah_id, A3 otomatis beda grup
-        // sehingga tidak masuk cover loop. Test ini validasi behavior terpisah:
-        // walaupun A3 tidak masuk loop karena beda unit, response tetap sukses.
         $jpA1 = $this->makeJadwal($pegawai, $pegawaiMapelA, $this->unitA, $hari, '08:00:00', '08:45:00');
         $jpA2 = $this->makeJadwal($pegawai, $pegawaiMapelA, $this->unitA, $hari, '08:45:00', '09:30:00');
-        // Beda unit, beda mapel → grouping key berbeda → tidak masuk cover loop.
+        // Beda unit, beda mapel → tidak masuk sesi.
         $jpA3 = $this->makeJadwal($pegawai, $pegawaiMapelB, $this->unitB, $hari, '08:00:00', '08:45:00', '7-A');
-
-        // Tambahkan A4 di unitA (jam_mulai < now, lokasi = unitA) untuk validasi per-JP geofence.
-        // Plus A5 di unitA tapi lokasi ABU-ABU (di luar radius unitA, tapi grouping tetap sama).
-        // Karena ini sulit di-skenario-kan tanpa banyak jadwal, kita pakai:
-        // JP A4: sama unitA, sama mapel, sama kelas. Tapi JP A5 beda unit di kelas/mapel sama.
-        // Setup: JP yang akan di-cover di cek geofence per JP, hasilnya di-skip jika di luar radius.
-        // Karena di grouping key kita pakai unit_sekolah_id, semua JP di grup punya unit yang sama.
-        // Implikasinya: kalau slide JP di unitA, cover loop hanya untuk JP di unitA — tidak ada
-        // JP beda unit di grup yang sama. Test ini memastikan response sukses walau ada JP
-        // di unit lain (yang tidak masuk grup).
-        $jpA4 = $this->makeJadwal($pegawai, $pegawaiMapelA, $this->unitA, $hari, '07:00:00', '07:45:00', '7-A');
 
         $res = $this->postSlide($jpA1);
         $res->assertOk();
 
-        // A1, A2, A4 (semua unitA, jam_mulai <= now): covered.
+        // A1 (anchor), A2 (forward, same unit): covered.
         $this->assertDatabaseHas('presensi', ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jpA1->id]);
         $this->assertDatabaseHas('presensi', ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jpA2->id]);
-        $this->assertDatabaseHas('presensi', ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jpA4->id]);
 
         // A3 (unitB): NOT covered (beda grouping key — beda unit & mapel).
         $this->assertDatabaseMissing('presensi', ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jpA3->id]);
