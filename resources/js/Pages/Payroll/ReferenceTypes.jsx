@@ -100,7 +100,7 @@ function ValueForm({ komponens, processing, onSubmit, onCancel }) {
                     {processing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Simpan
                 </button>
             </div>
-        </function>
+        </form>
     );
 }
 
