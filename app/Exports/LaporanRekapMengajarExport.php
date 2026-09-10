@@ -23,6 +23,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
  */
 class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
+    use FormulaEscapable;
+
     protected $start_date;
 
     protected $end_date;
@@ -214,7 +216,7 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
                 : '-';
         }
 
-        return $row;
+        return array_map([self::class, 'escapeFormula'], $row);
     }
 
     public function headings(): array

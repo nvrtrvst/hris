@@ -341,15 +341,25 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                 {pegawai.units && pegawai.units.length > 0 ? (
                                     <div className="space-y-2">
                                         {pegawai.units.map((unit) => {
-                                            const jabatan = pegawai.jabatans?.find((j) => j.pivot.unit_sekolah_id === unit.id)?.nama;
+                                            const unitJabatans = pegawai.jabatans?.filter((j) => j.pivot.unit_sekolah_id === unit.id) || [];
                                             const mapels = pegawai.mapels?.filter((m) => m.pivot.unit_sekolah_id === unit.id) || [];
 
                                             return (
                                                 <div key={unit.id} className="rounded-xl border border-border bg-surface/50 p-3">
                                                     <div className="flex items-center gap-1.5 text-sm font-bold text-primary">
                                                         <Building2 className="h-3.5 w-3.5 text-primary/60" /> {unit.nama}
-                                                        <span className="font-normal text-text-muted">— {jabatan || '-'}</span>
                                                     </div>
+                                                    {unitJabatans.length > 0 ? (
+                                                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                                            {unitJabatans.map((j) => (
+                                                                <span key={j.id} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${j.pivot.is_primary ? 'border border-primary/30 bg-primary/10 text-primary' : 'border border-slate-200 bg-slate-100 text-slate-600'}`}>
+                                                                    <Briefcase className="h-3 w-3" /> {j.nama}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="mt-1 text-xs text-text-muted">—</p>
+                                                    )}
                                                     {mapels.length > 0 && (
                                                         <div className="mt-2 flex flex-wrap gap-1.5">
                                                             {mapels.map((m) => (

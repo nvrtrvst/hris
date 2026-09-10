@@ -208,9 +208,10 @@ erDiagram
 | `nama` | string | |
 | `kode` | varchar(50) nullable | `gaji_pokok`, `tunjangan_kehadiran`, dll |
 | `tipe` | enum | `pendapatan` / `potongan` |
-| `jenis` | varchar(50) | `fixed` / `persentase` / `dinamis_kehadiran` / `dinamis_masa_bakti` / `dinamis_jam_mengajar` / `dinamis_lembur` |
+| `jenis` | varchar(50) | `fixed` / `persentase` / `dinamis_kehadiran` / `dinamis_masa_bakti` / `dinamis_jam_mengajar` / `dinamis_lembur` / `lookup_reference` |
 | `applies_to_status_kepegawaian` | varchar(50) nullable | `tetap` / `honorer` / null (ALL) |
 | `nilai_default` | decimal(15,2) | Nilai default (untuk persentase: persen, dibagi 100 di kode) |
+| `payroll_reference_type_id` | bigint FK nullable | Required jika jenis=lookup_reference. Relasi → payroll_reference_types |
 | `unit_sekolah_id` | bigint FK nullable | Scope per unit |
 | `is_taxable` | boolean | |
 | `is_active` | boolean | |
@@ -225,6 +226,40 @@ erDiagram
 | `id` | bigint PK | |
 | `masa_kerja_tahun` | integer UNIQUE | Tahun ke- (0, 1, 2...) |
 | `nominal_gaji` | decimal(15,2) | Tunjangan untuk bracket ini |
+
+#### `payroll_reference_types` — Tabel tipe referensi payroll
+
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | bigint PK | |
+| `kode` | varchar(50) UNIQUE | e.g. `pendidikan`, `status_kepegawaian` |
+| `nama` | varchar(100) | Nama tipe |
+| `source_field` | varchar(100) | Kolom Pegawai: `pendidikan_terakhir`, `jenis_kelamin`, `status_pernikahan`, `status_kepegawaian`, `tanggal_mulai_kerja` |
+| `is_active` | boolean | |
+
+#### `payroll_reference_values` — Nilai per tipe referensi
+
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | bigint PK | |
+| `komponen_gaji_id` | bigint FK | Relasi → komponen_gaji (cascade delete) |
+| `payroll_reference_type_id` | bigint FK | Relasi → payroll_reference_types (cascade delete) |
+| `reference_key` | string | Nilai dari `source_field` (e.g. `S1`, `S2`, `SMA`) |
+| `nominal` | decimal(15,2) | Nominal untuk kombinasi ini |
+| UNIQUE | | triple: komponen_gaji_id + payroll_reference_type_id + reference_key |
+
+#### `audit_logs` — Log audit perubahan data
+
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | bigint PK | |
+| `auditable_type` | string | Class model (e.g. `App\Models\PayrollReferenceType`) |
+| `auditable_id` | bigint | ID record |
+| `user_id` | bigint FK nullable | User yang melakukan perubahan |
+| `aksi` | varchar(50) | `create` / `update` / `delete` |
+| `data_lama` | json nullable | Nilai sebelum perubahan |
+| `data_baru` | json nullable | Nilai setelah perubahan |
+| `keterangan` | text nullable | Keterangan tambahan |
 
 #### `hari_libur` — Kalender libur per unit
 
@@ -882,6 +917,7 @@ if ($komponen->applies_to_status_kepegawaian
 | 10 | BPJS Kesehatan - Honorer | `persentase` | potongan | 0 (0%) | `honorer` | 1 | 10 |
 | 11 | BPJS Ketenagakerjaan - Honorer | `persentase` | potongan | 0 (0%) | `honorer` | 1 | 11 |
 | 12 | Tunjangan Lembur | `dinamis_lembur` | pendapatan | 25.000 | ALL (null) | 1 | 12 |
+| 13 | Tunjangan Pendidikan | `lookup_reference` | pendapatan | — | ALL (null) | 1 | 13 |
 | ~~13~~ | ~~BPJS Kesehatan~~ | ~~persentase~~ | ~~potongan~~ | ~~1%~~ | ~~null~~ | **0** | ~~99~~ |
 | ~~14~~ | ~~BPJS Ketenagakerjaan~~ | ~~persentase~~ | ~~potongan~~ | ~~2%~~ | ~~null~~ | **0** | ~~99~~ |
 | ~~15~~ | ~~PPh 21~~ | ~~persentase~~ | ~~potongan~~ | ~~5%~~ | ~~null~~ | **0** | ~~99~~ |
@@ -890,7 +926,13 @@ if ($komponen->applies_to_status_kepegawaian
 
 - **Tetap** mendapat: 1–7, 12 = 8 komponen
 - **Honorer** mendapat: 8–12 = 5 komponen
-- **ALL** mendapat: 12 (Tunjangan Lembur)
+- **ALL** mendapat: 12 (Tunjangan Lembur), 13 (Tunjangan Pendidikan)
+
+**Lookup Reference (jenis `lookup_reference`)**:
+- Nominal resolve via `PayrollReferenceType.source_field` → `Pegawai.{field}` → `PayrollReferenceValue.reference_key` match
+- Whitelist 5 kolom Pegawai: `pendidikan_terakhir`, `jenis_kelamin`, `status_pernikahan`, `status_kepegawaian`, `tanggal_mulai_kerja`
+- Return 0 jika refType null, key kosong, atau tidak match
+- Contoh: Tunjangan Pendidikan → S3=750k, S2=500k, S1=400k, D4/D3=300k, SMA=200k
 
 ---
 

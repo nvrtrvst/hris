@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\KomponenGaji;
 use App\Models\PayrollReferenceType;
 use App\Models\PayrollReferenceValue;
 use Illuminate\Http\Request;
@@ -10,12 +11,17 @@ class PayrollReferenceTypeController extends Controller
 {
     public function index()
     {
-        $types = PayrollReferenceType::with('values')->orderBy('kode')->get();
+        $types = PayrollReferenceType::with('values.komponenGaji')->orderBy('kode')->get();
         $allowedSources = PenggajianController::referenceSourceFields();
+        $komponens = KomponenGaji::where('is_active', true)
+            ->select('id', 'kode', 'nama', 'jenis', 'unit_sekolah_id')
+            ->orderBy('kode')
+            ->get();
 
         return inertia('Payroll/ReferenceTypes', [
             'types' => $types,
             'allowedSources' => $allowedSources,
+            'komponens' => $komponens,
         ]);
     }
 

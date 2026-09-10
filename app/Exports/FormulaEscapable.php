@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Exports;
 
-abstract class Controller
+trait FormulaEscapable
 {
     /**
      * Escape cell value to prevent Excel/CSV formula injection.
      * Cells starting with =, +, -, @, tab, or CR get a leading single-quote.
      */
-    protected static function escapeFormulaValue(mixed $value): mixed
+    protected static function escapeFormula(mixed $value): mixed
     {
         if (! is_string($value)) {
             return $value;

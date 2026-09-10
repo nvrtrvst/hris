@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class PayrollReferenceValue extends Model
 {
+    use Auditable;
+
     protected $table = 'payroll_reference_values';
 
     protected $fillable = [

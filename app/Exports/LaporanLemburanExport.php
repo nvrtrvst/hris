@@ -19,6 +19,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
+    use FormulaEscapable;
+
     protected $start_date;
 
     protected $end_date;
@@ -75,7 +77,7 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
         $totalMinutes = $jamMulai->diffInMinutes($jamSelesai);
         $totalHours = round($totalMinutes / 60, 2);
 
-        return [
+        $row = [
             $pegawai?->nuptk ?? '-',
             $pegawai?->nama_lengkap ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
@@ -86,6 +88,8 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
             $totalHours,
             FileHelper::fotoUrl($presensi->foto_masuk),
         ];
+
+        return array_map([self::class, 'escapeFormula'], $row);
     }
 
     public function headings(): array

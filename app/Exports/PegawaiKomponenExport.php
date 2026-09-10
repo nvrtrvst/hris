@@ -9,6 +9,8 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 
 class PegawaiKomponenExport implements FromCollection, WithHeadings, WithMapping
 {
+    use FormulaEscapable;
+
     protected $komponenId;
 
     public function __construct($komponenId)
@@ -38,11 +40,13 @@ class PegawaiKomponenExport implements FromCollection, WithHeadings, WithMapping
         $pivot = $pegawai->komponenGaji->first();
         $nominal = $pivot ? $pivot->pivot->nominal : '';
 
-        return [
+        $row = [
             // Tambahkan petik satu agar NIK dibaca sebagai teks (tidak diubah jadi scientific E+ oleh Excel)
             "'".$pegawai->nik,
             $pegawai->nama_lengkap,
             $nominal,
         ];
+
+        return array_map([self::class, 'escapeFormula'], $row);
     }
 }

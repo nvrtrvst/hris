@@ -52,9 +52,14 @@ Role: `superadmin` (all), `admin_unit` (view_*), `pegawai` (none).
   Status enum: `hadir|telat|izin|sakit|alpa` (default `alpa`). Kolom anti-spoof: `akurasi_*`, `kecepatan_*`, `lokasi_perlu_review`, `captured_at`.
   Kolom lembur: `is_lembur` BOOLEAN, `lembur_status` VARCHAR(20) (pending|disetujui|ditolak) default NULL.
 - Penggajian (1 periode "m-Y" per pegawai) -> PenggajianDetail (komponen_gaji_id, nama_komponen, tipe, nominal). Status: draft -> finalized -> paid.
-- KomponenGaji: jenis VARCHAR(50) (fixed|persentase|dinamis_kehadiran|dinamis_masa_bakti|dinamis_jam_mengajar|dinamis_lembur), tipe ENUM(pendapatan|potongan),
-  `nilai_default` (bukan `nilai`), `kode`, `is_taxable` (bukan `taxable`), `unit_sekolah_id`, `is_active`, `urutan`, `tampil_di_matrix`.
+- KomponenGaji: jenis VARCHAR(50) (fixed|persentase|dinamis_kehadiran|dinamis_masa_bakti|dinamis_jam_mengajar|dinamis_lembur|lookup_reference), tipe ENUM(pendapatan|potongan),
+  `nilai_default` (bukan `nilai`), `kode`, `is_taxable` (bukan `taxable`), `unit_sekolah_id`, `is_active`, `urutan`, `tampil_di_matrix`, `payroll_reference_type_id` (nullable FK).
   TIDAK ada kolom `persentase` — nilai persen disimpan di `nilai_default` (dibagi 100 di kode).
+  `lookup_reference` resolve via `PayrollReferenceType.source_field` → `Pegawai.{field}` → `PayrollReferenceValue.reference_key` → nominal.
+- PayrollReferenceType: kode (unique), nama, source_field (whitelist 5 kolom: pendidikan_terakhir, jenis_kelamin, status_pernikahan, status_kepegawaian, tanggal_mulai_kerja), is_active.
+  Relasi: values() HasMany → PayrollReferenceValue.
+- PayrollReferenceValue: komponen_gaji_id FK, payroll_reference_type_id FK, reference_key, nominal. Unique triple (komponen, type, key).
+- AuditLog: auditable_type, auditable_id, user_id, aksi, data_lama (json), data_baru (json). Polymorphic via Auditable trait (PayrollReferenceType, PayrollReferenceValue, KomponenGaji).
 - PengajuanIzin: pegawai_id, jenis_izin ENUM(sakit|izin|cuti), tanggal_mulai, tanggal_selesai, status ENUM(pending|disetujui|ditolak) default pending.
   Dipakai hitung sisa cuti. TIDAK punya `unit_sekolah_id` (scope via relasi pegawai).
 - SkalaMasaBakti: masa_kerja_tahun (unique int) -> nominal_gaji.
@@ -112,6 +117,7 @@ Semua di `PenggajianController` (`computeComponentNominal`, `computeAttendance`)
 - **dinamis_masa_bakti**: tenure = `tanggal_mulai_kerja->diffInYears($periodeEnd)`. Ambil skala PERTAMA dgn `masa_kerja_tahun <= yearsOfService` (skala DESC).
 - **dinamis_jam_mengajar**: `rate × totalJamBulanan`. Jam dari jadwal (skip jadwal non-mengajar: piket, ekskul, shift_satpam, shift_kebersihan, lainnya).
 - **dinamis_lembur**: `rate × totalJamLembur`. Jam dari Presensi dengan `is_lembur=true` AND `lembur_status='disetujui'`.
+- **lookup_reference**: `PayrollReferenceType.source_field` → `Pegawai.{field}` → `PayrollReferenceValue.reference_key` match → `nominal`. Whitelist 5 kolom: `pendidikan_terakhir`, `jenis_kelamin`, `status_pernikahan`, `status_kepegawaian`, `tanggal_mulai_kerja`. Return 0 jika refType null, key kosong, atau tidak match.
 
 **Attendance counts** (`computeAttendance`): hadir/telat/sakit/izin/cuti dari `Presensi::groupBy(status)`. Skip `is_lembur=true`. `alpa = manual_alpa + max(0, workingDays - (hadir+telat+sakit+izin+cuti))`. `workingDays` pakai formula O(1) di `countWeekdayInRange()`.
 

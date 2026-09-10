@@ -17,6 +17,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
+    use FormulaEscapable;
+
     protected $start_date;
 
     protected $end_date;
@@ -144,7 +146,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
         $row[] = ucfirst($presensi->status);
         $row[] = $presensi->keterangan ?? '-';
 
-        return $row;
+        return array_map([self::class, 'escapeFormula'], $row);
     }
 
     public function headings(): array

@@ -17,6 +17,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
+    use FormulaEscapable;
+
     protected $start_date;
 
     protected $end_date;
@@ -73,7 +75,7 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
 
         $pegawai = $penggajian->pegawai;
 
-        return [
+        $row = [
             $pegawai?->nuptk ?? '-',
             $pegawai?->nama_lengkap ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
@@ -84,6 +86,8 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
             $penggajian->gaji_bersih,
             ucfirst($penggajian->status),
         ];
+
+        return array_map([self::class, 'escapeFormula'], $row);
     }
 
     public function headings(): array

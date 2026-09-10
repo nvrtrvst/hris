@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class KomponenGaji extends Model
 {
+    use Auditable;
+
     protected $table = 'komponen_gaji';
 
     protected $fillable = [
