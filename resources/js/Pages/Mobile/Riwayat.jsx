@@ -38,7 +38,8 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
 
     const selectedItems = useMemo(() => {
         if (!selectedDate) return [];
-        return (presensi || []).filter((p) => p.tanggal === selectedDate);
+        return (presensi || []).filter((p) => p.tanggal === selectedDate)
+            .sort((a, b) => (a.jam_masuk || '').localeCompare(b.jam_masuk || ''));
     }, [presensi, selectedDate]);
 
     const dailyStatus = useMemo(() => {
