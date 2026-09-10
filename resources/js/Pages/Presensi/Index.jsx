@@ -139,14 +139,210 @@ const buildMapelGroups = (children) => {
     return { groups, others };
 };
 
-const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openAudit, openTugasLuar, setConfirmStatus }) => {
-    const groups = buildGroups(data);
+const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, openAudit, openTugasLuar, setConfirmStatus }) => {
     const [expandedMapel, setExpandedMapel] = React.useState({});
+    const { groups: mapelGroups, others } = React.useMemo(() => buildMapelGroups(items), [items]);
+    const rows = [];
+
+    others.forEach((c, ci) => {
+        const isLast = ci === others.length - 1 && mapelGroups.length === 0;
+        rows.push(
+            <tr key={c.id} className={`bg-surface/40 ${isLast ? 'border-b-2 border-border' : ''}`}>
+                <td className="px-4 py-3 whitespace-nowrap pl-12">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{c.is_tugas_luar ? 'Tugas Luar' : 'Mengajar'}</span>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap"></td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                    {c.is_tugas_luar ? (
+                        <div className="text-xs leading-tight">
+                            <div className="font-semibold text-primary">{c.tujuan || 'Tugas Luar'}</div>
+                            <div className="text-text-secondary">{c.keterangan || '—'}</div>
+                        </div>
+                    ) : c.jadwal ? (
+                        <div className="text-xs leading-tight">
+                            <div className="flex items-center gap-2">
+                                <span className="font-semibold text-primary">{c.jadwal.mata_pelajaran?.nama || 'Jadwal'}</span>
+                                <JadwalStatusBadge p={c} now={now} />
+                            </div>
+                            <div className="text-text-secondary">{c.jadwal.kelas_label || '—'}</div>
+                            <div className="font-mono text-[11px] text-text-secondary">{c.jadwal.jam_mulai?.substring(0, 5)}–{c.jadwal.jam_selesai?.substring(0, 5)}</div>
+                        </div>
+                    ) : <span className="text-xs text-text-secondary">—</span>}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                    {c.jam_masuk
+                        ? <span className="font-mono text-sm font-bold text-primary">{c.jam_masuk.substring(0, 5)}</span>
+                        : <span className="text-sm text-text-secondary">—</span>}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                    {c.jam_keluar
+                        ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 5)}</span>
+                        : <span className="text-sm text-text-secondary">—</span>}
+                </td>
+                <td className="px-4 py-3.5 whitespace-nowrap">
+                    {c.is_tugas_luar ? (
+                        (c.foto_masuk_url || (c.foto_kegiatan_urls || []).length > 0) ? (
+                            <div className="flex flex-wrap gap-1.5">
+                                {c.foto_masuk_url
+                                    ? <a href={c.foto_masuk_url} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border"><img src={c.foto_masuk_url} alt="Masuk" className="h-full w-full object-cover" loading="lazy" /></a>
+                                    : null}
+                                {(c.foto_kegiatan_urls || []).map((u, i) => (
+                                    <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border hover:ring-2 hover:ring-primary transition-shadow" title={`Bukti kegiatan ${i + 1}`}><img src={u} alt={`Bukti ${i + 1}`} className="h-full w-full object-cover" loading="lazy" /></a>
+                                ))}
+                            </div>
+                        ) : <span className="text-[11px] text-text-muted">tanpa foto</span>
+                    ) : <span className="text-[11px] text-text-muted">tanpa foto</span>}
+                </td>
+                <td className="px-4 py-3.5 whitespace-nowrap">
+                    {c.is_lembur ? <LemburBadge status={c.lembur_status} /> : <span className="text-xs text-text-secondary">—</span>}
+                </td>
+                <td className="px-4 py-3.5 whitespace-nowrap">
+                    {c.is_tugas_luar ? (
+                        <div>
+                            <TugasLuarBadge status={c.tugas_luar_status} onClick={() => openTugasLuar(c)} />
+                            {c.tujuan && <p className="mt-1 max-w-[160px] text-[10px] leading-tight text-text-secondary">{c.tujuan}</p>}
+                        </div>
+                    ) : <span className="text-xs text-text-secondary">—</span>}
+                </td>
+                <td className="px-4 py-3.5 whitespace-nowrap">
+                    {auth.permissions?.includes('manage_master_data') ? (
+                        <select
+                            className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                            value={c.status}
+                            onChange={(e) => setConfirmStatus({ id: c.id, statusLama: c.status, statusBaru: e.target.value })}
+                        >
+                            <option value="hadir">Hadir</option>
+                            <option value="telat">Telat</option>
+                            <option value="sakit">Sakit</option>
+                            <option value="izin">Izin</option>
+                            <option value="cuti">Cuti</option>
+                            <option value="alpa">Alpa</option>
+                        </select>
+                    ) : (
+                        <StatusBadge status={c.status} />
+                    )}
+                </td>
+                <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                        {c.lokasi_perlu_review && (
+                            <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
+                        )}
+                        <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                    </div>
+                </td>
+            </tr>
+        );
+    });
+
+    mapelGroups.forEach((mg, gi) => {
+        const mkey = `${groupKey}__${mg.key}`;
+        const mIsOpen = Boolean(expandedMapel[mkey]);
+        const isLastGroup = gi === mapelGroups.length - 1;
+        const firstItem = mg.items[0];
+        const lastItem = mg.items[mg.items.length - 1];
+        const timeRange = `${firstItem.jadwal?.jam_mulai?.substring(0, 5) || '?'}–${lastItem.jadwal?.jam_selesai?.substring(0, 5) || '?'}`;
+
+        rows.push(
+            <tr key={mkey} className="bg-surface/40 hover:bg-surface/60 transition-colors">
+                <td className="px-4 py-2.5 whitespace-nowrap pl-12">
+                    <button
+                        type="button"
+                        onClick={() => setExpandedMapel((s) => ({ ...s, [mkey]: !s[mkey] }))}
+                        className="rounded-md px-1 text-text-secondary transition-colors hover:text-primary"
+                        title={mIsOpen ? 'Tutup' : 'Buka'}
+                    >
+                        {mIsOpen ? '▾' : '▸'}
+                    </button>
+                </td>
+                <td className="px-4 py-2.5 whitespace-nowrap"></td>
+                <td className="px-4 py-2.5 whitespace-nowrap">
+                    <div className="text-xs leading-tight">
+                        <span className="font-semibold text-primary">{mg.nama}</span>
+                        <div className="text-text-secondary">{mg.kelas || '—'}</div>
+                        <div className="font-mono text-[11px] text-text-secondary">{timeRange} ({mg.items.length} JP)</div>
+                    </div>
+                </td>
+                <td className="px-4 py-2.5 whitespace-nowrap" colSpan="7"></td>
+            </tr>
+        );
+
+        if (mIsOpen) {
+            mg.items.forEach((c, ci) => {
+                const isLast = isLastGroup && ci === mg.items.length - 1;
+                rows.push(
+                    <tr key={c.id} className={`bg-surface/30 ${isLast ? 'border-b-2 border-border' : ''}`}>
+                        <td className="px-4 py-3 whitespace-nowrap pl-16">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">JP</span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap"></td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="text-xs leading-tight">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-primary">{c.jadwal?.mata_pelajaran?.nama || 'Jadwal'}</span>
+                                    <JadwalStatusBadge p={c} now={now} />
+                                </div>
+                                <div className="text-text-secondary">{c.jadwal?.kelas_label || '—'}</div>
+                                <div className="font-mono text-[11px] text-text-secondary">{c.jadwal?.jam_mulai?.substring(0, 5)}–{c.jadwal?.jam_selesai?.substring(0, 5)}</div>
+                            </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                            {c.jam_masuk
+                                ? <span className="font-mono text-sm font-bold text-primary">{c.jam_masuk.substring(0, 5)}</span>
+                                : <span className="text-sm text-text-secondary">—</span>}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                            {c.jam_keluar
+                                ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 5)}</span>
+                                : <span className="text-sm text-text-secondary">—</span>}
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className="text-[11px] text-text-muted">tanpa foto</span>
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                            {c.is_lembur ? <LemburBadge status={c.lembur_status} /> : <span className="text-xs text-text-secondary">—</span>}
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className="text-xs text-text-secondary">—</span>
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                            {auth.permissions?.includes('manage_master_data') ? (
+                                <select
+                                    className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                                    value={c.status}
+                                    onChange={(e) => setConfirmStatus({ id: c.id, statusLama: c.status, statusBaru: e.target.value })}
+                                >
+                                    <option value="hadir">Hadir</option>
+                                    <option value="telat">Telat</option>
+                                    <option value="sakit">Sakit</option>
+                                    <option value="izin">Izin</option>
+                                    <option value="cuti">Cuti</option>
+                                    <option value="alpa">Alpa</option>
+                                </select>
+                            ) : (
+                                <StatusBadge status={c.status} />
+                            )}
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                                {c.lokasi_perlu_review && (
+                                    <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
+                                )}
+                                <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                            </div>
+                        </td>
+                    </tr>
+                );
+            });
+        }
+    });
+
+    return rows;
+});
+
+const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openAudit, openTugasLuar, setConfirmStatus }) => {
+    const groups = React.useMemo(() => buildGroups(data), [data]);
 
     return groups.map((group) => {
-        // Parent = row kantor (bukan fallback group[0]): highlight telat
-        // parent hanya mengikuti status KANTOR, bukan JP — mencegah grup
-        // tanpa row kantor mewarnai header grup dengan status JP pertama.
         const kantorRow = group.find((g) => g.tipe_presensi === 'kantor' && !g.is_lembur && !g.is_tugas_luar);
         const parent = kantorRow || group[0];
         const children = group.filter((g) => g !== parent);
@@ -248,216 +444,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         </div>
                     </td>
                 </tr>
-                {isOpen && (() => {
-                    const { groups: mapelGroups, others } = buildMapelGroups(children);
-                    const totalChildren = children.length;
-                    const rows = [];
-
-                    // Render individual non-mapel items (tugas_luar, etc.)
-                    others.forEach((c, ci) => {
-                        const isLast = ci === others.length - 1 && mapelGroups.length === 0;
-                        rows.push(
-                            <tr key={c.id} className={`bg-surface/40 ${isLast ? 'border-b-2 border-border' : ''}`}>
-                                <td className="px-4 py-3 whitespace-nowrap pl-12">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{c.is_tugas_luar ? 'Tugas Luar' : 'Mengajar'}</span>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap"></td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                    {c.is_tugas_luar ? (
-                                        <div className="text-xs leading-tight">
-                                            <div className="font-semibold text-primary">{c.tujuan || 'Tugas Luar'}</div>
-                                            <div className="text-text-secondary">{c.keterangan || '—'}</div>
-                                        </div>
-                                    ) : c.jadwal ? (
-                                        <div className="text-xs leading-tight">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-semibold text-primary">{c.jadwal.mata_pelajaran?.nama || 'Jadwal'}</span>
-                                                <JadwalStatusBadge p={c} now={now} />
-                                            </div>
-                                            <div className="text-text-secondary">{c.jadwal.kelas_label || '—'}</div>
-                                            <div className="font-mono text-[11px] text-text-secondary">{c.jadwal.jam_mulai?.substring(0, 5)}–{c.jadwal.jam_selesai?.substring(0, 5)}</div>
-                                        </div>
-                                    ) : <span className="text-xs text-text-secondary">—</span>}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                    {c.jam_masuk
-                                        ? <span className="font-mono text-sm font-bold text-primary">{c.jam_masuk.substring(0, 5)}</span>
-                                        : <span className="text-sm text-text-secondary">—</span>}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                    {c.jam_keluar
-                                        ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 5)}</span>
-                                        : <span className="text-sm text-text-secondary">—</span>}
-                                </td>
-                                <td className="px-4 py-3.5 whitespace-nowrap">
-                                    {c.is_tugas_luar ? (
-                                        (c.foto_masuk_url || (c.foto_kegiatan_urls || []).length > 0) ? (
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {c.foto_masuk_url
-                                                    ? <a href={c.foto_masuk_url} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border"><img src={c.foto_masuk_url} alt="Masuk" className="h-full w-full object-cover" loading="lazy" /></a>
-                                                    : null}
-                                                {(c.foto_kegiatan_urls || []).map((u, i) => (
-                                                    <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border hover:ring-2 hover:ring-primary transition-shadow" title={`Bukti kegiatan ${i + 1}`}><img src={u} alt={`Bukti ${i + 1}`} className="h-full w-full object-cover" loading="lazy" /></a>
-                                                ))}
-                                            </div>
-                                        ) : <span className="text-[11px] text-text-muted">tanpa foto</span>
-                                    ) : <span className="text-[11px] text-text-muted">tanpa foto</span>}
-                                </td>
-                                <td className="px-4 py-3.5 whitespace-nowrap">
-                                    {c.is_lembur ? <LemburBadge status={c.lembur_status} /> : <span className="text-xs text-text-secondary">—</span>}
-                                </td>
-                                <td className="px-4 py-3.5 whitespace-nowrap">
-                                    {c.is_tugas_luar ? (
-                                        <div>
-                                            <TugasLuarBadge status={c.tugas_luar_status} onClick={() => openTugasLuar(c)} />
-                                            {c.tujuan && <p className="mt-1 max-w-[160px] text-[10px] leading-tight text-text-secondary">{c.tujuan}</p>}
-                                        </div>
-                                    ) : <span className="text-xs text-text-secondary">—</span>}
-                                </td>
-                                <td className="px-4 py-3.5 whitespace-nowrap">
-                                    {auth.permissions?.includes('manage_master_data') ? (
-                                        <select
-                                            className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
-                                            value={c.status}
-                                            onChange={(e) => setConfirmStatus({ id: c.id, statusLama: c.status, statusBaru: e.target.value })}
-                                        >
-                                            <option value="hadir">Hadir</option>
-                                            <option value="telat">Telat</option>
-                                            <option value="sakit">Sakit</option>
-                                            <option value="izin">Izin</option>
-                                            <option value="cuti">Cuti</option>
-                                            <option value="alpa">Alpa</option>
-                                        </select>
-                                    ) : (
-                                        <StatusBadge status={c.status} />
-                                    )}
-                                </td>
-                                <td className="px-4 py-3.5 whitespace-nowrap text-right">
-                                    <div className="flex items-center justify-end gap-1.5">
-                                        {c.lokasi_perlu_review && (
-                                            <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
-                                        )}
-                                        <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
-                                    </div>
-                                </td>
-                            </tr>
-                        );
-                    });
-
-                    // Render mapel groups (two-level expand)
-                    mapelGroups.forEach((mg, gi) => {
-                        const mkey = `${key}__${mg.key}`;
-                        const mIsOpen = Boolean(expandedMapel[mkey]);
-                        const isLastGroup = gi === mapelGroups.length - 1;
-                        const firstItem = mg.items[0];
-                        const lastItem = mg.items[mg.items.length - 1];
-                        const timeRange = `${firstItem.jadwal?.jam_mulai?.substring(0, 5) || '?'}–${lastItem.jadwal?.jam_selesai?.substring(0, 5) || '?'}`;
-                        const worstStatus = mg.items.reduce((worst, it) => {
-                            const order = { alpa: 4, telat: 3, sakit: 2, izin: 2, cuti: 2, hadir: 1 };
-                            return (order[it.status] || 0) > (order[worst] || 0) ? it.status : worst;
-                        }, mg.items[0].status);
-
-                        // Group row
-                        rows.push(
-                            <tr key={mkey} className="bg-surface/40 hover:bg-surface/60 transition-colors">
-                                <td className="px-4 py-2.5 whitespace-nowrap pl-12">
-                                    <button
-                                        type="button"
-                                        onClick={() => setExpandedMapel((s) => ({ ...s, [mkey]: !s[mkey] }))}
-                                        className="rounded-md px-1 text-text-secondary transition-colors hover:text-primary"
-                                        title={mIsOpen ? 'Tutup' : 'Buka'}
-                                    >
-                                        {mIsOpen ? '▾' : '▸'}
-                                    </button>
-                                </td>
-                                <td className="px-4 py-2.5 whitespace-nowrap"></td>
-                                <td className="px-4 py-2.5 whitespace-nowrap">
-                                    <div className="text-xs leading-tight">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-primary">{mg.nama}</span>
-                                            <StatusBadge status={worstStatus} />
-                                        </div>
-                                        <div className="text-text-secondary">{mg.kelas || '—'}</div>
-                                        <div className="font-mono text-[11px] text-text-secondary">{timeRange} ({mg.items.length} JP)</div>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-2.5 whitespace-nowrap" colSpan="7"></td>
-                            </tr>
-                        );
-
-                        // Individual JP rows within group
-                        if (mIsOpen) {
-                            mg.items.forEach((c, ci) => {
-                                const isLast = isLastGroup && ci === mg.items.length - 1;
-                                rows.push(
-                                    <tr key={c.id} className={`bg-surface/30 ${isLast ? 'border-b-2 border-border' : ''}`}>
-                                        <td className="px-4 py-3 whitespace-nowrap pl-16">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">JP</span>
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap"></td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <div className="text-xs leading-tight">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-semibold text-primary">{c.jadwal?.mata_pelajaran?.nama || 'Jadwal'}</span>
-                                                    <JadwalStatusBadge p={c} now={now} />
-                                                </div>
-                                                <div className="text-text-secondary">{c.jadwal?.kelas_label || '—'}</div>
-                                                <div className="font-mono text-[11px] text-text-secondary">{c.jadwal?.jam_mulai?.substring(0, 5)}–{c.jadwal?.jam_selesai?.substring(0, 5)}</div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            {c.jam_masuk
-                                                ? <span className="font-mono text-sm font-bold text-primary">{c.jam_masuk.substring(0, 5)}</span>
-                                                : <span className="text-sm text-text-secondary">—</span>}
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            {c.jam_keluar
-                                                ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 5)}</span>
-                                                : <span className="text-sm text-text-secondary">—</span>}
-                                        </td>
-                                        <td className="px-4 py-3.5 whitespace-nowrap">
-                                            <span className="text-[11px] text-text-muted">tanpa foto</span>
-                                        </td>
-                                        <td className="px-4 py-3.5 whitespace-nowrap">
-                                            {c.is_lembur ? <LemburBadge status={c.lembur_status} /> : <span className="text-xs text-text-secondary">—</span>}
-                                        </td>
-                                        <td className="px-4 py-3.5 whitespace-nowrap">
-                                            <span className="text-xs text-text-secondary">—</span>
-                                        </td>
-                                        <td className="px-4 py-3.5 whitespace-nowrap">
-                                            {auth.permissions?.includes('manage_master_data') ? (
-                                                <select
-                                                    className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
-                                                    value={c.status}
-                                                    onChange={(e) => setConfirmStatus({ id: c.id, statusLama: c.status, statusBaru: e.target.value })}
-                                                >
-                                                    <option value="hadir">Hadir</option>
-                                                    <option value="telat">Telat</option>
-                                                    <option value="sakit">Sakit</option>
-                                                    <option value="izin">Izin</option>
-                                                    <option value="cuti">Cuti</option>
-                                                    <option value="alpa">Alpa</option>
-                                                </select>
-                                            ) : (
-                                                <StatusBadge status={c.status} />
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3.5 whitespace-nowrap text-right">
-                                            <div className="flex items-center justify-end gap-1.5">
-                                                {c.lokasi_perlu_review && (
-                                                    <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
-                                                )}
-                                                <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            });
-                        }
-                    });
-
-                    return rows;
-                })()}
+                {isOpen && <RingkasChildren items={children} groupKey={key} auth={auth} now={now} openReview={openReview} openAudit={openAudit} openTugasLuar={openTugasLuar} setConfirmStatus={setConfirmStatus} />}
             </React.Fragment>
         );
     });
