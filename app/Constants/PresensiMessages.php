@@ -65,8 +65,12 @@ class PresensiMessages
     public const UNIT_REGULER = 'reguler';
 
     // Slide jadwal (pegawai tetap): jadwal hanya bisa di-slide dalam rentang
-    // [jam_mulai, jam_selesai + SLIDE_GRACE_MINUTES] — cegah presensi retroaktif.
+    // [sesi_start, sesi_end + SLIDE_GRACE_MINUTES] — cegah presensi retroaktif.
     public const SLIDE_GRACE_MINUTES = 15;
+
+    // Sesi mengajar: batas gap antar JP dalam satu sesi (menit).
+    // JP dengan gap ≤ ini digabung; gap > ini = sesi terpisah.
+    public const GAP_SESI_MENIT = 60;
 
     public const SLIDE_BELUM_DIMULAI = 'Jadwal belum dimulai.';
 

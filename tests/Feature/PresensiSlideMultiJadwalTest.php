@@ -606,4 +606,102 @@ class PresensiSlideMultiJadwalTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    // ========================================================================
+    // GAP-BOUNDED SESSION SCENARIOS
+    // ========================================================================
+
+    public function test_gap_20_menit_merge_satu_sesi(): void
+    {
+        // JP A1 09:00-09:45, istirahat 20 menit, JP A2 10:05-10:50.
+        // Slide A1 jam 09:10 → harus cover A1+A2 (gap 20 ≤ 60).
+        $hari = $this->hariIniIndo();
+        Carbon::setTestNow(Carbon::today()->setTime(9, 10));
+
+        $pegawai = $this->makePegawaiTetap();
+        $pegawaiMapel = $this->makeMapel($pegawai, $this->unitA);
+        $jpA1 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '09:00:00', '09:45:00');
+        $jpA2 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '10:05:00', '10:50:00');
+
+        $this->postSlide($jpA1)->assertOk();
+
+        $this->assertDatabaseHas('presensi', ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jpA1->id]);
+        $this->assertDatabaseHas('presensi', ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jpA2->id]);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_gap_4_jam_pisah_sesi_terpisah(): void
+    {
+        // JP A1 08:00-08:45, istirahat 4 jam, JP A2 12:45-13:30.
+        // Slide A1 jam 08:10 → HANYA cover A1 (gap 240 > 60 → sesi terpisah).
+        $hari = $this->hariIniIndo();
+        Carbon::setTestNow(Carbon::today()->setTime(8, 10));
+
+        $pegawai = $this->makePegawaiTetap();
+        $pegawaiMapel = $this->makeMapel($pegawai, $this->unitA);
+        $jpA1 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '08:00:00', '08:45:00');
+        $jpA2 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '12:45:00', '13:30:00');
+
+        $this->postSlide($jpA1)->assertOk();
+
+        $this->assertDatabaseHas('presensi', ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jpA1->id]);
+        $this->assertDatabaseMissing('presensi', ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jpA2->id]);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_slide_mid_break_diterima(): void
+    {
+        // JP A1 09:00-09:45, istirahat 20 menit, JP A2 10:05-10:50.
+        // Slide A1 jam 10:15 (mid-break, setelah A1 berakhir) → diterima
+        // karena masih dalam sesi window (10:15 ≤ 10:50 + 15 grace).
+        $hari = $this->hariIniIndo();
+        Carbon::setTestNow(Carbon::today()->setTime(10, 15));
+
+        $pegawai = $this->makePegawaiTetap();
+        $pegawaiMapel = $this->makeMapel($pegawai, $this->unitA);
+        $jpA1 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '09:00:00', '09:45:00');
+        $jpA2 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '10:05:00', '10:50:00');
+
+        $res = $this->postSlide($jpA1);
+        $res->assertOk()->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('presensi', ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jpA1->id]);
+        $this->assertDatabaseHas('presensi', ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jpA2->id]);
+
+        // A1 status: telat (10:15 > 09:00).
+        $this->assertSame('telat', Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA1->id)->value('status'));
+
+        Carbon::setTestNow();
+    }
+
+    public function test_cover_rows_have_keterangan_provenance(): void
+    {
+        // Cover rows harus punya keterangan provenance yang bisa ditrace.
+        $hari = $this->hariIniIndo();
+        Carbon::setTestNow(Carbon::today()->setTime(9, 0));
+
+        $pegawai = $this->makePegawaiTetap();
+        $pegawaiMapel = $this->makeMapel($pegawai, $this->unitA);
+        $jpA1 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '08:00:00', '08:45:00');
+        $jpA2 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '08:45:00', '09:30:00');
+        $jpA3 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '09:30:00', '10:15:00');
+
+        $this->postSlide($jpA1)->assertOk();
+
+        // A1 (anchor): tidak ada keterangan (main slide).
+        $a1 = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA1->id)->first();
+        $this->assertNull($a1->keterangan);
+
+        // A2, A3 (cover): ada keterangan provenance.
+        foreach ([$jpA2, $jpA3] as $jp) {
+            $row = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jp->id)->first();
+            $this->assertNotNull($row->keterangan, "Cover row jadwal_id={$jp->id} harus ada keterangan");
+            $this->assertStringContainsString('auto-cover', $row->keterangan);
+            $this->assertStringContainsString("JP #{$jpA1->id}", $row->keterangan);
+        }
+
+        Carbon::setTestNow();
+    }
 }

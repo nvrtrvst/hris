@@ -99,6 +99,7 @@ Role: `superadmin` (all), `admin_unit` (view_*), `pegawai` (none).
 - **Anti-spoof** (migrasi `2026_07_02_...`): kolom `akurasi_masuk/keluar`, `kecepatan_masuk/keluar`, `lokasi_perlu_review` (OR dari `$mockSuspect || $accuracy < 10`), `captured_at`. TIDAK ada kolom `device_id`/`mock_location` — nilai input `mock_suspect` hanya feed ke flag review lalu dibuang.
 - **TIDAK ADA** perhitungan jam kerja / menit telat / lembur dari `jam_masuk−jam_keluar`. Kolom anti-spoof cuma disimpan, TIDAK dipakai perhitungan.
 - **Lembur**: saat absen MASUK dgn toggle, `jadwal_id` nullable (skip telat check), geofence via primary unit. `lembur_status='pending'`. Approval admin via `PresensiController::approveLembur`/`rejectLembur`. Foto overlay: label BUKTI LEMBUR + nama + unit + waktu HH:mm:ss + lokasi.
+- **Slide sesi mengajar**: "Sesi" = rantai JP konsekutif gap ≤ 60 menit (`GAP_SESI_MENIT`), kriteria sama (pegawai+hari+unit+kelas+mapel). `MobileController::sesiMengajar()` walk forward+backward dari anchor. Window check: `[sesi_start, sesi_end + grace]`. Cover forward-only dalam sesi (anchor ke depan). `presensiKeluarTarget` cari last JP dalam sesi. Cover rows isi `keterangan` provenance ("auto-cover dari slide JP #X pukul HH:MM"). FE `groupConsecutiveJadwals` pakai aturan sama (gap ≤ 60 menit).
 
 ### 9.2 Payroll (Komponen Gaji & Penggajian)
 Semua di `PenggajianController` (`computeComponentNominal`, `computeAttendance`).

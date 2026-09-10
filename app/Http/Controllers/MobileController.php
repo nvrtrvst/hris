@@ -1139,15 +1139,19 @@ class MobileController extends Controller
         abort_unless($jadwal, 422, 'Jadwal tidak ditemukan.');
         abort_unless($jadwal->unitSekolah, 422, 'Unit jadwal tidak tersedia.');
 
-        // Slide hanya boleh dalam rentang [jam_mulai, jam_selesai + grace] —
-        // cegah presensi retroaktif untuk jadwal yang sudah lama berakhir.
+        // Slide hanya boleh dalam rentang sesi mengajar [sesi_start, sesi_end + grace]
+        // — cegah presensi retroaktif untuk sesi yang sudah lama berakhir.
         $sekarang = Carbon::now()->format('H:i:s');
-        if ($tipe !== 'keluar' && $jadwal->jam_mulai && $sekarang < $jadwal->jam_mulai) {
-            return response()->json(['success' => false, 'message' => PresensiMessages::SLIDE_BELUM_DIMULAI], 422);
-        }
-        if ($tipe !== 'keluar' && $jadwal->jam_selesai) {
+        $sesi = $this->sesiMengajar($pegawai, $jadwal, $hariIni);
+        $sesiStart = $sesi->first()->jam_mulai;
+        $sesiEnd = $sesi->last()->jam_selesai;
+
+        if ($tipe !== 'keluar') {
+            if ($sekarang < $sesiStart) {
+                return response()->json(['success' => false, 'message' => PresensiMessages::SLIDE_BELUM_DIMULAI], 422);
+            }
             $graceSlide = (int) ($jadwal->unitSekolah->toleransi_slide_menit ?? PresensiMessages::SLIDE_GRACE_MINUTES);
-            $batasSlide = Carbon::parse($jadwal->jam_selesai)->addMinutes($graceSlide)->format('H:i:s');
+            $batasSlide = Carbon::parse($sesiEnd)->addMinutes($graceSlide)->format('H:i:s');
             if ($sekarang > $batasSlide) {
                 return response()->json([
                     'success' => false,
@@ -1164,10 +1168,13 @@ class MobileController extends Controller
 
         abort_unless($pagiRecord, 422, 'Silakan foto pagi terlebih dahulu.');
 
-        $distance = $this->calculateDistance($request->latitude, $request->longitude, $jadwal->unitSekolah->latitude, $jadwal->unitSekolah->longitude);
+        $unit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
+        abort_unless($unit, 422, PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT);
 
-        if ($distance > $jadwal->unitSekolah->radius_meter) {
-            $message = sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $distance, $jadwal->unitSekolah->radius_meter);
+        $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);
+
+        if ($distance > $unit->radius_meter) {
+            $message = sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $distance, $unit->radius_meter);
 
             return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
         }
@@ -1184,7 +1191,7 @@ class MobileController extends Controller
         // Unique index (pegawai_id, presensi_key) menolak slide ganda — race ditangkap di bawah.
         $result = DB::transaction(function () use ($pegawai, $jadwal, $distance, $request, $accuracy, $tipe, $hariIni, $sekarang) {
             if ($tipe === 'keluar') {
-                // Slide pulang mencatat jam_keluar di row JP TERAKHIR grup
+                // Slide pulang mencatat jam_keluar di row JP TERAKHIR sesi
                 // (hari+kelas+mapel+unit sama) — row JP pertama hanya menyimpan
                 // jam masuk. Jadwal tunggal: JP terakhir = dirinya sendiri.
                 $target = $jadwal->jenis_jadwal === 'mengajar'
@@ -1239,11 +1246,11 @@ class MobileController extends Controller
                 throw ValidationException::withMessages(['jadwal_id' => 'Jadwal ini sudah di-slide.']);
             }
 
-            // 1-slide-to-cover: slide JP mengajar juga mencatat JP lain dalam grup
+            // 1-slide-to-cover: slide JP mengajar juga mencatat JP lain dalam sesi
             // (hari+kelas+mapel+unit sama). Di luar try di atas supaya violation
             // pada JP cover di-skip per-JP, bukan membatalkan slide utama.
             $covered = $jadwal->jenis_jadwal === 'mengajar'
-                ? $this->coverGroupJadwal($pegawai, $jadwal, $hariIni, $sekarang)
+                ? $this->coverSesiMengajar($pegawai, $jadwal, $hariIni, $sekarang)
                 : [];
 
             return ['status' => $presensi->status, 'covered' => $covered];
@@ -1261,42 +1268,28 @@ class MobileController extends Controller
     }
 
     /**
-     * Row presensi tujuan slide pulang: row milik JP TERAKHIR grup
-     * (hari + kelas_label + pegawai_mapel + unit sama, jenis mengajar).
+     * Row presensi tujuan slide pulang: row milik JP TERAKHIR dalam sesi
+     * (gap ≤ GAP_SESI_MENIT, kriteria sama: hari+kelas+mapel+unit).
      * Jadwal tunggal → row jadwal itu sendiri. Null bila row belum ada
-     * (caller fallback ke lookup by jadwal_id) atau grup sudah pulang
+     * (caller fallback ke lookup by jadwal_id) atau sesi sudah pulang
      * (ada jam_keluar → caller reject lewat fallback yang juga kosong).
      */
     private function presensiKeluarTarget(Pegawai $pegawai, Jadwal $jadwal, string $hariIni): ?Presensi
     {
+        $sesi = $this->sesiMengajar($pegawai, $jadwal, $hariIni);
+        $sesiJadwalIds = $sesi->pluck('id');
+
         $grupSudahPulang = Presensi::where('pegawai_id', $pegawai->id)
             ->where('tanggal', Carbon::today()->toDateString())
-            ->whereIn('jadwal_id', Jadwal::where('pegawai_id', $pegawai->id)
-                ->where('hari', $hariIni)
-                ->where('jenis_jadwal', 'mengajar')
-                ->where('unit_sekolah_id', $jadwal->unit_sekolah_id)
-                ->where('kelas_label', $jadwal->kelas_label)
-                ->where('pegawai_mapel_id', $jadwal->pegawai_mapel_id)
-                ->pluck('id'))
+            ->whereIn('jadwal_id', $sesiJadwalIds)
             ->whereNotNull('jam_keluar')
             ->exists();
 
         if ($grupSudahPulang) {
-            throw ValidationException::withMessages(['jadwal_id' => 'Grup jadwal ini sudah di-slide pulang.']);
+            throw ValidationException::withMessages(['jadwal_id' => 'Sesi jadwal ini sudah di-slide pulang.']);
         }
 
-        $lastJadwalId = Jadwal::where('pegawai_id', $pegawai->id)
-            ->where('hari', $hariIni)
-            ->where('jenis_jadwal', 'mengajar')
-            ->where('unit_sekolah_id', $jadwal->unit_sekolah_id)
-            ->where('kelas_label', $jadwal->kelas_label)
-            ->where('pegawai_mapel_id', $jadwal->pegawai_mapel_id)
-            ->orderByDesc('jam_mulai')
-            ->value('id');
-
-        if (! $lastJadwalId) {
-            return null;
-        }
+        $lastJadwalId = $sesi->last()->id;
 
         return Presensi::where('pegawai_id', $pegawai->id)
             ->where('jadwal_id', $lastJadwalId)
@@ -1306,37 +1299,31 @@ class MobileController extends Controller
     }
 
     /**
-     * Cover otomatis JP lain dalam grup slide (hari + kelas_label + pegawai_mapel
-     * + unit sama, jenis mengajar): 1 slide mencatat seluruh grup. JP yang sudah
-     * punya presensi hari itu di-skip (pre-flight); race double-insert ditangkap
-     * unique index (pegawai_id, presensi_key) dan di-skip per-JP.
+     * Cover otomatis JP lain dalam sesi slide (gap ≤ GAP_SESI_MENIT,
+     * kriteria sama: hari+kelas+mapel+unit). JP yang sudah punya presensi
+     * hari itu di-skip (pre-flight); race double-insert ditangkap unique index.
      *
-     * JP cover TIDAK menyimpan jam/lokasi/foto — payroll jam mengajar hanya butuh
-     * keberadaan row presensi per jadwal.
+     * JP cover TIDAK menyimpan jam/lokasi/foto — payroll jam mengajar hanya
+     * butuh keberadaan row presensi per jadwal.
      *
      * @return array<int, int> ID jadwal yang tercatat oleh cover.
      */
-    private function coverGroupJadwal(Pegawai $pegawai, Jadwal $jadwal, string $hariIni, string $sekarang): array
+    private function coverSesiMengajar(Pegawai $pegawai, Jadwal $jadwal, string $hariIni, string $sekarang): array
     {
+        $sesi = $this->sesiMengajar($pegawai, $jadwal, $hariIni);
         $sudahAda = Presensi::where('pegawai_id', $pegawai->id)
             ->where('tanggal', Carbon::today()->toDateString())
             ->whereNotNull('jadwal_id')
             ->pluck('jadwal_id');
 
-        $grup = Jadwal::with('unitSekolah')
-            ->where('pegawai_id', $pegawai->id)
-            ->where('hari', $hariIni)
-            ->where('jenis_jadwal', 'mengajar')
-            ->where('unit_sekolah_id', $jadwal->unit_sekolah_id)
-            ->whereKeyNot($jadwal->id)
-            ->orderBy('jam_mulai')
-            ->get()
-            ->filter(fn ($jp) => $jp->kelas_label === $jadwal->kelas_label
-                && $jp->pegawai_mapel_id === $jadwal->pegawai_mapel_id)
-            ->reject(fn ($jp) => $sudahAda->contains($jp->id));
-
         $covered = [];
-        foreach ($grup as $jp) {
+        foreach ($sesi as $jp) {
+            if ($jp->id === $jadwal->id) {
+                continue; // skip anchor (sudah di-insert caller)
+            }
+            if ($sudahAda->contains($jp->id)) {
+                continue; // sudah ada presensi
+            }
             try {
                 $presensi = new Presensi([
                     'pegawai_id' => $pegawai->id,
@@ -1347,13 +1334,76 @@ class MobileController extends Controller
                 ]);
                 $presensi->is_lembur = false;
                 $presensi->status = Presensi::statusAt($sekarang, $jp->jam_mulai, (int) ($jp->unitSekolah->toleransi_menit ?? 0));
+                $presensi->keterangan = sprintf('auto-cover dari slide JP #%d pukul %s', $jadwal->id, $sekarang);
                 $presensi->save();
                 $covered[] = $jp->id;
             } catch (UniqueConstraintViolationException) {
-                // Race: JP sudah tercatat request lain — skip, jangan rollback grup.
+                // Race: JP sudah tercatat request lain — skip, jangan rollback sesi.
             }
         }
 
         return $covered;
+    }
+
+    /**
+     * Konversi HH:MM:SS / HH:MM ke menit dari midnight.
+     */
+    private function toMinutes(?string $hms): int
+    {
+        if (! $hms) {
+            return 0;
+        }
+        $parts = explode(':', $hms);
+
+        return ((int) ($parts[0] ?? 0)) * 60 + ((int) ($parts[1] ?? 0));
+    }
+
+    /**
+     * Ambil sesi mengajar: rantai JP konsekutif mengandung $anchor,
+     * gap antar JP ≤ GAP_SESI_MENIT, kriteria sama (hari+unit+kelas+mapel).
+     * Kembalikan Collection terurut jam_mulai ASC.
+     */
+    private function sesiMengajar(Pegawai $pegawai, Jadwal $anchor, string $hari): Collection
+    {
+        $kandidat = Jadwal::where('pegawai_id', $pegawai->id)
+            ->where('hari', $hari)
+            ->where('jenis_jadwal', 'mengajar')
+            ->where('unit_sekolah_id', $anchor->unit_sekolah_id)
+            ->where('kelas_label', $anchor->kelas_label)
+            ->where('pegawai_mapel_id', $anchor->pegawai_mapel_id)
+            ->orderBy('jam_mulai')
+            ->get();
+
+        $anchorIdx = $kandidat->search(fn ($j) => $j->id === $anchor->id);
+        if ($anchorIdx === false) {
+            return collect([$anchor]);
+        }
+
+        $gapMax = PresensiMessages::GAP_SESI_MENIT;
+        $chain = collect([$kandidat[$anchorIdx]]);
+
+        // Forward: extend ke JP berikutnya selama gap ≤ gapMax
+        for ($i = $anchorIdx + 1; $i < $kandidat->count(); $i++) {
+            $prev = $kandidat[$i - 1];
+            $cur = $kandidat[$i];
+            if ($this->toMinutes($cur->jam_mulai) - $this->toMinutes($prev->jam_selesai) <= $gapMax) {
+                $chain->push($cur);
+            } else {
+                break;
+            }
+        }
+
+        // Backward: extend ke JP sebelumnya selama gap ≤ gapMax
+        for ($i = $anchorIdx - 1; $i >= 0; $i--) {
+            $next = $kandidat[$i + 1];
+            $cur = $kandidat[$i];
+            if ($this->toMinutes($next->jam_mulai) - $this->toMinutes($cur->jam_selesai) <= $gapMax) {
+                $chain->prepend($cur);
+            } else {
+                break;
+            }
+        }
+
+        return $chain;
     }
 }

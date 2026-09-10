@@ -14,14 +14,25 @@ const SLIDE_JADWAL = 'slide_jadwal';
 const FOTO_SORE = 'foto_sore';
 const SELESAI = 'selesai';
 
-// Slide jadwal hanya dalam rentang [jam_mulai, jam_selesai + grace] —
+// Slide jadwal hanya dalam rentang [sesi_start, sesi_end + grace] —
 // harus sinkron dengan PresensiMessages::SLIDE_GRACE_MINUTES di backend.
 const SLIDE_GRACE_MINUTES = 15;
 
+// Sesi mengajar: batas gap antar JP dalam satu sesi (menit).
+// harus sinkron dengan PresensiMessages::GAP_SESI_MENIT di backend.
+const GAP_SESI_MENIT = 60;
+
+/** Konversi HH:MM:SS / HH:MM ke menit dari midnight. */
+const toMin = (hms) => {
+    if (!hms) return 0;
+    const [h, m] = String(hms).split(':');
+    return (+h) * 60 + (+m);
+};
+
 /**
- * Kelompokkan jadwal berurutan dengan mata pelajaran sama (back-to-back).
- * Syarat satu grup: pegawai_mapel_id SAMA + jam_selesai[j] === jam_mulai[j+1].
- * Jadwal beda mapel atau ada gap → grup baru.
+ * Kelompokkan jadwal berurutan dengan mata pelajaran sama (gap ≤ 60 menit).
+ * Syarat satu grup: pegawai_mapel_id SAMA + kelas_label SAMA + gap ≤ GAP_SESI_MENIT.
+ * Jadwal beda mapel/kelas atau gap > 60 menit → grup baru.
  */
 function groupConsecutiveJadwals(jadwals) {
     if (!jadwals?.length) return [];
@@ -30,7 +41,8 @@ function groupConsecutiveJadwals(jadwals) {
     let cur = null;
     for (const j of sorted) {
         const sameClass = j.kelas_label === cur?.kelas_label;
-        if (cur && sameClass && j.pegawai_mapel_id === cur.pegMapelId && j.jam_mulai === cur.jamSelesaiLast) {
+        const gap = cur ? toMin(j.jam_mulai) - toMin(cur.jamSelesaiLast) : 0;
+        if (cur && sameClass && j.pegawai_mapel_id === cur.pegMapelId && gap >= 0 && gap <= GAP_SESI_MENIT) {
             cur.allIds.push(j.id);
             cur.jadwals.push(j);
             cur.jamSelesaiLast = j.jam_selesai;
@@ -94,11 +106,10 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const pagiRecord = useMemo(() => presensiHariIni.find((p) => p.jadwal_id === null && !p.is_lembur), [presensiHariIni]);
     const now = new Date();
     const jamSekarang = now.getHours() * 60 + now.getMinutes();
-    const toMinutes = (hms) => { if (!hms) return 0; const p = String(hms).split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1] || 0, 10); };
     const primaryUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
-    const jamSore = primaryUnit?.jam_pulang_kantor ? toMinutes(primaryUnit.jam_pulang_kantor) : 960;
+    const jamSore = primaryUnit?.jam_pulang_kantor ? toMin(primaryUnit.jam_pulang_kantor) : 960;
 
-    // Kelompokkan jadwal berurutan dengan mapel sama (back-to-back).
+    // Kelompokkan jadwal berurutan dengan mapel sama (gap ≤ 60 menit).
     const groupedJadwals = useMemo(() => groupConsecutiveJadwals(jadwals), [jadwals]);
 
     // Helper: semua jadwal dalam grup sudah di-slide (jam_masuk tercatat).
@@ -110,8 +121,8 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     // Grup "aktif" = SUDAH di-slide ATAU masih dalam jendela waktu slide.
     const activeGroups = useMemo(() => groupedJadwals.filter((g) => {
         if (isGroupSlid(g)) return true;
-        const mulai = toMinutes(g.jam_mulai);
-        const selesai = toMinutes(g.jamSelesaiLast) || (mulai + 60);
+        const mulai = toMin(g.jam_mulai);
+        const selesai = toMin(g.jamSelesaiLast) || (mulai + 60);
         const grace = g.unit_sekolah?.toleransi_slide_menit ?? SLIDE_GRACE_MINUTES;
         return mulai <= jamSekarang && jamSekarang <= selesai + grace;
     }), [groupedJadwals, isGroupSlid, jamSekarang]);
@@ -121,15 +132,15 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     // Ada grup yang SEDANG berlangsung (mulai <= sekarang < selesai) —
     // di-slide bukan berarti selesai; foto sore menunggu jam mengajar habis.
     const adaBerlangsung = useMemo(() => groupedJadwals.some((g) => {
-        const mulai = toMinutes(g.jam_mulai);
-        const selesai = toMinutes(g.jamSelesaiLast) || (mulai + 60);
+        const mulai = toMin(g.jam_mulai);
+        const selesai = toMin(g.jamSelesaiLast) || (mulai + 60);
         return mulai <= jamSekarang && jamSekarang < selesai;
     }), [groupedJadwals, jamSekarang]);
 
     // Semua grup hari ini "beres": di-slide & jam selesainya sudah lewat, ATAU
     // sudah lewat batas slide (terlambat — tidak bisa di-slide lagi).
     const semuaBeres = useMemo(() => groupedJadwals.length > 0 && groupedJadwals.every((g) => {
-        const selesai = toMinutes(g.jamSelesaiLast) || (toMinutes(g.jam_mulai) + 60);
+        const selesai = toMin(g.jamSelesaiLast) || (toMin(g.jam_mulai) + 60);
         if (isGroupSlid(g)) return jamSekarang >= selesai;
         const grace = g.unit_sekolah?.toleransi_slide_menit ?? SLIDE_GRACE_MINUTES;
         return jamSekarang > selesai + grace;
@@ -175,14 +186,12 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const geoBlocked = isTugasLuar ? false : (geofence && !geofence.inside);
     const geoReady = geofence !== null;
 
-    const isInsideJadwal = useCallback((jadwal) => {
-        if (!currentPosition) return false;
-        const unit = jadwal?.unit_sekolah || lemburUnit;
-        if (!unit) return false;
-        const lat = parseFloat(unit.latitude);
-        const lon = parseFloat(unit.longitude);
+    const isInsideJadwal = useCallback(() => {
+        if (!currentPosition || !lemburUnit) return false;
+        const lat = parseFloat(lemburUnit.latitude);
+        const lon = parseFloat(lemburUnit.longitude);
         if (isNaN(lat) || isNaN(lon)) return false;
-        const radius = unit.radius_meter ?? 50;
+        const radius = lemburUnit.radius_meter ?? 50;
         const { inside } = checkGeofence(currentPosition.latitude, currentPosition.longitude, lat, lon, radius);
         return inside;
     }, [currentPosition, lemburUnit]);
@@ -590,11 +599,11 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                         <>
                                             <SlideToConfirm
                                                 onConfirm={() => handleSlideGroup(g)}
-                                                disabled={slideLoading !== null || !currentPosition || !isInsideJadwal(g)}
+                                                disabled={slideLoading !== null || !currentPosition || !isInsideJadwal()}
                                                 confirmed={false}
                                                 label={`Slide ${g.mata_pelajaran?.nama || 'jadwal'}${count > 1 ? ` (${count} jam)` : ''}`}
                                             />
-                                            {(!currentPosition || !isInsideJadwal(g)) && (
+                                            {(!currentPosition || !isInsideJadwal()) && (
                                                 <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
                                                     <MapPin className="h-3 w-3 shrink-0" />
                                                     {!currentPosition ? 'Tunggu GPS aktif…' : 'Di luar radius unit — geser tidak aktif'}
