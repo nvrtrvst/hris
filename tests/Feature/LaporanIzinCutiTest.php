@@ -60,7 +60,12 @@ class LaporanIzinCutiTest extends TestCase
         // Tanggal berbeda: 1 pegawai hanya bisa punya 1 row presensi per
         // tanggal (updateOrCreate di generatePresensi menimpa).
         $tanggalSakit = Carbon::today()->toDateString();
-        $tanggalCuti = Carbon::today()->addDay()->toDateString();
+        $tanggalCuti = Carbon::today()->addDay();
+        // generatePresensi skips weekends — ensure cuti lands on a weekday.
+        while ($tanggalCuti->isWeekend()) {
+            $tanggalCuti->addDay();
+        }
+        $tanggalCuti = $tanggalCuti->toDateString();
 
         foreach ([['sakit', $tanggalSakit], ['cuti', $tanggalCuti]] as [$jenis, $tanggal]) {
             $pengajuan = PengajuanIzin::create([
