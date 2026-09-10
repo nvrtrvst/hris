@@ -26,7 +26,7 @@ export default function Edit({ auth, unit }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(route('unit-sekolah.update', unit.id), { forceFormData: true });
+        put(route('unit-sekolah.update', unit.id));
     };
 
     return (
