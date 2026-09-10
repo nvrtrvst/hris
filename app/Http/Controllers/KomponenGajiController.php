@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\KomponenGaji;
 use App\Models\UnitSekolah;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class KomponenGajiController extends Controller
 {
@@ -22,7 +23,12 @@ class KomponenGajiController extends Controller
             'nama' => 'required|string',
             'kode' => 'nullable|string|max:50',
             'tipe' => 'required|in:pendapatan,potongan',
-            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur',
+            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,lookup_reference',
+            'payroll_reference_type_id' => [
+                'nullable',
+                'exists:payroll_reference_types,id',
+                Rule::requiredIf(fn () => $request->input('jenis') === 'lookup_reference'),
+            ],
             'applies_to_status_kepegawaian' => 'nullable|in:tetap,honorer',
             'syarat_bayar_jam_mengajar' => 'nullable|in:semua_jadwal,hanya_hadir',
             'nilai_default' => 'nullable|numeric',
@@ -32,6 +38,10 @@ class KomponenGajiController extends Controller
             'urutan' => 'nullable|integer',
             'tampil_di_matrix' => 'boolean',
         ]);
+
+        if (($validated['jenis'] ?? null) !== 'lookup_reference') {
+            $validated['payroll_reference_type_id'] = null;
+        }
 
         $validated['is_taxable'] = $request->has('is_taxable') ? $request->is_taxable : true;
         $validated['is_active'] = $request->has('is_active') ? $request->is_active : true;
@@ -52,7 +62,12 @@ class KomponenGajiController extends Controller
             'nama' => 'required|string',
             'kode' => 'nullable|string|max:50',
             'tipe' => 'required|in:pendapatan,potongan',
-            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur',
+            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,lookup_reference',
+            'payroll_reference_type_id' => [
+                'nullable',
+                'exists:payroll_reference_types,id',
+                Rule::requiredIf(fn () => $request->input('jenis') === 'lookup_reference'),
+            ],
             'syarat_bayar_jam_mengajar' => 'nullable|in:semua_jadwal,hanya_hadir',
             'nilai_default' => 'nullable|numeric',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
@@ -61,6 +76,10 @@ class KomponenGajiController extends Controller
             'urutan' => 'nullable|integer',
             'tampil_di_matrix' => 'boolean',
         ]);
+
+        if (($validated['jenis'] ?? null) !== 'lookup_reference') {
+            $validated['payroll_reference_type_id'] = null;
+        }
 
         if (! isset($validated['tampil_di_matrix'])) {
             $validated['tampil_di_matrix'] = false;

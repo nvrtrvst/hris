@@ -142,7 +142,9 @@ class PenggajianController extends Controller
         $pegawais = $query->get();
 
         // [FIX] N+1: Fetch data referensi di luar loop
-        $globalKomponens = KomponenGaji::where('is_active', true)->get();
+        $globalKomponens = KomponenGaji::where('is_active', true)
+            ->with(['referenceValues'])
+            ->get();
         $skalas = SkalaMasaBakti::orderBy('masa_kerja_tahun', 'desc')->get();
 
         $periodeStart = Carbon::createFromDate($year, $month, 1)->startOfMonth();
@@ -768,9 +770,53 @@ class PenggajianController extends Controller
             }
 
             $nominal = $rate * ($totalMinutes / 60);
+        } elseif ($komponen->jenis === 'lookup_reference') {
+            $refType = $komponen->payrollReferenceType;
+            if (! $refType) {
+                return 0;
+            }
+
+            $refKey = $this->resolveReferenceKey($refType->source_field, $pegawai);
+            if ($refKey === null || $refKey === '') {
+                return 0;
+            }
+
+            $nominal = $komponen->referenceValues
+                ->first(fn ($v) => (string) $v->reference_key === (string) $refKey && (int) $v->payroll_reference_type_id === (int) $refType->id)
+                ?->nominal ?? 0;
         }
 
         return (float) $nominal;
+    }
+
+    /**
+     * Whitelist kolom Pegawai yang boleh dipakai untuk lookup_reference.
+     * Cegah akses kolom sensitif (password, email, dll) via FE.
+     */
+    public static function referenceSourceFields(): array
+    {
+        return [
+            'pendidikan_terakhir',
+            'jenis_kelamin',
+            'status_pernikahan',
+            'status_kepegawaian',
+            'tanggal_mulai_kerja',
+        ];
+    }
+
+    private function resolveReferenceKey(string $sourceField, Pegawai $pegawai): ?string
+    {
+        if (! in_array($sourceField, self::referenceSourceFields(), true)) {
+            return null;
+        }
+
+        $value = $pegawai->{$sourceField};
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (string) $value;
     }
 
     /**

@@ -5,6 +5,8 @@ namespace Tests\Unit;
 use App\Http\Controllers\PenggajianController;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
+use App\Models\PayrollReferenceType;
+use App\Models\PayrollReferenceValue;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\SkalaMasaBakti;
@@ -304,5 +306,93 @@ class PayrollMathTest extends TestCase
         );
 
         $this->assertSame(500000.0, $nominal);
+    }
+
+    public function test_lookup_reference_uses_pegawai_attribute(): void
+    {
+        $refType = new PayrollReferenceType([
+            'kode' => 'pendidikan',
+            'nama' => 'Pendidikan',
+            'source_field' => 'pendidikan_terakhir',
+        ]);
+        $refType->id = 11;
+
+        $komponen = $this->makeKomponen([
+            'id' => 10,
+            'kode' => 'tunjangan_pendidikan',
+            'nama' => 'Tunjangan Pendidikan',
+            'jenis' => 'lookup_reference',
+            'payroll_reference_type_id' => 11,
+        ]);
+        $komponen->setRelation('payrollReferenceType', $refType);
+
+        // S1 = 500000, S2 = 750000
+        $valS1 = new PayrollReferenceValue(['reference_key' => 'S1', 'nominal' => 500000]);
+        $valS1->payroll_reference_type_id = 11;
+        $valS2 = new PayrollReferenceValue(['reference_key' => 'S2', 'nominal' => 750000]);
+        $valS2->payroll_reference_type_id = 11;
+        $komponen->setRelation('referenceValues', collect([$valS1, $valS2]));
+
+        $pegawai = $this->makePegawai(['pendidikan_terakhir' => 'S2']);
+        $periodeEnd = Carbon::create(2026, 8, 31);
+        $periodeStart = Carbon::create(2026, 8, 1);
+
+        $nominal = $this->controller()->pubComputeComponentNominal(
+            $komponen, $pegawai, new Collection, new Collection, [],
+            new Collection, $periodeEnd, $periodeStart, $periodeEnd
+        );
+
+        $this->assertSame(750000.0, $nominal);
+    }
+
+    public function test_lookup_reference_returns_zero_when_ref_type_missing(): void
+    {
+        $komponen = $this->makeKomponen([
+            'id' => 10,
+            'kode' => 'tunjangan_pendidikan',
+            'jenis' => 'lookup_reference',
+            'payroll_reference_type_id' => 999,
+        ]);
+        $komponen->setRelation('payrollReferenceType', null);
+
+        $pegawai = $this->makePegawai(['pendidikan_terakhir' => 'S1']);
+        $periodeEnd = Carbon::create(2026, 8, 31);
+        $periodeStart = Carbon::create(2026, 8, 1);
+
+        $nominal = $this->controller()->pubComputeComponentNominal(
+            $komponen, $pegawai, new Collection, new Collection, [],
+            new Collection, $periodeEnd, $periodeStart, $periodeEnd
+        );
+
+        $this->assertSame(0.0, $nominal);
+    }
+
+    public function test_lookup_reference_returns_zero_when_key_not_in_table(): void
+    {
+        $refType = new PayrollReferenceType([
+            'kode' => 'pendidikan',
+            'source_field' => 'pendidikan_terakhir',
+        ]);
+        $refType->id = 11;
+
+        $komponen = $this->makeKomponen([
+            'id' => 10,
+            'kode' => 'tunjangan_pendidikan',
+            'jenis' => 'lookup_reference',
+            'payroll_reference_type_id' => 11,
+        ]);
+        $komponen->setRelation('payrollReferenceType', $refType);
+        $komponen->setRelation('referenceValues', collect([]));
+
+        $pegawai = $this->makePegawai(['pendidikan_terakhir' => 'DOKTOR']);
+        $periodeEnd = Carbon::create(2026, 8, 31);
+        $periodeStart = Carbon::create(2026, 8, 1);
+
+        $nominal = $this->controller()->pubComputeComponentNominal(
+            $komponen, $pegawai, new Collection, new Collection, [],
+            new Collection, $periodeEnd, $periodeStart, $periodeEnd
+        );
+
+        $this->assertSame(0.0, $nominal);
     }
 }

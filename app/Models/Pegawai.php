@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 
 #[ObservedBy([PegawaiObserver::class])]
 class Pegawai extends Model
@@ -250,6 +251,7 @@ class Pegawai extends Model
     /**
      * Auto-assign atasan langsung berdasarkan jabatan & unit.
      * Hanya assign jika atasan_langsung_id masih NULL.
+     * Race-safe: dibungkus transaction + lockForUpdate saat lookup atasan.
      */
     public function autoAssignAtasan(): void
     {
@@ -257,54 +259,70 @@ class Pegawai extends Model
             return;
         }
 
-        $this->loadMissing('units');
-        $jabatan = $this->jabatanPrimer();
-        $primaryUnit = $this->units->first(fn ($u) => ! empty($u->pivot->is_primary))
-            ?? $this->units->first();
+        \DB::transaction(function () {
+            $this->refresh();
 
-        if (! $primaryUnit || ! $jabatan) {
-            return;
-        }
+            $this->loadMissing('units');
+            $jabatan = $this->jabatanPrimer();
+            $primaryUnit = $this->units->first(fn ($u) => ! empty($u->pivot->is_primary))
+                ?? $this->units->first();
 
-        // Cari ketua yayasan
-        $yayasanUnit = UnitSekolah::where('singkatan', 'YAYASAN')->first();
-        $ketuaYayasan = $yayasanUnit
-            ? $this->findJabatanPegawai($yayasanUnit->id, ['Ketua Yayasan', 'Kepala Yayasan'])
-            : null;
+            if (! $primaryUnit || ! $jabatan) {
+                return;
+            }
 
-        $unitId = $primaryUnit->id;
-        $namaJabatan = $jabatan->nama;
+            $yayasanUnit = UnitSekolah::where('singkatan', 'YAYASAN')->first();
+            $ketuaYayasan = $yayasanUnit
+                ? $this->findJabatanPegawai($yayasanUnit->id, ['Ketua Yayasan', 'Kepala Yayasan'])
+                : null;
 
-        $atasan = match (true) {
-            in_array($namaJabatan, ['Ketua Yayasan', 'Kepala Yayasan'], true) => null,
-            $namaJabatan === 'Kepala Sekolah' => $ketuaYayasan,
-            $jabatan->is_guru || in_array($namaJabatan, ['Wakil Kepala Sekolah', 'Kepala Perpustakaan', 'Kepala Laboratorium', 'Kepala Tata Usaha'], true) => $this->findJabatanPegawai($unitId, ['Kepala Sekolah']),
-            default => $this->findJabatanPegawai($unitId, ['Kepala Tata Usaha'])
-                ?? $this->findJabatanPegawai($unitId, ['Kepala Sekolah'])
-                ?? $ketuaYayasan,
-        };
+            $unitId = $primaryUnit->id;
+            $namaJabatan = $jabatan->nama;
 
-        if ($atasan && (int) $atasan->id === (int) $this->id) {
-            return;
-        }
+            $atasan = match (true) {
+                in_array($namaJabatan, ['Ketua Yayasan', 'Kepala Yayasan'], true) => null,
+                $namaJabatan === 'Kepala Sekolah' => $ketuaYayasan,
+                $jabatan->is_guru || in_array($namaJabatan, [
+                    'Wakil Kepala Sekolah', 'Wakil Kepala Kurikulum',
+                    'Wakil Kepala Kesiswaan', 'Wakil Kepala Sarpras',
+                    'Kepala Program', 'Kepala Perpustakaan',
+                    'Kepala Laboratorium', 'Kepala Tata Usaha',
+                ], true) => $this->findJabatanPegawai($unitId, ['Kepala Sekolah']),
+                default => $this->findJabatanPegawai($unitId, ['Kepala Tata Usaha'])
+                    ?? $this->findJabatanPegawai($unitId, ['Kepala Sekolah'])
+                    ?? $ketuaYayasan,
+            };
 
-        if ($atasan) {
-            $this->updateQuietly(['atasan_langsung_id' => $atasan->id]);
-        }
+            if ($atasan && (int) $atasan->id === (int) $this->id) {
+                return;
+            }
+
+            if ($atasan) {
+                $this->updateQuietly(['atasan_langsung_id' => $atasan->id]);
+            }
+        });
     }
 
+    /**
+     * Cari Pegawai di unit tertentu yang jabatannya termasuk daftar nama.
+     * Lock baris Pegawai target untuk mencegah race saat concurrent
+     * auto-assign dari request bersamaan.
+     */
     private function findJabatanPegawai(int $unitId, array $jabatanNames): ?self
     {
-        return self::whereHas('units', function ($q) use ($unitId) {
-            $q->where('unit_sekolah.id', $unitId);
-        })
-            ->with('units')
-            ->get()
-            ->first(function ($p) use ($jabatanNames) {
-                $j = $p->jabatanPrimer();
+        $pegawaiId = DB::table('pegawai_unit as pu')
+            ->join('jabatan as j', 'j.id', '=', 'pu.jabatan_id')
+            ->where('pu.unit_sekolah_id', $unitId)
+            ->whereIn('j.nama', $jabatanNames)
+            ->orderByDesc('pu.is_primary')
+            ->orderBy('pu.id')
+            ->value('pu.pegawai_id');
 
-                return $j && in_array($j->nama, $jabatanNames, true);
-            });
+        if (! $pegawaiId) {
+            return null;
+        }
+
+        return self::where('id', $pegawaiId)->lockForUpdate()->first();
     }
 
     public function bawahan(): HasMany
@@ -436,34 +454,38 @@ class Pegawai extends Model
     }
 
     /**
-     * Scope: pendidik = punya minimal satu jabatan guru (is_guru = true).
-     * Konsisten dengan filter jenis Dapodik di Presensi/Pegawai/Jadwal.
+     * Scope: pendidik = punya minimal satu jabatan guru (is_guru = true)
+     * ATAU mengajar minimal satu mata pelajaran. Wakil Kapros / Wk. Kurikulum
+     * yang juga fungsional guru termasuk di sini (union Dapodik).
      */
     public function scopeGuru($query)
     {
-        return $query->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
+        return $query->where(function ($q) {
+            $q->whereHas('jabatans', fn ($sub) => $sub->where('is_guru', true))
+                ->orWhereHas('mapels');
+        });
     }
 
     /**
-     * Scope: tenaga kependidikan = TIDAK punya jabatan guru sama sekali
-     * (TU, pustakawan, laboran, OB, satpam, dll).
+     * Scope: tenaga kependidikan = TIDAK punya jabatan guru DAN TIDAK mengajar.
      */
     public function scopeNonGuru($query)
     {
-        return $query->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
+        return $query->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true))
+            ->whereDoesntHave('mapels');
     }
 
     /**
-     * Label jenis pegawai (Dapodik): 'Pendidik' jika punya minimal satu
-     * jabatan guru (is_guru = true), selain itu 'Tenaga Kependidikan'.
-     * Dipakai untuk kolom Jenis di laporan/export. Pastikan relasi
-     * `jabatans` sudah di-eager-load sebelum dipanggil dalam loop (hindari N+1).
+     * Label jenis pegawai (Dapodik): 'Pendidik' jika punya jabatan guru ATAU
+     * mengajar. Dipakai untuk kolom Jenis di laporan/export. Pastikan relasi
+     * `jabatans` dan `mapels` sudah di-eager-load sebelum dipanggil dalam loop.
      */
     public function jenisPegawaiLabel(): string
     {
-        return $this->jabatans->contains('is_guru', true)
-            ? 'Pendidik'
-            : 'Tenaga Kependidikan';
+        $isPendidik = $this->jabatans->contains('is_guru', true)
+            || (method_exists($this, 'mapels') && $this->relationLoaded('mapels') && $this->mapels->isNotEmpty());
+
+        return $isPendidik ? 'Pendidik' : 'Tenaga Kependidikan';
     }
 
     /**

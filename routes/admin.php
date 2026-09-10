@@ -10,6 +10,8 @@ use App\Http\Controllers\KomponenGajiController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PayrollReferenceTypeController;
+use App\Http\Controllers\PayrollReferenceValueController;
 use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\PegawaiDokumenController;
 use App\Http\Controllers\PegawaiKomponenController;
@@ -169,6 +171,20 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::resource('komponen-gaji', KomponenGajiController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('throttle:60,1');
     Route::resource('skala-masa-bakti', SkalaMasaBaktiController::class)->only(['index', 'store', 'destroy'])->middleware('throttle:60,1');
     Route::resource('tugas-luar', TugasLuarController::class)->only(['index', 'store', 'destroy'])->middleware('throttle:60,1');
+
+    // Payroll Reference (lookup_reference komponen gaji)
+    Route::resource('payroll/reference-types', PayrollReferenceTypeController::class)
+        ->only(['index', 'store', 'update', 'destroy'])
+        ->middleware(['throttle:30,1', 'can:manage_payroll']);
+    Route::post('payroll/reference-types/{reference_type}/values', [PayrollReferenceValueController::class, 'store'])
+        ->middleware(['throttle:30,1', 'can:manage_payroll'])
+        ->name('payroll.reference-values.store');
+    Route::put('payroll/reference-values/{value}', [PayrollReferenceValueController::class, 'update'])
+        ->middleware(['throttle:30,1', 'can:manage_payroll'])
+        ->name('payroll.reference-values.update');
+    Route::delete('payroll/reference-values/{value}', [PayrollReferenceValueController::class, 'destroy'])
+        ->middleware(['throttle:30,1', 'can:manage_payroll'])
+        ->name('payroll.reference-values.destroy');
 
     // Atur Nominal Spesifik per Pegawai (Manual / Import Excel)
     Route::get('komponen-gaji/{komponen_gaji}/pegawai', [PegawaiKomponenController::class, 'index'])->name('komponen-gaji.pegawai.index');

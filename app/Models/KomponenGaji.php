@@ -13,6 +13,7 @@ class KomponenGaji extends Model
         'kode',
         'tipe',
         'jenis',
+        'payroll_reference_type_id',
         'applies_to_status_kepegawaian',
         'syarat_bayar_jam_mengajar',
         'nilai_default',
@@ -33,5 +34,15 @@ class KomponenGaji extends Model
     public function unitSekolah()
     {
         return $this->belongsTo(UnitSekolah::class);
+    }
+
+    public function payrollReferenceType()
+    {
+        return $this->belongsTo(PayrollReferenceType::class);
+    }
+
+    public function referenceValues()
+    {
+        return $this->hasMany(PayrollReferenceValue::class);
     }
 }

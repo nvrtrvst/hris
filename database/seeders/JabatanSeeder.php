@@ -22,6 +22,10 @@ class JabatanSeeder extends Seeder
             // A. Kepala Satuan Pendidikan
             ['nama' => 'Kepala Sekolah', 'is_guru' => false],
             ['nama' => 'Wakil Kepala Sekolah', 'is_guru' => false],
+            ['nama' => 'Wakil Kepala Kurikulum', 'is_guru' => false],
+            ['nama' => 'Wakil Kepala Kesiswaan', 'is_guru' => false],
+            ['nama' => 'Wakil Kepala Sarpras', 'is_guru' => false],
+            ['nama' => 'Kepala Program', 'is_guru' => false],
 
             // B. Tenaga Perpustakaan
             ['nama' => 'Kepala Perpustakaan', 'is_guru' => false],

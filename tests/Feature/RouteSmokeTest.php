@@ -8,6 +8,8 @@ use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
 use App\Models\MataPelajaran;
+use App\Models\PayrollReferenceType;
+use App\Models\PayrollReferenceValue;
 use App\Models\Pegawai;
 use App\Models\PegawaiDokumen;
 use App\Models\PegawaiMapel;
@@ -124,6 +126,7 @@ class RouteSmokeTest extends TestCase
         'komponen-gaji.matrix' => 'Payroll/Matrix',
         'komponen-gaji.pegawai.index' => 'Payroll/PegawaiKomponen',
         'skala-masa-bakti.index' => 'Payroll/SkalaMasaBakti',
+        'reference-types.index' => 'Payroll/ReferenceTypes',
         'unit-sekolah.index' => 'UnitSekolah/Index',
         'unit-sekolah.create' => 'UnitSekolah/Create',
         'unit-sekolah.edit' => 'UnitSekolah/Edit',
@@ -242,6 +245,7 @@ class RouteSmokeTest extends TestCase
         'komponen-gaji.matrix' => ['pegawais' => true, 'komponens' => true, 'unitSekolahs' => true],
         'komponen-gaji.pegawai.index' => ['komponen' => true, 'pegawais' => true],
         'skala-masa-bakti.index' => ['skalas' => true],
+        'reference-types.index' => ['types' => true, 'allowedSources' => true],
         'unit-sekolah.index' => ['units' => true, 'stats' => true],
         'unit-sekolah.create' => [],
         'unit-sekolah.edit' => ['unit' => true],
@@ -468,6 +472,10 @@ class RouteSmokeTest extends TestCase
     private KomponenGaji $disposableKomponen;
 
     private SkalaMasaBakti $disposableSkala;
+
+    private PayrollReferenceType $disposableReferenceType;
+
+    private PayrollReferenceValue $disposableReferenceValue;
 
     private MataPelajaran $disposableMapel;
 
@@ -744,6 +752,18 @@ class RouteSmokeTest extends TestCase
         $this->disposableSkala = SkalaMasaBakti::create([
             'masa_kerja_tahun' => 30,
             'nominal_gaji' => 3000000,
+        ]);
+        $this->disposableReferenceType = PayrollReferenceType::create([
+            'kode' => 'smoke_ref_type',
+            'nama' => 'Smoke Ref Type',
+            'source_field' => 'pendidikan_terakhir',
+            'is_active' => true,
+        ]);
+        $this->disposableReferenceValue = PayrollReferenceValue::create([
+            'komponen_gaji_id' => $this->komponen->id,
+            'payroll_reference_type_id' => $this->disposableReferenceType->id,
+            'reference_key' => 'SMOKE',
+            'nominal' => 100000,
         ]);
         $this->disposableMapel = MataPelajaran::create(['nama' => 'Mapel Hapus']);
         $this->disposableJabatan = Jabatan::create(['nama' => 'Jabatan Hapus', 'is_guru' => false]);
@@ -1541,6 +1561,8 @@ class RouteSmokeTest extends TestCase
             },
             'komponen_gaji' => $routeName === 'komponen-gaji.destroy' ? $this->disposableKomponen->id : $this->komponen->id,
             'skala_masa_bakti' => $this->disposableSkala->id,
+            'reference_type' => $this->disposableReferenceType->id,
+            'value' => $this->disposableReferenceValue->id,
             'mata_pelajaran' => $routeName === 'mata-pelajaran.destroy' ? $this->disposableMapel->id : $this->mapel->id,
             'jabatan' => $routeName === 'jabatan.destroy' ? $this->disposableJabatan->id : $this->jabatan->id,
             'role' => in_array($routeName, ['roles.update', 'roles.destroy'], true) ? $this->disposableRole->id : Role::query()->where('name', 'pegawai')->value('id'),

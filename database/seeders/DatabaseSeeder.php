@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             MataPelajaranSeeder::class,
             MassivePegawaiSeeder::class,
             NonGuruPegawaiSeeder::class,
+            PayrollReferenceTypeSeeder::class,
             KomponenGajiSeeder::class,
             AtasanHierarchySeeder::class,
         ]);
