@@ -8,7 +8,6 @@ export default function Create({ auth }) {
     const { data, setData, post, processing, errors } = useForm({
         nama: '',
         singkatan: '',
-        logo: null,
         latitude: '-6.200000',
         longitude: '106.800000',
         radius_meter: 50,

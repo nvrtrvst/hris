@@ -8,7 +8,6 @@ export default function Edit({ auth, unit }) {
     const { data, setData, put, processing, errors } = useForm({
         nama: unit.nama,
         singkatan: unit.singkatan,
-        logo: null,
         latitude: String(unit.latitude),
         longitude: String(unit.longitude),
         radius_meter: unit.radius_meter,
