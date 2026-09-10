@@ -6,7 +6,6 @@ import UnitForm from './UnitForm';
 
 export default function Edit({ auth, unit }) {
     const { data, setData, put, processing, errors } = useForm({
-        _method: 'put',
         nama: unit.nama,
         singkatan: unit.singkatan,
         logo: null,
