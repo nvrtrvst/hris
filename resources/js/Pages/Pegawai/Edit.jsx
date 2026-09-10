@@ -40,7 +40,7 @@ function SectionCard({ Icon, title, description, children }) {
 
 export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, statusKepegawaian, pendidikanTerakhir, atasanCandidates = [] }) {
     const canViewSensitive = auth.permissions?.includes('view_sensitive_data');
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, put, processing, errors } = useForm({
         _method: 'put',
         nik: canViewSensitive ? pegawai.nik_plain ?? pegawai.nik : '',
         nuptk: pegawai.nuptk || '',
@@ -142,7 +142,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('pegawai.update', pegawai.id));
+        put(route('pegawai.update', pegawai.id));
     };
 
     return (
