@@ -57,18 +57,20 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
         selectedItems.forEach((p) => {
             if (!p.jadwal_id) { kantorItems.push(p); return; }
             const nama = p.jadwal?.mata_pelajaran?.nama || 'Lainnya';
-            if (!mapelMap[nama]) mapelMap[nama] = [];
-            mapelMap[nama].push(p);
+            const kelas = p.jadwal?.kelas_label || '';
+            const key = `${nama}|||${kelas}`;
+            if (!mapelMap[key]) mapelMap[key] = { nama, kelas, items: [] };
+            mapelMap[key].items.push(p);
         });
 
         kantorItems.forEach((p) => groups.push({ type: 'single', item: p }));
 
-        Object.entries(mapelMap)
-            .sort((a, b) => (a[1][0].jadwal?.jam_mulai || '').localeCompare(b[1][0].jadwal?.jam_mulai || ''))
-            .forEach(([nama, items]) => {
+        Object.values(mapelMap)
+            .sort((a, b) => (a.items[0].jadwal?.jam_mulai || '').localeCompare(b.items[0].jadwal?.jam_mulai || ''))
+            .forEach(({ nama, kelas, items }) => {
                 items.sort((a, b) => (a.jadwal?.jam_mulai || '').localeCompare(b.jadwal?.jam_mulai || ''));
                 groups.push({
-                    type: 'group', nama, items,
+                    type: 'group', nama, kelas, items,
                     timeRange: `${formatJam(items[0].jadwal?.jam_mulai)}–${formatJam(items[items.length - 1].jadwal?.jam_selesai)}`,
                     count: items.length,
                 });
@@ -224,21 +226,20 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                 );
                             }
 
-                            const expanded = expandedMapel.has(g.nama);
+                            const expanded = expandedMapel.has(`${g.nama}|||${g.kelas}`);
                             const b = getStatusBadge(g.items[0].status);
-                            const kelas = g.items[0].jadwal?.kelas_label;
                             return (
-                                <div key={g.nama}>
-                                    <button type="button" onClick={() => toggleMapel(g.nama)} className="w-full">
+                                <div key={`${g.nama}-${g.kelas}`}>
+                                    <button type="button" onClick={() => toggleMapel(`${g.nama}|||${g.kelas}`)} className="w-full">
                                         <Card className="flex items-center justify-between py-3.5">
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <p className="truncate font-bold text-slate-800">{g.nama}</p>
+                                                    {g.kelas && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{g.kelas}</span>}
                                                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{g.count} JP</span>
                                                 </div>
                                                 <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
                                                     <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{g.timeRange}</span>
-                                                    {kelas && <span className="inline-flex items-center gap-1 text-slate-400">{kelas}</span>}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
