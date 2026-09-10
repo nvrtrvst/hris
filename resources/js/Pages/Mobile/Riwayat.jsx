@@ -4,7 +4,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, SectionTitle, Badge, Empty } from '@/Components/MobileUI';
 import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { History, CalendarDays, Clock, MapPin, CheckCircle2, AlertTriangle, FileText, XCircle, Ban } from 'lucide-react';
+import { History, CalendarDays, Clock, MapPin, CheckCircle2, AlertTriangle, FileText, XCircle, Ban, ChevronDown } from 'lucide-react';
 
 export default function Riwayat({ auth, presensi, summary, filters }) {
     const activeMonth = `${filters?.tahun || new Date().getFullYear()}-${String(filters?.bulan || new Date().getMonth() + 1).padStart(2, '0')}`;
@@ -41,6 +41,41 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
         return (presensi || []).filter((p) => p.tanggal === selectedDate)
             .sort((a, b) => (a.jam_masuk || '').localeCompare(b.jam_masuk || ''));
     }, [presensi, selectedDate]);
+
+    const [expandedMapel, setExpandedMapel] = useState(new Set());
+    const toggleMapel = (nama) => setExpandedMapel((prev) => {
+        const next = new Set(prev);
+        next.has(nama) ? next.delete(nama) : next.add(nama);
+        return next;
+    });
+
+    const groupedByMapel = useMemo(() => {
+        const groups = [];
+        const kantorItems = [];
+        const mapelMap = {};
+
+        selectedItems.forEach((p) => {
+            if (!p.jadwal_id) { kantorItems.push(p); return; }
+            const nama = p.jadwal?.mata_pelajaran?.nama || 'Lainnya';
+            if (!mapelMap[nama]) mapelMap[nama] = [];
+            mapelMap[nama].push(p);
+        });
+
+        kantorItems.forEach((p) => groups.push({ type: 'single', item: p }));
+
+        Object.entries(mapelMap)
+            .sort((a, b) => (a[1][0].jadwal?.jam_mulai || '').localeCompare(b[1][0].jadwal?.jam_mulai || ''))
+            .forEach(([nama, items]) => {
+                items.sort((a, b) => (a.jadwal?.jam_mulai || '').localeCompare(b.jadwal?.jam_mulai || ''));
+                groups.push({
+                    type: 'group', nama, items,
+                    timeRange: `${formatJam(items[0].jadwal?.jam_mulai)}–${formatJam(items[items.length - 1].jadwal?.jam_selesai)}`,
+                    count: items.length,
+                });
+            });
+
+        return groups;
+    }, [selectedItems]);
 
     const dailyStatus = useMemo(() => {
         const priority = { hadir: 1, cuti: 2, izin: 2, sakit: 2, telat: 3, alpa: 4 };
@@ -160,33 +195,72 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                         <p className="text-sm font-extrabold text-slate-700">{formatTanggal(selectedDate)}</p>
                         <span className="text-xs font-medium text-slate-400">• {dayName(selectedDate)}</span>
                     </div>
-                    {selectedItems.length === 0 ? (
+                    {groupedByMapel.length === 0 ? (
                         <Empty icon={History} title="Tidak ada presensi" subtitle="Belum ada catatan kehadiran untuk tanggal ini." />
                     ) : (
-                        selectedItems.map((p) => {
-                            const b = getStatusBadge(p.status);
-                            const label = p.jadwal?.mata_pelajaran?.nama
-                                || (p.is_lembur ? 'Lembur' : p.tipe_presensi === 'kantor' ? 'Presensi Kantor' : 'Presensi');
-                            const kelas = p.jadwal?.kelas_label;
-                            const isKantor = p.tipe_presensi === 'kantor';
-                            const belumPulang = Boolean(p.jam_masuk) && !p.jam_keluar;
-                            const badge = isKantor && belumPulang
-                                ? { tone: 'amber', label: 'Belum pulang', icon: Clock }
-                                : b;
+                        groupedByMapel.map((g) => {
+                            if (g.type === 'single') {
+                                const p = g.item;
+                                const b = getStatusBadge(p.status);
+                                const label = p.is_lembur ? 'Lembur' : p.tipe_presensi === 'kantor' ? 'Presensi Kantor' : 'Presensi';
+                                const isKantor = p.tipe_presensi === 'kantor';
+                                const belumPulang = Boolean(p.jam_masuk) && !p.jam_keluar;
+                                const badge = isKantor && belumPulang
+                                    ? { tone: 'amber', label: 'Belum pulang', icon: Clock }
+                                    : b;
+                                return (
+                                    <Card key={p.id} className="flex items-center justify-between py-3.5">
+                                        <div className="min-w-0">
+                                            <p className="truncate font-bold text-slate-800">{label}</p>
+                                            <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
+                                                <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{formatJam(p.jam_masuk)}–{formatJam(p.jam_keluar)}</span>
+                                                {p.jarak_meter != null && (
+                                                    <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-400" />{p.jarak_meter}m</span>
+                                                )}
+                                            </p>
+                                        </div>
+                                        <Badge tone={badge.tone} icon={badge.icon}>{badge.label}</Badge>
+                                    </Card>
+                                );
+                            }
+
+                            const expanded = expandedMapel.has(g.nama);
+                            const b = getStatusBadge(g.items[0].status);
+                            const kelas = g.items[0].jadwal?.kelas_label;
                             return (
-                                <Card key={p.id} className="flex items-center justify-between py-3.5">
-                                    <div className="min-w-0">
-                                        <p className="truncate font-bold text-slate-800">{label}</p>
-                                        <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
-                                            <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{formatJam(p.jam_masuk)}–{formatJam(p.jam_keluar)}</span>
-                                            {kelas && <span className="inline-flex items-center gap-1 text-slate-400">{kelas}</span>}
-                                            {p.jarak_meter != null && (
-                                                <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-400" />{p.jarak_meter}m</span>
-                                            )}
-                                        </p>
-                                    </div>
-                                    <Badge tone={badge.tone} icon={badge.icon}>{badge.label}</Badge>
-                                </Card>
+                                <div key={g.nama}>
+                                    <button type="button" onClick={() => toggleMapel(g.nama)} className="w-full">
+                                        <Card className="flex items-center justify-between py-3.5">
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="truncate font-bold text-slate-800">{g.nama}</p>
+                                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{g.count} JP</span>
+                                                </div>
+                                                <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
+                                                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{g.timeRange}</span>
+                                                    {kelas && <span className="inline-flex items-center gap-1 text-slate-400">{kelas}</span>}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge tone={b.tone} icon={b.icon}>{b.label}</Badge>
+                                                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                                            </div>
+                                        </Card>
+                                    </button>
+                                    {expanded && (
+                                        <div className="ml-4 mt-1 space-y-1 border-l-2 border-slate-100 pl-3">
+                                            {g.items.map((p) => {
+                                                const ib = getStatusBadge(p.status);
+                                                return (
+                                                    <div key={p.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                                                        <span className="text-xs font-semibold text-slate-600">{formatJam(p.jadwal?.jam_mulai)}–{formatJam(p.jadwal?.jam_selesai)}</span>
+                                                        <Badge tone={ib.tone} icon={ib.icon}>{ib.label}</Badge>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
                             );
                         })
                     )}
