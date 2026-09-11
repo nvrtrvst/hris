@@ -1030,7 +1030,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                         {p.is_lembur ? (
                                                             <div>
                                                                 <LemburBadge status={p.lembur_status} />
-                                                                {p.lembur_status === 'pending' && (
+                                                                {p.lembur_status === 'pending' && auth.permissions?.includes('manage_master_data') && (
                                                                     <div className="mt-1.5 flex gap-1">
                                                                         <button
                                                                             onClick={() => router.post(route('presensi.approveLembur', p.id), {}, { preserveState: true })}

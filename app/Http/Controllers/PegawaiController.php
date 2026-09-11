@@ -616,6 +616,17 @@ class PegawaiController extends Controller
                 if (! empty($validated['role'])) {
                     $userAcc->syncRoles($validated['role']);
                 }
+
+                // Auto-upgrade ke pimpinan bila jabatan is_supervisor
+                if (($validated['role'] ?? '') === 'pegawai' && ! empty($syncUnits)) {
+                    $jabatanIds = array_column($syncUnits, 'jabatan_id');
+                    $isSupervisor = Jabatan::whereIn('id', $jabatanIds)
+                        ->where('is_supervisor', true)
+                        ->exists();
+                    if ($isSupervisor) {
+                        $userAcc->syncRoles('pimpinan');
+                    }
+                }
             }
         }
 
