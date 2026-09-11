@@ -69,6 +69,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         tanggal_akhir_kontrak: pegawai.tanggal_akhir_kontrak || '',
         nama_bank: pegawai.nama_bank || '',
         no_rekening: pegawai.no_rekening || '',
+        role: pegawai.user?.roles?.[0]?.name || 'pegawai',
         foto: null,
         hapus_foto: false,
         units: (pegawai.units || []).map((u) => ({
@@ -352,6 +353,17 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                             <Field label="Tanggal SK" error={errors.sk_tanggal}>
                                 <input type="date" value={data.sk_tanggal}
                                     onChange={(e) => setData('sk_tanggal', e.target.value)} className={inputClass} />
+                            </Field>
+                        </SectionCard>
+
+                        {/* Role Akses */}
+                        <SectionCard Icon={BadgeCheck} title="Role Akses">
+                            <Field label="Role Akses" error={errors.role}>
+                                <select value={data.role} onChange={(e) => setData('role', e.target.value)} className={selectClass}>
+                                    <option value="pegawai">Pegawai</option>
+                                    <option value="admin_unit">Admin Unit (Kepala Sekolah / Kepala TU)</option>
+                                    <option value="pimpinan">Pimpinan (Read-Only)</option>
+                                </select>
                             </Field>
                         </SectionCard>
 

@@ -20,31 +20,31 @@ class JabatanSeeder extends Seeder
 
             // ─── Tenaga Kependidikan (is_guru = false) ───
             // A. Kepala Satuan Pendidikan
-            ['nama' => 'Kepala Sekolah', 'is_guru' => false],
-            ['nama' => 'Wakil Kepala Sekolah', 'is_guru' => false],
-            ['nama' => 'Wakil Kepala Kurikulum', 'is_guru' => false],
-            ['nama' => 'Wakil Kepala Kesiswaan', 'is_guru' => false],
-            ['nama' => 'Wakil Kepala Sarpras', 'is_guru' => false],
-            ['nama' => 'Kepala Program', 'is_guru' => false],
+            ['nama' => 'Kepala Sekolah', 'is_guru' => false, 'is_supervisor' => true],
+            ['nama' => 'Wakil Kepala Sekolah', 'is_guru' => false, 'is_supervisor' => true],
+            ['nama' => 'Wakil Kepala Kurikulum', 'is_guru' => false, 'is_supervisor' => true],
+            ['nama' => 'Wakil Kepala Kesiswaan', 'is_guru' => false, 'is_supervisor' => true],
+            ['nama' => 'Wakil Kepala Sarpras', 'is_guru' => false, 'is_supervisor' => true],
+            ['nama' => 'Kepala Program', 'is_guru' => false, 'is_supervisor' => true],
 
             // B. Tenaga Perpustakaan
-            ['nama' => 'Kepala Perpustakaan', 'is_guru' => false],
+            ['nama' => 'Kepala Perpustakaan', 'is_guru' => false, 'is_supervisor' => true],
             ['nama' => 'Pustakawan', 'is_guru' => false],
 
             // C. Tenaga Laboratorium
-            ['nama' => 'Kepala Laboratorium', 'is_guru' => false],
+            ['nama' => 'Kepala Laboratorium', 'is_guru' => false, 'is_supervisor' => true],
             ['nama' => 'Laboran', 'is_guru' => false],
 
             // D. Tenaga Administrasi
-            ['nama' => 'Kepala Tata Usaha', 'is_guru' => false],
+            ['nama' => 'Kepala Tata Usaha', 'is_guru' => false, 'is_supervisor' => true],
             ['nama' => 'Tenaga Administrasi (TU)', 'is_guru' => false],
             ['nama' => 'Bendahara', 'is_guru' => false],
             ['nama' => 'Kasir', 'is_guru' => false],
             ['nama' => 'Operator / Pranata Komputer', 'is_guru' => false],
 
             // Yayasan (kantor pusat)
-            ['nama' => 'Ketua Yayasan', 'is_guru' => false],
-            ['nama' => 'Kepala Yayasan', 'is_guru' => false],
+            ['nama' => 'Ketua Yayasan', 'is_guru' => false, 'is_supervisor' => true],
+            ['nama' => 'Kepala Yayasan', 'is_guru' => false, 'is_supervisor' => true],
 
             // E. Tenaga Kependidikan lainnya
             ['nama' => 'Satpam / Petugas Keamanan', 'is_guru' => false],

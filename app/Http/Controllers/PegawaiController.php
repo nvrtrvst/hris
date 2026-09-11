@@ -324,6 +324,15 @@ class PegawaiController extends Controller
 
         $user->syncRoles($validated['role']);
 
+        // Auto-upgrade ke role pimpinan bila jabatan bersifat supervisor
+        // dan admin tidak sengaja memilih role default `pegawai`.
+        if ($validated['role'] === 'pegawai') {
+            $jabatan = Jabatan::find($validated['jabatan_id']);
+            if ($jabatan && $jabatan->is_supervisor) {
+                $user->syncRoles('pimpinan');
+            }
+        }
+
         $pegawai = Pegawai::create([
             'user_id' => $user->id,
             'nama_lengkap' => $request->nama_lengkap,
@@ -508,6 +517,7 @@ class PegawaiController extends Controller
             'sk_tanggal' => 'nullable|date',
             'nama_bank' => 'nullable|string|max:255',
             'no_rekening' => 'nullable|string|max:50',
+            'role' => 'nullable|in:pegawai,admin_unit,pimpinan',
         ]);
 
         // Admin unit: atasan wajib pegawai di unitnya sendiri (anti-bypass).
@@ -602,6 +612,10 @@ class PegawaiController extends Controller
                     'email' => $validated['email'],
                     'username' => ! empty($validated['nuptk'] ?? null) ? $validated['nuptk'] : $validated['nik'],
                 ]);
+
+                if (! empty($validated['role'])) {
+                    $userAcc->syncRoles($validated['role']);
+                }
             }
         }
 

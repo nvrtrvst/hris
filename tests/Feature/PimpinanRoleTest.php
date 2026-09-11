@@ -196,4 +196,58 @@ class PimpinanRoleTest extends TestCase
                 ->has('jadwals', 1)
                 ->where('jadwals.0.pegawai.nama_lengkap', 'Guru Bawahan'));
     }
+
+    public function test_auto_assign_pimpinan_role_when_jabatan_is_supervisor(): void
+    {
+        $superadmin = User::factory()->create();
+        $superadmin->assignRole('superadmin');
+
+        $kepsekJabatan = Jabatan::firstOrCreate(
+            ['nama' => 'Kepala Sekolah'],
+            ['is_supervisor' => true]
+        );
+
+        $this->actingAs($superadmin)
+            ->post(route('pegawai.store'), [
+                'nama_lengkap' => 'Kepsek Auto',
+                'email' => 'kepsek.auto@yayasan.com',
+                'no_hp' => '081200000099',
+                'unit_sekolah_id' => $this->sd->id,
+                'jabatan_id' => $kepsekJabatan->id,
+                'role' => 'pegawai', // default, should be overridden
+                'status_kepegawaian' => 'guru_pemula',
+            ])
+            ->assertRedirect();
+
+        $user = User::where('email', 'kepsek.auto@yayasan.com')->first();
+        $this->assertTrue($user->hasRole('pimpinan'), 'User dengan jabatan supervisor harus otomatis dapat role pimpinan.');
+        $this->assertFalse($user->hasRole('pegawai'), 'Role pegawai tidak boleh tetap ada setelah override.');
+    }
+
+    public function test_admin_unit_role_not_overridden_by_supervisor_jabatan(): void
+    {
+        $superadmin = User::factory()->create();
+        $superadmin->assignRole('superadmin');
+
+        $kepsekJabatan = Jabatan::firstOrCreate(
+            ['nama' => 'Kepala Sekolah'],
+            ['is_supervisor' => true]
+        );
+
+        $this->actingAs($superadmin)
+            ->post(route('pegawai.store'), [
+                'nama_lengkap' => 'Kepsek Admin Unit',
+                'email' => 'kepsek.admin@yayasan.com',
+                'no_hp' => '081200000088',
+                'unit_sekolah_id' => $this->sd->id,
+                'jabatan_id' => $kepsekJabatan->id,
+                'role' => 'admin_unit', // explicit choice, should NOT be overridden
+                'status_kepegawaian' => 'guru_pemula',
+            ])
+            ->assertRedirect();
+
+        $user = User::where('email', 'kepsek.admin@yayasan.com')->first();
+        $this->assertTrue($user->hasRole('admin_unit'), 'Role admin_unit pilihan admin harus dipertahankan.');
+        $this->assertFalse($user->hasRole('pimpinan'), 'Role pimpinan tidak boleh di-override dari admin_unit.');
+    }
 }

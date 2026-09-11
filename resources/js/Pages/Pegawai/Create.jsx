@@ -108,7 +108,13 @@ export default function Create({ auth, unitSekolahs, jabatans, statusKepegawaian
                                 </select>
                             </Field>
                             <Field label="Jabatan" required error={errors.jabatan_id}>
-                                <select value={data.jabatan_id} onChange={(e) => setData('jabatan_id', e.target.value)} className={selectClass}>
+                                <select value={data.jabatan_id} onChange={(e) => {
+                                    setData('jabatan_id', e.target.value);
+                                    const jab = jabatans.find(j => String(j.id) === e.target.value);
+                                    if (jab?.is_supervisor && data.role === 'pegawai') {
+                                        setData('role', 'pimpinan');
+                                    }
+                                }} className={selectClass}>
                                     <option value="">Pilih Jabatan</option>
                                     {jabatans.map((jab) => <option key={jab.id} value={jab.id}>{jab.nama}</option>)}
                                 </select>
