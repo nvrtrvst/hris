@@ -838,6 +838,20 @@ class MobileController extends Controller
                         ->whereNull('jam_keluar')
                         ->update(['jam_keluar' => Carbon::now()->format('H:i:s')]);
                 }
+
+                // Auto-close JP sebelumnya saat masuk JP berikutnya. Set jam_keluar
+                // = jadwal.jam_selesai agar data rapi per-schedule tanpa manual keluar.
+                if ($jadwal && PresensiMessages::AUTO_CLOSE_PREV_JADWAL) {
+                    Presensi::with('jadwal')
+                        ->where('pegawai_id', $pegawai->id)
+                        ->where('tanggal', $tanggal)
+                        ->whereNotNull('jadwal_id')
+                        ->where('jadwal_id', '!=', $jadwal->id)
+                        ->whereNull('jam_keluar')
+                        ->where('tipe_presensi', 'mengajar')
+                        ->get()
+                        ->each(fn ($p) => $p->update(['jam_keluar' => $p->jadwal?->jam_selesai]));
+                }
             } else {
                 $presensi->jam_keluar = Carbon::now()->format('H:i:s');
                 $presensi->latitude_keluar = $request->latitude;
