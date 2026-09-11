@@ -800,7 +800,7 @@ class PenggajianController extends Controller
             'jenis_kelamin',
             'status_pernikahan',
             'status_kepegawaian',
-            'tanggal_mulai_kerja',
+            'tmt_mengajar',
         ];
     }
 

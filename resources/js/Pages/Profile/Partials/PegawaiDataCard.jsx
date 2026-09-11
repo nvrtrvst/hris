@@ -99,7 +99,7 @@ export default function PegawaiDataCard() {
         no_hp: pegawai?.no_hp || '',
         no_hp_darurat: pegawai?.no_hp_darurat || '',
         status_kepegawaian: pegawai?.status_kepegawaian || '',
-        tanggal_mulai_kerja: pegawai?.tanggal_mulai_kerja || '',
+        tmt_mengajar: pegawai?.tmt_mengajar || '',
         tanggal_akhir_kontrak: pegawai?.tanggal_akhir_kontrak || '',
         pendidikan_terakhir: pegawai?.pendidikan_terakhir || '',
         pendidikan_jurusan: pegawai?.pendidikan_jurusan || '',
@@ -255,8 +255,8 @@ export default function PegawaiDataCard() {
                             </div>
                             <div>
                                 <label className={labelClass}>Mulai Kerja</label>
-                                <input type="date" value={form.data.tanggal_mulai_kerja} onChange={(e) => form.setData('tanggal_mulai_kerja', e.target.value)} className={inputClass} />
-                                {labelErr(form.errors, 'tanggal_mulai_kerja')}
+                                <input type="date" value={form.data.tmt_mengajar} onChange={(e) => form.setData('tmt_mengajar', e.target.value)} className={inputClass} />
+                                {labelErr(form.errors, 'tmt_mengajar')}
                             </div>
                             {['honorer', 'kontrak', 'gtt'].includes(form.data.status_kepegawaian) && (
                                 <div>
@@ -363,7 +363,7 @@ export default function PegawaiDataCard() {
 
                     <Section title="Kepegawaian">
                         <Field icon={MapPin} label="Status Kepegawaian" value={kepegLabel(pegawai?.status_kepegawaian)} />
-                        <Field icon={CalendarDays} label="Mulai Kerja" value={fmtDate(pegawai?.tanggal_mulai_kerja)} />
+                        <Field icon={CalendarDays} label="Mulai Kerja" value={fmtDate(pegawai?.tmt_mengajar)} />
                         {kontrakAktif && (
                             <Field
                                 icon={CalendarClock}

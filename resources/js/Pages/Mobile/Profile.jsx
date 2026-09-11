@@ -201,8 +201,8 @@ export default function MobileProfile({ status }) {
                     <Field
                         icon={CalendarDays}
                         label="Bergabung Sejak"
-                        value={pegawai?.tanggal_mulai_kerja
-                            ? format(parseISO(pegawai.tanggal_mulai_kerja), 'd MMMM yyyy', { locale: idLocale })
+                        value={pegawai?.tmt_mengajar
+                            ? format(parseISO(pegawai.tmt_mengajar), 'd MMMM yyyy', { locale: idLocale })
                             : null}
                     />
                     {!pegawai?.is_tetap && pegawai?.tanggal_akhir_kontrak && (

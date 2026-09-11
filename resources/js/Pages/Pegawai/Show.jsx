@@ -327,7 +327,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                 <InfoRow label="Tahun Lulus">{pegawai.pendidikan_tahun_lulus || '—'}</InfoRow>
                                 <InfoRow label="No. SK">{pegawai.sk_nomor || '—'}</InfoRow>
                                 <InfoRow label="Tanggal SK">{fmtDate(pegawai.sk_tanggal)}</InfoRow>
-                                <InfoRow label="Mulai Bekerja">{fmtDate(pegawai.tanggal_mulai_kerja)}</InfoRow>
+                                <InfoRow label="Mulai Bekerja">{fmtDate(pegawai.tmt_mengajar)}</InfoRow>
                                 <InfoRow label="Dibuat oleh">
                                     {pegawai.created_by?.name ? `${pegawai.created_by.name} • ${fmtDate(pegawai.created_at)}` : fmtDate(pegawai.created_at)}
                                 </InfoRow>

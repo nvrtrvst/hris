@@ -58,7 +58,6 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         jatah_cuti_tahunan: pegawai.jatah_cuti_tahunan ?? 12,
         status_aktif: pegawai.status_aktif,
         tmt_mengajar: pegawai.tmt_mengajar || '',
-        tanggal_mulai_kerja: pegawai.tanggal_mulai_kerja,
         pendidikan_terakhir: pegawai.pendidikan_terakhir,
         pendidikan_jurusan: pegawai.pendidikan_jurusan || '',
         pendidikan_tahun_lulus: pegawai.pendidikan_tahun_lulus || '',
@@ -313,9 +312,9 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                                     <option value="resign">Resign</option>
                                 </select>
                             </Field>
-                            <Field label="Tanggal Mulai Kerja" required error={errors.tanggal_mulai_kerja}>
-                                <input type="date" value={data.tanggal_mulai_kerja}
-                                    onChange={(e) => setData('tanggal_mulai_kerja', e.target.value)} className={inputClass} />
+                            <Field label="Tanggal Mulai Kerja" required error={errors.tmt_mengajar}>
+                                <input type="date" value={data.tmt_mengajar}
+                                    onChange={(e) => setData('tmt_mengajar', e.target.value)} className={inputClass} />
                             </Field>
                             <Field label="Tanggal Akhir Kontrak" error={errors.tanggal_akhir_kontrak} hint="Kosongkan jika bukan kontrak.">
                                 <input type="date" value={data.tanggal_akhir_kontrak}
