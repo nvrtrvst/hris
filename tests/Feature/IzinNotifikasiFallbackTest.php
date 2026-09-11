@@ -109,7 +109,7 @@ class IzinNotifikasiFallbackTest extends TestCase
         ]);
     }
 
-    public function test_notifikasi_tetap_ke_approver_l1_saat_dikonfigurasi(): void
+    public function test_notifikasi_tetap_ke_approver_l1_dan_semua_superadmin_saat_dikonfigurasi(): void
     {
         $jabatanKepsek = Jabatan::create(['nama' => 'Kepala Sekolah']);
         $jabatanGuru = Jabatan::create([
@@ -121,7 +121,12 @@ class IzinNotifikasiFallbackTest extends TestCase
         $approverUser = User::factory()->create();
         $this->makePegawai($approverUser, $jabatanKepsek);
 
-        $adminUnit = $this->makeAdminUnit();
+        // Superadmin di scope global — harus ikut dapat notifikasi untuk audit.
+        $superadmin = $this->makeSuperadmin();
+
+        // Admin unit berbeda unit — TIDAK boleh dapat notifikasi (L1 ada).
+        $adminUnitLain = $this->makeAdminUnit();
+
         $pegawaiUser = User::factory()->create();
         $this->makePegawai($pegawaiUser, $jabatanGuru);
 
@@ -133,10 +138,82 @@ class IzinNotifikasiFallbackTest extends TestCase
             'notifiable_id' => $approverUser->id,
         ]);
 
-        // ...dan BUKAN fallback ke admin unit (L1 ada, fallback tidak jalan).
+        // ...dan ke superadmin (audit lintas unit).
+        $this->assertDatabaseHas('notifications', [
+            'type' => IzinBaru::class,
+            'notifiable_id' => $superadmin->id,
+        ]);
+
+        // Admin unit di unit yang SAMA tidak dapat (L1 sudah handle).
         $this->assertDatabaseMissing('notifications', [
             'type' => IzinBaru::class,
-            'notifiable_id' => $adminUnit->id,
+            'notifiable_id' => $adminUnitLain->id,
         ]);
+    }
+
+    public function test_notifikasi_didedup_saat_superadmin_merangkap_approver_l1(): void
+    {
+        $jabatanKepsek = Jabatan::create(['nama' => 'Kepala Sekolah']);
+        $jabatanGuru = Jabatan::create([
+            'nama' => 'Guru',
+            'approver_l1_jabatan_id' => $jabatanKepsek->id,
+        ]);
+
+        // Superadmin yang JUGA menjadi Kepala Sekolah unit → 2 role, 1 user.
+        $kepsekSuperadminUser = User::factory()->create();
+        $kepsekSuperadminUser->assignRole('superadmin');
+        $this->makePegawai($kepsekSuperadminUser, $jabatanKepsek);
+
+        $pegawaiUser = User::factory()->create();
+        $this->makePegawai($pegawaiUser, $jabatanGuru);
+
+        $this->ajukanIzin($pegawaiUser)->assertRedirect(route('presensi.izin.index'));
+
+        // Hanya 1 baris notifikasi untuk user yg sama — dedup via unique('id').
+        $count = \DB::table('notifications')
+            ->where('type', IzinBaru::class)
+            ->where('notifiable_id', $kepsekSuperadminUser->id)
+            ->count();
+
+        $this->assertSame(1, $count);
+    }
+
+    public function test_fallback_menyertakan_semua_superadmin_dan_admin_unit_unit_yang_sama(): void
+    {
+        // Jabatan Guru TANPA approver_l1_jabatan_id → fallback.
+        $jabatanGuru = Jabatan::create(['nama' => 'Guru']);
+
+        // 2 superadmin (mis. yayasan punya beberapa superadmin).
+        $superadmin1 = $this->makeSuperadmin();
+        $superadmin2 = $this->makeSuperadmin();
+
+        // Admin unit di unit yang SAMA → dapat fallback.
+        $adminUnit = $this->makeAdminUnit();
+
+        // Admin unit di unit LAIN (buat unit kedua) → TIDAK dapat.
+        $unitLain = UnitSekolah::create([
+            'nama' => 'TK Test',
+            'singkatan' => 'TK',
+            'latitude' => -6.3,
+            'longitude' => 106.9,
+            'radius_meter' => 100,
+        ]);
+        $adminUnitLain = User::factory()->create(['unit_sekolah_id' => $unitLain->id]);
+        $adminUnitLain->assignRole('admin_unit');
+
+        $pegawaiUser = User::factory()->create();
+        $this->makePegawai($pegawaiUser, $jabatanGuru);
+
+        $this->ajukanIzin($pegawaiUser)->assertRedirect(route('presensi.izin.index'));
+
+        // Kedua superadmin dapat notifikasi.
+        $this->assertDatabaseHas('notifications', ['type' => IzinBaru::class, 'notifiable_id' => $superadmin1->id]);
+        $this->assertDatabaseHas('notifications', ['type' => IzinBaru::class, 'notifiable_id' => $superadmin2->id]);
+
+        // Admin unit unit yang sama dapat fallback.
+        $this->assertDatabaseHas('notifications', ['type' => IzinBaru::class, 'notifiable_id' => $adminUnit->id]);
+
+        // Admin unit unit lain TIDAK dapat.
+        $this->assertDatabaseMissing('notifications', ['type' => IzinBaru::class, 'notifiable_id' => $adminUnitLain->id]);
     }
 }

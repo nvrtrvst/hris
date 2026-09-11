@@ -173,16 +173,23 @@ class MobileIzinController extends Controller
     }
 
     /**
-     * Kabari approver L1 bahwa ada pengajuan baru. Bila L1 tidak
-     * dikonfigurasi (jabatan tanpa approver), fallback ke semua admin unit
-     * di unit pegawai + superadmin — pengajuan tidak boleh luput dari
-     * perhatian siapa pun.
+     * Kabari approver L1 bahwa ada pengajuan baru. Supadmin selalu ikut
+     * diberi tahu (awareness + audit lintas unit). Tanpa L1, fallback ke
+     * semua admin unit di unit pegawai — pengajuan tidak boleh luput.
      */
     private function notifyPengajuanBaru(PengajuanIzin $pengajuan, Pegawai $pegawai, array $approvers): void
     {
-        // Approver L1 terkonfigurasi & ditemukan → kabari dia saja.
+        $superadmins = User::role('superadmin')->get();
+
+        // Approver L1 terkonfigurasi & ditemukan → kabari L1 + semua superadmin.
         if (! empty($approvers['has_l1'])) {
-            NotificationHelper::sendSafely(User::find($approvers['l1_id']), new IzinBaru($pengajuan));
+            $recipients = $superadmins->push(User::find($approvers['l1_id']))
+                ->filter()
+                ->unique('id');
+
+            foreach ($recipients as $target) {
+                NotificationHelper::sendSafely($target, new IzinBaru($pengajuan));
+            }
 
             return;
         }
@@ -192,13 +199,15 @@ class MobileIzinController extends Controller
         $primaryUnit = $pegawai->units()->wherePivot('is_primary', true)->first()
             ?? $pegawai->units()->first();
 
-        $targets = User::role(['admin_unit', 'superadmin'])
+        $admins = User::role('admin_unit')
             ->where(function ($q) use ($primaryUnit) {
                 $q->whereNull('unit_sekolah_id')->orWhere('unit_sekolah_id', $primaryUnit?->id);
             })
             ->get();
 
-        foreach ($targets->unique('id') as $target) {
+        $recipients = $admins->merge($superadmins)->unique('id');
+
+        foreach ($recipients as $target) {
             NotificationHelper::sendSafely($target, new IzinBaru($pengajuan));
         }
     }
