@@ -43,8 +43,23 @@ class PresensiController extends Controller
         $query = Presensi::with(['unitSekolah', 'pegawai', 'jadwal.pegawaiMapel']);
 
         if ($this->isPimpinanReadOnly($user)) {
-            // Pimpinan (kepsek/kepala TU/ketua yayasan): HANYA presensi bawahan langsung.
-            $this->scopePimpinanBawahan($query, $user);
+            if ($this->isKepsek($user)) {
+                // Kepsek: default semua presensi dalam unit, atau presensi sendiri.
+                if ($request->view_mode === 'self') {
+                    $query->where('pegawai_id', $user->pegawai?->id);
+                } else {
+                    $unitId = $user->unit_sekolah_id
+                        ?? $user->pegawai?->units->first()?->id;
+                    if ($unitId) {
+                        $query->where('unit_sekolah_id', $unitId);
+                    } else {
+                        $query->whereRaw('1 = 0');
+                    }
+                }
+            } else {
+                // Pimpinan lain (kepala TU/ketua yayasan): HANYA bawahan langsung.
+                $this->scopePimpinanBawahan($query, $user);
+            }
         } elseif (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
             if ($pegawai) {
@@ -155,7 +170,7 @@ class PresensiController extends Controller
         return inertia('Presensi/Index', [
             'presensis' => $presensis,
             'pegawai' => $isAdmin ? null : ($pegawai ?? null),
-            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'status_filter', 'jadwal_filter', 'jenis_filter', 'search']),
+            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'status_filter', 'jadwal_filter', 'jenis_filter', 'search', 'view_mode']),
             'units' => $units,
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'stats' => $stats,

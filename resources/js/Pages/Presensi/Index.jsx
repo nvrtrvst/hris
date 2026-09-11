@@ -577,6 +577,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [statusFilter, setStatusFilter] = React.useState(filters?.status_filter || '');
     const [jadwalFilter, setJadwalFilter] = React.useState(filters?.jadwal_filter || '');
     const [jenisFilter, setJenisFilter] = React.useState(filters?.jenis_filter || '');
+    const isPimpinan = isAdmin && !auth.permissions?.includes('manage_master_data');
+    const [dataViewMode, setDataViewMode] = React.useState(filters?.view_mode || (isPimpinan ? 'all' : ''));
     const [viewMode, setViewMode] = React.useState('ringkas');
     const [expanded, setExpanded] = React.useState({});
     const [search, setSearch] = React.useState(filters?.search || '');
@@ -623,8 +625,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         jadwal_filter: jadwalFilter,
         jenis_filter: jenisFilter,
         search,
+        view_mode: dataViewMode || undefined,
         ...overrides,
-    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, jadwalFilter, jenisFilter, search]);
+    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, jadwalFilter, jenisFilter, search, dataViewMode]);
 
     const applyFilters = React.useCallback((overrides = {}) => {
         router.get(route('presensi.index'), buildParams(overrides), { preserveState: true, preserveScroll: true });
@@ -647,6 +650,13 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
+
+    // Reload saat dataViewMode berubah (tab toggle Kepsek)
+    React.useEffect(() => {
+        if (dataViewMode === (filters?.view_mode || '')) return;
+        applyFilters({ view_mode: dataViewMode || undefined });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dataViewMode]);
 
     React.useEffect(() => {
         if (confirmStatus) setPersentaseBayar(confirmStatus.persentase_bayar_jam ?? 100);
@@ -764,6 +774,24 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                         {statsCards.map((card) => <StatCard key={card.label} {...card} onClick={() => applyStatFilter(card.filter)} />)}
                     </div>
+
+                    {/* Kepsek view mode toggle */}
+                    {isPimpinan && (
+                        <div className="flex gap-1 rounded-lg bg-surface-secondary p-1 w-fit">
+                            <button
+                                onClick={() => setDataViewMode('all')}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${dataViewMode !== 'self' ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}
+                            >
+                                Semua Bawahan
+                            </button>
+                            <button
+                                onClick={() => setDataViewMode('self')}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${dataViewMode === 'self' ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}
+                            >
+                                Presensi Saya
+                            </button>
+                        </div>
+                    )}
 
                     {/* Filter bar */}
                     <div className="card p-5">
