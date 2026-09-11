@@ -321,10 +321,11 @@ class PresensiSlideMultiJadwalTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_jp_auto_cover_memiliki_jam_masuk_dan_jam_keluar_null(): void
+    public function test_jp_auto_cover_memiliki_jam_dari_jadwal(): void
     {
         // Hari ini, 09:00. Cover A1+A2+A3.
-        // JP cover (A2, A3) harus NULL jam_masuk & jam_keluar — payroll mengajar hanya butuh status.
+        // Anchor A1: jam_masuk aktual, jam_keluar = jadwal.
+        // JP cover (A2, A3): jam_masuk/jam_keluar = jadwal masing-masing.
         $hari = $this->hariIniIndo();
         Carbon::setTestNow(Carbon::today()->setTime(9, 0));
 
@@ -336,17 +337,17 @@ class PresensiSlideMultiJadwalTest extends TestCase
 
         $this->postSlide($jpA1)->assertOk();
 
-        // A1 (JP utama): jam_masuk terisi, jam_keluar NULL (slide masuk only).
+        // A1 (JP utama): jam_masuk terisi, jam_keluar = jadwal A1.
         $jpA1Row = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA1->id)->first();
         $this->assertNotNull($jpA1Row->jam_masuk);
-        $this->assertNull($jpA1Row->jam_keluar);
+        $this->assertSame('08:45:00', $jpA1Row->jam_keluar);
 
-        // A2, A3 (cover otomatis): jam_masuk NULL, jam_keluar NULL.
+        // A2, A3 (cover otomatis): jam lengkap dari jadwal, tanpa lokasi.
         foreach ([$jpA2, $jpA3] as $jp) {
             $row = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jp->id)->first();
             $this->assertNotNull($row, "Presensi for jadwal_id={$jp->id} should exist");
-            $this->assertNull($row->jam_masuk, 'jam_masuk should be NULL for auto-cover JP');
-            $this->assertNull($row->jam_keluar, 'jam_keluar should be NULL for auto-cover JP');
+            $this->assertSame($jp->jam_mulai, $row->jam_masuk, 'jam_masuk should be from jadwal for auto-cover JP');
+            $this->assertSame($jp->jam_selesai, $row->jam_keluar, 'jam_keluar should be from jadwal for auto-cover JP');
             $this->assertNull($row->latitude_masuk, 'latitude_masuk should be NULL for auto-cover JP');
             $this->assertNull($row->longitude_masuk, 'longitude_masuk should be NULL for auto-cover JP');
         }
@@ -354,11 +355,11 @@ class PresensiSlideMultiJadwalTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_status_jp_auto_cover_pakai_jadwal_jam_mulai_bukan_waktu_slide(): void
+    public function test_status_jp_auto_cover_selalu_hadir(): void
     {
-        // Hari ini, 09:00. JP A1 08:00-08:45.
-        // Karena slide time (09:00) > jam_mulai (08:00), status SEHARUSNYA 'telat' (grace 0).
-        // Tapi JP cover A2 (jam_mulai 08:45) juga harus 'telat' karena slide time > 08:45.
+        // Hari ini, 09:00. JP A1 08:00-08:45, A2 08:45-09:30.
+        // Anchor A1: telat (09:00 > 08:00, toleransi 0). Cover A2: selalu hadir
+        // karena jam_masuknya = jadwal (08:45), bukan waktu slide.
         $hari = $this->hariIniIndo();
         Carbon::setTestNow(Carbon::today()->setTime(9, 0));
 
@@ -371,8 +372,8 @@ class PresensiSlideMultiJadwalTest extends TestCase
 
         // A1: telat (09:00 > 08:00, toleransi 0).
         $this->assertSame('telat', Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA1->id)->value('status'));
-        // A2: juga telat karena JP cover pakai now (09:00) vs A2.jam_mulai (08:45).
-        $this->assertSame('telat', Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA2->id)->value('status'));
+        // A2: hadir — jam cover dari jadwal, tidak dibanding waktu slide.
+        $this->assertSame('hadir', Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA2->id)->value('status'));
 
         Carbon::setTestNow();
     }
@@ -381,11 +382,10 @@ class PresensiSlideMultiJadwalTest extends TestCase
     // 4 RACE CONDITION HARDENING SCENARIOS
     // ========================================================================
 
-    public function test_slide_keluar_grup_mencatat_jam_keluar_di_jp_terakhir(): void
+    public function test_slide_keluar_mengajar_ditolak_karena_jam_keluar_prefilled(): void
     {
-        // Grup 3 JP: 08:00, 08:45, 09:30. Slide masuk A1 (cover semua), lalu
-        // slide keluar → jam_keluar HARUS di row JP terakhir (09:30), row JP
-        // pertama tetap hanya jam_masuk.
+        // Grup 3 JP: 08:00, 08:45, 09:30. Slide masuk A1 (cover semua, jam_keluar
+        // = jadwal masing-masing) → slide keluar tidak lagi diperlukan: 422.
         $hari = $this->hariIniIndo();
         Carbon::setTestNow(Carbon::today()->setTime(9, 0));
 
@@ -398,24 +398,18 @@ class PresensiSlideMultiJadwalTest extends TestCase
         $this->postSlide($jpA1)->assertOk();
 
         Carbon::setTestNow(Carbon::today()->setTime(10, 30));
-        $res = $this->postSlide($jpA1, tipe: 'keluar');
-        $res->assertOk()->assertJson(['success' => true]);
+        $this->postSlide($jpA1, tipe: 'keluar')->assertStatus(422);
 
-        // JP pertama: hanya jam_masuk.
+        // Semua row: jam lengkap dari jadwal (anchor masuk aktual).
         $rowA1 = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA1->id)->first();
         $this->assertNotNull($rowA1->jam_masuk);
-        $this->assertNull($rowA1->jam_keluar);
-
-        // JP tengah: tetap NULL/NULL.
+        $this->assertSame('08:45:00', $rowA1->jam_keluar);
         $rowA2 = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA2->id)->first();
-        $this->assertNull($rowA2->jam_masuk);
-        $this->assertNull($rowA2->jam_keluar);
-
-        // JP terakhir: hanya jam_keluar (10:30).
+        $this->assertSame('08:45:00', $rowA2->jam_masuk);
+        $this->assertSame('09:30:00', $rowA2->jam_keluar);
         $rowA3 = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jpA3->id)->first();
-        $this->assertNull($rowA3->jam_masuk);
-        $this->assertNotNull($rowA3->jam_keluar);
-        $this->assertSame('10:30:00', $rowA3->jam_keluar);
+        $this->assertSame('09:30:00', $rowA3->jam_masuk);
+        $this->assertSame('10:15:00', $rowA3->jam_keluar);
 
         Carbon::setTestNow();
     }
@@ -433,8 +427,7 @@ class PresensiSlideMultiJadwalTest extends TestCase
         $this->postSlide($jpA1)->assertOk();
 
         Carbon::setTestNow(Carbon::today()->setTime(9, 45));
-        $this->postSlide($jpA1, tipe: 'keluar')->assertOk();
-        // Slide pulang kedua → 422 (grup sudah pulang).
+        // Slide pulang ditolak (jam_keluar sudah pre-filled dari jadwal).
         $this->postSlide($jpA1, tipe: 'keluar')->assertStatus(422);
 
         Carbon::setTestNow();

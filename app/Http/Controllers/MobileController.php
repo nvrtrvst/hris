@@ -826,25 +826,31 @@ class MobileController extends Controller
                     $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jamMulai, (int) $unit->toleransi_menit);
                 }
 
-                // JP2+ same subject: override with schedule times. Jika hari ini
-                // sudah ada presensi lain untuk mapel+kelas yang sama, anggap ini
-                // lanjutan → pakai jam_mulai & jam_selesai dari jadwal.
+                // JP lanjutan (mapel+kelas+unit sama, gap ≤ GAP_SESI_MENIT): jam
+                // dari jadwal. JP pertama yang hadir memakai jam aktual user
+                // (untuk status hadir/telat); JP sebelumnya yang alpa/izin tidak
+                // dihitung hadir → JP ini menjadi "pertama" (jam aktual user).
                 if ($jadwal && ! $isLembur && ! $isTugasLuar) {
                     $isJpContinuation = Presensi::where('pegawai_id', $pegawai->id)
                         ->where('tanggal', $tanggal)
                         ->whereNotNull('jadwal_id')
-                        ->where('jadwal_id', '!=', $jadwal->id)
+                        ->whereNotNull('jam_masuk')
+                        ->where('tipe_presensi', 'mengajar')
                         ->whereHas('jadwal', function ($q) use ($jadwal) {
-                            $q->where('mapel_id', $jadwal->mapel_id)
-                                ->where('kelas_label', $jadwal->kelas_label);
+                            $q->where('pegawai_mapel_id', $jadwal->pegawai_mapel_id)
+                                ->where('kelas_label', $jadwal->kelas_label)
+                                ->where('unit_sekolah_id', $jadwal->unit_sekolah_id);
                         })
                         ->exists();
 
                     if ($isJpContinuation) {
                         $presensi->jam_masuk = $jadwal->jam_mulai;
-                        $presensi->jam_keluar = $jadwal->jam_selesai;
                         $presensi->status = 'hadir';
                     }
+
+                    // Pre-fill jam_keluar dari jadwal — tidak perlu absen keluar
+                    // per JP; waktunya final dari jadwal, bukan aktual.
+                    $presensi->jam_keluar = $jadwal->jam_selesai;
                 }
 
                 // Auto-close kantor terbuka saat mulai dinas luar. UPDATE atomik dengan
@@ -858,20 +864,6 @@ class MobileController extends Controller
                         ->whereNotNull('jam_masuk')
                         ->whereNull('jam_keluar')
                         ->update(['jam_keluar' => Carbon::now()->format('H:i:s')]);
-                }
-
-                // Auto-close JP sebelumnya saat masuk JP berikutnya. Set jam_keluar
-                // = jadwal.jam_selesai agar data rapi per-schedule tanpa manual keluar.
-                if ($jadwal && PresensiMessages::AUTO_CLOSE_PREV_JADWAL) {
-                    Presensi::with('jadwal')
-                        ->where('pegawai_id', $pegawai->id)
-                        ->where('tanggal', $tanggal)
-                        ->whereNotNull('jadwal_id')
-                        ->where('jadwal_id', '!=', $jadwal->id)
-                        ->whereNull('jam_keluar')
-                        ->where('tipe_presensi', 'mengajar')
-                        ->get()
-                        ->each(fn ($p) => $p->update(['jam_keluar' => $p->jadwal?->jam_selesai]));
                 }
             } else {
                 $presensi->jam_keluar = Carbon::now()->format('H:i:s');
@@ -1273,6 +1265,10 @@ class MobileController extends Controller
                 $presensi->is_lembur = false;
                 $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 5;
                 $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $jadwal->unitSekolah->toleransi_menit);
+                // Jam keluar mengajar final dari jadwal — tidak perlu slide pulang per JP.
+                if ($jadwal->jenis_jadwal === 'mengajar') {
+                    $presensi->jam_keluar = $jadwal->jam_selesai;
+                }
                 $presensi->save();
             } catch (UniqueConstraintViolationException $e) {
                 // Slide ganda: unique index (pegawai_id, presensi_key) menolak — driver-agnostic
@@ -1338,8 +1334,8 @@ class MobileController extends Controller
      * kriteria sama: hari+kelas+mapel+unit). JP yang sudah punya presensi
      * hari itu di-skip (pre-flight); race double-insert ditangkap unique index.
      *
-     * JP cover TIDAK menyimpan jam/lokasi/foto — payroll jam mengajar hanya
-     * butuh keberadaan row presensi per jadwal.
+     * JP cover menyimpan jam_masuk/jam_keluar dari jadwal JP masing-masing
+     * (status hadir) — lokasi/foto tetap hanya di row anchor.
      *
      * @return array<int, int> ID jadwal yang tercatat oleh cover.
      */
@@ -1366,9 +1362,12 @@ class MobileController extends Controller
                     'unit_sekolah_id' => $jp->unit_sekolah_id,
                     'tanggal' => Carbon::today()->toDateString(),
                     'tipe_presensi' => 'mengajar',
+                    // Jam cover final dari jadwal JP masing-masing.
+                    'jam_masuk' => $jp->jam_mulai,
+                    'jam_keluar' => $jp->jam_selesai,
                 ]);
                 $presensi->is_lembur = false;
-                $presensi->status = Presensi::statusAt($sekarang, $jp->jam_mulai, (int) ($jp->unitSekolah->toleransi_menit ?? 0));
+                $presensi->status = 'hadir';
                 $presensi->keterangan = sprintf('auto-cover dari slide JP #%d pukul %s', $jadwal->id, $sekarang);
                 $presensi->save();
                 $covered[] = $jp->id;
