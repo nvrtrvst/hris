@@ -79,7 +79,7 @@ class PresensiMessages
     // Auto-close: saat absen masuk JP berikutnya, tutup JP sebelumnya yang
     // masih terbuka (jam_keluar = jadwal.jam_selesai). Toggle off by default;
     // nyalakan saat slide-out tidak dibutuhkan tapi data harus rapi per-schedule.
-    public const AUTO_CLOSE_PREV_JADWAL = false;
+    public const AUTO_CLOSE_PREV_JADWAL = true;
 
     // Tugas Luar
     public const LABEL_TUGAS_LUAR = 'Tugas Luar';
