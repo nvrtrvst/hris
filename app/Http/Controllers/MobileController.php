@@ -940,6 +940,15 @@ class MobileController extends Controller
                 $presensi->save();
             }
 
+            // Auto-cover JP lanjutan (flow A honorer): saat absen masuk JP mengajar,
+            // JP setelah anchor dalam sesi mengajar (forward-only, gap ≤ GAP_SESI_MENIT,
+            // mapel+kelas+unit sama) otomatis dibuat row hadir dengan jam dari jadwal.
+            // coverSesiMengajar skip anchor + yang sudah ada; insert aman dari
+            // UniqueConstraintViolationException per-JP (tidak rollback anchor).
+            if ($request->tipe === 'masuk' && $jadwal && ! $isLembur && ! $isTugasLuar && $tipePresensi === 'mengajar') {
+                $this->coverSesiMengajar($pegawai, $jadwal, $hariIni, Carbon::now()->format('H:i:s'));
+            }
+
             return $presensi;
         }, 3);
     }

@@ -133,7 +133,8 @@ class AbsenJadwalTimesTest extends TestCase
     public function test_tiga_jp_semua_hadir(): void
     {
         // JP1 08:30-09:10, JP2 09:10-09:40, JP3 09:40-10:20 (mapel+kelas sama).
-        // JP1 absen 08:35 (telat, toleransi 0). JP2 absen 09:12. JP3 absen 09:45.
+        // Absen JP1 08:35 → anchor + auto-cover JP2 + auto-cover JP3 (forward-only).
+        // Attempt absen JP2/JP3 → 422 SUDAH_ABSEN_MASUK (sudah auto-cover).
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
 
         $pegawai = $this->makePegawaiHonorer();
@@ -145,32 +146,39 @@ class AbsenJadwalTimesTest extends TestCase
 
         Carbon::setTestNow(Carbon::today()->setTime(8, 35));
         $this->postAbsenMasuk($pegawai, $jp1)->assertOk()->assertJson(['success' => true]);
+
         $r1 = $this->rowFor($pegawai, $jp1);
-        $this->assertSame('08:35:00', $r1->jam_masuk, 'JP1 jam_masuk = aktual user');
+        $this->assertSame('08:35:00', $r1->jam_masuk, 'JP1 jam_masuk = aktual user (anchor)');
         $this->assertSame('09:10:00', $r1->jam_keluar, 'JP1 jam_keluar = jadwal');
         $this->assertSame('telat', $r1->status, 'JP1 telat (08:35 > 08:30)');
 
-        Carbon::setTestNow(Carbon::today()->setTime(9, 12));
-        $this->postAbsenMasuk($pegawai, $jp2)->assertOk()->assertJson(['success' => true]);
         $r2 = $this->rowFor($pegawai, $jp2);
+        $this->assertNotNull($r2, 'JP2 auto-cover row exists');
         $this->assertSame('09:10:00', $r2->jam_masuk, 'JP2 jam_masuk = jadwal');
         $this->assertSame('09:40:00', $r2->jam_keluar, 'JP2 jam_keluar = jadwal');
-        $this->assertSame('hadir', $r2->status, 'JP2 hadir');
+        $this->assertSame('hadir', $r2->status, 'JP2 auto-cover status hadir');
 
-        Carbon::setTestNow(Carbon::today()->setTime(9, 45));
-        $this->postAbsenMasuk($pegawai, $jp3)->assertOk()->assertJson(['success' => true]);
         $r3 = $this->rowFor($pegawai, $jp3);
+        $this->assertNotNull($r3, 'JP3 auto-cover row exists');
         $this->assertSame('09:40:00', $r3->jam_masuk, 'JP3 jam_masuk = jadwal');
         $this->assertSame('10:20:00', $r3->jam_keluar, 'JP3 jam_keluar = jadwal');
-        $this->assertSame('hadir', $r3->status, 'JP3 hadir');
+        $this->assertSame('hadir', $r3->status, 'JP3 auto-cover status hadir');
+
+        // Attempt absen JP2 manual → ditolak karena sudah auto-cover.
+        Carbon::setTestNow(Carbon::today()->setTime(9, 12));
+        $this->postAbsenMasuk($pegawai, $jp2)->assertStatus(422);
+
+        Carbon::setTestNow(Carbon::today()->setTime(9, 45));
+        $this->postAbsenMasuk($pegawai, $jp3)->assertStatus(422);
 
         Carbon::setTestNow();
     }
 
     public function test_jp1_tidak_hadir_jp2_pakai_jam_aktual(): void
     {
-        // JP1 TIDAK diabsen (alpa). JP2 absen 09:12 — menjadi JP pertama yang
-        // hadir → jam aktual user, bukan jadwal.
+        // JP1 TIDAK diabsen (alpa, no row). JP2 absen 09:12 → jadi JP pertama yang
+        // hadir → jam aktual user. JP3 (lanjut JP2) auto-cover dengan jam jadwal.
+        // Forward-only: JP1 TIDAK auto-cover karena sebelum anchor.
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
 
         $pegawai = $this->makePegawaiHonorer();
@@ -178,16 +186,23 @@ class AbsenJadwalTimesTest extends TestCase
         $hari = $hariMap[Carbon::now()->format('l')];
         $jp1 = $this->makeJadwal($pegawai, $pegawaiMapel, $hari, '08:30:00', '09:10:00');
         $jp2 = $this->makeJadwal($pegawai, $pegawaiMapel, $hari, '09:10:00', '09:40:00');
+        $jp3 = $this->makeJadwal($pegawai, $pegawaiMapel, $hari, '09:40:00', '10:20:00');
 
         Carbon::setTestNow(Carbon::today()->setTime(9, 12));
         $this->postAbsenMasuk($pegawai, $jp2)->assertOk()->assertJson(['success' => true]);
 
-        $this->assertNull($this->rowFor($pegawai, $jp1), 'JP1 tidak diabsen → tanpa row');
+        $this->assertNull($this->rowFor($pegawai, $jp1), 'JP1 tidak di-cover (forward-only, sebelum anchor)');
 
         $r2 = $this->rowFor($pegawai, $jp2);
         $this->assertSame('09:12:00', $r2->jam_masuk, 'JP2 jadi JP pertama → jam aktual user');
         $this->assertSame('09:40:00', $r2->jam_keluar, 'JP2 jam_keluar = jadwal');
         $this->assertSame('telat', $r2->status, 'JP2 telat (09:12 > 09:10)');
+
+        $r3 = $this->rowFor($pegawai, $jp3);
+        $this->assertNotNull($r3, 'JP3 auto-cover row exists (forward dari JP2)');
+        $this->assertSame('09:40:00', $r3->jam_masuk, 'JP3 jam_masuk = jadwal');
+        $this->assertSame('10:20:00', $r3->jam_keluar, 'JP3 jam_keluar = jadwal');
+        $this->assertSame('hadir', $r3->status, 'JP3 auto-cover status hadir');
 
         Carbon::setTestNow();
     }
