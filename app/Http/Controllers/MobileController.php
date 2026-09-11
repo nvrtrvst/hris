@@ -826,6 +826,27 @@ class MobileController extends Controller
                     $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jamMulai, (int) $unit->toleransi_menit);
                 }
 
+                // JP2+ same subject: override with schedule times. Jika hari ini
+                // sudah ada presensi lain untuk mapel+kelas yang sama, anggap ini
+                // lanjutan → pakai jam_mulai & jam_selesai dari jadwal.
+                if ($jadwal && ! $isLembur && ! $isTugasLuar) {
+                    $isJpContinuation = Presensi::where('pegawai_id', $pegawai->id)
+                        ->where('tanggal', $tanggal)
+                        ->whereNotNull('jadwal_id')
+                        ->where('jadwal_id', '!=', $jadwal->id)
+                        ->whereHas('jadwal', function ($q) use ($jadwal) {
+                            $q->where('mapel_id', $jadwal->mapel_id)
+                                ->where('kelas_label', $jadwal->kelas_label);
+                        })
+                        ->exists();
+
+                    if ($isJpContinuation) {
+                        $presensi->jam_masuk = $jadwal->jam_mulai;
+                        $presensi->jam_keluar = $jadwal->jam_selesai;
+                        $presensi->status = 'hadir';
+                    }
+                }
+
                 // Auto-close kantor terbuka saat mulai dinas luar. UPDATE atomik dengan
                 // guard whereNull('jam_keluar') mencegah double-close walau request
                 // berkonkurensi tinggi — tanpa lockForUpdate (sesuai kontrak anti-deadlock).
