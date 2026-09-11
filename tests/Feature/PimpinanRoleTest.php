@@ -103,24 +103,29 @@ class PimpinanRoleTest extends TestCase
         $this->assertDatabaseMissing('pegawai', ['nama_lengkap' => 'Coba Tambah']);
     }
 
-    public function test_pimpinan_dashboard_kontrak_scoped_to_bawahan(): void
+    public function test_pimpinan_dashboard_kontrak_scoped_to_unit_for_kepsek(): void
     {
         $kepsek = $this->makePegawai('Kepsek SD');
+        // Attach "Kepala Sekolah" jabatan for isKepsek() to return true.
+        $jabatanKepsek = Jabatan::firstOrCreate(['nama' => 'Kepala Sekolah']);
+        $kepsek->units()->updateExistingPivot($this->sd->id, ['jabatan_id' => $jabatanKepsek->id]);
         $bawahan = $this->makePegawai('Guru Bawahan', $kepsek);
         $this->makePegawai('Guru Bukan Bawahan');
 
         $user = $this->makePimpinan($kepsek);
 
+        // Kepsek sees ALL pegawai in unit (unit-scoped).
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertInertia(fn ($page) => $page->component('Dashboard')
-                ->has('kontrakBerakhir', 1)
-                ->where('kontrakBerakhir.0.nama_lengkap', 'Guru Bawahan'));
+                ->has('kontrakBerakhir', 3));
     }
 
     public function test_pimpinan_presensi_index_scoped_to_bawahan(): void
     {
         $kepsek = $this->makePegawai('Kepsek SD');
+        $jabatanKepsek = Jabatan::firstOrCreate(['nama' => 'Kepala Sekolah']);
+        $kepsek->units()->updateExistingPivot($this->sd->id, ['jabatan_id' => $jabatanKepsek->id]);
         $bawahan = $this->makePegawai('Guru Bawahan', $kepsek);
         $orangLain = $this->makePegawai('Guru Bukan Bawahan');
 
@@ -141,11 +146,11 @@ class PimpinanRoleTest extends TestCase
 
         $user = $this->makePimpinan($kepsek);
 
+        // Kepsek sees ALL presensi in unit (unit-scoped, not bawahan-only).
         $this->actingAs($user)
             ->get(route('presensi.index'))
             ->assertInertia(fn ($page) => $page->component('Presensi/Index')
-                ->has('presensis.data', 1)
-                ->where('presensis.data.0.pegawai.nama_lengkap', 'Guru Bawahan'));
+                ->has('presensis.data', 2));
     }
 
     public function test_pimpinan_jadwal_index_scoped_to_bawahan(): void
