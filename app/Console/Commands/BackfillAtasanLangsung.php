@@ -16,7 +16,7 @@ class BackfillAtasanLangsung extends Command
         $dryRun = $this->option('dry-run');
 
         $pegawais = Pegawai::whereNull('atasan_langsung_id')
-            ->with('units.jabatan')
+            ->with('units')
             ->get();
 
         $this->info("Pegawai tanpa atasan: {$pegawais->count()}");
