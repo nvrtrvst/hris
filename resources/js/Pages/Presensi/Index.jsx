@@ -592,10 +592,11 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
     const hasFilter = Boolean(search || statusFilter || jadwalFilter || jenisFilter || unitId || lemburFilter || lokasiFilter || suspiciousFilter || startDate || endDate);
 
-    // Default: Hari Ini jika tidak ada filter tanggal dari URL
+    // Default: Hari Ini (admin) atau Bulan Ini (pimpinan) jika tidak ada filter tanggal dari URL
     React.useEffect(() => {
         if (!startDate && !endDate) {
-            applyPreset('hari');
+            const isPimpinan = isAdmin && !auth.permissions?.includes('manage_master_data');
+            applyPreset(isPimpinan ? 'bulan' : 'hari');
         }
     }, []);
 

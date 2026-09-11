@@ -165,15 +165,22 @@ class DashboardController extends Controller
         //    karena dashboard admin di-polling tiap 60 detik dari browser.
         $today = Carbon::today('Asia/Jakarta');
 
-        // Pimpinan: scope ke bawahan langsung saja.
+        // Pimpinan: Kepsek scope by unit, lainnya scope by bawahan langsung.
         $bawahanIds = null;
         if ($this->isPimpinanReadOnly($user)) {
-            $userPegawaiId = $user->pegawai?->id;
-            $bawahanIds = $userPegawaiId
-                ? Pegawai::where('atasan_langsung_id', $userPegawaiId)->pluck('id')->toArray()
-                : [];
-            // Pimpinan pakai dashboard Admin (layout sama, data di-scope bawahan di backend).
-            //
+            if ($this->isKepsek($user)) {
+                // Kepsek: semua pegawai dalam unit.
+                $unitForKepsek = $user->unit_sekolah_id
+                    ?? $user->pegawai?->units->first()?->id;
+                $bawahanIds = $unitForKepsek
+                    ? Pegawai::whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitForKepsek))->pluck('id')->toArray()
+                    : [];
+            } else {
+                $userPegawaiId = $user->pegawai?->id;
+                $bawahanIds = $userPegawaiId
+                    ? Pegawai::where('atasan_langsung_id', $userPegawaiId)->pluck('id')->toArray()
+                    : [];
+            }
         }
 
         $cached = $this->adminCachedStats($user, $unitId, $bawahanIds);
