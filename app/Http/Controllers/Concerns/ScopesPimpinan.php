@@ -28,6 +28,21 @@ trait ScopesPimpinan
     }
 
     /**
+     * True jika user pimpinan berjabatan "Kepala Sekolah".
+     * Kepsek melihat semua presensi dalam unit, bukan hanya bawahan langsung.
+     */
+    private function isKepsek(?User $user): bool
+    {
+        if (! $user || ! $user->pegawai) {
+            return false;
+        }
+
+        $jabatan = $user->pegawai->jabatanPrimer();
+
+        return $jabatan && $jabatan->nama === 'Kepala Sekolah';
+    }
+
+    /**
      * Scope query ke bawahan LANGSUNG user pimpinan (via atasan_langsung_id).
      * Dipanggil hanya saat isPimpinanReadOnly() true.
      */
