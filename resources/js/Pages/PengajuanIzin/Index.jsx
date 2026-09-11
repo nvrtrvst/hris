@@ -8,6 +8,13 @@ import Pagination from '@/Components/Pagination';
 import { Search, Filter, CheckCircle, XCircle, Clock, Info, User, FileText, Calendar, AlertCircle, ChevronRight, CalendarCheck2, Inbox, Users } from 'lucide-react';
 import ThreadChat from '@/Components/ThreadChat';
 
+// ponytail: inline SVG fallback agar tidak ada broken icon saat path 403/404 di hard-refresh.
+const FOTO_FALLBACK =
+    'data:image/svg+xml;utf8,' +
+    encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><rect width="320" height="200" fill="#f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#64748b">Foto tidak tersedia</text></svg>'
+    );
+
 const TABS = [
     { key: 'l1', label: 'Approval L1' },
     { key: 'l2', label: 'Approval L2' },
@@ -18,6 +25,11 @@ export default function Index({ auth, pengajuans, filters, stats }) {
     const { flash } = usePage().props;
     const [selectedItem, setSelectedItem] = useState(null);
     const [modalType, setModalType] = useState(null);
+    const [fotoSrc, setFotoSrc] = useState(FOTO_FALLBACK);
+
+    useEffect(() => {
+        setFotoSrc(selectedItem?.bukti_foto_url || FOTO_FALLBACK);
+    }, [selectedItem]);
 
     const [search, setSearch] = useState(filters?.search || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || 'semua');
@@ -560,7 +572,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                     <div className="mt-5 pt-5 border-t border-border">
                                         <span className="section-title block mb-3">Bukti Lampiran</span>
                                         <div className="bg-gray-50/80 rounded-card overflow-hidden border border-border-light">
-                                            <img src={selectedItem.bukti_foto_url} alt="Bukti Lampiran" className="w-full h-auto max-h-80 object-contain" />
+                                            <img src={fotoSrc} alt="Bukti Lampiran" onError={() => setFotoSrc(FOTO_FALLBACK)} className="w-full h-auto max-h-80 object-contain" />
                                         </div>
                                     </div>
                                 )}

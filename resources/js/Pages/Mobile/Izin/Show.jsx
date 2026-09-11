@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Badge } from '@/Components/MobileUI';
@@ -6,6 +6,14 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { ArrowLeft, Clock, CheckCircle, XCircle, Calendar, FileText, AlertTriangle } from 'lucide-react';
 import ThreadChat from '@/Components/ThreadChat';
+
+// ponytail: inline 1x1 transparent PNG — FE tidak request placeholder asset,
+// cukup cegah broken-icon saat path 403/404 saat user hard-refresh.
+const FOTO_FALLBACK =
+    'data:image/svg+xml;utf8,' +
+    encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><rect width="320" height="200" fill="#f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#64748b">Foto tidak tersedia</text></svg>'
+    );
 
 const jenisLabel = { sakit: 'Sakit', izin: 'Izin', cuti: 'Cuti' };
 
@@ -25,6 +33,7 @@ export default function Show({ auth, pengajuan }) {
     const st = getStatus(pengajuan.status);
     const StatusIcon = st.icon;
     const totalDays = daysBetween(pengajuan.tanggal_mulai, pengajuan.tanggal_selesai);
+    const [fotoSrc, setFotoSrc] = useState(pengajuan.bukti_foto_url);
 
     return (
         <MobileLayout user={auth.user}>
@@ -87,8 +96,9 @@ export default function Show({ auth, pengajuan }) {
                         <div className="min-w-0">
                             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Bukti Foto</p>
                             <img
-                                src={pengajuan.bukti_foto_url}
+                                src={fotoSrc}
                                 alt="Bukti foto pengajuan"
+                                onError={() => setFotoSrc(FOTO_FALLBACK)}
                                 className="mt-2 max-h-60 w-full rounded-2xl object-contain ring-1 ring-slate-200"
                             />
                         </div>

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Constants\PresensiMessages;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -48,13 +49,23 @@ class ImageUploadService
         if ($overlayData !== null) {
             $decoded = app(PhotoOverlayService::class)->applyToImage($decoded, $overlayData);
         } else {
+            // Resize→WebP hanya kalau GD bisa decode gambar. Kalau gagal (HEIC dari iPhone,
+            // gambar corrupt, memory limit), JANGAN timpa $decoded dengan string kosong —
+            // simpan bytes asli yang sudah lolos validasi MIME agar file tidak 0-byte.
             $img = @imagecreatefromstring($decoded);
             if ($img !== false) {
                 $img = $this->resize($img, 640);
                 ob_start();
                 imagewebp($img, null, 60);
-                $decoded = ob_get_clean();
+                $reencoded = ob_get_clean();
                 imagedestroy($img);
+                if ($reencoded !== false && strlen($reencoded) > 0) {
+                    $decoded = $reencoded;
+                } else {
+                    Log::warning('image-webp-failed', ['fallback' => 'original-bytes']);
+                }
+            } else {
+                Log::warning('image-decode-failed', ['fallback' => 'original-bytes']);
             }
         }
 
