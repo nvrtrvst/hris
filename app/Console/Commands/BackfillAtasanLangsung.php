@@ -32,6 +32,7 @@ class BackfillAtasanLangsung extends Command
 
             if (! $primaryUnit || ! $jabatan) {
                 $skipped++;
+
                 continue;
             }
 

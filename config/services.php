@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'carto' => [
+        'api_key' => env('CARTO_API_KEY'),
+    ],
+
 ];
