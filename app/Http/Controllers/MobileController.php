@@ -452,18 +452,40 @@ class MobileController extends Controller
                 ->get();
         });
 
+        // Filter jadwal hari non-kerja: Minggu selalu libur, Sabtu hanya jika unit support
+        if ($hariIniIndo === 'Minggu') {
+            $jadwalHariIni = collect();
+        } elseif ($hariIniIndo === 'Sabtu') {
+            $jadwalHariIni = $jadwalHariIni->filter(function ($j) {
+                $unit = is_array($j) ? ($j['unitSekolah'] ?? null) : $j->unitSekolah;
+
+                return $unit && ($unit['jam_kerja_sabtu_mulai'] ?? $unit->jam_kerja_sabtu_mulai ?? null);
+            })->values();
+        }
+
         $presensiHariIni = Presensi::where('pegawai_id', $pegawai->id)
             ->where('tanggal', Carbon::today()->toDateString())
             ->get();
 
         $izinHariIni = $this->izinHariIniUntuk($pegawai);
 
+        // Kantor: Minggu selalu off, Sabtu off jika unit tidak support
+        $kantorAktif = $pegawai->wajib_kantor && ($jadwalHariIni->isEmpty());
+        if ($hariIniIndo === 'Minggu') {
+            $kantorAktif = false;
+        } elseif ($hariIniIndo === 'Sabtu') {
+            $primaryUnit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
+            if (! $primaryUnit || ! $primaryUnit->jam_kerja_sabtu_mulai) {
+                $kantorAktif = false;
+            }
+        }
+
         return inertia('Mobile/Absen', [
             'pegawai' => $pegawai,
             'jadwals' => $jadwalHariIni,
             'presensiHariIni' => $presensiHariIni,
             'izinHariIni' => $izinHariIni,
-            'officeAttendance' => $pegawai->wajib_kantor && ($jadwalHariIni?->isEmpty() ?? false),
+            'officeAttendance' => $kantorAktif,
             'attestation_token' => $this->attestationService->issue(),
         ]);
     }
@@ -588,6 +610,20 @@ class MobileController extends Controller
             $message = PresensiMessages::PEMILIH_JADWAL_DULU;
 
             return response()->json(['success' => false, 'message' => $message, 'errors' => ['jadwal_id' => $message]], 422);
+        }
+
+        // Blokir presensi reguler di hari Minggu atau Sabtu (jika unit tidak beroperasi)
+        if (! $isLembur && ! $isTugasLuar) {
+            if ($hariIni === 'Minggu') {
+                $message = sprintf(PresensiMessages::HARI_TIDAK_AKTIF, 'Minggu');
+
+                return response()->json(['success' => false, 'message' => $message, 'errors' => ['jadwal_id' => $message]], 422);
+            }
+            if ($hariIni === 'Sabtu' && ! $unit->jam_kerja_sabtu_mulai) {
+                $message = sprintf(PresensiMessages::HARI_TIDAK_AKTIF, 'Sabtu');
+
+                return response()->json(['success' => false, 'message' => $message, 'errors' => ['jadwal_id' => $message]], 422);
+            }
         }
 
         $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);

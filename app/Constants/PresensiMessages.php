@@ -85,4 +85,7 @@ class PresensiMessages
 
     // Pulang kantor
     public const PULANG_SEBELUM_JAM_KANTOR = 'Anda belum bisa pulang. Jam pulang kantor: %s.';
+
+    // Hari non-kerja
+    public const HARI_TIDAK_AKTIF = 'Unit ini tidak beroperasi di hari %s.';
 }

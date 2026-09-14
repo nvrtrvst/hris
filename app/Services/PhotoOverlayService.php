@@ -255,9 +255,9 @@ class PhotoOverlayService
         $mx = $cardX + (int) round($dotX * $cardSize / $cropW);
         $my = $cardY + (int) round($dotY * $cardSize / $cropH);
 
-        $markerR = max(3, (int) round($cardSize * 0.02));
-        $ringR = (int) round($markerR * 1.75);
-        $shadowR = $ringR + 2;
+        $markerR = max(2, (int) round($cardSize * 0.015));
+        $ringR = (int) round($markerR * 1.5);
+        $shadowR = $ringR + 1;
 
         $origBlend = imagealphablending($img, true);
 
