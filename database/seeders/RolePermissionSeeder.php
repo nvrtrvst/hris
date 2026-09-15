@@ -59,6 +59,7 @@ class RolePermissionSeeder extends Seeder
             'view_presensi',
             'view_izin',
             'manage_reminders',
+            'view_laporan_kcd',
             // Payroll TIDAK lagi di role admin_unit — dialihkan ke jabatan
             // dgn flag `is_payroll_operator` (mis. Bendahara). Akses payroll
             // = operator jabatan (semua) + superadmin (view saja).
