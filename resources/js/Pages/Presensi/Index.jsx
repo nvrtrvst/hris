@@ -227,7 +227,9 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         {c.lokasi_perlu_review && (
                             <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
                         )}
-                        <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                        {auth.permissions?.includes('manage_master_data') && (
+                            <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                        )}
                     </div>
                 </td>
             </tr>
@@ -327,7 +329,9 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                                 {c.lokasi_perlu_review && (
                                     <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
                                 )}
-                                <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                                {auth.permissions?.includes('manage_master_data') && (
+                                    <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                                )}
                             </div>
                         </td>
                     </tr>
@@ -440,7 +444,9 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                     </td>
                     <td className="px-4 py-3.5 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                            <button onClick={() => openAudit(parent)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                            {auth.permissions?.includes('manage_master_data') && (
+                                <button onClick={() => openAudit(parent)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                            )}
                         </div>
                     </td>
                 </tr>
@@ -1104,9 +1110,11 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                                     <ShieldAlert className="h-4 w-4" />
                                                                 </button>
                                                             )}
-                                                            <button onClick={() => openAudit(p)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan">
-                                                                <History className="h-4 w-4" />
-                                                            </button>
+                                                            {auth.permissions?.includes('manage_master_data') && (
+                                                                <button onClick={() => openAudit(p)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan">
+                                                                    <History className="h-4 w-4" />
+                                                                </button>
+                                                            )}
                                                             {p.jarak_masuk_meter != null && (
                                                                 <span className="ml-1 font-mono text-[11px] font-semibold text-text-secondary">{p.jarak_masuk_meter}m</span>
                                                             )}

@@ -599,7 +599,7 @@ class PresensiController extends Controller
 
     public function audit($id)
     {
-        if (! auth()->user()?->can('view_presensi')) {
+        if (! auth()->user()?->can('manage_master_data')) {
             abort(403);
         }
 
