@@ -222,16 +222,18 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         <StatusBadge status={c.status} />
                     )}
                 </td>
-                <td className="px-4 py-3.5 whitespace-nowrap text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                        {c.lokasi_perlu_review && (
-                            <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
-                        )}
-                        {auth.permissions?.includes('manage_master_data') && (
-                            <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
-                        )}
-                    </div>
-                </td>
+                {auth.permissions?.includes('manage_master_data') && (
+                    <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                            {c.lokasi_perlu_review && (
+                                <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
+                            )}
+                            {auth.permissions?.includes('manage_master_data') && (
+                                <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                            )}
+                        </div>
+                    </td>
+                )}
             </tr>
         );
     });
@@ -324,16 +326,18 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                                 <StatusBadge status={c.status} />
                             )}
                         </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                                {c.lokasi_perlu_review && (
-                                    <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
-                                )}
-                                {auth.permissions?.includes('manage_master_data') && (
-                                    <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
-                                )}
-                            </div>
-                        </td>
+                        {auth.permissions?.includes('manage_master_data') && (
+                            <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                    {c.lokasi_perlu_review && (
+                                        <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
+                                    )}
+                                    {auth.permissions?.includes('manage_master_data') && (
+                                        <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                                    )}
+                                </div>
+                            </td>
+                        )}
                     </tr>
                 );
             });
@@ -442,13 +446,13 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             <StatusBadge status={parent.status} />
                         )}
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                            {auth.permissions?.includes('manage_master_data') && (
+                    {auth.permissions?.includes('manage_master_data') && (
+                        <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                            <div className="flex items-center justify-end gap-1.5">
                                 <button onClick={() => openAudit(parent)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
-                            )}
-                        </div>
-                    </td>
+                            </div>
+                        </td>
+                    )}
                 </tr>
                 {isOpen && <RingkasChildren items={children} groupKey={key} auth={auth} now={now} openReview={openReview} openAudit={openAudit} openTugasLuar={openTugasLuar} setConfirmStatus={setConfirmStatus} />}
             </React.Fragment>
@@ -978,7 +982,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                             <th className="hidden lg:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lembur</th>
                                             <th className="hidden lg:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Tugas Luar</th>
                                             <th onClick={() => toggleSort('status')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Status <SortIcon col="status" /></th>
-                                            <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lokasi</th>
+                                            {auth.permissions?.includes('manage_master_data') && <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lokasi</th>}
                                         </tr>
                                     </thead>
                                     <tbody className={`divide-y divide-border/50 ${processing ? 'opacity-60 pointer-events-none transition-opacity' : ''}`}>
@@ -1103,6 +1107,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             <StatusBadge status={p.status} />
                                                         )}
                                                     </td>
+                                                    {auth.permissions?.includes('manage_master_data') && (
                                                     <td className="px-4 py-3.5 whitespace-nowrap text-right">
                                                         <div className="flex items-center justify-end gap-1.5">
                                                             {flagReview && (
@@ -1110,11 +1115,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                                     <ShieldAlert className="h-4 w-4" />
                                                                 </button>
                                                             )}
-                                                            {auth.permissions?.includes('manage_master_data') && (
-                                                                <button onClick={() => openAudit(p)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan">
-                                                                    <History className="h-4 w-4" />
-                                                                </button>
-                                                            )}
+                                                            <button onClick={() => openAudit(p)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan">
+                                                                <History className="h-4 w-4" />
+                                                            </button>
                                                             {p.jarak_masuk_meter != null && (
                                                                 <span className="ml-1 font-mono text-[11px] font-semibold text-text-secondary">{p.jarak_masuk_meter}m</span>
                                                             )}
@@ -1126,6 +1129,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             </div>
                                                         )}
                                                     </td>
+                                                    )}
                                                 </tr>
                                             );
                                         })}
