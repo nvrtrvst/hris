@@ -978,7 +978,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                             <th className="hidden lg:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lembur</th>
                                             <th className="hidden lg:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Tugas Luar</th>
                                             <th onClick={() => toggleSort('status')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Status <SortIcon col="status" /></th>
-                                            <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lokasi & Aksi</th>
+                                            <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lokasi</th>
                                         </tr>
                                     </thead>
                                     <tbody className={`divide-y divide-border/50 ${processing ? 'opacity-60 pointer-events-none transition-opacity' : ''}`}>
