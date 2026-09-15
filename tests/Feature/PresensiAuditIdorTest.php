@@ -123,7 +123,7 @@ class PresensiAuditIdorTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_admin_unit_bisa_akses_audit_record_unit_sendiri(): void
+    public function test_admin_unit_tidak_bisa_akses_audit(): void
     {
         $adminA = $this->makeAdminUnit($this->unitA);
         $pegawaiA = $this->makePegawai('5566778899001122', $this->unitA);
@@ -139,13 +139,7 @@ class PresensiAuditIdorTest extends TestCase
 
         $this->actingAs($adminA, 'web_admin')
             ->getJson(route('presensi.audit', $presensiA->id))
-            ->assertOk()
-            ->assertJsonCount(1, 'audits')
-            ->assertJsonPath('audits.0.aksi', 'ubah_status')
-            ->assertJsonPath('presensi.pegawai_nama', 'Pegawai 5566778899001122')
-            ->assertJsonPath('presensi.tanggal', '2026-07-01')
-            // Konteks bukti foto ikut dikirim (regresi fitur foto evidence)
-            ->assertJsonStructure(['presensi' => ['foto_masuk_url', 'foto_keluar_url', 'foto_masuk_status', 'foto_keluar_status']]);
+            ->assertForbidden();
     }
 
     public function test_superadmin_bisa_akses_audit_semua_unit(): void
