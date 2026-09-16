@@ -499,7 +499,6 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                         })()
                             )}
                         </div>
-                        </>
                     )}
                                         </div>
                                     );
@@ -685,9 +684,8 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                                     <Trash2 className="h-4 w-4" />
                                                                                 </button>
                          </div>
-                        </>
                     )}
-                                                                        </div>
+                                                                         </div>
                                                                     );
                                                                 }) : (
                                                                     <div className="text-gray-300 text-center py-2 text-xs">-</div>
