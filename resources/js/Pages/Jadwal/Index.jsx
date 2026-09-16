@@ -333,7 +333,6 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     <UserRound className="h-3.5 w-3.5" /> Per Guru
                                 </button>
                         </div>
-                        </>
                     )}
                     </div>
 
