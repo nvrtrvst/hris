@@ -215,6 +215,10 @@ class DashboardController extends Controller
                 'total_pegawai' => $cached['totalPegawai'],
                 'total_unit' => $cached['totalUnit'],
                 'hadir_hari_ini_count' => $live['hadirHariIniCount'],
+                'telat_count' => $live['telatCount'],
+                'izin_count' => $live['izinCount'],
+                'sakit_count' => $live['sakitCount'],
+                'alpa_count' => $live['alpaCount'],
                 'pegawai_dijadwalkan' => $live['pegawaiDijadwalkan'],
                 'hadir_percentage' => $live['hadirPercentage'],
                 'pengeluaran_gaji' => $cached['pengeluaranGaji'],
@@ -361,7 +365,21 @@ class DashboardController extends Controller
         } elseif ($scopedUnit) {
             $presensiQuery->where('unit_sekolah_id', $scopedUnit);
         }
-        $hadirHariIniCount = $presensiQuery->count();
+        $hadirHariIniCount = (clone $presensiQuery)->distinct('pegawai_id')->count('pegawai_id');
+
+        // Status breakdown untuk card kehadiran
+        $statusBreakdown = Presensi::where('tanggal', $today->toDateString())
+            ->selectRaw('status, COUNT(DISTINCT pegawai_id) as total');
+        if ($bawahanIds !== null) {
+            $statusBreakdown->whereIn('pegawai_id', $bawahanIds);
+        } elseif ($scopedUnit) {
+            $statusBreakdown->where('unit_sekolah_id', $scopedUnit);
+        }
+        $statusCounts = $statusBreakdown->groupBy('status')->pluck('total', 'status');
+        $telatCount = (int) ($statusCounts->get('telat', 0));
+        $izinCount = (int) ($statusCounts->get('izin', 0));
+        $sakitCount = (int) ($statusCounts->get('sakit', 0));
+        $alpaCount = (int) ($statusCounts->get('alpa', 0));
 
         $hadirPercentage = $pegawaiDijadwalkan > 0
             ? round(($hadirHariIniCount / $pegawaiDijadwalkan) * 100)
@@ -448,6 +466,10 @@ class DashboardController extends Controller
             'pegawaiDijadwalkan' => $pegawaiDijadwalkan,
             'hadirHariIniCount' => $hadirHariIniCount,
             'hadirPercentage' => $hadirPercentage,
+            'telatCount' => $telatCount,
+            'izinCount' => $izinCount,
+            'sakitCount' => $sakitCount,
+            'alpaCount' => $alpaCount,
             'attendanceTrend' => $attendanceTrend,
             'jadwalHariIni' => $jadwalHariIni,
             'presensiHariIni' => $presensiHariIni,

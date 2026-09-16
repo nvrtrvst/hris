@@ -332,8 +332,9 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                 >
                                     <UserRound className="h-3.5 w-3.5" /> Per Guru
                                 </button>
-                            </div>
-                        )}
+                        </div>
+                        </>
+                    )}
                     </div>
 
                     {/* Stats */}
@@ -497,9 +498,10 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                 </div>
                                                             ));
                                                         })()
-                                                    )}
-                                                </div>
-                                            )}
+                            )}
+                        </div>
+                        </>
+                    )}
                                         </div>
                                     );
                                 })
@@ -519,7 +521,78 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                     {/* ─── ADMIN: Matrix Table Board ─── */}
                     {isAdmin && !needsUnitFilter && viewMode === 'matrix' && (
-                        <div className={`card p-0 overflow-hidden transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
+                        <>
+                        {/* Mobile card view */}
+                        <div className={`md:hidden space-y-3 transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
+                            {pegawais.length > 0 ? pegawais.map((pegawai) => {
+                                const pJadwals = jadwalByPegawai.get(pegawai.id) || [];
+                                if (pJadwals.length === 0) return null;
+
+                                return (
+                                    <div key={pegawai.id} className="card p-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="font-bold text-gray-900 text-sm">{pegawai.nama_lengkap}</div>
+                                            <span className="text-[11px] text-gray-500">{unitSingkatan(pegawai)}</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {DAYS.map((day) => {
+                                                const dayJadwals = pJadwals.filter((j) => j.hari === day);
+                                                if (dayJadwals.length === 0) return null;
+
+                                                return (
+                                                    <div key={day}>
+                                                        <div className="text-[10px] font-bold uppercase text-gray-400 mb-1">{day}</div>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {dayJadwals.map((jadwal) => {
+                                                                const meta = jenisBadge(jadwal.jenis_jadwal);
+
+                                                                return (
+                                                                    <div key={jadwal.id} className="flex flex-col items-center text-center bg-white p-2 rounded-lg shadow-sm border border-gray-200 min-w-[100px]">
+                                                                        <span className="text-[11px] font-bold text-primary font-mono">
+                                                                            {jadwal.jam_mulai.substring(0, 5)}–{jadwal.jam_selesai.substring(0, 5)}
+                                                                        </span>
+                                                                        {jadwal.mata_pelajaran?.nama && (
+                                                                            <span className="mt-0.5 text-[10px] font-semibold text-gray-700 leading-tight">{jadwal.mata_pelajaran.nama}</span>
+                                                                        )}
+                                                                        {jadwal.kelas_label && (
+                                                                            <span className="text-[9px] text-gray-400 leading-tight">Kls {jadwal.kelas_label}</span>
+                                                                        )}
+                                                                        <span className={`mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border ${meta.badge}`}>
+                                                                            {meta.label}
+                                                                        </span>
+                                                                        <JadwalLiveBadge
+                                                                            jadwal={jadwal}
+                                                                            presensi={presensiByJadwal.get(jadwal.id)}
+                                                                            now={now}
+                                                                        />
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            }) : (
+                                <div className="card p-12 text-center">
+                                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface mx-auto">
+                                        <CalendarDays className="h-8 w-8 text-border" />
+                                    </div>
+                                    <p className="mt-4 text-base font-bold text-primary">Tidak ada data pegawai</p>
+                                    <p className="mt-1 text-sm text-text-secondary">Coba ubah filter atau kata kunci pencarian.</p>
+                                    {hasFilter && (
+                                        <button onClick={resetFilters} className="btn-secondary btn-sm mt-4 flex items-center gap-1.5 mx-auto">
+                                            <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Desktop matrix table */}
+                        <div className={`hidden md:block card p-0 overflow-hidden transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
                         <div className="overflow-x-auto max-h-[72vh] overflow-y-auto print:max-h-none print:overflow-visible">
                                 <table className="w-full table-fixed divide-y divide-gray-200 bg-white text-sm">
                                     <thead className="bg-primary text-white sticky top-0 z-20 print:bg-gray-100 print:text-black">
@@ -612,8 +685,9 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                                 >
                                                                                     <Trash2 className="h-4 w-4" />
                                                                                 </button>
-                                                                            </div>
-                                            )}
+                         </div>
+                        </>
+                    )}
                                                                         </div>
                                                                     );
                                                                 }) : (
@@ -649,8 +723,9 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                 <div className="flex items-center justify-center gap-2 border-t border-border bg-surface/50 py-3 text-xs font-semibold text-text-secondary">
                                     <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> Memuat jadwal…
                                 </div>
-                            )}
+                             )}
                         </div>
+                        </>
                     )}
 
                     {/* Print Footer */}

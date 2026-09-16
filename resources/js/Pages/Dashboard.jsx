@@ -199,47 +199,40 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
 
             <div className="py-8 bg-surface min-h-screen">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-                    {/* Ringkasan utama */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="card p-6 relative overflow-hidden">
-                            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-primary/5" />
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
-                                <Banknote className="h-4 w-4 text-primary" />
-                                Total Biaya Payroll Bulan Ini
-                            </div>
-                            <p className="mt-2 text-3xl font-extrabold text-primary tabular-nums">
-                                {s.pengeluaran_gaji > 0 ? formatRupiah(s.pengeluaran_gaji) : 'Rp 0'}
-                            </p>
-                            <div className="mt-3">
-                                {s.is_estimasi_payroll ? (
-                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700">
-                                        <Hourglass className="h-3.5 w-3.5" /> Estimasi Sementara
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">
-                                        <CheckCircle2 className="h-3.5 w-3.5" /> Sudah Diproses
-                                    </span>
-                                )}
-                            </div>
+                    {/* Kehadiran Hari Ini — prominent full-width */}
+                    <div className="card p-6 relative overflow-hidden">
+                        <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-emerald-500/5" />
+                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                            <UserCheck className="h-4 w-4 text-emerald-600" />
+                            Kehadiran Hari Ini
                         </div>
-
-                        <div className="card p-6 relative overflow-hidden">
-                            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-emerald-500/5" />
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
-                                <UserCheck className="h-4 w-4 text-emerald-600" />
-                                Tingkat Kehadiran Hari Ini
+                        <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <div className="flex items-baseline gap-3">
+                                    <p className="text-4xl font-extrabold text-success tabular-nums">{s.hadir_percentage || 0}%</p>
+                                    <p className="text-sm text-text-secondary">
+                                        {s.hadir_hari_ini_count || 0} dari {s.pegawai_dijadwalkan || 0} dijadwalkan
+                                    </p>
+                                </div>
+                                <div className="mt-3 h-2.5 w-full max-w-md overflow-hidden rounded-full bg-border/60">
+                                    <div
+                                        className="h-full rounded-full bg-emerald-500 transition-all duration-700"
+                                        style={{ width: `${Math.min(100, s.hadir_percentage || 0)}%` }}
+                                    />
+                                </div>
                             </div>
-                            <div className="mt-2 flex items-baseline gap-3">
-                                <p className="text-3xl font-extrabold text-success tabular-nums">{s.hadir_percentage || 0}%</p>
-                                <p className="text-sm text-text-secondary">
-                                    ({s.hadir_hari_ini_count || 0} dari {s.pegawai_dijadwalkan || 0} guru dijadwalkan)
-                                </p>
-                            </div>
-                            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-border/60">
-                                <div
-                                    className="h-full rounded-full bg-emerald-500 transition-all duration-700"
-                                    style={{ width: `${Math.min(100, s.hadir_percentage || 0)}%` }}
-                                />
+                            <div className="flex flex-wrap gap-2">
+                                {[
+                                    { label: 'Hadir', value: s.hadir_hari_ini_count || 0, cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+                                    { label: 'Telat', value: s.telat_count || 0, cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+                                    { label: 'Izin', value: s.izin_count || 0, cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+                                    { label: 'Sakit', value: s.sakit_count || 0, cls: 'bg-purple-50 text-purple-700 border-purple-200' },
+                                    { label: 'Alpa', value: s.alpa_count || 0, cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+                                ].map((item) => (
+                                    <span key={item.label} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold ${item.cls}`}>
+                                        {item.label} <span className="tabular-nums">{item.value}</span>
+                                    </span>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -407,52 +400,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                         })()}
                     </div>
 
-                    {/* Pengumuman terbaru */}
-                    <div className="card p-0 overflow-hidden">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 bg-surface/50 px-5 py-4">
-                            <h3 className="flex items-center gap-2 text-base font-bold text-primary">
-                                <Megaphone className="h-5 w-5 text-primary" />
-                                Pengumuman Terbaru
-                            </h3>
-                            <Link href={route('pengumuman.index')} className="text-xs font-semibold text-primary underline-offset-2 hover:underline">
-                                Kelola pengumuman →
-                            </Link>
-                        </div>
-                        {pengumuman.length > 0 ? (
-                            <div className="divide-y divide-border/50">
-                                {pengumuman.slice(0, 5).map((a) => {
-                                    const st = pengumumanStatus(a);
-
-                                    return (
-                                        <div key={a.id} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-surface/60">
-                                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${a.is_pinned ? 'bg-amber-50 text-amber-600' : 'bg-surface text-text-secondary'}`}>
-                                                {a.is_pinned ? <PinIcon className="h-4 w-4" /> : <Megaphone className="h-4 w-4" />}
-                                            </span>
-                                            <div className="min-w-0 flex-1">
-                                                <div className="truncate text-sm font-bold text-primary">{a.title}</div>
-                                                <div className="mt-0.5 text-[11px] text-text-secondary">
-                                                    {formatTgl(a.published_at)}{a.unit_nama ? ` · ${a.unit_nama}` : ' · Semua Unit'}
-                                                </div>
-                                            </div>
-                                            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${st.cls}`}>{st.label}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center py-10 text-center">
-                                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface">
-                                    <Megaphone className="h-7 w-7 text-text-muted" />
-                                </div>
-                                <p className="mt-3 text-sm font-bold text-primary">Belum ada pengumuman</p>
-                                <Link href={route('pengumuman.index')} className="mt-2 text-xs font-semibold text-primary underline-offset-2 hover:underline">
-                                    Buat pengumuman pertama →
-                                </Link>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Charts & kontrak */}
+                    {/* Tren Kehadiran + Payroll */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div className="card p-6">
                             <h3 className="mb-4 flex items-center gap-2 text-base font-bold text-primary">
@@ -482,6 +430,31 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                             </div>
                         </div>
 
+                        <div className="card p-6 relative overflow-hidden">
+                            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-primary/5" />
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                                <Banknote className="h-4 w-4 text-primary" />
+                                Payroll Bulan Ini
+                            </div>
+                            <p className="mt-3 text-3xl font-extrabold text-primary tabular-nums">
+                                {s.pengeluaran_gaji > 0 ? formatRupiah(s.pengeluaran_gaji) : 'Rp 0'}
+                            </p>
+                            <div className="mt-3">
+                                {s.is_estimasi_payroll ? (
+                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700">
+                                        <Hourglass className="h-3.5 w-3.5" /> Estimasi Sementara
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">
+                                        <CheckCircle2 className="h-3.5 w-3.5" /> Sudah Diproses
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Kontrak Berakhir + Pengumuman */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div className="card p-0 overflow-hidden">
                             <div className="flex items-center justify-between border-b border-border/60 bg-surface/50 px-5 py-4">
                                 <h3 className="flex items-center gap-2 text-base font-bold text-primary">
@@ -525,6 +498,50 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                     </div>
                                     <p className="mt-3 text-sm font-bold text-primary">Tidak ada kontrak berakhir</p>
                                     <p className="mt-1 text-xs text-text-secondary">Semua kontrak aman dalam 30 hari ke depan.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="card p-0 overflow-hidden">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 bg-surface/50 px-5 py-4">
+                                <h3 className="flex items-center gap-2 text-base font-bold text-primary">
+                                    <Megaphone className="h-5 w-5 text-primary" />
+                                    Pengumuman Terbaru
+                                </h3>
+                                <Link href={route('pengumuman.index')} className="text-xs font-semibold text-primary underline-offset-2 hover:underline">
+                                    Kelola pengumuman →
+                                </Link>
+                            </div>
+                            {pengumuman.length > 0 ? (
+                                <div className="divide-y divide-border/50">
+                                    {pengumuman.slice(0, 5).map((a) => {
+                                        const st = pengumumanStatus(a);
+
+                                        return (
+                                            <div key={a.id} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-surface/60">
+                                                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${a.is_pinned ? 'bg-amber-50 text-amber-600' : 'bg-surface text-text-secondary'}`}>
+                                                    {a.is_pinned ? <PinIcon className="h-4 w-4" /> : <Megaphone className="h-4 w-4" />}
+                                                </span>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="truncate text-sm font-bold text-primary">{a.title}</div>
+                                                    <div className="mt-0.5 text-[11px] text-text-secondary">
+                                                        {formatTgl(a.published_at)}{a.unit_nama ? ` · ${a.unit_nama}` : ' · Semua Unit'}
+                                                    </div>
+                                                </div>
+                                                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${st.cls}`}>{st.label}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center py-10 text-center">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface">
+                                        <Megaphone className="h-7 w-7 text-text-muted" />
+                                    </div>
+                                    <p className="mt-3 text-sm font-bold text-primary">Belum ada pengumuman</p>
+                                    <Link href={route('pengumuman.index')} className="mt-2 text-xs font-semibold text-primary underline-offset-2 hover:underline">
+                                        Buat pengumuman pertama →
+                                    </Link>
                                 </div>
                             )}
                         </div>
