@@ -113,6 +113,64 @@ class ReminderController extends Controller
         return back()->with('message', 'Reminder berhasil dibuat.'.(empty($validated['scheduled_at']) ? ' Telah dikirim.' : ' Terjadwal untuk dikirim.'));
     }
 
+    public function update(Request $request, Reminder $reminder)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('manage_reminders')) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units') && $reminder->created_by !== $user->id) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'message' => 'required|string|max:1000',
+            'type' => 'required|in:presensi,cuti,deadline,custom',
+            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'target_all' => 'boolean',
+            'target_user_ids' => 'nullable|array',
+            'target_user_ids.*' => 'exists:users,id',
+            'is_recurring' => 'boolean',
+            'recurring_schedule' => 'nullable|in:daily,weekly,monthly',
+            'recurring_time' => 'nullable|date_format:H:i',
+            'scheduled_at' => 'nullable|date',
+        ]);
+
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $validated['unit_sekolah_id'] = $user->unit_sekolah_id;
+            if (! empty($validated['target_user_ids'])) {
+                $allowed = User::whereHas('pegawai', fn ($q) => $q->forUnit($user->unit_sekolah_id))
+                    ->pluck('id')->all();
+                $validated['target_user_ids'] = array_values(array_intersect($validated['target_user_ids'], $allowed));
+            }
+        }
+
+        if (empty($validated['target_all']) && empty($validated['target_user_ids'])) {
+            $validated['target_all'] = true;
+        }
+
+        // Recalculate recurring_days jika recurring berubah
+        if (! empty($validated['is_recurring']) && empty($validated['recurring_days'])) {
+            $unit = UnitSekolah::find($validated['unit_sekolah_id'] ?? $reminder->unit_sekolah_id);
+            $hasSabtu = $unit && $unit->jam_kerja_sabtu_mulai;
+            $validated['recurring_days'] = $hasSabtu ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5];
+        }
+
+        // Recalculate next_run_at jika schedule berubah
+        if (! empty($validated['is_recurring']) && (! empty($validated['recurring_time']) || ! empty($validated['recurring_days']))) {
+            $reminder->fill($validated);
+            $validated['next_run_at'] = $reminder->getNextRunAt();
+        } elseif (isset($validated['is_recurring']) && ! $validated['is_recurring']) {
+            $validated['next_run_at'] = null;
+        }
+
+        $reminder->update($validated);
+
+        return back()->with('message', 'Reminder berhasil diperbarui.');
+    }
+
     public function destroy(Reminder $reminder)
     {
         $user = auth()->user();

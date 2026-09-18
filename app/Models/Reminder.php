@@ -86,6 +86,11 @@ class Reminder extends Model
         $days = collect($this->recurring_days)->sort()->values();
 
         if ($this->recurring_schedule === 'daily') {
+            // Cek hari ini dulu — jika waktu belum lewat, fire hari ini
+            $todayRun = $now->copy()->setTime($time->hour, $time->minute, 0);
+            if ($days->contains($now->dayOfWeekIso) && $now->lt($todayRun)) {
+                return $todayRun;
+            }
             for ($i = 1; $i <= 7; $i++) {
                 $next = $now->copy()->addDays($i);
                 if ($days->contains($next->dayOfWeekIso)) {

@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage, router } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
-import { Bell, Plus, Trash2, Send, Clock, Calendar, Filter, AlertCircle, Repeat, Users, Building2, CheckCircle, RotateCcw } from 'lucide-react';
+import { Bell, Plus, Trash2, Send, Clock, Calendar, Filter, AlertCircle, Repeat, Users, Building2, CheckCircle, RotateCcw, Pencil } from 'lucide-react';
 
 const TYPE_OPTIONS = [
     { value: 'presensi', label: 'Presensi', color: 'bg-blue-100 text-blue-700' },
@@ -15,9 +15,24 @@ const TYPE_OPTIONS = [
 export default function Index({ auth, reminders, units, filters, pegawaiOptions = [] }) {
     const { flash } = usePage().props;
     const [showCreate, setShowCreate] = useState(false);
+    const [showEdit, setShowEdit] = useState(false);
+    const [editingReminder, setEditingReminder] = useState(null);
     const [typeFilter, setTypeFilter] = useState(filters?.type || 'semua');
 
     const { data, setData, post, processing, errors, reset } = useForm({
+        title: '',
+        message: '',
+        type: 'custom',
+        unit_sekolah_id: '',
+        target_all: true,
+        target_user_ids: [],
+        is_recurring: false,
+        recurring_schedule: 'daily',
+        recurring_time: '07:00',
+        scheduled_at: '',
+    });
+
+    const { data: editData, setData: setEditData, put, processing: editProcessing, errors: editErrors, reset: editReset } = useForm({
         title: '',
         message: '',
         type: 'custom',
@@ -38,6 +53,36 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
     const closeCreate = () => {
         setShowCreate(false);
         reset();
+    };
+
+    const openEdit = (r) => {
+        setEditingReminder(r);
+        setEditData({
+            title: r.title,
+            message: r.message,
+            type: r.type,
+            unit_sekolah_id: r.unit_sekolah_id || '',
+            target_all: r.target_all,
+            target_user_ids: r.target_user_ids || [],
+            is_recurring: r.is_recurring,
+            recurring_schedule: r.recurring_schedule || 'daily',
+            recurring_time: r.recurring_time || '07:00',
+            scheduled_at: r.scheduled_at ? r.scheduled_at.substring(0, 16) : '',
+        });
+        setShowEdit(true);
+    };
+
+    const closeEdit = () => {
+        setShowEdit(false);
+        setEditingReminder(null);
+        editReset();
+    };
+
+    const submitEdit = (e) => {
+        e.preventDefault();
+        put(route('reminders.update', editingReminder.id), {
+            onSuccess: () => closeEdit(),
+        });
     };
 
     const submitCreate = (e) => {
@@ -157,7 +202,7 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                                                             <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(r.scheduled_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                                         )}
                                                         {r.is_recurring && (
-                                                            <span className="flex items-center gap-1"><Repeat className="w-3 h-3" /> {r.recurring_schedule}</span>
+                                                            <span className="flex items-center gap-1"><Repeat className="w-3 h-3" /> {r.recurring_schedule}{r.recurring_time ? ` · ${r.recurring_time}` : ''}</span>
                                                         )}
                                                         <span>Oleh: {r.creator?.name || '-'}</span>
                                                     </div>
@@ -167,6 +212,12 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                                                         <button onClick={() => handleSendNow(r.id)}
                                                             className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="Kirim Sekarang">
                                                             <Send className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {!r.sent_at && (
+                                                        <button onClick={() => openEdit(r)}
+                                                            className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
+                                                            <Pencil className="w-4 h-4" />
                                                         </button>
                                                     )}
                                                     {r.sent_at && (
@@ -335,6 +386,132 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                             <button type="submit" disabled={processing} className="btn-primary">
                                 <Bell className="w-4 h-4 mr-2" />
                                 {processing ? 'Mengirim...' : 'Buat & Kirim'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
+
+            {/* Edit Modal */}
+            <Modal show={showEdit} onClose={closeEdit} maxWidth="lg">
+                <div className="bg-white rounded-card overflow-hidden">
+                    <div className="page-card-header px-6 py-4 bg-surface border-border">
+                        <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                            <Pencil className="w-5 h-5 text-blue-600" /> Edit Reminder
+                        </h2>
+                    </div>
+
+                    <form onSubmit={submitEdit} className="p-6 space-y-4">
+                        <div>
+                            <label className="form-label text-sm font-semibold">Judul <span className="text-danger">*</span></label>
+                            <input type="text" value={editData.title} onChange={e => setEditData('title', e.target.value)}
+                                className="input-field w-full" required />
+                            {editErrors.title && <p className="text-danger text-xs mt-1">{editErrors.title}</p>}
+                        </div>
+
+                        <div>
+                            <label className="form-label text-sm font-semibold">Pesan <span className="text-danger">*</span></label>
+                            <textarea value={editData.message} onChange={e => setEditData('message', e.target.value)}
+                                className="input-field w-full" rows="3" required />
+                            {editErrors.message && <p className="text-danger text-xs mt-1">{editErrors.message}</p>}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="form-label text-sm font-semibold">Jenis <span className="text-danger">*</span></label>
+                                <select value={editData.type} onChange={e => setEditData('type', e.target.value)} className="select-field w-full">
+                                    {TYPE_OPTIONS.map(t => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="form-label text-sm font-semibold">Unit Sekolah</label>
+                                <select value={editData.unit_sekolah_id} onChange={e => setEditData('unit_sekolah_id', e.target.value)} className="select-field w-full">
+                                    <option value="">Semua Unit</option>
+                                    {units.map(u => (
+                                        <option key={u.id} value={u.id}>{u.nama}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="form-label text-sm font-semibold">Target</label>
+                                <select value={editData.target_all ? 'all' : 'custom'} onChange={e => setEditData('target_all', e.target.value === 'all')} className="select-field w-full">
+                                    <option value="all">Semua Pegawai Aktif</option>
+                                    <option value="custom">Pilih Pegawai</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="form-label text-sm font-semibold">Kirim</label>
+                                <select value={editData.scheduled_at ? 'scheduled' : 'now'} onChange={e => {
+                                    if (e.target.value === 'now') {
+                                        setEditData('scheduled_at', '');
+                                    }
+                                }} className="select-field w-full">
+                                    <option value="now">Langsung Kirim</option>
+                                    <option value="scheduled">Terjadwal</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {!editData.target_all && (
+                            <div>
+                                <label className="form-label text-sm font-semibold">Pilih Pegawai</label>
+                                <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl border border-border p-2">
+                                    {pegawaiOptions.map((p) => (
+                                        <label key={p.id} className="flex items-center gap-2 text-sm">
+                                            <input
+                                                type="checkbox"
+                                                className="h-4 w-4 accent-[#0F3D3E]"
+                                                checked={editData.target_user_ids.includes(p.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setEditData('target_user_ids', [...editData.target_user_ids, p.id]);
+                                                    } else {
+                                                        setEditData('target_user_ids', editData.target_user_ids.filter((x) => x !== p.id));
+                                                    }
+                                                }}
+                                            />
+                                            {p.nama}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                            <input type="checkbox" checked={editData.is_recurring} onChange={e => setEditData('is_recurring', e.target.checked)}
+                                className="h-4 w-4 accent-[#0F3D3E]" id="edit_recurring" />
+                            <label htmlFor="edit_recurring" className="text-sm text-text-secondary">Pengulangan (Recurring)</label>
+                        </div>
+
+                        {editData.is_recurring && (
+                            <>
+                                <div>
+                                    <label className="form-label text-sm font-semibold">Jadwal Pengulangan</label>
+                                    <select value={editData.recurring_schedule} onChange={e => setEditData('recurring_schedule', e.target.value)} className="select-field w-full">
+                                        <option value="daily">Harian</option>
+                                        <option value="weekly">Mingguan</option>
+                                        <option value="monthly">Bulanan</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="form-label text-sm font-semibold">Jam Kirim</label>
+                                    <input type="time" value={editData.recurring_time}
+                                        onChange={e => setEditData('recurring_time', e.target.value)}
+                                        className="input-field w-full" required />
+                                </div>
+                            </>
+                        )}
+
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            <button type="button" onClick={closeEdit} className="btn-secondary">Batal</button>
+                            <button type="submit" disabled={editProcessing} className="btn-primary">
+                                <Pencil className="w-4 h-4 mr-2" />
+                                {editProcessing ? 'Menyimpan...' : 'Simpan Perubahan'}
                             </button>
                         </div>
                     </form>

@@ -184,7 +184,7 @@ class PresensiController extends Controller
     private function presensiStats($query): array
     {
         $byStatus = (clone $query)->toBase()
-            ->selectRaw('status, COUNT(*) as total')
+            ->selectRaw('status, COUNT(DISTINCT pegawai_id) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
 
@@ -192,7 +192,9 @@ class PresensiController extends Controller
         foreach ($stats as $key => $_) {
             $stats[$key] = (int) ($byStatus[$key] ?? 0);
         }
-        $stats['total'] = array_sum($stats);
+        $stats['total'] = (clone $query)->toBase()
+            ->distinct('pegawai_id')
+            ->count('pegawai_id');
         $stats['lembur_pending'] = (clone $query)->where('is_lembur', true)->where('lembur_status', 'pending')->count();
         $stats['perlu_review'] = (clone $query)->where('lokasi_perlu_review', true)->count();
 

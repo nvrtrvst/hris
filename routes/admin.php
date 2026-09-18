@@ -302,6 +302,8 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::get('reminders', [ReminderController::class, 'index'])->name('reminders.index');
         Route::post('reminders', [ReminderController::class, 'store'])
             ->middleware('throttle:30,1')->name('reminders.store');
+        Route::put('reminders/{reminder}', [ReminderController::class, 'update'])
+            ->middleware('throttle:30,1')->name('reminders.update');
         Route::delete('reminders/{reminder}', [ReminderController::class, 'destroy'])
             ->middleware('throttle:30,1')->name('reminders.destroy');
         Route::post('reminders/{reminder}/send', [ReminderController::class, 'sendNow'])
