@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Inertia\InertiaResponse;
+use Inertia\Response;
 
 class PresensiController extends Controller
 {
@@ -282,7 +282,7 @@ class PresensiController extends Controller
      * record presensi di rentang tanggal yang difilter.
      * Return presensi-shaped collection supaya frontend kompatibel.
      */
-    private function handleBelumPresensi(Request $request, $user, array $stats): InertiaResponse
+    private function handleBelumPresensi(Request $request, $user, array $stats): Response
     {
         $startDate = $request->start_date ?? Carbon::today()->toDateString();
         $endDate = $request->end_date ?? Carbon::today()->toDateString();
