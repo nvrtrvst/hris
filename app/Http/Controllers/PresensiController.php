@@ -287,11 +287,12 @@ class PresensiController extends Controller
         $startDate = $request->start_date ?? Carbon::today()->toDateString();
         $endDate = $request->end_date ?? Carbon::today()->toDateString();
 
+        $pegawaisWithPresensi = Presensi::whereBetween('tanggal', [$startDate, $endDate])
+            ->distinct()->pluck('pegawai_id');
+
         $pegawais = Pegawai::where('status_aktif', 'aktif')
             ->with(['units', 'jabatans'])
-            ->whereDoesntHave('presensis', function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('tanggal', [$startDate, $endDate]);
-            });
+            ->whereNotIn('id', $pegawaisWithPresensi);
 
         // Terapkan scope unit yang sama
         if ($user->can('view_all_units')) {
