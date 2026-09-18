@@ -105,9 +105,9 @@ Route::middleware('auth:web_admin')->group(function () {
 
     // Unit Sekolah
     Route::resource('unit-sekolah', UnitSekolahController::class)->only(['index', 'create', 'store', 'edit', 'update'])->middleware('throttle:60,1');
-    Route::post('unit-sekolah/{unit_sekolah}/lokasi', [UnitSekolahController::class, 'storeLokasi'])->middleware('throttle:30,1');
-    Route::put('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'updateLokasi'])->middleware('throttle:30,1');
-    Route::delete('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'destroyLokasi'])->middleware('throttle:30,1');
+    Route::post('unit-sekolah/{unit_sekolah}/lokasi', [UnitSekolahController::class, 'storeLokasi'])->name('unit-sekolah.store-lokasi')->middleware('throttle:30,1');
+    Route::put('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'updateLokasi'])->name('unit-sekolah.update-lokasi')->middleware('throttle:30,1');
+    Route::delete('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'destroyLokasi'])->name('unit-sekolah.destroy-lokasi')->middleware('throttle:30,1');
 
     // Jadwal — create/store/generate/swap/destroy hanya admin
     Route::get('jadwal/create', [JadwalController::class, 'create'])->name('jadwal.create');
