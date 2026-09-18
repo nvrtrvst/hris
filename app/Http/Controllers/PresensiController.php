@@ -198,9 +198,37 @@ class PresensiController extends Controller
      */
     private function presensiStats($query): array
     {
-        $stats['total'] = (clone $query)->toBase()
-            ->distinct('pegawai_id')
-            ->count('pegawai_id');
+        // 1 pegawai = 1 status per hari.
+        // Subquery: group by pegawai+tanggal, pick effective status per oranh.
+        // Priority: hadir > telat > sakit > izin > cuti > alpa.
+        $subQuery = (clone $query)
+            ->select(
+                'pegawai_id',
+                'tanggal',
+                DB::raw("CASE
+                    WHEN SUM(CASE WHEN status = 'hadir' THEN 1 ELSE 0 END) > 0 THEN 'hadir'
+                    WHEN SUM(CASE WHEN status = 'telat' THEN 1 ELSE 0 END) > 0 THEN 'telat'
+                    WHEN SUM(CASE WHEN status = 'sakit' THEN 1 ELSE 0 END) > 0 THEN 'sakit'
+                    WHEN SUM(CASE WHEN status = 'izin' THEN 1 ELSE 0 END) > 0 THEN 'izin'
+                    WHEN SUM(CASE WHEN status = 'cuti' THEN 1 ELSE 0 END) > 0 THEN 'cuti'
+                    ELSE 'alpa'
+                END AS effective_status")
+            )
+            ->groupBy('pegawai_id', 'tanggal');
+
+        $statusCounts = DB::table(DB::raw("({$subQuery->toSql()}) as person_days"))
+            ->mergeBindings($subQuery)
+            ->select('effective_status', DB::raw('COUNT(*) as count'))
+            ->groupBy('effective_status')
+            ->pluck('count', 'effective_status');
+
+        $stats['total'] = $statusCounts->sum();
+        $stats['hadir'] = $statusCounts->get('hadir', 0);
+        $stats['telat'] = $statusCounts->get('telat', 0);
+        $stats['sakit'] = $statusCounts->get('sakit', 0);
+        $stats['izin'] = $statusCounts->get('izin', 0);
+        $stats['cuti'] = $statusCounts->get('cuti', 0);
+        $stats['alpa'] = $statusCounts->get('alpa', 0);
         $stats['lembur_pending'] = (clone $query)->where('is_lembur', true)->where('lembur_status', 'pending')->count();
         $stats['perlu_review'] = (clone $query)->where('lokasi_perlu_review', true)->count();
 
