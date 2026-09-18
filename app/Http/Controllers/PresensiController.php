@@ -217,7 +217,7 @@ class PresensiController extends Controller
             ->groupBy('pegawai_id', 'tanggal');
 
         $statusCounts = DB::table(DB::raw("({$subQuery->toSql()}) as person_days"))
-            ->mergeBindings($subQuery)
+            ->mergeBindings($subQuery->toBase())
             ->select('effective_status', DB::raw('COUNT(*) as count'))
             ->groupBy('effective_status')
             ->pluck('count', 'effective_status');
