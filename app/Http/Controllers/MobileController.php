@@ -571,7 +571,7 @@ class MobileController extends Controller
         $tipePresensi = $isLembur ? 'lembur' : ($isTugasLuar ? 'tugas_luar' : ($request->filled('jadwal_id') ? 'mengajar' : 'kantor'));
 
         if ($request->jadwal_id) {
-            $jadwal = Jadwal::with('unitSekolah')
+            $jadwal = Jadwal::with(['unitSekolah', 'unitLokasi'])
                 ->whereKey($request->jadwal_id)
                 ->where('pegawai_id', $pegawai->id)
                 ->where('hari', $hariIni)
@@ -579,7 +579,7 @@ class MobileController extends Controller
             if (! $jadwal) {
                 throw ValidationException::withMessages(['jadwal_id' => PresensiMessages::PEMILIH_JADWAL_DULU]);
             }
-            $unit = $jadwal->unitSekolah;
+            $unit = $jadwal->unitLokasi ?? $jadwal->unitSekolah;
         } elseif ($isLembur) {
             $primaryUnit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
             if (! $primaryUnit) {
@@ -820,7 +820,7 @@ class MobileController extends Controller
                 ]);
             }
 
-            $presensi->unit_sekolah_id = $unit->id;
+            $presensi->unit_sekolah_id = $jadwal->unit_sekolah_id ?? $unit->id;
             $presensi->is_lembur = $isLembur;
             $presensi->is_tugas_luar = $isTugasLuar;
             $presensi->tipe_presensi = $tipePresensi;
@@ -1202,7 +1202,7 @@ class MobileController extends Controller
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIni = $hariMap[Carbon::now()->format('l')];
 
-        $jadwal = Jadwal::with('unitSekolah')
+        $jadwal = Jadwal::with(['unitSekolah', 'unitLokasi'])
             ->whereKey($request->jadwal_id)
             ->where('pegawai_id', $pegawai->id)
             ->where('hari', $hariIni)
@@ -1210,6 +1210,8 @@ class MobileController extends Controller
 
         abort_unless($jadwal, 422, 'Jadwal tidak ditemukan.');
         abort_unless($jadwal->unitSekolah, 422, 'Unit jadwal tidak tersedia.');
+
+        $lokasiUnit = $jadwal->unitLokasi ?? $jadwal->unitSekolah;
 
         // Slide hanya boleh dalam rentang sesi mengajar [sesi_start, sesi_end + grace]
         // — cegah presensi retroaktif untuk sesi yang sudah lama berakhir.
@@ -1222,7 +1224,7 @@ class MobileController extends Controller
             if ($sekarang < $sesiStart) {
                 return response()->json(['success' => false, 'message' => PresensiMessages::SLIDE_BELUM_DIMULAI], 422);
             }
-            $graceSlide = (int) ($jadwal->unitSekolah->toleransi_slide_menit ?? PresensiMessages::SLIDE_GRACE_MINUTES);
+            $graceSlide = (int) ($lokasiUnit->toleransi_slide_menit ?? PresensiMessages::SLIDE_GRACE_MINUTES);
             $batasSlide = Carbon::parse($sesiEnd)->addMinutes($graceSlide)->format('H:i:s');
             if ($sekarang > $batasSlide) {
                 return response()->json([
@@ -1240,8 +1242,7 @@ class MobileController extends Controller
 
         abort_unless($pagiRecord, 422, 'Silakan foto pagi terlebih dahulu.');
 
-        $unit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
-        abort_unless($unit, 422, PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT);
+        $unit = $lokasiUnit;
 
         $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);
 

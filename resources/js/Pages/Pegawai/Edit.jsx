@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, BadgeCheck, Camera, Landmark, Loader2, Save, Trash2, User, X as XIcon } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, Camera, Landmark, Loader2, MapPin, Save, Trash2, User, X as XIcon } from 'lucide-react';
 import { MapelSection } from '@/Pages/Pegawai/Partials/MapelSection';
 import { UnitAssignmentSection } from '@/Pages/Pegawai/Partials/UnitAssignmentSection';
 import { statusLabelFrom } from '@/Utils/pegawaiMeta';
@@ -38,7 +38,7 @@ function SectionCard({ Icon, title, description, children }) {
     );
 }
 
-export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, statusKepegawaian, pendidikanTerakhir, atasanCandidates = [] }) {
+export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, statusKepegawaian, pendidikanTerakhir, atasanCandidates = [], lokalis = [], pegawai_lokasis = [] }) {
     const canViewSensitive = auth.permissions?.includes('view_sensitive_data');
     const { data, setData, put, processing, errors } = useForm({
         nik: canViewSensitive ? pegawai.nik_plain ?? pegawai.nik : '',
@@ -72,6 +72,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         role: pegawai.user?.roles?.[0]?.name || 'pegawai',
         foto: null,
         hapus_foto: false,
+        lokasi_ids: pegawai_lokasis || [],
         units: (pegawai.units || []).map((u) => ({
             unit_sekolah_id: u.id,
             jabatan_id: u.pivot?.jabatan_id ?? '',
@@ -386,6 +387,36 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                             unitSekolahs={unitSekolahs}
                             jabatans={jabatans}
                         />
+
+                        {/* Lokasi / Kampus yang Diizinkan */}
+                        {lokalis.length > 0 && (
+                            <div className="card p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <MapPin className="h-5 w-5 text-primary" />
+                                    <h3 className="font-semibold text-text-primary">Lokasi / Kampus yang Diizinkan</h3>
+                                </div>
+                                <p className="text-sm text-text-secondary mb-3">Pilih lokasi mana saja yang boleh digunakan pegawai ini untuk presensi. Kosongkan = semua lokasi default unit.</p>
+                                <div className="space-y-2">
+                                    {lokalis.map(l => (
+                                        <label key={l.id} className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={data.lokasi_ids.includes(l.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setData('lokasi_ids', [...data.lokasi_ids, l.id]);
+                                                    } else {
+                                                        setData('lokasi_ids', data.lokasi_ids.filter(id => id !== l.id));
+                                                    }
+                                                }}
+                                                className="rounded border-border text-primary focus:ring-primary"
+                                            />
+                                            <span className="text-sm">{l.nama}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Mata Pelajaran (Guru) */}
                         <MapelSection

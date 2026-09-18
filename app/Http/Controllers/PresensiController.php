@@ -414,8 +414,8 @@ class PresensiController extends Controller
             'foto' => ['required', 'string', 'max:'.PresensiMessages::MAX_FOTO_BASE64, 'regex:/^data:image\/\w+;base64,/'],
         ]);
 
-        $jadwal = Jadwal::with('unitSekolah')->findOrFail($request->jadwal_id);
-        $unit = $jadwal->unitSekolah;
+        $jadwal = Jadwal::with(['unitSekolah', 'unitLokasi'])->findOrFail($request->jadwal_id);
+        $unit = $jadwal->unitLokasi ?? $jadwal->unitSekolah;
 
         // Blokir presensi di hari Minggu atau Sabtu (jika unit tidak beroperasi)
         $hariMap = ['Sunday' => 'Minggu', 'Saturday' => 'Sabtu'];
@@ -462,7 +462,7 @@ class PresensiController extends Controller
                     ]);
                 }
 
-                $presensi->unit_sekolah_id = $unit->id;
+                $presensi->unit_sekolah_id = $jadwal->unit_sekolah_id;
 
                 $jadwal = Jadwal::find($request->jadwal_id);
 

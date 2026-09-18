@@ -2,12 +2,13 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-export default function Create({ auth, pegawais, units, mapel }) {
+export default function Create({ auth, pegawais, units, mapel, lokalis }) {
     const [jumlahJp, setJumlahJp] = React.useState(1);
     const [apiKelas, setApiKelas] = React.useState([]);
     const { data, setData, post, processing, errors } = useForm({
         pegawai_id: '',
         unit_sekolah_id: '',
+        unit_lokasi_id: '',
         kelas_label: '',
         mata_pelajaran_id: '',
         hari: ['Senin'],
@@ -20,6 +21,15 @@ export default function Create({ auth, pegawais, units, mapel }) {
 
     const selectedUnit = React.useMemo(() => units.find(u => u.id == data.unit_sekolah_id), [data.unit_sekolah_id, units]);
     const durasiJp = selectedUnit?.durasi_jp || 45;
+
+    const filteredLokalis = React.useMemo(() => {
+        if (!data.unit_sekolah_id) return [];
+        return (lokalis || []).filter(l => l.unit_sekolah_id == data.unit_sekolah_id);
+    }, [data.unit_sekolah_id, lokalis]);
+
+    React.useEffect(() => {
+        setData('unit_lokasi_id', '');
+    }, [data.unit_sekolah_id]);
 
     React.useEffect(() => {
         if (data.jenis_jadwal !== 'mengajar' || !data.unit_sekolah_id || !selectedUnit?.nama) { setApiKelas([]); return; }
@@ -103,6 +113,19 @@ export default function Create({ auth, pegawais, units, mapel }) {
                                             </select>
                                             {errors.unit_sekolah_id && <p className="form-error">{errors.unit_sekolah_id}</p>}
                                         </div>
+                                        {filteredLokalis.length > 0 && (
+                                            <div>
+                                                <label className="form-label">Lokasi / Kampus</label>
+                                                <select value={data.unit_lokasi_id} onChange={e => setData('unit_lokasi_id', e.target.value)} className="select-field">
+                                                    <option value="">Pilih Lokasi (Opsional)</option>
+                                                    {filteredLokalis.map(l => (
+                                                        <option key={l.id} value={l.id}>{l.nama}</option>
+                                                    ))}
+                                                </select>
+                                                <p className="form-hint">Kosongkan = koordinat unit utama.</p>
+                                                {errors.unit_lokasi_id && <p className="form-error">{errors.unit_lokasi_id}</p>}
+                                            </div>
+                                        )}
                                         <div>
                                             <label className="form-label">Jenis Jadwal <span className="text-red-500">*</span></label>
                                             <select value={data.jenis_jadwal} onChange={e => setData('jenis_jadwal', e.target.value)} className="select-field">

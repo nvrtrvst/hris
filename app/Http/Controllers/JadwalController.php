@@ -10,6 +10,7 @@ use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\PegawaiMapel;
 use App\Models\Presensi;
+use App\Models\UnitLokasi;
 use App\Models\UnitSekolah;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Client\ConnectionException;
@@ -199,6 +200,7 @@ class JadwalController extends Controller
             'pegawais' => $pegawais->orderBy('nama_lengkap')->get(),
             'units' => $units->get(),
             'mapel' => MataPelajaran::all(['id', 'nama']),
+            'lokalis' => UnitLokasi::where('is_active', true)->get(['id', 'unit_sekolah_id', 'nama']),
         ]);
     }
 
@@ -216,6 +218,7 @@ class JadwalController extends Controller
         $validated = $request->validate([
             'pegawai_id' => 'required|exists:pegawai,id',
             'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
+            'unit_lokasi_id' => 'nullable|exists:unit_lokasi,id',
             'kelas_label' => 'nullable|string|max:255',
             // Mapel WAJIB untuk jadwal mengajar, opsional untuk jenis lain (piket/ekskul/shift).
             'mata_pelajaran_id' => 'nullable|required_if:jenis_jadwal,mengajar|exists:mata_pelajaran,id',
@@ -227,6 +230,16 @@ class JadwalController extends Controller
             'tahun_ajaran' => 'required|string|max:10',
             'semester' => 'required|integer|in:1,2',
         ]);
+
+        // Validasi lokasi harus milik unit yang dipilih
+        if (! empty($validated['unit_lokasi_id']) && $validated['unit_lokasi_id'] != null) {
+            $lokasi = UnitLokasi::where('id', $validated['unit_lokasi_id'])
+                ->where('unit_sekolah_id', $validated['unit_sekolah_id'])
+                ->first();
+            if (! $lokasi) {
+                return back()->withErrors(['unit_lokasi_id' => 'Lokasi tidak valid untuk unit ini.'])->withInput();
+            }
+        }
 
         // Security: user yang ter-scope unit tidak boleh membuat jadwal untuk pegawai unit lain.
         if ($user->unit_sekolah_id && ! $user->can('view_all_units')
@@ -312,6 +325,7 @@ class JadwalController extends Controller
             'pegawais' => $pegawais->orderBy('nama_lengkap')->get(),
             'units' => $units->get(),
             'mapel' => MataPelajaran::all(['id', 'nama']),
+            'lokalis' => UnitLokasi::where('is_active', true)->get(['id', 'unit_sekolah_id', 'nama']),
         ]);
     }
 
@@ -331,6 +345,7 @@ class JadwalController extends Controller
         $validated = $request->validate([
             'pegawai_id' => 'required|exists:pegawai,id',
             'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
+            'unit_lokasi_id' => 'nullable|exists:unit_lokasi,id',
             'kelas_label' => 'nullable|string|max:255',
             // Mapel WAJIB untuk jadwal mengajar, opsional untuk jenis lain (piket/ekskul/shift).
             'mata_pelajaran_id' => 'nullable|required_if:jenis_jadwal,mengajar|exists:mata_pelajaran,id',
@@ -341,6 +356,16 @@ class JadwalController extends Controller
             'tahun_ajaran' => 'required|string|max:10',
             'semester' => 'required|integer|in:1,2',
         ]);
+
+        // Validasi lokasi harus milik unit yang dipilih
+        if (! empty($validated['unit_lokasi_id']) && $validated['unit_lokasi_id'] != null) {
+            $lokasi = UnitLokasi::where('id', $validated['unit_lokasi_id'])
+                ->where('unit_sekolah_id', $validated['unit_sekolah_id'])
+                ->first();
+            if (! $lokasi) {
+                return back()->withErrors(['unit_lokasi_id' => 'Lokasi tidak valid untuk unit ini.'])->withInput();
+            }
+        }
 
         // Security: user yang ter-scope unit tidak boleh edit jadwal ke pegawai unit lain.
         if ($user->unit_sekolah_id && ! $user->can('view_all_units')

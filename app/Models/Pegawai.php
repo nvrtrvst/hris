@@ -344,6 +344,11 @@ class Pegawai extends Model
             ->withTimestamps();
     }
 
+    public function lokasis(): BelongsToMany
+    {
+        return $this->belongsToMany(UnitLokasi::class, 'pegawai_unit_lokasi')->withTimestamps();
+    }
+
     public function komponenGaji(): BelongsToMany
     {
         return $this->belongsToMany(KomponenGaji::class, 'pegawai_komponen_gaji')

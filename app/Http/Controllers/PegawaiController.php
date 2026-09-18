@@ -12,6 +12,7 @@ use App\Models\KomponenGaji;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\StatusKepegawaian;
+use App\Models\UnitLokasi;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -398,7 +399,7 @@ class PegawaiController extends Controller
 
     public function edit(string $id)
     {
-        $pegawai = Pegawai::with(['user', 'units', 'jabatans', 'mapels', 'statusRef'])->findOrFail($id);
+        $pegawai = Pegawai::with(['user', 'units', 'jabatans', 'mapels', 'statusRef', 'lokasis'])->findOrFail($id);
 
         $user = auth()->user();
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units') && ! $pegawai->units->pluck('id')->contains($user->unit_sekolah_id)) {
@@ -415,6 +416,12 @@ class PegawaiController extends Controller
             $jabatans = Jabatan::select('id', 'nama', 'hierarchy_level')->orderBy('nama')->get();
         }
         $mapels = MataPelajaran::select('id', 'nama')->orderBy('nama')->get();
+
+        // Ambil semua lokasi dari unit-unit yang di-assign pegawai ini
+        $unitIds = $pegawai->units->pluck('id')->toArray();
+        $lokalis = UnitLokasi::where('is_active', true)
+            ->whereIn('unit_sekolah_id', $unitIds)
+            ->get(['id', 'unit_sekolah_id', 'nama']);
 
         // Kandidat atasan langsung: hanya pegawai dengan jabatan hierarchy LEBIH TINGGI.
         // Ambil hierarchy_level pegawai yg sedang diedit
@@ -455,6 +462,8 @@ class PegawaiController extends Controller
             'unitSekolahs' => $unitSekolahs,
             'jabatans' => $jabatans,
             'mapels' => $mapels,
+            'lokalis' => $lokalis,
+            'pegawai_lokasis' => $pegawai->lokasis->pluck('id')->toArray(),
             'atasanCandidates' => $atasanCandidates,
             'statusKepegawaian' => StatusKepegawaian::activeOptions(),
             'pendidikanTerakhir' => PegawaiConstants::PENDIDIKAN_TERAKHIR,
@@ -506,6 +515,8 @@ class PegawaiController extends Controller
             'mapels' => 'nullable|array',
             'mapels.*.mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
             'mapels.*.unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'lokasi_ids' => 'nullable|array',
+            'lokasi_ids.*' => 'nullable|exists:unit_lokasi,id',
             'atasan_langsung_id' => 'nullable|integer|exists:pegawai,id',
             'jumlah_tanggungan' => 'nullable|integer|min:0',
             'no_hp_darurat' => 'nullable|string|max:20',
@@ -603,6 +614,12 @@ class PegawaiController extends Controller
             ];
         }
         $pegawai->mapels()->sync($syncMapels);
+
+        // Sinkronisasi lokasi yang diizinkan
+        $lokasiIds = $request->input('lokasi_ids', []);
+        if (is_array($lokasiIds)) {
+            $pegawai->lokasis()->sync($lokasiIds);
+        }
 
         if ($pegawai->user_id) {
             $userAcc = User::find($pegawai->user_id);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\UnitLokasi;
 use App\Models\UnitSekolah;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -82,7 +83,7 @@ class UnitSekolahController extends Controller
 
     public function edit(UnitSekolah $unit_sekolah)
     {
-        return inertia('UnitSekolah/Edit', ['unit' => $unit_sekolah]);
+        return inertia('UnitSekolah/Edit', ['unit' => $unit_sekolah, 'lokalis' => $unit_sekolah->lokalis]);
     }
 
     public function update(Request $request, UnitSekolah $unit_sekolah)
@@ -133,5 +134,45 @@ class UnitSekolahController extends Controller
         }
 
         return redirect()->route('unit-sekolah.index')->with('message', 'Unit Sekolah berhasil diperbarui.');
+    }
+
+    public function storeLokasi(Request $request, UnitSekolah $unit_sekolah)
+    {
+        $validated = $request->validate([
+            'nama' => 'required|string|max:255',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'radius_meter' => 'required|integer|min:10|max:100000',
+        ]);
+
+        $unit_sekolah->lokalis()->create($validated);
+
+        return back()->with('message', 'Lokasi berhasil ditambahkan.');
+    }
+
+    public function updateLokasi(Request $request, UnitSekolah $unit_sekolah, UnitLokasi $lokasi)
+    {
+        abort_unless($lokasi->unit_sekolah_id === $unit_sekolah->id, 404);
+
+        $validated = $request->validate([
+            'nama' => 'required|string|max:255',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'radius_meter' => 'required|integer|min:10|max:100000',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $lokasi->update($validated);
+
+        return back()->with('message', 'Lokasi berhasil diperbarui.');
+    }
+
+    public function destroyLokasi(UnitSekolah $unit_sekolah, UnitLokasi $lokasi)
+    {
+        abort_unless($lokasi->unit_sekolah_id === $unit_sekolah->id, 404);
+
+        $lokasi->delete();
+
+        return back()->with('message', 'Lokasi berhasil dihapus.');
     }
 }

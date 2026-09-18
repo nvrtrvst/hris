@@ -37,4 +37,9 @@ class UnitSekolah extends Model
     {
         return $this->hasMany(Jadwal::class, 'unit_sekolah_id');
     }
+
+    public function lokalis(): HasMany
+    {
+        return $this->hasMany(UnitLokasi::class, 'unit_sekolah_id');
+    }
 }
