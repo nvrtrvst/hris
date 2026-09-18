@@ -789,8 +789,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
-                        {statsCards.map((card) => <StatCard key={card.label} {...card} onClick={() => applyStatFilter(card.filter)} />)}
+                    <div className="flex flex-wrap gap-3">
+                        {statsCards.map((card) => <div key={card.label} className="min-w-[140px] flex-1 basis-[140px] lg:basis-auto"><StatCard {...card} onClick={() => applyStatFilter(card.filter)} /></div>)}
                     </div>
 
                     {/* Kepsek view mode toggle */}
