@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Inertia\InertiaResponse;
 
 class PresensiController extends Controller
 {
@@ -33,7 +34,7 @@ class PresensiController extends Controller
         $request->validate([
             'lokasi_filter' => 'nullable|in:perlu_review,pulang_awal,review_semua',
             'suspicious_filter' => 'nullable|boolean',
-            'status_filter' => 'nullable|in:hadir,telat,sakit,izin,cuti,alpa',
+            'status_filter' => 'nullable|in:hadir,telat,sakit,izin,cuti,alpa,belum_presensi',
             'jadwal_filter' => 'nullable|in:sedang_berlangsung',
             'jenis_filter' => 'nullable|in:pendidik,kependidikan',
             'search' => 'nullable|string|max:100',
@@ -74,11 +75,19 @@ class PresensiController extends Controller
             });
         }
 
-        if ($request->start_date) {
-            $query->where('tanggal', '>=', $request->start_date);
+        // Default: filter ke hari ini jika tidak ada date filter dari request
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+        if (! $startDate && ! $endDate) {
+            $startDate = Carbon::today()->toDateString();
+            $endDate = Carbon::today()->toDateString();
         }
-        if ($request->end_date) {
-            $query->where('tanggal', '<=', $request->end_date);
+
+        if ($startDate) {
+            $query->where('tanggal', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->where('tanggal', '<=', $endDate);
         }
 
         if ($request->unit_id && $user->can('view_all_units')) {
@@ -121,6 +130,13 @@ class PresensiController extends Controller
 
         if ($request->suspicious_filter) {
             $query->where('posisi_mencurigakan', true);
+        }
+
+        // ── Special: "Belum Presensi" ──
+        // Pegawai aktif di scope yang TIDAK punya record presensi di rentang tanggal.
+        // Dipisah karena basis query-nya berbeda (pegawai LEFT JOIN presensi, bukan sebaliknya).
+        if ($request->status_filter === 'belum_presensi') {
+            return $this->handleBelumPresensi($request, $user, $stats);
         }
 
         if ($request->status_filter) {
@@ -232,7 +248,126 @@ class PresensiController extends Controller
         $stats['lembur_pending'] = (clone $query)->where('is_lembur', true)->where('lembur_status', 'pending')->count();
         $stats['perlu_review'] = (clone $query)->where('lokasi_perlu_review', true)->count();
 
+        // Belum presensi: total pegawai aktif di scope - yang sudah punya presensi.
+        // $query sudah punya filter tanggal + unit/scope, jadi pegawai yang punya presensi
+        // di rentang tanggal = COUNT(DISTINCT pegawai_id) dari query.
+        $pegawaiWithPresensi = (clone $query)->distinct()->count('pegawai_id');
+        $totalPegawai = $this->countActivePegawaiInScope($query);
+        $stats['belum_presensi'] = max(0, $totalPegawai - $pegawaiWithPresensi);
+
         return $stats;
+    }
+
+    /**
+     * Hitung total pegawai aktif yang termasuk dalam scope query presensi.
+     * Mengekstrak scope unit/jenis dari query builder untuk diterapkan ke model Pegawai.
+     */
+    private function countActivePegawaiInScope($presensiQuery): int
+    {
+        $user = auth()->user();
+        $pegawais = Pegawai::where('status_aktif', 'aktif');
+
+        // Terapkan scope unit yang sama dengan index()
+        if ($user->can('view_all_units')) {
+            // Semua unit — tidak perlu filter
+        } elseif ($user->unit_sekolah_id) {
+            $pegawais->forUnit($user->unit_sekolah_id);
+        }
+
+        return $pegawais->count();
+    }
+
+    /**
+     * Handle filter "belum_presensi": tampilkan pegawai aktif yang TIDAK punya
+     * record presensi di rentang tanggal yang difilter.
+     * Return presensi-shaped collection supaya frontend kompatibel.
+     */
+    private function handleBelumPresensi(Request $request, $user, array $stats): InertiaResponse
+    {
+        $startDate = $request->start_date ?? Carbon::today()->toDateString();
+        $endDate = $request->end_date ?? Carbon::today()->toDateString();
+
+        $pegawais = Pegawai::where('status_aktif', 'aktif')
+            ->with(['units', 'jabatans'])
+            ->whereDoesntHave('presensis', function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('tanggal', [$startDate, $endDate]);
+            });
+
+        // Terapkan scope unit yang sama
+        if ($user->can('view_all_units')) {
+            // Semua unit
+        } elseif ($user->unit_sekolah_id) {
+            $pegawais->forUnit($user->unit_sekolah_id);
+        } elseif (! $user->can('view_presensi')) {
+            // Pegawai biasa: hanya diri sendiri
+            $selfPegawai = Pegawai::where('user_id', auth()->id())->first();
+            if ($selfPegawai) {
+                $pegawais->where('id', $selfPegawai->id);
+            } else {
+                $pegawais->where('id', -1);
+            }
+        }
+
+        // Filter search
+        if ($request->search) {
+            $pegawais->where('nama_lengkap', 'like', '%'.$request->search.'%');
+        }
+
+        // Filter jenis
+        if ($request->jenis_filter === 'pendidik') {
+            $pegawais->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
+        } elseif ($request->jenis_filter === 'kependidikan') {
+            $pegawais->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
+        }
+
+        // Filter unit
+        if ($request->unit_id && $user->can('view_all_units')) {
+            $pegawais->forUnit($request->unit_id);
+        }
+
+        $pegawaiList = $pegawais->orderBy('nama_lengkap')->get();
+
+        // Buat virtual presensi records supaya frontend bisa render
+        $virtualPresensis = $pegawaiList->map(function ($p) use ($startDate) {
+            return (object) [
+                'id' => 'new-'.$p->id,
+                'pegawai_id' => $p->id,
+                'tanggal' => $startDate,
+                'jam_masuk' => null,
+                'jam_keluar' => null,
+                'status' => 'belum_presensi',
+                'is_lembur' => false,
+                'lembur_status' => null,
+                'lokasi_perlu_review' => false,
+                'posisi_mencurigakan' => false,
+                'foto' => null,
+                'keterangan' => null,
+                'pegawai' => $p,
+                'jadwal' => null,
+                'unitSekolah' => $p->units->first(),
+            ];
+        });
+
+        $paginator = new LengthAwarePaginator(
+            $virtualPresensis, $virtualPresensis->count(), $virtualPresensis->count(), 1, ['path' => $request->url()]
+        );
+
+        $units = [];
+        if ($user->can('view_all_units')) {
+            $units = UnitSekolah::orderBy('nama')->get();
+        }
+
+        // Update stats untuk total
+        $stats['belum_presensi'] = $pegawaiList->count();
+
+        return inertia('Presensi/Index', [
+            'presensis' => $paginator,
+            'pegawai' => null,
+            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'status_filter', 'jadwal_filter', 'jenis_filter', 'search', 'view_mode']),
+            'units' => $units,
+            'userRole' => $user->roles->first()?->name ?? 'pegawai',
+            'stats' => $stats,
+        ]);
     }
 
     public function create()

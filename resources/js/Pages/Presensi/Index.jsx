@@ -25,6 +25,7 @@ import {
     RotateCcw,
     Search,
     ShieldAlert,
+    UserRoundX,
     UserX,
     Users,
     X,
@@ -37,6 +38,7 @@ const STATUS_META = {
     izin: { label: 'Izin', badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
     cuti: { label: 'Cuti', badge: 'bg-cyan-50 text-cyan-700 border-cyan-200', dot: 'bg-cyan-500' },
     alpa: { label: 'Alpa', badge: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500' },
+    belum_presensi: { label: 'Belum Presensi', badge: 'bg-slate-50 text-slate-700 border-slate-200', dot: 'bg-slate-500' },
 };
 
 const StatusBadge = ({ status }) => {
@@ -429,7 +431,12 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         ) : <span className="text-xs text-text-secondary">—</span>}
                     </td>
                     <td className="px-4 py-3.5 whitespace-nowrap">
-                        {auth.permissions?.includes('manage_master_data') ? (
+                        {parent.status === 'belum_presensi' ? (
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase ${STATUS_META.belum_presensi.badge}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${STATUS_META.belum_presensi.dot}`} />
+                                Belum Presensi
+                            </span>
+                        ) : auth.permissions?.includes('manage_master_data') ? (
                             <select
                                 className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[parent.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
                                 value={parent.status}
@@ -729,7 +736,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
             .catch(() => setTugasLuarModal({ show: true, loading: false, data: null }));
     };
 
-    const s = stats || { total: 0, lembur_pending: 0, perlu_review: 0 };
+    const s = stats || { total: 0, hadir: 0, telat: 0, sakit: 0, izin: 0, cuti: 0, alpa: 0, belum_presensi: 0, lembur_pending: 0, perlu_review: 0 };
 
     const statsCards = [
         { key: 'total', label: 'Total Pegawai', value: s.total, Icon: Users, iconBg: 'bg-primary/10', iconCls: 'text-primary', filter: { status_filter: '', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: !statusFilter && !lemburFilter && !lokasiFilter && !suspiciousFilter },
@@ -739,6 +746,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         { key: 'izin', label: 'Izin', value: s.izin, Icon: FileText, iconBg: 'bg-blue-100', iconCls: 'text-blue-600', filter: { status_filter: 'izin', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'izin' },
         { key: 'cuti', label: 'Cuti', value: s.cuti, Icon: CalendarOff, iconBg: 'bg-cyan-100', iconCls: 'text-cyan-600', filter: { status_filter: 'cuti', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'cuti' },
         { key: 'alpa', label: 'Alpa', value: s.alpa, Icon: UserX, iconBg: 'bg-rose-100', iconCls: 'text-rose-600', filter: { status_filter: 'alpa', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'alpa' },
+        { key: 'belum_presensi', label: 'Belum Presensi', value: s.belum_presensi, Icon: UserRoundX, iconBg: 'bg-slate-100', iconCls: 'text-slate-600', filter: { status_filter: 'belum_presensi', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'belum_presensi' },
         { key: 'lembur_pending', label: 'Lembur Pending', value: s.lembur_pending, Icon: AlarmClock, iconBg: 'bg-orange-100', iconCls: 'text-orange-600', filter: { status_filter: '', lembur_filter: 'lembur_pending', lokasi_filter: '', suspicious_filter: '' }, active: lemburFilter === 'lembur_pending' },
         { key: 'perlu_review', label: 'Perlu Review', value: s.perlu_review, Icon: ShieldAlert, iconBg: 'bg-red-100', iconCls: 'text-red-600', filter: { status_filter: '', lembur_filter: '', lokasi_filter: 'perlu_review', suspicious_filter: '' }, active: lokasiFilter === 'perlu_review' },
     ];
@@ -781,7 +789,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
                         {statsCards.map((card) => <StatCard key={card.label} {...card} onClick={() => applyStatFilter(card.filter)} />)}
                     </div>
 
