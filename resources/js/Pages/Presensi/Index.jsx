@@ -13,19 +13,14 @@ import {
     AlertTriangle,
     AlarmClock,
     CalendarDays,
-    CalendarOff,
-    CheckCircle2,
     Clock3,
-    FileText,
     Filter,
-    HeartPulse,
     History,
     Loader2,
     MapPin,
     RotateCcw,
     Search,
     ShieldAlert,
-    UserX,
     Users,
     X,
 } from 'lucide-react';
@@ -460,52 +455,6 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
     });
 };
 
-const StatusDistribution = ({ stats }) => {
-    const items = [
-        { key: 'hadir', label: 'Hadir', val: stats.hadir, color: 'bg-emerald-500' },
-        { key: 'telat', label: 'Terlambat', val: stats.telat, color: 'bg-amber-500' },
-        { key: 'sakit', label: 'Sakit', val: stats.sakit, color: 'bg-purple-500' },
-        { key: 'izin', label: 'Izin', val: stats.izin, color: 'bg-blue-500' },
-        { key: 'cuti', label: 'Cuti', val: stats.cuti, color: 'bg-cyan-500' },
-        { key: 'alpa', label: 'Alpa', val: stats.alpa, color: 'bg-rose-500' },
-    ];
-    const total = stats.total || 0;
-    const segs = items.filter((x) => x.val > 0);
-
-    return (
-        <div className="border-b border-border bg-surface/60 px-4 py-3 sm:px-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
-                    <span>Distribusi Status</span>
-                    <span className="rounded-full bg-border px-2 py-0.5 text-[11px] font-bold text-text-primary">{total} record</span>
-                </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1">
-                    {items.map((it) => (
-                        <span key={it.key} className="flex items-center gap-1.5 text-[11px] text-text-secondary">
-                            <span className={`h-2.5 w-2.5 rounded-full ${it.color}`} />
-                            {it.label} <b className="text-text-primary">{it.val}</b>
-                        </span>
-                    ))}
-                </div>
-            </div>
-            <div className="mt-2 flex h-2.5 w-full overflow-hidden rounded-full bg-border">
-                {segs.length === 0 ? (
-                    <div className="h-full w-full bg-border" />
-                ) : (
-                    segs.map((seg) => (
-                        <div
-                            key={seg.key}
-                            className={seg.color}
-                            style={{ width: `${(seg.val / total) * 100}%` }}
-                            title={`${seg.label}: ${seg.val}`}
-                        />
-                    ))
-                )}
-            </div>
-        </div>
-    );
-};
-
 const parseDate = (s) => {
     const [y, m, d] = String(s).split('-').map(Number);
 
@@ -635,8 +584,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         jenis_filter: jenisFilter,
         search,
         view_mode: dataViewMode || undefined,
+        display_mode: viewMode || undefined,
         ...overrides,
-    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, jadwalFilter, jenisFilter, search, dataViewMode]);
+    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, jadwalFilter, jenisFilter, search, dataViewMode, viewMode]);
 
     const applyFilters = React.useCallback((overrides = {}) => {
         router.get(route('presensi.index'), buildParams(overrides), { preserveState: true, preserveScroll: true });
@@ -728,16 +678,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
             .catch(() => setTugasLuarModal({ show: true, loading: false, data: null }));
     };
 
-    const s = stats || { total: 0, hadir: 0, telat: 0, sakit: 0, izin: 0, cuti: 0, alpa: 0, lembur_pending: 0, perlu_review: 0 };
+    const s = stats || { total: 0, lembur_pending: 0, perlu_review: 0 };
 
     const statsCards = [
-        { key: 'total', label: 'Total', value: s.total, Icon: Users, iconBg: 'bg-primary/10', iconCls: 'text-primary', filter: { status_filter: '', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: !statusFilter && !lemburFilter && !lokasiFilter && !suspiciousFilter },
-        { key: 'hadir', label: 'Hadir', value: s.hadir, Icon: CheckCircle2, iconBg: 'bg-emerald-100', iconCls: 'text-emerald-600', filter: { status_filter: 'hadir', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'hadir' },
-        { key: 'telat', label: 'Terlambat', value: s.telat, Icon: Clock3, iconBg: 'bg-amber-100', iconCls: 'text-amber-600', filter: { status_filter: 'telat', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'telat' },
-        { key: 'sakit', label: 'Sakit', value: s.sakit, Icon: HeartPulse, iconBg: 'bg-purple-100', iconCls: 'text-purple-600', filter: { status_filter: 'sakit', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'sakit' },
-        { key: 'izin', label: 'Izin', value: s.izin, Icon: FileText, iconBg: 'bg-blue-100', iconCls: 'text-blue-600', filter: { status_filter: 'izin', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'izin' },
-        { key: 'cuti', label: 'Cuti', value: s.cuti, Icon: CalendarOff, iconBg: 'bg-cyan-100', iconCls: 'text-cyan-600', filter: { status_filter: 'cuti', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'cuti' },
-        { key: 'alpa', label: 'Alpa', value: s.alpa, Icon: UserX, iconBg: 'bg-rose-100', iconCls: 'text-rose-600', filter: { status_filter: 'alpa', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'alpa' },
+        { key: 'total', label: 'Total Pegawai', value: s.total, Icon: Users, iconBg: 'bg-primary/10', iconCls: 'text-primary', filter: { status_filter: '', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: !statusFilter && !lemburFilter && !lokasiFilter && !suspiciousFilter },
         { key: 'lembur_pending', label: 'Lembur Pending', value: s.lembur_pending, Icon: AlarmClock, iconBg: 'bg-orange-100', iconCls: 'text-orange-600', filter: { status_filter: '', lembur_filter: 'lembur_pending', lokasi_filter: '', suspicious_filter: '' }, active: lemburFilter === 'lembur_pending' },
         { key: 'perlu_review', label: 'Perlu Review', value: s.perlu_review, Icon: ShieldAlert, iconBg: 'bg-red-100', iconCls: 'text-red-600', filter: { status_filter: '', lembur_filter: '', lokasi_filter: 'perlu_review', suspicious_filter: '' }, active: lokasiFilter === 'perlu_review' },
     ];
@@ -967,7 +911,6 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         };
                     return isAdmin ? (
                         <div className="card p-0 overflow-hidden">
-                            <StatusDistribution stats={s} />
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">

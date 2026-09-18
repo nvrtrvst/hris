@@ -16,6 +16,7 @@ use App\Services\ImageUploadService;
 use App\Traits\CalculatesDistance;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -154,13 +155,27 @@ class PresensiController extends Controller
         // Sort: tanggal DESC, lalu jam_masuk ASC untuk kronologis harian,
         // lalu id ASC tie-breaker supaya baris jam_masuk sama (NULL/pulang tanpa masuk) deterministik.
         // Hindari join jadwal (jam_mulai) — tambah N+1 + lockForUpdate tidak relevan di index read-only.
-        $presensis = $query
-            ->orderBy('tanggal', 'desc')
-            ->orderBy('jam_masuk', 'asc')
-            ->orderBy('id', 'asc')
-            ->paginate($perPage)
-            ->withQueryString();
-        $presensis->load('pegawai.jabatans');
+        // Ringkas view: kirim semua data tanpa pagination (buildGroups butuh semua records per orang).
+        if ($request->input('display_mode') === 'ringkas') {
+            $presensis = $query
+                ->orderBy('tanggal', 'desc')
+                ->orderBy('jam_masuk', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
+            $presensis->load('pegawai.jabatans');
+            // Wrap in LengthAwarePaginator agar frontend tetap bisa akses .data dan .links
+            $presensis = new LengthAwarePaginator(
+                $presensis, $presensis->count(), $presensis->count(), 1, ['path' => $request->url()]
+            );
+        } else {
+            $presensis = $query
+                ->orderBy('tanggal', 'desc')
+                ->orderBy('jam_masuk', 'asc')
+                ->orderBy('id', 'asc')
+                ->paginate($perPage)
+                ->withQueryString();
+            $presensis->load('pegawai.jabatans');
+        }
 
         $units = [];
         if ($user->can('view_all_units')) {
@@ -183,15 +198,6 @@ class PresensiController extends Controller
      */
     private function presensiStats($query): array
     {
-        $byStatus = (clone $query)->toBase()
-            ->selectRaw('status, COUNT(DISTINCT pegawai_id) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
-
-        $stats = ['hadir' => 0, 'telat' => 0, 'sakit' => 0, 'izin' => 0, 'cuti' => 0, 'alpa' => 0];
-        foreach ($stats as $key => $_) {
-            $stats[$key] = (int) ($byStatus[$key] ?? 0);
-        }
         $stats['total'] = (clone $query)->toBase()
             ->distinct('pegawai_id')
             ->count('pegawai_id');
