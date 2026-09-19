@@ -103,7 +103,7 @@ class FinalizeAlpa extends Command
                         }
                         $row = Presensi::firstOrCreate(
                             ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jadwal->id, 'tanggal' => $tanggal],
-                            ['unit_sekolah_id' => $jadwal->unit_sekolah_id, 'tipe_presensi' => 'mengajar', 'keterangan' => 'Auto-mark alpa (mengajar)'],
+                            ['unit_sekolah_id' => $jadwal->unit_sekolah_id, 'tipe_presensi' => 'mengajar', 'keterangan' => 'Tidak hadir (otomatis)'],
                         );
                         if ($row->wasRecentlyCreated) {
                             $row->status = 'alpa';
@@ -125,7 +125,7 @@ class FinalizeAlpa extends Command
                 }
                 $row = Presensi::firstOrCreate(
                     ['pegawai_id' => $pegawai->id, 'jadwal_id' => null, 'tipe_presensi' => 'kantor', 'tanggal' => $tanggal],
-                    ['unit_sekolah_id' => $unitId, 'keterangan' => 'Auto-mark alpa (kehadiran)'],
+                    ['unit_sekolah_id' => $unitId, 'keterangan' => 'Tidak hadir (otomatis)'],
                 );
                 if ($row->wasRecentlyCreated) {
                     $row->status = 'alpa';

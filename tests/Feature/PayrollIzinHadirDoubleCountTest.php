@@ -176,7 +176,7 @@ class PayrollIzinHadirDoubleCountTest extends TestCase
             'unit_sekolah_id' => $unit->id,
             'tanggal' => '2026-06-01',
             'status' => 'alpa',
-            'keterangan' => 'Auto-mark alpa',
+            'keterangan' => 'Tidak hadir (otomatis)',
         ]);
 
         $this->actingAs($admin, 'web_admin')
