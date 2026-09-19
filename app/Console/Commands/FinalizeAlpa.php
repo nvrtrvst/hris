@@ -14,7 +14,8 @@ class FinalizeAlpa extends Command
 {
     /**
      * Tandai pegawai aktif yang tidak hadir sebagai alpa (H+1, Senin-Jumat).
-     * Wajib hadir berlaku untuk semua pegawai aktif (biarpun tak punya jadwal).
+     * Pegawai dengan jadwal → alpa per-jadwal (tipe mengajar).
+     * Pegawai tanpa jadwal → alpa kantor (tipe kantor).
      */
     protected $signature = 'presensi:finalize-alpa
         {--date= : Target date YYYY-MM-DD (default: kemarin/H+1)}
@@ -82,43 +83,40 @@ class FinalizeAlpa extends Command
                     continue;
                 }
 
-                $presentAny = Presensi::where('pegawai_id', $pegawai->id)
-                    ->where('tanggal', $tanggal)
-                    ->where('status', '!=', 'alpa')
-                    ->exists();
+                $jadwalsHari = $pegawai->jadwals->filter(fn ($j) => $j->hari === $hariTarget);
 
-                if ($presentAny) {
-                    // Sudah hadir -> tandai alpa per jadwal yang tak di-slide.
-                    foreach ($pegawai->jadwals->filter(fn ($j) => $j->hari === $hariTarget) as $jadwal) {
-                        $jadwalPresent = Presensi::where('pegawai_id', $pegawai->id)
-                            ->where('jadwal_id', $jadwal->id)
-                            ->where('tanggal', $tanggal)
-                            ->where('status', '!=', 'alpa')
-                            ->exists();
-                        if ($jadwalPresent) {
-                            continue;
-                        }
-                        if (! $jadwal->unit_sekolah_id) {
-                            continue;
-                        }
-                        $row = Presensi::firstOrCreate(
-                            ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jadwal->id, 'tanggal' => $tanggal],
-                            ['unit_sekolah_id' => $jadwal->unit_sekolah_id, 'tipe_presensi' => 'mengajar', 'keterangan' => 'Tidak hadir (otomatis)'],
-                        );
-                        if ($row->wasRecentlyCreated) {
-                            $row->status = 'alpa';
-                            $row->save();
-                            $marked++;
-                        }
+                // Per-jadwal alpa-mengajar: jalan untuk SEMUA pegawai yang punya jadwal hari itu,
+                // baik sudah hadir sebagian maupun tidak hadir sama sekali.
+                foreach ($jadwalsHari as $jadwal) {
+                    $jadwalPresent = Presensi::where('pegawai_id', $pegawai->id)
+                        ->where('jadwal_id', $jadwal->id)
+                        ->where('tanggal', $tanggal)
+                        ->where('status', '!=', 'alpa')
+                        ->exists();
+                    if ($jadwalPresent) {
+                        continue;
                     }
+                    if (! $jadwal->unit_sekolah_id) {
+                        continue;
+                    }
+                    $row = Presensi::firstOrCreate(
+                        ['pegawai_id' => $pegawai->id, 'jadwal_id' => $jadwal->id, 'tanggal' => $tanggal],
+                        ['unit_sekolah_id' => $jadwal->unit_sekolah_id, 'tipe_presensi' => 'mengajar', 'keterangan' => 'Tidak hadir (otomatis)'],
+                    );
+                    if ($row->wasRecentlyCreated) {
+                        $row->status = 'alpa';
+                        $row->save();
+                        $marked++;
+                    }
+                }
 
+                if ($jadwalsHari->isNotEmpty()) {
                     continue;
                 }
 
-                // Tak ada kehadiran sama sekali -> alpa kehadiran (kantor).
+                // Tak ada jadwal sama sekali -> alpa kehadiran (kantor).
                 $unitId = $this->resolveUnitId($pegawai);
                 if (! $unitId) {
-                    // Benar-benar tanpa unit di mana pun -> lewati.
                     $skipped++;
 
                     continue;
