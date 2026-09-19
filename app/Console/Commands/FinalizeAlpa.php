@@ -114,6 +114,13 @@ class FinalizeAlpa extends Command
                     continue;
                 }
 
+                // Guru tidak tetap tanpa jadwal → bukan alpa, skip total.
+                if (! $pegawai->wajib_kantor) {
+                    $skipped++;
+
+                    continue;
+                }
+
                 // Tak ada jadwal sama sekali -> alpa kehadiran (kantor).
                 $unitId = $this->resolveUnitId($pegawai);
                 if (! $unitId) {

@@ -114,6 +114,14 @@ class Pegawai extends Model
         // refresh DB); Seeder pre-compute nik_hash + cipher via firstOrCreate
         // untuk bypass double-cast hook miss.
         static::saving(function (Pegawai $pegawai) {
+            // Auto-sync wajib_kantor dari status_kepegawaian.
+            // Guru tidak tetap / guru pemula → tidak wajib kantor; lainnya → wajib.
+            $kode = $pegawai->getAttributes()['status_kepegawaian'] ?? $pegawai->status_kepegawaian;
+            if ($kode) {
+                $ref = StatusKepegawaian::find($kode);
+                $pegawai->wajib_kantor = ! ($ref && $ref->is_guru && ! $ref->is_tetap);
+            }
+
             if (! $pegawai->isDirty('nik')) {
                 return;
             }
@@ -140,7 +148,7 @@ class Pegawai extends Model
                 try {
                     $plaintext = trim(Crypt::decryptString($raw));
                 } catch (\Throwable) {
-                    // Gagal decrypt (data korup). Skip — backfill command akan perbaiki.
+                    // Gagal decrypt — skip sync; backfill command akan perbaiki.
                     return;
                 }
             } else {

@@ -503,7 +503,6 @@ class PegawaiController extends Controller
             'no_hp' => 'required|string|max:20',
             'status_kepegawaian' => 'required|in:'.implode(',', StatusKepegawaian::activeKodes()),
             'jatah_cuti_tahunan' => 'nullable|integer|min:0',
-            'wajib_kantor' => 'boolean',
             'status_aktif' => 'required|in:aktif,cuti,nonaktif,resign',
             'tmt_mengajar' => 'nullable|date',
             'pendidikan_terakhir' => 'required|string|max:255',

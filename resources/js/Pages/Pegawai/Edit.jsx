@@ -54,7 +54,6 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         no_hp: pegawai.no_hp,
         status_kepegawaian: pegawai.status_kepegawaian,
         atasan_langsung_id: pegawai.atasan_langsung_id ?? '',
-        wajib_kantor: pegawai.wajib_kantor ?? false,
         jatah_cuti_tahunan: pegawai.jatah_cuti_tahunan ?? 12,
         status_aktif: pegawai.status_aktif,
         tmt_mengajar: pegawai.tmt_mengajar || '',
@@ -290,17 +289,6 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                                         </option>
                                     ))}
                                 </select>
-                            </Field>
-                            <Field label="Wajib Masuk Kantor" error={errors.wajib_kantor}>
-                                <label className="mt-1.5 inline-flex items-center gap-3 cursor-pointer">
-                                    <input type="checkbox" checked={data.wajib_kantor}
-                                        onChange={(e) => setData('wajib_kantor', e.target.checked)}
-                                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary" />
-                                    <div>
-                                        <span className="text-sm font-medium text-text-primary">Aktifkan</span>
-                                        <p className="form-hint">Jika tidak ada jadwal mengajar, tetap harus absen kantor.</p>
-                                    </div>
-                                </label>
                             </Field>
                             <Field label="Jatah Cuti Tahunan (Hari)" error={errors.jatah_cuti_tahunan}>
                                 <input type="number" min="0" value={data.jatah_cuti_tahunan}
