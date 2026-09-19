@@ -82,11 +82,14 @@ export default function LaporanIndex({ auth, units }) {
     const firstDay = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
     const today = d.toISOString().split('T')[0];
 
+    const isSuperadmin = auth.permissions?.includes('view_all_units');
+    const userUnitId = auth.user?.unit_sekolah_id;
+
     const [filter, setFilter] = useState({
         start_date: firstDay,
         end_date: today,
         report_type: 'presensi',
-        unit_sekolah_id: '',
+        unit_sekolah_id: isSuperadmin ? '' : (userUnitId || ''),
         jenis_filter: '',
         tipe_filter: ''
     });
@@ -259,15 +262,17 @@ export default function LaporanIndex({ auth, units }) {
                                     />
                                 </div>
                             </Field>
-                            <Field label="Unit Sekolah (Opsional)">
+                            <Field label="Unit Sekolah">
                                 <div className="relative">
                                     <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                     <select
                                         className="select-field pl-9"
                                         value={filter.unit_sekolah_id}
+                                        disabled={!isSuperadmin}
                                         onChange={(e) => setFilter({ ...filter, unit_sekolah_id: e.target.value })}
                                     >
-                                        <option value="">-- Semua Unit Sekolah --</option>
+                                        {!isSuperadmin && <option value={userUnitId}>{units.find((u) => u.id === userUnitId)?.nama || 'Unit Saya'}</option>}
+                                        {isSuperadmin && <option value="">-- Semua Unit Sekolah --</option>}
                                         {units.map((u) => (
                                             <option key={u.id} value={u.id}>{u.nama}</option>
                                         ))}

@@ -66,8 +66,7 @@ class LaporanGenerateRequest extends FormRequest
         $user = Auth::user();
 
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            // Hanya override jika user belum set unit_sekolah_id secara eksplisit
-            if (! $this->has('unit_sekolah_id')) {
+            if (! $this->filled('unit_sekolah_id')) {
                 $this->merge(['unit_sekolah_id' => $user->unit_sekolah_id]);
             }
         }
