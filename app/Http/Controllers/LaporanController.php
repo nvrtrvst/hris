@@ -17,6 +17,7 @@ use App\Services\KcdReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -100,50 +101,55 @@ class LaporanController extends Controller
     public function exportPresensi(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
+        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
 
         return Excel::download(
             new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null),
-            'Laporan_Presensi_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
+            'Laporan_Presensi_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
 
     public function exportRekapMengajar(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
+        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
 
         return Excel::download(
             new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
-            'Laporan_Rekap_Mengajar_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
+            'Laporan_Rekap_Mengajar_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
 
     public function exportRekapKehadiran(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
+        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
 
         return Excel::download(
             new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
-            'Laporan_Rekap_Kehadiran_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
+            'Laporan_Rekap_Kehadiran_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
 
     public function exportPenggajian(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
+        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
 
         return Excel::download(
             new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
-            'Laporan_Rekap_Gaji_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
+            'Laporan_Rekap_Gaji_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
 
     public function exportLemburan(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
+        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
 
         return Excel::download(
             new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
-            'Laporan_Lemburan_Potongan_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
+            'Laporan_Lemburan_Potongan_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
 
@@ -220,11 +226,21 @@ class LaporanController extends Controller
             'rekap_kehadiran' => 'Laporan_Rekap_Kehadiran',
         };
 
+        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
+
+        $filename = match ($type) {
+            'presensi' => 'Laporan_Presensi',
+            'penggajian' => 'Laporan_Rekap_Gaji',
+            'lemburan' => 'Laporan_Lemburan',
+            'rekap_mengajar' => 'Laporan_Rekap_Mengajar',
+            'rekap_kehadiran' => 'Laporan_Rekap_Kehadiran',
+        };
+
         try {
             $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop'))
                 ->setPaper('A4', 'landscape');
 
-            return $pdf->download($filename.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf');
+            return $pdf->download($filename.'_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf');
         } catch (\Throwable $e) {
             \Log::error('PDF laporan gagal', [
                 'type' => $type,
@@ -468,5 +484,16 @@ class LaporanController extends Controller
         $path = rtrim($root, '/').'/'.ltrim($rel, '/');
 
         return file_exists($path) ? $path : null;
+    }
+
+    private function resolveUnitSlug(?int $unitId): string
+    {
+        if (! $unitId) {
+            return 'semua_unit';
+        }
+
+        $unit = UnitSekolah::find($unitId);
+
+        return Str::slug($unit?->nama ?? 'unit_lain', '_');
     }
 }
