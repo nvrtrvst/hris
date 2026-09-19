@@ -17,6 +17,11 @@ trait FormulaEscapable
         $prefixes = ['=', '+', '-', '@', "\t", "\r"];
         foreach ($prefixes as $prefix) {
             if (str_starts_with($value, $prefix)) {
+                // Single '-' is a common empty-value placeholder, not a formula injection risk.
+                if ($value === '-' && $prefix === '-') {
+                    return $value;
+                }
+
                 return "'{$value}";
             }
         }

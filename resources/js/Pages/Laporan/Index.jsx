@@ -143,6 +143,15 @@ export default function LaporanIndex({ auth, units }) {
     };
 
     const handleDownloadPdf = async () => {
+        if (!filter.start_date) {
+            alert('Isi tanggal mulai terlebih dahulu.');
+            return;
+        }
+        if (!filter.end_date) {
+            alert('Isi tanggal akhir terlebih dahulu.');
+            return;
+        }
+
         const url = route('laporan.pdf');
         const params = new URLSearchParams();
         params.append('type', filter.report_type);
@@ -158,13 +167,21 @@ export default function LaporanIndex({ auth, units }) {
             params.append('tipe_filter', filter.tipe_filter);
         }
 
-        // Fetch dulu supaya error 500 (bukan PDF) bisa dibaca pesannya —
-        // window.location langsung hanya menampilkan halaman error blank.
         try {
             const res = await fetch(`${url}?${params.toString()}`);
             if (!res.ok) {
-                const text = await res.text();
-                alert(text.startsWith('PDF gagal dibuat') ? text : 'PDF gagal dibuat. Coba lagi atau hubungi administrator.');
+                let msg = 'PDF gagal dibuat. Coba lagi atau hubungi administrator.';
+                try {
+                    const body = await res.json();
+                    msg = body.message || body.error || msg;
+                    if (body.errors) {
+                        msg = Object.values(body.errors).flat().join('\n');
+                    }
+                } catch {
+                    const text = await res.text();
+                    msg = text.startsWith('PDF gagal') ? text : msg;
+                }
+                alert(msg);
                 return;
             }
             const blob = await res.blob();

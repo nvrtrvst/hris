@@ -129,10 +129,7 @@ class LaporanController extends Controller
         $validated = $request->validated();
         $type = $validated['type'];
 
-        // DOMPDF membangun seluruh dokumen di memori — data besar (ribuan
-        // row presensi multi-unit) bisa exhaust memory default.
         set_time_limit(300);
-        ini_set('memory_limit', '512M');
 
         $export = match ($type) {
             'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null),
@@ -143,6 +140,12 @@ class LaporanController extends Controller
 
         $rows = $export->collection()->map(fn ($item) => $export->map($item))->all();
         $headings = $export->headings();
+
+        if (count($rows) > 5000) {
+            return response()->json([
+                'message' => 'Data terlalu banyak untuk PDF ('.count($rows).' baris). Gunakan filter yang lebih spesifik atau export ke Excel.',
+            ], 422);
+        }
 
         // Kop surat: unit terpilih → data unit itu; semua unit → unit
         // induk "Yayasan"; fallback terakhir → config env. Data (alamat,
@@ -197,7 +200,6 @@ class LaporanController extends Controller
 
             return $pdf->download($filename.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf');
         } catch (\Throwable $e) {
-            // Full trace ke log (untuk diagnosis prod), pesan ringkas ke user.
             \Log::error('PDF laporan gagal', [
                 'type' => $type,
                 'message' => $e->getMessage(),
@@ -205,8 +207,9 @@ class LaporanController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response('PDF gagal dibuat: '.substr($e->getMessage(), 0, 300), 500)
-                ->header('Content-Type', 'text/plain');
+            return response()->json([
+                'message' => 'PDF gagal dibuat: '.substr($e->getMessage(), 0, 300),
+            ], 500);
         }
     }
 
