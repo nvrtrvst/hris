@@ -84,6 +84,8 @@ class LaporanController extends Controller
         // untuk tampilan grid mingguan di frontend.
         if ($validated['type'] === 'rekap_mengajar') {
             $payload['calendar'] = $export->calendarData($data);
+            $payload['summary'] = $export->summaryData();
+            $payload['pegawai_ids'] = $data->pluck('pegawai.id')->values();
         }
 
         // Khusus rekap kehadiran: sertakan summary stats + pegawai IDs untuk drill-down.
@@ -288,6 +290,65 @@ class LaporanController extends Controller
                 'nama' => $pegawai->nama_lengkap,
                 'nuptk' => $pegawai->nuptk,
                 'jenis' => $pegawai->jenisPegawaiLabel(),
+            ],
+            'detail' => $detail,
+            'summary' => $summary,
+            'periode' => $periode,
+        ]);
+    }
+
+    /**
+     * Detail mengajar 1 pegawai dalam periode tertentu (drill-down dari rekap mengajar).
+     */
+    public function rekapMengajarDetail(Request $request)
+    {
+        $request->validate([
+            'pegawai_id' => 'required|exists:pegawai,id',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $pegawai = Pegawai::with(['jabatans', 'units', 'mapels'])->findOrFail($request->pegawai_id);
+
+        $rows = Presensi::with(['jadwal.mataPelajaran', 'unitSekolah'])
+            ->where('pegawai_id', $pegawai->id)
+            ->whereBetween('tanggal', [$request->start_date, $request->end_date])
+            ->whereNotNull('jadwal_id')
+            ->where('tipe_presensi', 'mengajar')
+            ->orderBy('tanggal')
+            ->orderByRaw('COALESCE(jam_masuk, "23:59") asc')
+            ->get();
+
+        $detail = $rows->map(fn ($p) => [
+            'tanggal' => $p->tanggal->format('Y-m-d'),
+            'hari' => $p->tanggal->translatedFormat('l'),
+            'mapel' => $p->jadwal?->mataPelajaran?->nama ?? '-',
+            'kelas' => $p->jadwal?->kelas_label ?? '-',
+            'jam_mulai' => $p->jam_masuk,
+            'jam_selesai' => $p->jam_keluar,
+            'status' => $p->status,
+            'unit' => $p->unitSekolah?->nama ?? '-',
+        ]);
+
+        $summary = [
+            'terjadwal' => $rows->count(),
+            'hadir' => $rows->where('status', 'hadir')->count(),
+            'telat' => $rows->where('status', 'telat')->count(),
+            'alpa' => $rows->where('status', 'alpa')->count(),
+        ];
+
+        $periode = [
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+        ];
+
+        return Inertia::render('Laporan/RekapMengajarDetail', [
+            'pegawai' => [
+                'id' => $pegawai->id,
+                'nama' => $pegawai->nama_lengkap,
+                'nuptk' => $pegawai->nuptk,
+                'jenis' => $pegawai->jenisPegawaiLabel(),
+                'mapels' => $pegawai->mapels->pluck('nama')->implode(', '),
             ],
             'detail' => $detail,
             'summary' => $summary,

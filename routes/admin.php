@@ -238,6 +238,7 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('laporan/rekap-mengajar', [LaporanController::class, 'exportRekapMengajar'])->name('laporan.rekap-mengajar');
     Route::get('laporan/rekap-kehadiran', [LaporanController::class, 'exportRekapKehadiran'])->name('laporan.rekap-kehadiran');
     Route::get('laporan/rekap-detail', [LaporanController::class, 'rekapDetail'])->name('laporan.rekap-detail');
+    Route::get('laporan/rekap-mengajar-detail', [LaporanController::class, 'rekapMengajarDetail'])->name('laporan.rekap-mengajar-detail');
 
     Route::get('laporan/pdf', [LaporanController::class, 'exportPdf'])->name('laporan.pdf');
     // Laporan KCD (daftar hadir bulanan untuk sertifikasi KCD)

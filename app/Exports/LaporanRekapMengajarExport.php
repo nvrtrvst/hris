@@ -189,6 +189,29 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
         ];
     }
 
+    /**
+     * Summary data for frontend preview.
+     */
+    public function summaryData(): array
+    {
+        $rows = $this->collection();
+        $total = $rows->count();
+        $avgPersen = $total > 0
+            ? round($rows->sum(fn ($d) => $d['total']['terjadwal'] > 0
+                ? (($d['total']['hadir'] + $d['total']['telat']) / $d['total']['terjadwal']) * 100
+                : 0) / $total)
+            : 0;
+
+        return [
+            'totalPegawai' => $total,
+            'avgKehadiran' => $avgPersen,
+            'totalTerjadwal' => $rows->sum(fn ($d) => $d['total']['terjadwal']),
+            'totalHadir' => $rows->sum(fn ($d) => $d['total']['hadir']),
+            'totalTelat' => $rows->sum(fn ($d) => $d['total']['telat']),
+            'totalAlpa' => $rows->sum(fn ($d) => $d['total']['alpa']),
+        ];
+    }
+
     public function map($d): array
     {
         $hadirPersen = $d['total']['terjadwal'] > 0

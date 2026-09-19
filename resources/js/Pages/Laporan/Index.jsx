@@ -401,7 +401,19 @@ export default function LaporanIndex({ auth, units }) {
                                             <tbody className="divide-y divide-border bg-white">
                                                 {cal.guru.map((g) => (
                                                     <tr key={g.id ?? g.nama} className="transition-colors hover:bg-surface">
-                                                        <td className="sticky left-0 z-10 bg-white px-4 py-2.5 text-sm font-semibold text-text-primary whitespace-nowrap">{g.nama}</td>
+                                                        <td
+                                                            className="sticky left-0 z-10 bg-white px-4 py-2.5 text-sm font-semibold text-primary whitespace-nowrap cursor-pointer hover:underline"
+                                                            onClick={() => {
+                                                                if (!g.id) return;
+                                                                router.get(route('laporan.rekap-mengajar-detail'), {
+                                                                    pegawai_id: g.id,
+                                                                    start_date: activePreview.start_date,
+                                                                    end_date: activePreview.end_date,
+                                                                });
+                                                            }}
+                                                        >
+                                                            {g.nama}
+                                                        </td>
                                                         {cal.dates.map((ds) => {
                                                             const cell = g.cells[ds];
                                                             const [jp, hadir, telat, alpa] = cell || [0, 0, 0, 0];
@@ -485,6 +497,22 @@ export default function LaporanIndex({ auth, units }) {
                                                     </span>
                                                 ))}
                                             </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {activePreview.report_type === 'rekap_mengajar' && previewData.summary && (() => {
+                                const s = previewData.summary;
+                                return (
+                                    <div className="px-6 py-5">
+                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                                            <KpiCard label="Total Pegawai" value={s.totalPegawai} />
+                                            <KpiCard label="Rata-rata Kehadiran" value={`${s.avgKehadiran}%`} accent />
+                                            <KpiCard label="JP Terjadwal" value={s.totalTerjadwal} />
+                                            <KpiCard label="Hadir" value={s.totalHadir} />
+                                            <KpiCard label="Telat" value={s.totalTelat} />
+                                            <KpiCard label="Alpa" value={s.totalAlpa} />
                                         </div>
                                     </div>
                                 );
@@ -585,8 +613,27 @@ export default function LaporanIndex({ auth, units }) {
                                                     const isCurrency = headerStr.includes('(rp)') || headerStr.includes('nominal') || headerStr.includes('rp)');
                                                     let displayValue = cell;
 
-                                                    if (isCurrency && cell !== null && cell !== '-' && !isNaN(cell)) {
+                                                     if (isCurrency && cell !== null && cell !== '-' && !isNaN(cell)) {
                                                         displayValue = new Intl.NumberFormat('id-ID').format(cell);
+                                                    }
+
+                                                    // Nama pegawai (kolom pertama) — clickable untuk drill-down
+                                                    if (cellIdx === 0 && previewData.pegawai_ids) {
+                                                        const pegawaiId = previewData.pegawai_ids[rowIdx];
+                                                        const handleClick = () => {
+                                                            if (!pegawaiId) return;
+                                                            router.get(route('laporan.rekap-mengajar-detail'), {
+                                                                pegawai_id: pegawaiId,
+                                                                start_date: activePreview.start_date,
+                                                                end_date: activePreview.end_date,
+                                                            });
+                                                        };
+
+                                                        return (
+                                                            <td key={cellIdx} className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary hover:underline cursor-pointer" onClick={handleClick}>
+                                                                {displayValue}
+                                                            </td>
+                                                        );
                                                     }
 
                                                     return (
