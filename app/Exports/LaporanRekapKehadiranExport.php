@@ -106,18 +106,18 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
     }
 
     /**
-     * Dedup: 1 hari = 1 status. Active (hadir/telat) wins over passive.
+     * Dedup: 1 hari = 1 status. Active wins over passive, hadir wins over telat.
      */
     private function dedupPassiveByActiveDate(Collection $rows): Collection
     {
-        $activeDates = $rows
-            ->filter(fn ($p) => in_array($p->status, ['hadir', 'telat'], true))
-            ->pluck('tanggal')
-            ->map(fn ($t) => $t instanceof \DateTimeInterface ? $t->format('Y-m-d') : (string) $t)
-            ->flip();
+        // Priority: hadir > telat > sakit > izin > cuti > alpa.
+        $priority = ['hadir' => 0, 'telat' => 1, 'sakit' => 2, 'izin' => 3, 'cuti' => 4, 'alpa' => 5];
 
-        return $rows->filter(fn ($p) => in_array($p->status, ['hadir', 'telat'], true)
-            || ! $activeDates->has($p->tanggal instanceof \DateTimeInterface ? $p->tanggal->format('Y-m-d') : (string) $p->tanggal));
+        // Group by tanggal, pick best record per date.
+        return $rows
+            ->groupBy(fn ($p) => $p->tanggal instanceof \DateTimeInterface ? $p->tanggal->format('Y-m-d') : (string) $p->tanggal)
+            ->map(fn ($dateRows) => $dateRows->sortBy(fn ($p) => $priority[$p->status] ?? 9)->first())
+            ->values();
     }
 
     /**
