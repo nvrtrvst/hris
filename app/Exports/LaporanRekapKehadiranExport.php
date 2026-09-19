@@ -273,6 +273,11 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 $sheet->getStyle('A3')->getFont()->setItalic(true);
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
+                $sheet->mergeCells("A5:{$lastCol}5");
+                $sheet->setCellValue('A5', '% Kehadiran = (Hadir + Telat) / Hari Kerja × 100 — Sakit, Izin, Cuti, Alpa tidak dihitung sebagai hadir.');
+                $sheet->getStyle('A5')->getFont()->setItalic(true)->setSize(9)->setColor(['argb' => 'FF6B7280']);
+                $sheet->getStyle('A5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+
                 $sheet->getStyle("A6:{$lastCol}6")->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
                     'fill' => [

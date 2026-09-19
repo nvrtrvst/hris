@@ -237,7 +237,7 @@ class LaporanController extends Controller
         };
 
         try {
-            $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop'))
+            $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop', 'type'))
                 ->setPaper('A4', 'landscape');
 
             return $pdf->download($filename.'_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf');
