@@ -51,8 +51,9 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
         while ($cursor <= $end) {
             $weekStart = $cursor->copy()->max($start);
             $weekEnd = $cursor->copy()->addDays(4)->min($end);
+            $monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
             $this->weeks[] = [
-                'label' => 'M'.$weekStart->format('d/m'),
+                'label' => $weekStart->format('d').'-'.$weekEnd->format('d').' '.$monthNames[(int) $weekEnd->format('m')],
                 'start' => $weekStart->toDateString(),
                 'end' => $weekEnd->toDateString(),
             ];

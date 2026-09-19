@@ -261,7 +261,7 @@ class LaporanController extends Controller
 
         $detail = $rows->map(fn ($p) => [
             'tanggal' => $p->tanggal->format('Y-m-d'),
-            'hari' => $p->tanggal->translatedFormat('l'),
+            'hari' => $p->tanggal->locale('id')->translatedFormat('l'),
             'status' => $p->status,
             'jam_masuk' => $p->jam_masuk,
             'jam_keluar' => $p->jam_keluar,
@@ -321,7 +321,7 @@ class LaporanController extends Controller
 
         $detail = $rows->map(fn ($p) => [
             'tanggal' => $p->tanggal->format('Y-m-d'),
-            'hari' => $p->tanggal->translatedFormat('l'),
+            'hari' => $p->tanggal->locale('id')->translatedFormat('l'),
             'mapel' => $p->jadwal?->mataPelajaran?->nama ?? '-',
             'kelas' => $p->jadwal?->kelas_label ?? '-',
             'jam_mulai' => $p->jam_masuk,
