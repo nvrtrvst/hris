@@ -11,6 +11,7 @@ use App\Http\Requests\KcdReportRequest;
 use App\Http\Requests\LaporanGenerateRequest;
 use App\Models\LaporanKcdCetak;
 use App\Models\Pegawai;
+use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Services\KcdReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -206,7 +207,7 @@ class LaporanController extends Controller
             'penggajian' => 'LAPORAN REKAPITULASI PENGGAJIAN PEGAWAI',
             'lemburan' => 'LAPORAN LEMBUR PEGAWAI',
             'rekap_mengajar' => 'LAPORAN REKAPITULASI PRESENSI MENGAJAR',
-            'rekap_kehadiran' => 'LAPORAN REKAPITULASI KEHADIRAN PEGAWAI',
+            'rekap_kehadiran' => 'LAPORAN REKAPITULASI KEHADIRAN',
         };
 
         $filename = match ($type) {

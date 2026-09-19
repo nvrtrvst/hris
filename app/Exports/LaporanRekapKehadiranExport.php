@@ -3,7 +3,6 @@
 namespace App\Exports;
 
 use App\Models\HariLibur;
-use App\Models\Jadwal;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
@@ -86,11 +85,11 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         ));
         $holidayMap = $this->buildHolidayWeekdayMap($unitIds, $start, $end);
 
-        // 5. Compute working days per pegawai.
-        $workingDays = $this->computeWorkingDays($pegawaiIds, $start, $end, $holidayMap);
+        // 5. Uniform working days: Senin-Jumat − libur (sama untuk semua pegawai).
+        $hariKerja = $this->computeUniformWorkingDays($start, $end, $holidayMap);
 
         // 6. Assemble final rekap.
-        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $workingDays) {
+        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja) {
             $counts = $deduped->groupBy('status')->map(fn ($g) => $g->count())->all();
 
             return [
@@ -101,7 +100,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 'izin' => $counts['izin'] ?? 0,
                 'cuti' => $counts['cuti'] ?? 0,
                 'alpa' => $counts['alpa'] ?? 0,
-                'hariKerja' => $workingDays[$pegawaiId] ?? 0,
+                'hariKerja' => $hariKerja,
             ];
         })->values();
     }
@@ -122,50 +121,36 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
     }
 
     /**
-     * Compute working days per pegawai using jadwal × countWeekdayInRange − holidays.
+     * Uniform working days: Senin-Jumat dalam range − libur.
+     * Sama untuk semua pegawai — bukan per jadwal.
      */
-    private function computeWorkingDays(array $pegawaiIds, Carbon $start, Carbon $end, array $holidayMap): array
+    private function computeUniformWorkingDays(Carbon $start, Carbon $end, array $holidayMap): int
     {
-        $jadwals = Jadwal::whereIn('pegawai_id', $pegawaiIds)
-            ->select('pegawai_id', 'hari', 'unit_sekolah_id')
-            ->get()
-            ->groupBy('pegawai_id');
+        $weekdays = [1, 2, 3, 4, 5]; // Senin–Jumat
+        $hariMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
-        $hariMap = [
-            'Minggu' => 0, 'Senin' => 1, 'Selasa' => 2, 'Rabu' => 3,
-            'Kamis' => 4, 'Jumat' => 5, 'Sabtu' => 6,
-        ];
+        $totalDays = $start->diffInDays($end) + 1;
+        $count = 0;
 
-        $result = [];
-        foreach ($jadwals as $pid => $jadwalList) {
-            $total = 0;
-            foreach ($jadwalList as $j) {
-                $target = $hariMap[$j->hari] ?? null;
-                if ($target === null || $start->gt($end)) {
-                    continue;
+        foreach ($weekdays as $target) {
+            $fullWeeks = intdiv($totalDays, 7);
+            $remainderDays = $totalDays % 7;
+            $hits = $fullWeeks;
+
+            $startDayOfWeek = $start->dayOfWeek;
+            for ($i = 0; $i < $remainderDays; $i++) {
+                if ((($startDayOfWeek + $i) % 7) === $target) {
+                    $hits++;
                 }
-
-                $totalDays = $start->diffInDays($end) + 1;
-                $fullWeeks = intdiv($totalDays, 7);
-                $remainderDays = $totalDays % 7;
-                $count = $fullWeeks;
-
-                $startDayOfWeek = $start->dayOfWeek;
-                for ($i = 0; $i < $remainderDays; $i++) {
-                    if ((($startDayOfWeek + $i) % 7) === $target) {
-                        $count++;
-                    }
-                }
-
-                $exclude = (int) ($holidayMap['national'][$j->hari] ?? 0)
-                    + (int) ($holidayMap['units'][$j->unit_sekolah_id][$j->hari] ?? 0);
-
-                $total += max(0, $count - $exclude);
             }
-            $result[$pid] = $total;
+
+            $hari = $hariMap[$target];
+            $exclude = (int) ($holidayMap['national'][$hari] ?? 0);
+
+            $count += max(0, $hits - $exclude);
         }
 
-        return $result;
+        return $count;
     }
 
     private function buildHolidayWeekdayMap(array $unitIds, Carbon $start, Carbon $end): array
@@ -279,7 +264,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells("A2:{$lastCol}2");
-                $sheet->setCellValue('A2', 'LAPORAN REKAPITULASI KEHADIRAN PEGAWAI');
+                $sheet->setCellValue('A2', 'LAPORAN REKAPITULASI KEHADIRAN');
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 

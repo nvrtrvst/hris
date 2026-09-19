@@ -206,7 +206,7 @@ export default function LaporanIndex({ auth, units }) {
         penggajian: 'Rekap Gaji',
         lemburan: 'Detail Lembur & Potongan',
         rekap_mengajar: 'Rekap Mengajar',
-        rekap_kehadiran: 'Rekap Kehadiran Bulanan',
+        rekap_kehadiran: 'Rekap Kehadiran',
     };
 
     return (
@@ -236,7 +236,7 @@ export default function LaporanIndex({ auth, units }) {
                                         onChange={(e) => setFilter({ ...filter, report_type: e.target.value, tipe_filter: e.target.value === 'presensi' ? filter.tipe_filter : '' })}
                                     >
                                         <option value="presensi">Laporan Presensi</option>
-                                        <option value="rekap_kehadiran">Rekap Kehadiran Bulanan</option>
+                                        <option value="rekap_kehadiran">Rekap Kehadiran</option>
                                         <option value="rekap_mengajar">Rekap Presensi Mengajar</option>
                                         <option value="penggajian">Laporan Rekap Gaji</option>
                                         <option value="lemburan">Laporan Detail Lembur & Potongan</option>
