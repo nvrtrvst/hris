@@ -102,7 +102,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 'alpa' => $counts['alpa'] ?? 0,
                 'hariKerja' => $hariKerja,
             ];
-        })->values();
+        })->sortBy(fn ($r) => mb_strtolower($r['pegawai']?->nama_lengkap ?? ''))->values();
     }
 
     /**
