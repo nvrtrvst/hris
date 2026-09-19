@@ -532,6 +532,9 @@ export default function LaporanIndex({ auth, units }) {
 
                             {activePreview.report_type === 'rekap_kehadiran' && (
                             <div className="overflow-x-auto">
+                                <div className="px-4 py-2 text-xs text-text-muted bg-surface border-b border-border italic">
+                                    % Kehadiran = (Hadir + Telat) / Hari Kerja &times; 100 &mdash; Sakit, Izin, Cuti, Alpa tidak dihitung sebagai hadir.
+                                </div>
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface">
                                         <tr>
