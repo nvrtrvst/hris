@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { Building2, Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users } from 'lucide-react';
 import axios from 'axios';
 
@@ -127,6 +127,7 @@ export default function LaporanIndex({ auth, units }) {
         if (filter.report_type === 'penggajian') url = route('laporan.penggajian');
         if (filter.report_type === 'lemburan') url = route('laporan.lemburan');
         if (filter.report_type === 'rekap_mengajar') url = route('laporan.rekap-mengajar');
+        if (filter.report_type === 'rekap_kehadiran') url = route('laporan.rekap-kehadiran');
 
         const params = new URLSearchParams();
         params.append('type', filter.report_type);
@@ -205,6 +206,7 @@ export default function LaporanIndex({ auth, units }) {
         penggajian: 'Rekap Gaji',
         lemburan: 'Detail Lembur & Potongan',
         rekap_mengajar: 'Rekap Mengajar',
+        rekap_kehadiran: 'Rekap Kehadiran Bulanan',
     };
 
     return (
@@ -234,6 +236,7 @@ export default function LaporanIndex({ auth, units }) {
                                         onChange={(e) => setFilter({ ...filter, report_type: e.target.value, tipe_filter: e.target.value === 'presensi' ? filter.tipe_filter : '' })}
                                     >
                                         <option value="presensi">Laporan Presensi</option>
+                                        <option value="rekap_kehadiran">Rekap Kehadiran Bulanan</option>
                                         <option value="rekap_mengajar">Rekap Presensi Mengajar</option>
                                         <option value="penggajian">Laporan Rekap Gaji</option>
                                         <option value="lemburan">Laporan Detail Lembur & Potongan</option>
@@ -487,7 +490,82 @@ export default function LaporanIndex({ auth, units }) {
                                 );
                             })()}
 
-                            {!(activePreview.report_type === 'rekap_mengajar' && viewMode === 'kalender') && (
+                            {activePreview.report_type === 'rekap_kehadiran' && previewData.summary && (() => {
+                                const s = previewData.summary;
+                                return (
+                                    <div className="px-6 py-5">
+                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                            <KpiCard label="Total Pegawai" value={s.totalPegawai} />
+                                            <KpiCard label="Rata-rata Kehadiran" value={`${s.avgKehadiran}%`} accent />
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {activePreview.report_type === 'rekap_kehadiran' && (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-border">
+                                    <thead className="bg-surface">
+                                        <tr>
+                                            {previewData.headings.map((head, idx) => (
+                                                <th key={idx} className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">{head}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border bg-white">
+                                        {previewData.data.map((row, rowIdx) => (
+                                            <tr key={rowIdx} className="transition-colors hover:bg-surface">
+                                                {row.map((cell, cellIdx) => {
+                                                    const headerStr = previewData.headings[cellIdx] ? previewData.headings[cellIdx].toLowerCase() : '';
+                                                    const isPersen = headerStr.includes('%');
+                                                    let displayValue = cell;
+
+                                                    if (isPersen && cell !== null && cell !== '-') {
+                                                        displayValue = cell;
+                                                    } else if (typeof cell === 'number' && !isPersen) {
+                                                        displayValue = new Intl.NumberFormat('id-ID').format(cell);
+                                                    }
+
+                                                    // Nama pegawai (kolom pertama) — clickable untuk drill-down
+                                                    if (cellIdx === 0 && previewData.pegawai_ids) {
+                                                        const pegawaiId = previewData.pegawai_ids[rowIdx];
+                                                        const handleClick = () => {
+                                                            if (!pegawaiId) return;
+                                                            router.get(route('laporan.rekap-detail'), {
+                                                                pegawai_id: pegawaiId,
+                                                                start_date: activePreview.start_date,
+                                                                end_date: activePreview.end_date,
+                                                            });
+                                                        };
+
+                                                        return (
+                                                            <td key={cellIdx} className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary hover:underline cursor-pointer" onClick={handleClick}>
+                                                                {displayValue}
+                                                            </td>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <td key={cellIdx} className="whitespace-nowrap px-4 py-3 text-sm text-text-secondary tabular-nums">
+                                                            {displayValue}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                        {previewData.data.length === 0 && (
+                                            <tr>
+                                                <td colSpan={previewData.headings.length} className="px-4 py-10 text-center text-sm text-text-muted">
+                                                    Tidak ada data untuk filter dan rentang tanggal yang dipilih.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            )}
+
+                            {activePreview.report_type !== 'rekap_kehadiran' && !(activePreview.report_type === 'rekap_mengajar' && viewMode === 'kalender') && (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface">

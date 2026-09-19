@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Exports\LaporanLemburanExport;
 use App\Exports\LaporanPenggajianExport;
 use App\Exports\LaporanPresensiExport;
+use App\Exports\LaporanRekapKehadiranExport;
 use App\Exports\LaporanRekapMengajarExport;
 use App\Http\Requests\KcdReportRequest;
 use App\Http\Requests\LaporanGenerateRequest;
 use App\Models\LaporanKcdCetak;
+use App\Models\Pegawai;
 use App\Models\UnitSekolah;
 use App\Services\KcdReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -57,6 +59,8 @@ class LaporanController extends Controller
             $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $jenis);
         } elseif ($validated['type'] === 'rekap_mengajar') {
             $export = new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $jenis);
+        } elseif ($validated['type'] === 'rekap_kehadiran') {
+            $export = new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $jenis);
         }
 
         if (! $export) {
@@ -81,6 +85,12 @@ class LaporanController extends Controller
             $payload['calendar'] = $export->calendarData($data);
         }
 
+        // Khusus rekap kehadiran: sertakan summary stats + pegawai IDs untuk drill-down.
+        if ($validated['type'] === 'rekap_kehadiran') {
+            $payload['summary'] = $export->summaryData();
+            $payload['pegawai_ids'] = $data->pluck('pegawai.id')->values();
+        }
+
         return response()->json($payload);
     }
 
@@ -101,6 +111,16 @@ class LaporanController extends Controller
         return Excel::download(
             new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
             'Laporan_Rekap_Mengajar_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
+        );
+    }
+
+    public function exportRekapKehadiran(LaporanGenerateRequest $request)
+    {
+        $validated = $request->validated();
+
+        return Excel::download(
+            new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
+            'Laporan_Rekap_Kehadiran_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
 
@@ -136,6 +156,7 @@ class LaporanController extends Controller
             'penggajian' => new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
             'lemburan' => new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
             'rekap_mengajar' => new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
+            'rekap_kehadiran' => new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
         };
 
         $rows = $export->collection()->map(fn ($item) => $export->map($item))->all();
@@ -185,6 +206,7 @@ class LaporanController extends Controller
             'penggajian' => 'LAPORAN REKAPITULASI PENGGAJIAN PEGAWAI',
             'lemburan' => 'LAPORAN LEMBUR PEGAWAI',
             'rekap_mengajar' => 'LAPORAN REKAPITULASI PRESENSI MENGAJAR',
+            'rekap_kehadiran' => 'LAPORAN REKAPITULASI KEHADIRAN PEGAWAI',
         };
 
         $filename = match ($type) {
@@ -192,6 +214,7 @@ class LaporanController extends Controller
             'penggajian' => 'Laporan_Rekap_Gaji',
             'lemburan' => 'Laporan_Lemburan',
             'rekap_mengajar' => 'Laporan_Rekap_Mengajar',
+            'rekap_kehadiran' => 'Laporan_Rekap_Kehadiran',
         };
 
         try {
@@ -211,6 +234,64 @@ class LaporanController extends Controller
                 'message' => 'PDF gagal dibuat: '.substr($e->getMessage(), 0, 300),
             ], 500);
         }
+    }
+
+    /**
+     * Detail kehadiran 1 pegawai dalam periode tertentu (drill-down dari rekap).
+     */
+    public function rekapDetail(Request $request)
+    {
+        $request->validate([
+            'pegawai_id' => 'required|exists:pegawai,id',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $pegawai = Pegawai::with(['jabatans', 'units'])->findOrFail($request->pegawai_id);
+
+        $rows = Presensi::with(['jadwal', 'unitSekolah'])
+            ->where('pegawai_id', $pegawai->id)
+            ->whereBetween('tanggal', [$request->start_date, $request->end_date])
+            ->where('is_lembur', false)
+            ->orderBy('tanggal')
+            ->get();
+
+        $detail = $rows->map(fn ($p) => [
+            'tanggal' => $p->tanggal->format('Y-m-d'),
+            'hari' => $p->tanggal->translatedFormat('l'),
+            'status' => $p->status,
+            'jam_masuk' => $p->jam_masuk,
+            'jam_keluar' => $p->jam_keluar,
+            'keterangan' => $p->keterangan,
+            'tipe_presensi' => $p->tipe_presensi,
+            'unit' => $p->unitSekolah?->nama ?? '-',
+        ]);
+
+        $summary = [
+            'hadir' => $rows->where('status', 'hadir')->count(),
+            'telat' => $rows->where('status', 'telat')->count(),
+            'sakit' => $rows->where('status', 'sakit')->count(),
+            'izin' => $rows->where('status', 'izin')->count(),
+            'cuti' => $rows->where('status', 'cuti')->count(),
+            'alpa' => $rows->where('status', 'alpa')->count(),
+        ];
+
+        $periode = [
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+        ];
+
+        return Inertia::render('Laporan/RekapDetail', [
+            'pegawai' => [
+                'id' => $pegawai->id,
+                'nama' => $pegawai->nama_lengkap,
+                'nuptk' => $pegawai->nuptk,
+                'jenis' => $pegawai->jenisPegawaiLabel(),
+            ],
+            'detail' => $detail,
+            'summary' => $summary,
+            'periode' => $periode,
+        ]);
     }
 
     public function kcdIndex()

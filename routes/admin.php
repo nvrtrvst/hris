@@ -103,12 +103,6 @@ Route::middleware('auth:web_admin')->group(function () {
         ->middleware('throttle:30,1')
         ->name('pegawai.dokumen.destroy');
 
-    // Unit Sekolah
-    Route::resource('unit-sekolah', UnitSekolahController::class)->only(['index', 'create', 'store', 'edit', 'update'])->middleware('throttle:60,1');
-    Route::post('unit-sekolah/{unit_sekolah}/lokasi', [UnitSekolahController::class, 'storeLokasi'])->name('unit-sekolah.store-lokasi')->middleware('throttle:30,1');
-    Route::put('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'updateLokasi'])->name('unit-sekolah.update-lokasi')->middleware('throttle:30,1');
-    Route::delete('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'destroyLokasi'])->name('unit-sekolah.destroy-lokasi')->middleware('throttle:30,1');
-
     // Jadwal — create/store/generate/swap/destroy hanya admin
     Route::get('jadwal/create', [JadwalController::class, 'create'])->name('jadwal.create');
     Route::post('jadwal', [JadwalController::class, 'store'])
@@ -242,6 +236,8 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('laporan/lemburan', [LaporanController::class, 'exportLemburan'])->name('laporan.lemburan');
 
     Route::get('laporan/rekap-mengajar', [LaporanController::class, 'exportRekapMengajar'])->name('laporan.rekap-mengajar');
+    Route::get('laporan/rekap-kehadiran', [LaporanController::class, 'exportRekapKehadiran'])->name('laporan.rekap-kehadiran');
+    Route::get('laporan/rekap-detail', [LaporanController::class, 'rekapDetail'])->name('laporan.rekap-detail');
 
     Route::get('laporan/pdf', [LaporanController::class, 'exportPdf'])->name('laporan.pdf');
     // Laporan KCD (daftar hadir bulanan untuk sertifikasi KCD)
@@ -298,6 +294,12 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::post('hari-libur/sync-api', [HariLiburController::class, 'syncApi'])
             ->middleware('throttle:10,1')
             ->name('hari-libur.sync-api');
+        // Unit Sekolah
+        Route::resource('unit-sekolah', UnitSekolahController::class)->only(['index', 'create', 'store', 'edit', 'update'])->middleware('throttle:60,1');
+        Route::post('unit-sekolah/{unit_sekolah}/lokasi', [UnitSekolahController::class, 'storeLokasi'])->name('unit-sekolah.store-lokasi')->middleware('throttle:30,1');
+        Route::put('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'updateLokasi'])->name('unit-sekolah.update-lokasi')->middleware('throttle:30,1');
+        Route::delete('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'destroyLokasi'])->name('unit-sekolah.destroy-lokasi')->middleware('throttle:30,1');
+
     });
 
     // Reminder Management — superadmin + admin_unit + pimpinan
