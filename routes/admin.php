@@ -158,16 +158,18 @@ Route::middleware('auth:web_admin')->group(function () {
         ->name('presensi.review');
 
     // Komponen Gaji Matrix
-    Route::get('komponen-gaji/matrix', [PegawaiKomponenController::class, 'matrix'])->name('komponen-gaji.matrix');
+    Route::get('komponen-gaji/matrix', [PegawaiKomponenController::class, 'matrix'])
+        ->middleware('can:manage_payroll')
+        ->name('komponen-gaji.matrix');
     Route::post('komponen-gaji/matrix', [PegawaiKomponenController::class, 'updateMatrix'])
-        ->middleware('throttle:60,1')
+        ->middleware(['throttle:60,1', 'can:manage_payroll'])
         ->name('komponen-gaji.matrix.update');
 
     // Komponen Gaji — hanya route yang method-nya ada di controller (create/show/edit
     // tidak diimplementasikan; UI memakai modal di index). Menghindari GET → 500.
-    Route::resource('komponen-gaji', KomponenGajiController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('throttle:60,1');
-    Route::resource('skala-masa-bakti', SkalaMasaBaktiController::class)->only(['index', 'store', 'destroy'])->middleware('throttle:60,1');
-    Route::resource('tugas-luar', TugasLuarController::class)->only(['index', 'store', 'destroy'])->middleware('throttle:60,1');
+    Route::resource('komponen-gaji', KomponenGajiController::class)->only(['index', 'store', 'update', 'destroy'])->middleware(['throttle:60,1', 'can:manage_payroll']);
+    Route::resource('skala-masa-bakti', SkalaMasaBaktiController::class)->only(['index', 'store', 'destroy'])->middleware(['throttle:60,1', 'can:manage_payroll']);
+    Route::resource('tugas-luar', TugasLuarController::class)->only(['index', 'store', 'destroy'])->middleware(['throttle:60,1', 'can:manage_master_data']);
 
     // Payroll Reference (lookup_reference komponen gaji)
     Route::resource('payroll/reference-types', PayrollReferenceTypeController::class)
