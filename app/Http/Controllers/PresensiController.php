@@ -332,9 +332,11 @@ class PresensiController extends Controller
         // Buat virtual presensi records supaya frontend bisa render.
         // Unit di-resolve primary-aware (pivot is_primary → pertama → user.unit_sekolah_id)
         // supaya pegawai tanpa pivot tetap menampilkan unit dari User, bukan '—'.
-        $virtualPresensis = $pegawaiList->map(function ($p) use ($startDate) {
+        // Semua unit di-prefetch sekali (hindari N+1 di fallback find()).
+        $unitsById = UnitSekolah::all()->keyBy('id');
+        $virtualPresensis = $pegawaiList->map(function ($p) use ($startDate, $unitsById) {
             $unit = $p->units->sortByDesc(fn ($u) => $u->pivot->is_primary ?? false)->first()
-                ?? UnitSekolah::find($p->user?->unit_sekolah_id);
+                ?? $unitsById->get($p->user?->unit_sekolah_id);
 
             return (object) [
                 'id' => 'new-'.$p->id,
