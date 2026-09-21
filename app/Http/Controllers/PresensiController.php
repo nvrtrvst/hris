@@ -353,7 +353,10 @@ class PresensiController extends Controller
                 'keterangan' => null,
                 'pegawai' => $p,
                 'jadwal' => null,
-                'unitSekolah' => $unit,
+                // Key snake_case agar konsisten dgn relasi Presensi asli yang dibaca
+                // frontend sebagai parent.unit_sekolah (bukan unitSekolah — mismatch
+                // key inilah penyebab unit selalu '—' di daftar Belum Presensi).
+                'unit_sekolah' => $unit,
             ];
         });
 
