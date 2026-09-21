@@ -14,6 +14,7 @@ use App\Models\UnitSekolah;
 use App\Services\GeocodingService;
 use App\Services\ImageUploadService;
 use App\Traits\CalculatesDistance;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -369,6 +370,156 @@ class PresensiController extends Controller
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'stats' => $stats,
         ]);
+    }
+
+    /**
+     * Export PDF daftar pegawai aktif yang belum presensi pada rentang tanggal.
+     * Filter (tanggal, unit, jenis, search) sama dengan handleBelumPresensi().
+     */
+    public function exportBelumPresensiPdf(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('view_presensi')) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $validated = $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'unit_id' => 'nullable|integer|exists:unit_sekolah,id',
+            'jenis_filter' => 'nullable|in:pendidik,kependidikan',
+            'search' => 'nullable|string|max:100',
+        ]);
+
+        $startDate = $validated['start_date'] ?? Carbon::today()->toDateString();
+        $endDate = $validated['end_date'] ?? $startDate;
+
+        $pegawaisWithPresensi = Presensi::whereBetween('tanggal', [$startDate, $endDate])
+            ->distinct()->pluck('pegawai_id');
+
+        $pegawais = Pegawai::where('status_aktif', 'aktif')
+            ->with(['units', 'jabatans'])
+            ->whereNotIn('id', $pegawaisWithPresensi);
+
+        // Scope unit sama dengan handleBelumPresensi()
+        if ($user->can('view_all_units')) {
+            // Semua unit
+        } elseif ($user->unit_sekolah_id) {
+            $pegawais->forUnit($user->unit_sekolah_id);
+        }
+
+        if (! empty($validated['search'])) {
+            $pegawais->where('nama_lengkap', 'like', '%'.$validated['search'].'%');
+        }
+
+        if (($validated['jenis_filter'] ?? null) === 'pendidik') {
+            $pegawais->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
+        } elseif (($validated['jenis_filter'] ?? null) === 'kependidikan') {
+            $pegawais->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
+        }
+
+        if (! empty($validated['unit_id']) && $user->can('view_all_units')) {
+            $pegawais->forUnit($validated['unit_id']);
+        }
+
+        $pegawaiList = $pegawais->orderBy('nama_lengkap')->get();
+
+        // Kop surat: unit terpilih → data unit itu; semua unit → unit induk "Yayasan".
+        // Sama seperti LaporanController::exportPdf().
+        $kopUnit = null;
+        $unitName = 'Semua Unit Sekolah';
+        if (! empty($validated['unit_id'])) {
+            $kopUnit = UnitSekolah::find($validated['unit_id']);
+            $unitName = $kopUnit?->nama ?? 'Semua Unit Sekolah';
+        } else {
+            $kopUnit = UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
+        }
+
+        $logoPath = $this->resolveLogoPath($kopUnit) ?? $this->resolveYayasanLogoPath();
+        $logoWidth = null;
+        if ($logoPath && file_exists($logoPath)) {
+            $sz = @getimagesize($logoPath);
+            if ($sz) {
+                $logoWidth = (int) round(64 * $sz[0] / $sz[1]);
+            }
+        }
+
+        $kop = [
+            'name' => $kopUnit?->nama ? strtoupper($kopUnit->nama) : config('yayasan.name'),
+            'tagline' => config('yayasan.tagline'),
+            'address' => $kopUnit?->alamat ?: config('yayasan.address'),
+            'phone' => $kopUnit?->telepon ?: config('yayasan.phone'),
+            'email' => config('yayasan.email'),
+            'website' => $kopUnit?->web ?: config('yayasan.website'),
+        ];
+
+        $periodeStr = $startDate === $endDate
+            ? Carbon::parse($startDate)->translatedFormat('d F Y')
+            : Carbon::parse($startDate)->translatedFormat('d/m/Y').' s/d '.Carbon::parse($endDate)->translatedFormat('d/m/Y');
+
+        $rows = $pegawaiList->map(fn ($p, $i) => [
+            'no' => $i + 1,
+            'nip' => $p->nip ?? '-',
+            'nama' => $p->nama_lengkap,
+            'unit' => $p->units->pluck('nama')->implode(', ') ?: '-',
+            'jabatan' => $p->jabatans->pluck('nama')->implode(', ') ?: '-',
+            'status_pegawai' => $p->status_pegawai ?? '-',
+        ])->all();
+
+        try {
+            $pdf = Pdf::loadView('exports.pdf-belum-presensi', compact('rows', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop'))
+                ->setPaper('A4', 'portrait');
+
+            $unitSlug = $kopUnit?->singkatan ?? preg_replace('/[^A-Za-z0-9]+/', '_', $unitName);
+
+            return $pdf->download('Daftar_Belum_Presensi_'.$unitSlug.'_'.$startDate.'.pdf');
+        } catch (\Throwable $e) {
+            \Log::error('PDF belum presensi gagal', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile().':'.$e->getLine(),
+            ]);
+
+            return response()->json(['message' => 'PDF gagal dibuat: '.substr($e->getMessage(), 0, 300)], 500);
+        }
+    }
+
+    /**
+     * Resolve logo unit ke path file lokal (bukan URL) agar bisa dirender DOMPDF.
+     * Null bila unit tidak punya logo atau file tidak ada.
+     */
+    private function resolveLogoPath(?UnitSekolah $unit): ?string
+    {
+        if (! $unit?->logo) {
+            return null;
+        }
+
+        $disk = config('filesystems.image_disk', 'public');
+        $root = config("filesystems.disks.$disk.root");
+        $path = rtrim($root, '/').'/'.ltrim($unit->logo, '/');
+
+        return file_exists($path) ? $path : null;
+    }
+
+    /**
+     * Resolve logo yayasan (config kcd.yayasan_logo) ke path file lokal untuk DOMPDF.
+     */
+    private function resolveYayasanLogoPath(): ?string
+    {
+        $rel = config('kcd.yayasan_logo');
+        if (! $rel) {
+            return null;
+        }
+
+        $public = public_path($rel);
+        if (file_exists($public)) {
+            return $public;
+        }
+
+        $disk = config('filesystems.image_disk', 'public');
+        $root = config("filesystems.disks.$disk.root");
+        $path = rtrim($root, '/').'/'.ltrim($rel, '/');
+
+        return file_exists($path) ? $path : null;
     }
 
     public function create()

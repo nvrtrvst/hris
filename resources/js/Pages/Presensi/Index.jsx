@@ -16,6 +16,7 @@ import {
     CalendarOff,
     CheckCircle2,
     Clock3,
+    FileDown,
     FileText,
     Filter,
     HeartPulse,
@@ -736,6 +737,43 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
             .catch(() => setTugasLuarModal({ show: true, loading: false, data: null }));
     };
 
+    // Download PDF daftar pegawai yang belum presensi (filter aktif: tanggal, unit, jenis, search).
+    const [downloadingPdf, setDownloadingPdf] = React.useState(false);
+    const downloadBelumPresensiPdf = async () => {
+        setDownloadingPdf(true);
+        try {
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            if (unitId) params.append('unit_id', unitId);
+            if (jenisFilter) params.append('jenis_filter', jenisFilter);
+            if (search) params.append('search', search);
+
+            const res = await fetch(`${route('presensi.belum-presensi-pdf')}?${params.toString()}`);
+            if (!res.ok) {
+                let msg = 'PDF gagal dibuat. Coba lagi atau hubungi administrator.';
+                try {
+                    const body = await res.json();
+                    msg = body.message || msg;
+                } catch { /* non-JSON */ }
+                alert(msg);
+                return;
+            }
+            const blob = await res.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `Daftar_Belum_Presensi_${startDate || 'hari-ini'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(a.href);
+        } catch {
+            alert('Koneksi terputus saat membuat PDF.');
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
+
     const s = stats || { total: 0, hadir: 0, telat: 0, sakit: 0, izin: 0, cuti: 0, alpa: 0, belum_presensi: 0, lembur_pending: 0, perlu_review: 0 };
 
     const statsCards = [
@@ -912,6 +950,18 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             </div>
 
                             <div className="flex items-center gap-2">
+                                {isAdmin && statusFilter === 'belum_presensi' && (
+                                    <button
+                                        type="button"
+                                        onClick={downloadBelumPresensiPdf}
+                                        disabled={downloadingPdf}
+                                        className="btn-secondary btn-sm flex items-center gap-1.5"
+                                        title="Download PDF daftar pegawai yang belum presensi"
+                                    >
+                                        {downloadingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+                                        Download PDF
+                                    </button>
+                                )}
                                 {hasFilter && (
                                     <button type="button" onClick={resetFilters} className="btn-secondary btn-sm flex items-center gap-1.5">
                                         <RotateCcw className="h-3.5 w-3.5" /> Reset

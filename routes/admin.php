@@ -65,6 +65,9 @@ Route::middleware('auth:web_admin')->group(function () {
 
     // Presensi — index bisa diakses staff (lihat presensi sendiri)
     Route::get('presensi', [PresensiController::class, 'index'])->name('presensi.index');
+    Route::get('presensi/belum-presensi/pdf', [PresensiController::class, 'exportBelumPresensiPdf'])
+        ->middleware('throttle:30,1')
+        ->name('presensi.belum-presensi-pdf');
 
     // Penggajian — index/show bisa diakses staff (lihat slip gaji sendiri)
     Route::get('penggajian', [PenggajianController::class, 'index'])->name('penggajian.index');
