@@ -190,8 +190,9 @@ class KcdReportService
             }
         }
 
-        // Fallback: jika tidak ada absen pulang kantor, pakai jam_pulang_kantor dari unit.
-        if (! $pulang) {
+        // Fallback: hanya tampilkan jam_pulang_kantor jika ada absen masuk
+        // tapi belum absen pulang. Tanpa absen masuk → pulang tetap '—'.
+        if (! $pulang && $masuk) {
             $pulang = $jamPulangKantor;
         }
 
