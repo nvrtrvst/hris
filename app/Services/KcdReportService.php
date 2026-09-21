@@ -43,7 +43,7 @@ class KcdReportService
                 ->whereIn('pegawai_id', $pegawaiIds)
                 ->whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
                 ->where('is_lembur', false)
-                ->get(['id', 'pegawai_id', 'tanggal', 'jam_masuk', 'jam_keluar']);
+                ->get(['id', 'pegawai_id', 'tanggal', 'jam_masuk', 'jam_keluar', 'jadwal_id']);
         }
 
         $izins = collect();
@@ -183,9 +183,16 @@ class KcdReportService
             if ($r->jam_masuk && ($masuk === null || $r->jam_masuk < $masuk)) {
                 $masuk = $r->jam_masuk;
             }
-            if ($r->jam_keluar && ($pulang === null || $r->jam_keluar > $pulang)) {
+            // Hanya ambil jam_keluar dari record kantor (jadwal_id=null)
+            // sebagai "pulang" resmi hari itu.
+            if (! $r->jadwal_id && $r->jam_keluar && ($pulang === null || $r->jam_keluar > $pulang)) {
                 $pulang = $r->jam_keluar;
             }
+        }
+
+        // Fallback: jika tidak ada absen pulang kantor, pakai jam_pulang_kantor dari unit.
+        if (! $pulang) {
+            $pulang = $jamPulangKantor;
         }
 
         return [
