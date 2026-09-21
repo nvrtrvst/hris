@@ -49,20 +49,21 @@ class LaporanController extends Controller
     public function preview(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
+        $unitId = $this->resolveEffectiveUnitId($validated['unit_sekolah_id'] ?? null);
 
         $jenis = $validated['jenis_filter'] ?? null;
         $tipe = $validated['tipe_filter'] ?? null;
         $export = null;
         if ($validated['type'] === 'presensi') {
-            $export = new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $jenis, $tipe);
+            $export = new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $tipe);
         } elseif ($validated['type'] === 'penggajian') {
-            $export = new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $jenis);
+            $export = new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
         } elseif ($validated['type'] === 'lemburan') {
-            $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $jenis);
+            $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
         } elseif ($validated['type'] === 'rekap_mengajar') {
-            $export = new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $jenis);
+            $export = new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
         } elseif ($validated['type'] === 'rekap_kehadiran') {
-            $export = new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $jenis);
+            $export = new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
         }
 
         if (! $export) {
@@ -101,10 +102,11 @@ class LaporanController extends Controller
     public function exportPresensi(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
-        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
+        $unitId = $this->resolveEffectiveUnitId($validated['unit_sekolah_id'] ?? null);
+        $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null),
+            new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null),
             'Laporan_Presensi_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -112,10 +114,11 @@ class LaporanController extends Controller
     public function exportRekapMengajar(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
-        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
+        $unitId = $this->resolveEffectiveUnitId($validated['unit_sekolah_id'] ?? null);
+        $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
+            new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
             'Laporan_Rekap_Mengajar_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -123,10 +126,11 @@ class LaporanController extends Controller
     public function exportRekapKehadiran(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
-        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
+        $unitId = $this->resolveEffectiveUnitId($validated['unit_sekolah_id'] ?? null);
+        $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
+            new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
             'Laporan_Rekap_Kehadiran_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -134,10 +138,11 @@ class LaporanController extends Controller
     public function exportPenggajian(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
-        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
+        $unitId = $this->resolveEffectiveUnitId($validated['unit_sekolah_id'] ?? null);
+        $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
+            new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
             'Laporan_Rekap_Gaji_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -145,10 +150,11 @@ class LaporanController extends Controller
     public function exportLemburan(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
-        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
+        $unitId = $this->resolveEffectiveUnitId($validated['unit_sekolah_id'] ?? null);
+        $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
+            new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
             'Laporan_Lemburan_Potongan_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -157,15 +163,16 @@ class LaporanController extends Controller
     {
         $validated = $request->validated();
         $type = $validated['type'];
+        $unitId = $this->resolveEffectiveUnitId($validated['unit_sekolah_id'] ?? null);
 
         set_time_limit(300);
 
         $export = match ($type) {
-            'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null),
-            'penggajian' => new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
-            'lemburan' => new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
-            'rekap_mengajar' => new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
-            'rekap_kehadiran' => new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $validated['unit_sekolah_id'] ?? null, $validated['jenis_filter'] ?? null),
+            'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null),
+            'penggajian' => new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
+            'lemburan' => new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
+            'rekap_mengajar' => new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
+            'rekap_kehadiran' => new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
         };
 
         $rows = $export->collection()->map(fn ($item) => $export->map($item))->all();
@@ -177,17 +184,16 @@ class LaporanController extends Controller
             ], 422);
         }
 
-        // Kop surat: unit terpilih → data unit itu; semua unit → unit
-        // induk "Yayasan"; fallback terakhir → config env. Data (alamat,
-        // telepon, web, logo) dikelola lewat menu Unit Sekolah.
+        // Kop surat: unit terpilih (atau auto-resolved dari scope user) → data unit itu;
+        // semua unit (superadmin) → unit induk "Yayasan"; fallback terakhir → config env.
         $kopUnit = null;
-        if (! empty($validated['unit_sekolah_id'])) {
-            $kopUnit = UnitSekolah::find($validated['unit_sekolah_id']);
-            $unitName = $kopUnit?->nama ?? 'Semua Unit Sekolah';
-        } else {
-            $unitName = 'Semua Unit Sekolah';
+        if ($unitId) {
+            $kopUnit = UnitSekolah::find($unitId);
+        }
+        if (! $kopUnit) {
             $kopUnit = UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
         }
+        $unitName = $kopUnit?->nama ?? 'Semua Unit Sekolah';
 
         $periodeStr = Carbon::parse($validated['start_date'])->format('d/m/Y')
             .' s/d '.Carbon::parse($validated['end_date'])->format('d/m/Y');
@@ -495,5 +501,23 @@ class LaporanController extends Controller
         $unit = UnitSekolah::find($unitId);
 
         return Str::slug($unit?->nama ?? 'unit_lain', '_');
+    }
+
+    /**
+     * Resolve unit ID: request value > user scope > null.
+     * Superadmin (view_all_units) without explicit request → null (all units).
+     */
+    private function resolveEffectiveUnitId(?int $requestUnitId): ?int
+    {
+        if ($requestUnitId) {
+            return $requestUnitId;
+        }
+
+        $user = auth()->user();
+        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            return $user->unit_sekolah_id;
+        }
+
+        return null;
     }
 }

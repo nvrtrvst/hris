@@ -434,16 +434,18 @@ class PresensiController extends Controller
 
         $pegawaiList = $pegawais->orderBy('nama_lengkap')->get();
 
-        // Kop surat: unit terpilih → data unit itu; semua unit → unit induk "Yayasan".
-        // Sama seperti LaporanController::exportPdf().
+        // Kop surat: unit terpilih (atau auto-resolved dari scope user) → data unit itu;
+        // semua unit (superadmin) → unit induk "Yayasan"; fallback terakhir → config env.
         $kopUnit = null;
-        $unitName = 'Semua Unit Sekolah';
         if (! empty($validated['unit_id'])) {
             $kopUnit = UnitSekolah::find($validated['unit_id']);
-            $unitName = $kopUnit?->nama ?? 'Semua Unit Sekolah';
-        } else {
+        } elseif ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $kopUnit = UnitSekolah::find($user->unit_sekolah_id);
+        }
+        if (! $kopUnit) {
             $kopUnit = UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
         }
+        $unitName = $kopUnit?->nama ?? 'Semua Unit Sekolah';
 
         $logoPath = $this->resolveLogoPath($kopUnit) ?? $this->resolveYayasanLogoPath();
         $logoWidth = null;
