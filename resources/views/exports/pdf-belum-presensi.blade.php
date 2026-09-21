@@ -51,7 +51,6 @@
                 <th>Nama Pegawai</th>
                 <th>Unit</th>
                 <th>Jabatan</th>
-                <th>Status Pegawai</th>
             </tr>
         </thead>
         <tbody>
@@ -62,7 +61,6 @@
                     <td>{{ $row['nama'] }}</td>
                     <td>{{ $row['unit'] }}</td>
                     <td>{{ $row['jabatan'] }}</td>
-                    <td>{{ $row['status_pegawai'] }}</td>
                 </tr>
             @empty
                 <tr><td colspan="6" style="text-align:center;padding:20px;">Semua pegawai sudah melakukan presensi.</td></tr>
