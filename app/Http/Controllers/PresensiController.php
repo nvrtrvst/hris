@@ -613,9 +613,9 @@ class PresensiController extends Controller
                     ]);
                 }
 
-                $presensi->unit_sekolah_id = $jadwal->unit_sekolah_id;
-
                 $jadwal = Jadwal::find($request->jadwal_id);
+
+                $presensi->unit_sekolah_id = $jadwal->unit_sekolah_id;
 
                 if ($request->tipe === 'masuk') {
                     if ($presensi->jam_masuk) {

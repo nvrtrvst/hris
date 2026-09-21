@@ -326,7 +326,7 @@ class LaporanController extends Controller
 
         $pegawai = Pegawai::with(['jabatans', 'units', 'mapels'])->findOrFail($request->pegawai_id);
 
-        $rows = Presensi::with(['jadwal.mataPelajaran', 'unitSekolah'])
+        $rows = Presensi::with(['jadwal.pegawaiMapel.mataPelajaran', 'unitSekolah'])
             ->where('pegawai_id', $pegawai->id)
             ->whereBetween('tanggal', [$request->start_date, $request->end_date])
             ->whereNotNull('jadwal_id')

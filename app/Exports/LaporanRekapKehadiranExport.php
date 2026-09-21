@@ -16,6 +16,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
@@ -275,7 +276,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
 
                 $sheet->mergeCells("A5:{$lastCol}5");
                 $sheet->setCellValue('A5', '% Kehadiran = (Hadir + Telat) / Hari Kerja × 100 — Sakit, Izin, Cuti, Alpa tidak dihitung sebagai hadir.');
-                $sheet->getStyle('A5')->getFont()->setItalic(true)->setSize(9)->setColor(['argb' => 'FF6B7280']);
+                $sheet->getStyle('A5')->getFont()->setItalic(true)->setSize(9)->setColor(new Color('FF6B7280'));
                 $sheet->getStyle('A5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
                 $sheet->getStyle("A6:{$lastCol}6")->applyFromArray([

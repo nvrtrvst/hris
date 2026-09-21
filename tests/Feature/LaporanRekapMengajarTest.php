@@ -138,7 +138,9 @@ class LaporanRekapMengajarTest extends TestCase
         $this->assertCount(11, $headings);
         $this->assertSame('Nama Guru', $headings[0]);
         $this->assertSame('JP Terjadwal', $headings[4]);
-        $this->assertStringstartsWith('M', $headings[9]);
+        // Label minggu format rentang tanggal: "31-04 Sep" (format sejak ee60ff8).
+        $this->assertSame('31-04 Sep', $headings[9]);
+        $this->assertSame('07-09 Sep', $headings[10]);
 
         // Row guru A: 4 terjadwal, 3 hadir, 1 telat, 0 alpa, 100% (hadir+telat).
         $this->assertSame('Guru A', $row[0]);

@@ -20,6 +20,7 @@ use App\Models\Presensi;
 use App\Models\Reminder;
 use App\Models\SkalaMasaBakti;
 use App\Models\TugasLuar;
+use App\Models\UnitLokasi;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -146,6 +147,8 @@ class RouteSmokeTest extends TestCase
         'tugas-luar.index' => 'TugasLuar/Index',
         'reminders.index' => 'Reminder/Index',
         'laporan.kcd' => 'Laporan/Kcd',
+        'laporan.rekap-detail' => 'Laporan/RekapDetail',
+        'laporan.rekap-mengajar-detail' => 'Laporan/RekapMengajarDetail',
 
         // ── Mobile (web_mobile) ──
         'presensi.dashboard' => 'Mobile/Dashboard',
@@ -483,6 +486,8 @@ class RouteSmokeTest extends TestCase
 
     private Role $disposableRole;
 
+    private UnitLokasi $lokasi;
+
     private PengajuanIzin $pengajuanApprove;
 
     private PengajuanIzin $pengajuanReject;
@@ -767,6 +772,14 @@ class RouteSmokeTest extends TestCase
         ]);
         $this->disposableMapel = MataPelajaran::create(['nama' => 'Mapel Hapus']);
         $this->disposableJabatan = Jabatan::create(['nama' => 'Jabatan Hapus', 'is_guru' => false]);
+        $this->lokasi = UnitLokasi::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'nama' => 'Gedung Utama',
+            'latitude' => -6.2,
+            'longitude' => 106.8,
+            'radius_meter' => 50,
+            'is_active' => true,
+        ]);
         $this->disposableRole = Role::create(['name' => 'smoke_role_test', 'guard_name' => 'web']);
 
         // Fixture master (hari-libur / tugas-luar / reminders) untuk smoke route.
@@ -1583,6 +1596,7 @@ class RouteSmokeTest extends TestCase
             'hari_libur' => $routeName === 'hari-libur.destroy' ? $this->disposableHariLibur->id : $this->hariLibur->id,
             'tugas_luar' => $routeName === 'tugas-luar.destroy' ? $this->disposableTugasLuar->id : $this->tugasLuar->id,
             'reminder' => in_array($routeName, ['reminders.destroy', 'reminders.send'], true) ? $this->disposableReminder->id : $this->reminder->id,
+            'lokasi' => $this->lokasi->id,
             default => throw new \RuntimeException("Param route tak dikenal: {$param} @ {$routeName}"),
         };
     }
@@ -1596,7 +1610,9 @@ class RouteSmokeTest extends TestCase
         ];
 
         return match ($name) {
-            'laporan.preview', 'laporan.presensi', 'laporan.penggajian', 'laporan.lemburan', 'laporan.rekap-mengajar', 'laporan.pdf' => array_merge(['type' => 'presensi'], $range),
+            'laporan.preview', 'laporan.presensi', 'laporan.penggajian', 'laporan.lemburan', 'laporan.rekap-mengajar', 'laporan.rekap-kehadiran', 'laporan.pdf' => array_merge(['type' => 'presensi'], $range),
+            // Drill-down rekap: butuh pegawai_id + rentang tanggal.
+            'laporan.rekap-detail', 'laporan.rekap-mengajar-detail' => array_merge(['pegawai_id' => $this->pegawai->id], $range),
             'penggajian.export-bank' => ['periode_bulan' => now()->format('m-Y')],
             'jadwal.kelas-by-unit' => ['q' => 'smoke'],
             // Superadmin tanpa unit → jadwal.index skip load (perf) — smoke
