@@ -418,9 +418,12 @@ class PegawaiController extends Controller
         $mapels = MataPelajaran::select('id', 'nama')->orderBy('nama')->get();
 
         // Ambil semua lokasi dari unit-unit yang di-assign pegawai ini
+        // Primary unit duluan supaya "(Titik Utama)" selalu di paling atas
         $unitIds = $pegawai->units->pluck('id')->toArray();
+        $primaryUnitId = $pegawai->units->first()?->id;
         $lokalis = UnitLokasi::where('is_active', true)
             ->whereIn('unit_sekolah_id', $unitIds)
+            ->orderByRaw('unit_sekolah_id = ? DESC', [$primaryUnitId])
             ->get(['id', 'unit_sekolah_id', 'nama']);
 
         // Kandidat atasan langsung: hanya pegawai dengan jabatan hierarchy LEBIH TINGGI.
