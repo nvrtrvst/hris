@@ -1,8 +1,9 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { ArrowLeft, Plus, Trash2, MapPin } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, MapPin, Settings2 } from 'lucide-react';
 import UnitForm from './UnitForm';
+import LeafletPicker from '@/Components/LeafletPicker';
 
 export default function Edit({ auth, unit, lokalis }) {
     const { data, setData, put, processing, errors } = useForm({
@@ -102,26 +103,41 @@ export default function Edit({ auth, unit, lokalis }) {
                             </div>
 
                             {showLokasiForm && (
-                                <form onSubmit={handleSubmitLokasi} className="bg-primary-50 p-4 rounded-card border border-primary/10 mb-4 space-y-3">
+                                <form onSubmit={handleSubmitLokasi} className="bg-primary-50 p-4 rounded-card border border-primary/10 mb-4 space-y-4">
                                     <h4 className="text-sm font-semibold text-primary">{editLokasi ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                        <div>
-                                            <label className="form-label">Nama Lokasi</label>
-                                            <input type="text" value={lokasiForm.data.nama} onChange={e => lokasiForm.setData('nama', e.target.value)} className="input-field" placeholder="Wilayah B / Kampus 2" required />
-                                            {lokasiForm.errors.nama && <p className="form-error">{lokasiForm.errors.nama}</p>}
-                                        </div>
+                                    <div>
+                                        <label className="form-label">Nama Lokasi</label>
+                                        <input type="text" value={lokasiForm.data.nama} onChange={e => lokasiForm.setData('nama', e.target.value)} className="input-field" placeholder="Kampus 2 / Wilayah B" required />
+                                        {lokasiForm.errors.nama && <p className="form-error">{lokasiForm.errors.nama}</p>}
+                                    </div>
+                                    <LeafletPicker
+                                        lat={lokasiForm.data.latitude}
+                                        lng={lokasiForm.data.longitude}
+                                        radius={lokasiForm.data.radius_meter}
+                                        onChange={(la, ln) => {
+                                            lokasiForm.setData('latitude', la);
+                                            lokasiForm.setData('longitude', ln);
+                                        }}
+                                    />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <div>
                                             <label className="form-label">Latitude</label>
-                                            <input type="number" step="any" value={lokasiForm.data.latitude} onChange={e => lokasiForm.setData('latitude', e.target.value)} className="input-field" required />
+                                            <input type="number" step="any" value={lokasiForm.data.latitude} onChange={e => lokasiForm.setData('latitude', e.target.value)} className="input-field font-mono" required />
                                         </div>
                                         <div>
                                             <label className="form-label">Longitude</label>
-                                            <input type="number" step="any" value={lokasiForm.data.longitude} onChange={e => lokasiForm.setData('longitude', e.target.value)} className="input-field" required />
+                                            <input type="number" step="any" value={lokasiForm.data.longitude} onChange={e => lokasiForm.setData('longitude', e.target.value)} className="input-field font-mono" required />
                                         </div>
-                                        <div>
-                                            <label className="form-label">Radius (meter)</label>
-                                            <input type="number" value={lokasiForm.data.radius_meter} onChange={e => lokasiForm.setData('radius_meter', Number(e.target.value))} className="input-field" min="10" max="100000" required />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between">
+                                            <label className="form-label">Radius Toleransi Absen (Meter) <span className="text-danger">*</span></label>
                                         </div>
+                                        <div className="mt-1 flex items-center gap-3">
+                                            <input type="range" min="10" max="10000" value={lokasiForm.data.radius_meter} onChange={e => lokasiForm.setData('radius_meter', Number(e.target.value))} className="flex-1 accent-[#0F3D3E]" />
+                                            <input type="number" min="10" max="100000" value={lokasiForm.data.radius_meter} onChange={e => lokasiForm.setData('radius_meter', Number(e.target.value))} className="input-field w-28" />
+                                        </div>
+                                        <p className="text-xs text-text-secondary mt-1">Pegawai hanya bisa absen jika jarak GPS mereka ≤ radius ini dari titik pusat lokasi.</p>
                                     </div>
                                     <div className="flex gap-2">
                                         <button type="submit" disabled={lokasiForm.processing} className="btn-primary text-sm">{lokasiForm.processing ? 'Menyimpan...' : 'Simpan'}</button>
