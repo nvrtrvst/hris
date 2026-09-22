@@ -59,6 +59,7 @@ class Pegawai extends Model
         'no_bpjs_ketenagakerjaan',
         'jatah_cuti_tahunan',
         'wajib_kantor',
+        'use_primary_location',
         'created_by',
     ];
 
@@ -102,6 +103,7 @@ class Pegawai extends Model
         'no_bpjs_kesehatan' => 'encrypted',
         'no_bpjs_ketenagakerjaan' => 'encrypted',
         'wajib_kantor' => 'boolean',
+        'use_primary_location' => 'boolean',
     ];
 
     protected static function booted(): void

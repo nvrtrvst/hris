@@ -1054,16 +1054,25 @@ class MobileController extends Controller
             return ['unit' => null, 'unitSekolah' => null, 'locations' => collect()];
         }
 
+        $checkLocations = collect();
+
+        // Include primary UnitSekolah if use_primary_location is true
+        if ($pegawai->use_primary_location) {
+            $checkLocations->push($unitSekolah);
+        }
+
+        // Include assigned UnitLokasi
         $assignedLocations = $pegawai->lokasis()
             ->where('is_active', true)
             ->where('unit_sekolah_id', $unitSekolah->id)
             ->get();
+        $checkLocations = $checkLocations->concat($assignedLocations);
 
-        if ($assignedLocations->isNotEmpty()) {
+        if ($checkLocations->isNotEmpty()) {
             return [
-                'unit' => $assignedLocations->first(),
+                'unit' => $checkLocations->first(),
                 'unitSekolah' => $unitSekolah,
-                'locations' => $assignedLocations,
+                'locations' => $checkLocations,
             ];
         }
 

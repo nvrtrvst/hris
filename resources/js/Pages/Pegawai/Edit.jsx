@@ -38,7 +38,7 @@ function SectionCard({ Icon, title, description, children }) {
     );
 }
 
-export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, statusKepegawaian, pendidikanTerakhir, atasanCandidates = [], lokalis = [], pegawai_lokasis = [] }) {
+export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, statusKepegawaian, pendidikanTerakhir, atasanCandidates = [], lokalis = [], pegawai_lokasis = [], lokasi_pilihan = 'primary' }) {
     const canViewSensitive = auth.permissions?.includes('view_sensitive_data');
     const { data, setData, put, processing, errors } = useForm({
         nik: canViewSensitive ? pegawai.nik_plain ?? pegawai.nik : '',
@@ -71,7 +71,7 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         role: pegawai.user?.roles?.[0]?.name || 'pegawai',
         foto: null,
         hapus_foto: false,
-        lokasi_ids: pegawai_lokasis || [],
+        lokasi_pilihan: lokasi_pilihan || 'primary',
         units: (pegawai.units || []).map((u) => ({
             unit_sekolah_id: u.id,
             jabatan_id: u.pivot?.jabatan_id ?? '',
@@ -377,34 +377,58 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                         />
 
                         {/* Lokasi / Kampus yang Diizinkan */}
-                        {lokalis.length > 0 && (
-                            <div className="card p-6">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <MapPin className="h-5 w-5 text-primary" />
-                                    <h3 className="font-semibold text-text-primary">Lokasi / Kampus yang Diizinkan</h3>
-                                </div>
-                                <p className="text-sm text-text-secondary mb-3">Pilih lokasi mana saja yang boleh digunakan pegawai ini untuk presensi. Kosongkan = semua lokasi default unit.</p>
-                                <div className="space-y-2">
-                                    {lokalis.map(l => (
-                                        <label key={l.id} className="flex items-center gap-2 cursor-pointer">
+                        {lokalis.length > 0 && (() => {
+                            const primary = lokalis[0];
+                            const secondary = lokalis[1];
+                            return (
+                                <div className="card p-6">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <MapPin className="h-5 w-5 text-primary" />
+                                        <h3 className="font-semibold text-text-primary">Lokasi Presensi</h3>
+                                    </div>
+                                    <p className="text-sm text-text-secondary mb-3">Pilih lokasi yang diizinkan untuk presensi pegawai ini.</p>
+                                    <div className="space-y-2">
+                                        <label className="flex items-center gap-2 cursor-pointer">
                                             <input
-                                                type="checkbox"
-                                                checked={data.lokasi_ids.includes(l.id)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setData('lokasi_ids', [...data.lokasi_ids, l.id]);
-                                                    } else {
-                                                        setData('lokasi_ids', data.lokasi_ids.filter(id => id !== l.id));
-                                                    }
-                                                }}
-                                                className="rounded border-border text-primary focus:ring-primary"
+                                                type="radio"
+                                                name="lokasi_pilihan"
+                                                value="primary"
+                                                checked={data.lokasi_pilihan === 'primary'}
+                                                onChange={() => setData('lokasi_pilihan', 'primary')}
+                                                className="text-primary focus:ring-primary"
                                             />
-                                            <span className="text-sm">{l.nama}</span>
+                                            <span className="text-sm">{primary?.nama} (Titik Utama)</span>
                                         </label>
-                                    ))}
+                                        {secondary && (
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="lokasi_pilihan"
+                                                    value="secondary"
+                                                    checked={data.lokasi_pilihan === 'secondary'}
+                                                    onChange={() => setData('lokasi_pilihan', 'secondary')}
+                                                    className="text-primary focus:ring-primary"
+                                                />
+                                                <span className="text-sm">{secondary.nama}</span>
+                                            </label>
+                                        )}
+                                        {secondary && (
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="lokasi_pilihan"
+                                                    value="both"
+                                                    checked={data.lokasi_pilihan === 'both'}
+                                                    onChange={() => setData('lokasi_pilihan', 'both')}
+                                                    className="text-primary focus:ring-primary"
+                                                />
+                                                <span className="text-sm">Keduanya</span>
+                                            </label>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         {/* Mata Pelajaran (Guru) */}
                         <MapelSection

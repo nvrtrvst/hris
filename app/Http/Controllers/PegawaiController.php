@@ -464,6 +464,7 @@ class PegawaiController extends Controller
             'mapels' => $mapels,
             'lokalis' => $lokalis,
             'pegawai_lokasis' => $pegawai->lokasis->pluck('id')->toArray(),
+            'lokasi_pilihan' => $this->resolveLokasiPilihan($pegawai),
             'atasanCandidates' => $atasanCandidates,
             'statusKepegawaian' => StatusKepegawaian::activeOptions(),
             'pendidikanTerakhir' => PegawaiConstants::PENDIDIKAN_TERAKHIR,
@@ -514,8 +515,7 @@ class PegawaiController extends Controller
             'mapels' => 'nullable|array',
             'mapels.*.mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
             'mapels.*.unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
-            'lokasi_ids' => 'nullable|array',
-            'lokasi_ids.*' => 'nullable|exists:unit_lokasi,id',
+            'lokasi_pilihan' => 'required|string|in:primary,secondary,both',
             'atasan_langsung_id' => 'nullable|integer|exists:pegawai,id',
             'jumlah_tanggungan' => 'nullable|integer|min:0',
             'no_hp_darurat' => 'nullable|string|max:20',
@@ -615,9 +615,24 @@ class PegawaiController extends Controller
         $pegawai->mapels()->sync($syncMapels);
 
         // Sinkronisasi lokasi yang diizinkan
-        $lokasiIds = $request->input('lokasi_ids', []);
-        if (is_array($lokasiIds)) {
-            $pegawai->lokasis()->sync($lokasiIds);
+        $pilihan = $validated['lokasi_pilihan'] ?? 'primary';
+        $usePrimary = in_array($pilihan, ['primary', 'both']);
+        $pegawai->update(['use_primary_location' => $usePrimary]);
+
+        if ($pilihan === 'both') {
+            $allLokasiIds = UnitLokasi::where('is_active', true)
+                ->whereIn('unit_sekolah_id', $pegawai->units->pluck('id'))
+                ->pluck('id')
+                ->toArray();
+            $pegawai->lokasis()->sync($allLokasiIds);
+        } elseif ($pilihan === 'secondary') {
+            $secondaryIds = UnitLokasi::where('is_active', true)
+                ->whereIn('unit_sekolah_id', $pegawai->units->pluck('id'))
+                ->pluck('id')
+                ->toArray();
+            $pegawai->lokasis()->sync($secondaryIds);
+        } else {
+            $pegawai->lokasis()->detach();
         }
 
         if ($pegawai->user_id) {
@@ -785,5 +800,20 @@ class PegawaiController extends Controller
         $plaintext = $pegawai->user?->getUsernamePlaintext();
 
         return response()->json(['username' => $plaintext]);
+    }
+
+    private function resolveLokasiPilihan(Pegawai $pegawai): string
+    {
+        $hasPrimary = $pegawai->use_primary_location;
+        $hasSecondary = $pegawai->lokasis->isNotEmpty();
+
+        if ($hasPrimary && $hasSecondary) {
+            return 'both';
+        }
+        if ($hasSecondary) {
+            return 'secondary';
+        }
+
+        return 'primary';
     }
 }
