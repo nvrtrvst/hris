@@ -440,7 +440,9 @@ class MobileController extends Controller
     public function absen()
     {
         $pegawai = $this->getPegawai();
-        $pegawai->load('units');
+        $pegawai->load(['units', 'lokasis' => function ($q) {
+            $q->where('is_active', true);
+        }]);
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIniIndo = $hariMap[Carbon::now()->format('l')];
 
@@ -580,31 +582,40 @@ class MobileController extends Controller
                 throw ValidationException::withMessages(['jadwal_id' => PresensiMessages::PEMILIH_JADWAL_DULU]);
             }
             $unit = $jadwal->unitLokasi ?? $jadwal->unitSekolah;
+            $unitSekolah = $jadwal->unitSekolah;
+            $assignedLocations = collect();
         } elseif ($isLembur) {
-            $primaryUnit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
-            if (! $primaryUnit) {
+            $geo = $this->resolveGeofenceLocation($pegawai);
+            if (! $geo['unit']) {
                 $message = PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT;
 
                 return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
             }
-            $unit = $primaryUnit;
+            $unit = $geo['unit'];
+            $unitSekolah = $geo['unitSekolah'];
+            $assignedLocations = $geo['locations'];
             $jadwal = null;
         } elseif ($isTugasLuar) {
-            $primaryUnit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
-            if (! $primaryUnit) {
+            $geo = $this->resolveGeofenceLocation($pegawai);
+            if (! $geo['unit']) {
                 $message = PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT;
 
                 return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
             }
-            $unit = $primaryUnit;
+            $unit = $geo['unit'];
+            $unitSekolah = $geo['unitSekolah'];
+            $assignedLocations = $geo['locations'];
             $jadwal = null;
         } elseif ($pegawai->wajib_kantor && ! Jadwal::where('pegawai_id', $pegawai->id)->where('hari', $hariIni)->exists()) {
-            $unit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
-            if (! $unit) {
+            $geo = $this->resolveGeofenceLocation($pegawai);
+            if (! $geo['unit']) {
                 $message = PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT;
 
                 return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
             }
+            $unit = $geo['unit'];
+            $unitSekolah = $geo['unitSekolah'];
+            $assignedLocations = $geo['locations'];
             $jadwal = null;
         } else {
             $message = PresensiMessages::PEMILIH_JADWAL_DULU;
@@ -619,19 +630,31 @@ class MobileController extends Controller
 
                 return response()->json(['success' => false, 'message' => $message, 'errors' => ['jadwal_id' => $message]], 422);
             }
-            if ($hariIni === 'Sabtu' && ! $unit->jam_kerja_sabtu_mulai) {
+            if ($hariIni === 'Sabtu' && ! ($unitSekolah ?? $unit)->jam_kerja_sabtu_mulai) {
                 $message = sprintf(PresensiMessages::HARI_TIDAK_AKTIF, 'Sabtu');
 
                 return response()->json(['success' => false, 'message' => $message, 'errors' => ['jadwal_id' => $message]], 422);
             }
         }
 
-        $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);
+        $geoResult = $this->checkMultiLocationGeofence(
+            $request->latitude,
+            $request->longitude,
+            $assignedLocations ?? collect(),
+            $unit
+        );
+        $distance = $geoResult['distance'];
 
-        if (! $isTugasLuar && $distance > $unit->radius_meter) {
-            $message = sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $distance, $unit->radius_meter);
+        if (! $isTugasLuar && ! $geoResult['inside']) {
+            $radiusUsed = $geoResult['matchedUnit'] ? $geoResult['matchedUnit']->radius_meter : $unit->radius_meter;
+            $message = sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $distance, $radiusUsed);
 
             return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
+        }
+
+        // Update $unit ke matched location (untuk overlay nama, accuracy check)
+        if ($geoResult['matchedUnit']) {
+            $unit = $geoResult['matchedUnit'];
         }
 
         $accuracy = (float) $request->accuracy;
@@ -720,7 +743,7 @@ class MobileController extends Controller
         $disk->put($tempPath, $decoded);
 
         try {
-            $presensi = $this->storeAbsenTransaction($request, $pegawai, $jadwal, $unit, $distance, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan, $tipePresensi, $hariIni, $spoofData, $isTugasLuar);
+            $presensi = $this->storeAbsenTransaction($request, $pegawai, $jadwal, $unit, $distance, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan, $tipePresensi, $hariIni, $spoofData, $isTugasLuar, $unitSekolah ?? null);
         } catch (\Throwable $e) {
             // Jangan tinggalkan sampah temp foto saat transaksi/validasi gagal
             // (job ProcessPresensiFoto tidak pernah di-dispatch di jalur ini).
@@ -787,9 +810,9 @@ class MobileController extends Controller
      * @param  string  $tipePresensi  lembur | mengajar | kantor (default 'kantor')
      * @param  string  $hariIni  Nama hari (Indonesia) untuk cek pulang-awal mengajar
      */
-    private function storeAbsenTransaction(Request $request, $pegawai, ?Jadwal $jadwal, $unit, float $distance, bool $isLembur, float $accuracy, $speed, $capturedAt, bool $lokasiPerluReview, bool $posisiMencurigakan, string $tipePresensi = 'kantor', string $hariIni = '', array $spoofData = [], bool $isTugasLuar = false): Presensi
+    private function storeAbsenTransaction(Request $request, $pegawai, ?Jadwal $jadwal, $unit, float $distance, bool $isLembur, float $accuracy, $speed, $capturedAt, bool $lokasiPerluReview, bool $posisiMencurigakan, string $tipePresensi = 'kantor', string $hariIni = '', array $spoofData = [], bool $isTugasLuar = false, $unitSekolah = null): Presensi
     {
-        return DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan, $tipePresensi, $hariIni, $spoofData, $isTugasLuar) {
+        return DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan, $tipePresensi, $hariIni, $spoofData, $isTugasLuar, $unitSekolah) {
             $tanggal = Carbon::today()->toDateString();
             $presensiKey = $this->buildPresensiKey($isLembur, $tipePresensi, $request->jadwal_id, $tanggal, $isTugasLuar);
 
@@ -820,7 +843,7 @@ class MobileController extends Controller
                 ]);
             }
 
-            $presensi->unit_sekolah_id = $jadwal->unit_sekolah_id ?? $unit->id;
+            $presensi->unit_sekolah_id = $jadwal->unit_sekolah_id ?? ($unitSekolah?->id ?? $unit->id);
             $presensi->is_lembur = $isLembur;
             $presensi->is_tugas_luar = $isTugasLuar;
             $presensi->tipe_presensi = $tipePresensi;
@@ -856,10 +879,11 @@ class MobileController extends Controller
                         $presensi->keterangan = $request->input('keterangan');
                     }
                 } else {
+                    $timeUnit = $unitSekolah ?? $unit;
                     $jamMulai = $tipePresensi === 'kantor'
-                        ? (Carbon::now()->isSaturday() && $unit->jam_kerja_sabtu_mulai ? $unit->jam_kerja_sabtu_mulai : $unit->jam_masuk_kantor)
+                        ? (Carbon::now()->isSaturday() && $timeUnit->jam_kerja_sabtu_mulai ? $timeUnit->jam_kerja_sabtu_mulai : $timeUnit->jam_masuk_kantor)
                         : $jadwal->jam_mulai;
-                    $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jamMulai, (int) $unit->toleransi_menit);
+                    $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jamMulai, (int) $timeUnit->toleransi_menit);
                 }
 
                 // JP lanjutan (mapel+kelas+unit sama, gap ≤ GAP_SESI_MENIT): jam
@@ -1018,6 +1042,65 @@ class MobileController extends Controller
         ];
     }
 
+    /**
+     * Resolve lokasi geofence untuk kantor/lembur.
+     * Prioritas: assigned UnitLokasi → fallback primary UnitSekolah.
+     */
+    private function resolveGeofenceLocation(Pegawai $pegawai): array
+    {
+        $unitSekolah = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
+
+        if (! $unitSekolah) {
+            return ['unit' => null, 'unitSekolah' => null, 'locations' => collect()];
+        }
+
+        $assignedLocations = $pegawai->lokasis()
+            ->where('is_active', true)
+            ->where('unit_sekolah_id', $unitSekolah->id)
+            ->get();
+
+        if ($assignedLocations->isNotEmpty()) {
+            return [
+                'unit' => $assignedLocations->first(),
+                'unitSekolah' => $unitSekolah,
+                'locations' => $assignedLocations,
+            ];
+        }
+
+        return [
+            'unit' => $unitSekolah,
+            'unitSekolah' => $unitSekolah,
+            'locations' => collect(),
+        ];
+    }
+
+    /**
+     * Cek GPS terhadap multiple locations. Return ['inside', 'distance', 'matchedUnit'].
+     */
+    private function checkMultiLocationGeofence(float $lat, float $lng, Collection $locations, $fallbackUnit): array
+    {
+        if ($locations->isNotEmpty()) {
+            foreach ($locations as $loc) {
+                $distance = $this->calculateDistance($lat, $lng, $loc->latitude, $loc->longitude);
+                if ($distance <= $loc->radius_meter) {
+                    return ['inside' => true, 'distance' => $distance, 'matchedUnit' => $loc];
+                }
+            }
+
+            $minDistance = $locations->map(fn ($loc) => $this->calculateDistance($lat, $lng, $loc->latitude, $loc->longitude))->min();
+
+            return ['inside' => false, 'distance' => $minDistance, 'matchedUnit' => null];
+        }
+
+        $distance = $this->calculateDistance($lat, $lng, $fallbackUnit->latitude, $fallbackUnit->longitude);
+
+        return [
+            'inside' => $distance <= $fallbackUnit->radius_meter,
+            'distance' => $distance,
+            'matchedUnit' => $distance <= $fallbackUnit->radius_meter ? $fallbackUnit : null,
+        ];
+    }
+
     public function storeAbsenTetap(Request $request)
     {
         $pegawai = $this->getPegawai();
@@ -1053,12 +1136,26 @@ class MobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Tujuan tugas luar wajib diisi.', 'errors' => ['tujuan' => 'Tujuan tugas luar wajib diisi.']], 422);
         }
 
-        $unit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
+        $geo = $this->resolveGeofenceLocation($pegawai);
+        $unit = $geo['unit'];
+        $unitSekolah = $geo['unitSekolah'];
+        $assignedLocations = $geo['locations'];
         abort_unless($unit, 422, PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT);
 
-        $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);
-        if (! $isTugasLuar && $distance > $unit->radius_meter) {
-            return response()->json(['success' => false, 'message' => sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $distance, $unit->radius_meter), 'errors' => ['geofence' => sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $distance, $unit->radius_meter)]], 422);
+        $geoResult = $this->checkMultiLocationGeofence(
+            $request->latitude,
+            $request->longitude,
+            $assignedLocations,
+            $unit
+        );
+        $distance = $geoResult['distance'];
+        if (! $isTugasLuar && ! $geoResult['inside']) {
+            $radiusUsed = $geoResult['matchedUnit'] ? $geoResult['matchedUnit']->radius_meter : $unit->radius_meter;
+
+            return response()->json(['success' => false, 'message' => sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $distance, $radiusUsed), 'errors' => ['geofence' => sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $distance, $radiusUsed)]], 422);
+        }
+        if ($geoResult['matchedUnit']) {
+            $unit = $geoResult['matchedUnit'];
         }
 
         $accuracy = (float) $request->accuracy;
@@ -1150,6 +1247,7 @@ class MobileController extends Controller
                 '',
                 $spoofData,
                 $isTugasLuar,
+                $unitSekolah,
             );
         } catch (\Throwable $e) {
             // Jangan tinggalkan sampah temp foto saat transaksi/validasi gagal.
