@@ -195,7 +195,6 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             if (inside) return entry;
             if (!best || distance < best.distance) best = entry;
         }
-        console.log('[geofence-tetap] locations:', geofenceLocations.length, 'gps:', currentPosition.latitude, currentPosition.longitude, 'best:', best?.name, Math.round(best?.distance) + 'm', 'inside:', best?.inside);
         return best;
     }, [currentPosition, geofenceLocations]);
 

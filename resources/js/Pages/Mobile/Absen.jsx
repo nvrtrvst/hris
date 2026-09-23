@@ -127,7 +127,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             if (inside) return entry;
             if (!best || distance < best.distance) best = entry;
         }
-        console.log('[geofence] locations:', geofenceLocations.length, 'gps:', currentPosition.latitude, currentPosition.longitude, 'best:', best?.name, Math.round(best?.distance) + 'm', 'inside:', best?.inside);
         return best;
     }, [currentPosition, geofenceLocations]);
     const targetUnit = geofence?.unit ?? geofenceLocations[0] ?? null;
