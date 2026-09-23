@@ -724,11 +724,12 @@ class MobileController extends Controller
         $lokasiPerluReview = $lokasiPerluReview || $spoofData['posisi_mencurigakan'];
 
         $now = Carbon::now();
+        $unitFullName = $unit instanceof \App\Models\UnitLokasi ? (($unitSekolah?->nama ?? '') . ' ' . $unit->nama) : $unit->nama;
         $overlayData = [
             'label' => $isLembur ? 'BUKTI LEMBUR' : ($isTugasLuar ? 'TUGAS LUAR' : 'BUKTI PRESENSI'),
             'is_lembur' => $isLembur,
             'pegawai' => $pegawai->nama_lengkap,
-            'unit' => $unit->nama,
+            'unit' => trim($unitFullName),
             'time' => $now->format('H:i:s').' WIB',
             'date' => $now->locale('id')->isoFormat('dddd, D MMMM YYYY'),
             'coordinates' => number_format((float) $request->latitude, 6).', '.number_format((float) $request->longitude, 6),
