@@ -407,9 +407,9 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         {parent.jam_masuk ? (
                             <div className="flex flex-col">
                                 <span className="font-mono text-sm font-bold text-primary">{parent.jam_masuk.substring(0, 5)}</span>
-                                {parent.unit_lokasi_masuk?.nama && (
-                                    <span className="text-[10px] text-slate-500 flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{parent.unit_lokasi_masuk.nama}</span>
-                                )}
+                                {parent.unit_lokasi_masuk?.nama ? (
+                                    <span className="text-[10px] lowercase text-slate-500" title={parent.foto_masuk && new Date(parent.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{parent.unit_lokasi_masuk.nama.toLowerCase()}</span>
+                                ) : null}
                             </div>
                         ) : <span className="text-sm text-text-secondary">—</span>}
                     </td>
@@ -417,9 +417,9 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         {parent.jam_keluar ? (
                             <div className="flex flex-col">
                                 <span className="font-mono text-sm font-bold text-primary">{parent.jam_keluar.substring(0, 5)}</span>
-                                {parent.unit_lokasi_keluar?.nama && (
-                                    <span className="text-[10px] text-slate-500 flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{parent.unit_lokasi_keluar.nama}</span>
-                                )}
+                                {parent.unit_lokasi_keluar?.nama ? (
+                                    <span className="text-[10px] lowercase text-slate-500" title={parent.foto_keluar && new Date(parent.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{parent.unit_lokasi_keluar.nama.toLowerCase()}</span>
+                                ) : null}
                             </div>
                         ) : <span className="text-sm text-text-secondary">—</span>}
                     </td>
@@ -1115,12 +1115,11 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                         {p.jam_masuk ? (
                                                             <div className="flex flex-col">
                                                                 <span className="font-mono text-sm font-bold text-primary">{p.jam_masuk.substring(0, 5)}</span>
-                                                                {p.jarak_masuk_meter != null && (
-                                                                    <span className="text-[10px] text-text-secondary flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{p.jarak_masuk_meter}m{p.unit_lokasi_masuk?.nama ? ` • ${p.unit_lokasi_masuk.nama}` : ''}</span>
-                                                                )}
-                                                                {p.jarak_masuk_meter == null && p.unit_lokasi_masuk?.nama && (
-                                                                    <span className="text-[10px] text-slate-500 flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{p.unit_lokasi_masuk.nama}</span>
-                                                                )}
+                                                                {p.unit_lokasi_masuk?.nama ? (
+                                                                    <span className="text-[10px] lowercase text-slate-500" title={p.foto_masuk && new Date(p.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin Kampus 1 (data sebelum 23 Sep)' : undefined}>{p.unit_lokasi_masuk.nama.toLowerCase()}</span>
+                                                                ) : p.jarak_masuk_meter != null ? (
+                                                                    <span className="text-[10px] text-text-secondary">{p.jarak_masuk_meter}m</span>
+                                                                ) : null}
                                                             </div>
                                                         ) : <span className="text-sm text-text-secondary">—</span>}
                                                     </td>
@@ -1128,10 +1127,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                         {p.jam_keluar ? (
                                                             <div className="flex flex-col">
                                                                 <span className="font-mono text-sm font-bold text-primary">{p.jam_keluar.substring(0, 5)}</span>
-                                                                {p.unit_lokasi_keluar?.nama && (
-                                                                    <span className="text-[10px] text-slate-500 flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{p.unit_lokasi_keluar.nama}</span>
-                                                                )}
-                                                                {durasi && <span className="text-[10px] font-semibold text-emerald-600">{durasi}</span>}
+                                                                {p.unit_lokasi_keluar?.nama ? (
+                                                                    <span className="text-[10px] lowercase text-slate-500" title={p.foto_keluar && new Date(p.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{p.unit_lokasi_keluar.nama.toLowerCase()}</span>
+                                                                ) : durasi ? <span className="text-[10px] font-semibold text-emerald-600">{durasi}</span> : null}
                                                             </div>
                                                         ) : <span className="text-sm text-text-secondary">—</span>}
                                                     </td>
