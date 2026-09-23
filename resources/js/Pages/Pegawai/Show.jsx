@@ -229,7 +229,10 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                         )}
                                         {pegawai.lokasis?.length > 0 && (
                                             <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold text-slate-600">
-                                                <MapPin className="h-3 w-3" /> {pegawai.lokasis.map((l) => l.nama).join(', ')}
+                                                <MapPin className="h-3 w-3" /> {pegawai.lokasis.map((l) => {
+                                                    const unitNama = pegawai.units?.find((u) => u.id === l.unit_sekolah_id)?.nama || '';
+                                                    return unitNama ? `${unitNama} ${l.nama}` : l.nama;
+                                                }).join(', ')}
                                             </span>
                                         )}
                                         {canViewKontrak && kontrakSisa !== null && (

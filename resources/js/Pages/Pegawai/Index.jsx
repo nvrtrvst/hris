@@ -123,7 +123,13 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
 
     const filterSelect = 'select-field text-xs h-9 w-full';
 
-    const lokasiLabel = (p) => (p.lokasis?.length ? p.lokasis.map((l) => l.nama).join(', ') : null);
+    const lokasiLabel = (p) => {
+        if (!p.lokasis?.length) return null;
+        return p.lokasis.map((l) => {
+            const unitNama = p.units?.find((u) => u.id === l.unit_sekolah_id)?.nama || '';
+            return unitNama ? `${unitNama} ${l.nama}` : l.nama;
+        }).join(', ');
+    };
 
     return (
         <AuthenticatedLayout

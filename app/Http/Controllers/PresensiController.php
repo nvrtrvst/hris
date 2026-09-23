@@ -43,7 +43,7 @@ class PresensiController extends Controller
 
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_presensi');
-        $query = Presensi::with(['unitSekolah', 'unitLokasiMasuk:id,nama', 'unitLokasiKeluar:id,nama', 'pegawai.units:id,nama', 'pegawai.lokasis:id,nama', 'pegawai.jabatans:id,nama', 'jadwal.pegawaiMapel']);
+        $query = Presensi::with(['unitSekolah', 'unitLokasiMasuk:id,nama,unit_sekolah_id', 'unitLokasiKeluar:id,nama,unit_sekolah_id', 'pegawai.units:id,nama', 'pegawai.lokasis:id,nama,unit_sekolah_id', 'pegawai.jabatans:id,nama', 'jadwal.pegawaiMapel']);
 
         if ($this->isPimpinanReadOnly($user)) {
             if ($this->isKepsek($user)) {
