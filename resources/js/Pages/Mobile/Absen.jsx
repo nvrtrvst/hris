@@ -65,11 +65,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         const locs = [];
         if (pegawai?.use_primary_location) {
             const primary = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0];
-            if (primary) locs.push({ nama: primary.nama, latitude: primary.latitude, longitude: primary.longitude, radius_meter: primary.radius_meter });
+            if (primary) locs.push(primary);
         }
-        (pegawai?.lokasis ?? []).forEach((l) => locs.push({ nama: l.nama, latitude: l.latitude, longitude: l.longitude, radius_meter: l.radius_meter }));
-        console.debug('[geofence] locations:', JSON.stringify(locs));
-        console.debug('[geofence] use_primary:', pegawai?.use_primary_location, 'lokasis count:', pegawai?.lokasis?.length);
+        (pegawai?.lokasis ?? []).forEach((l) => locs.push(l));
         return locs;
     }, [pegawai]);
 
