@@ -1356,9 +1356,11 @@ class MobileController extends Controller
         abort_unless($pagiRecord, 422, 'Silakan foto pagi terlebih dahulu.');
 
         // Geofence multi-lokasi: cek terhadap semua assigned lokasi pegawai (primary + lokasis).
-        $geofence = $this->checkMultiLocationGeofence($pegawai, (float) $request->latitude, (float) $request->longitude);
+        $geoData = $this->resolveGeofenceLocation($pegawai);
+        $geofence = $this->checkMultiLocationGeofence((float) $request->latitude, (float) $request->longitude, $geoData['locations'], $geoData['unitSekolah'] ?? $lokasiUnit);
         if (! $geofence['inside']) {
-            $message = sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $geofence['distance'], $geofence['radius']);
+            $radius = $geofence['matchedUnit']?->radius_meter ?? $geoData['locations']->first()?->radius_meter ?? $lokasiUnit->radius_meter;
+            $message = sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $geofence['distance'], $radius);
 
             return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
         }
