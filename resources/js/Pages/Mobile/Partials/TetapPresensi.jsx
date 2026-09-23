@@ -171,15 +171,33 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const tugasLuarDone = useMemo(() => presensiHariIni.some((p) => p.is_tugas_luar && p.jam_masuk && p.jam_keluar), [presensiHariIni]);
     const isDinasLuarFlow = tugasLuarOpen || (isTugasLuar && !tugasLuarRecord);
 
+    // Multi-lokasi: cek semua assigned lokasi pegawai (sinkron backend resolveGeofenceLocation).
+    const geofenceLocations = useMemo(() => {
+        const locs = [];
+        if (pegawai?.use_primary_location) {
+            const primary = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0];
+            if (primary) locs.push({ nama: primary.nama, latitude: primary.latitude, longitude: primary.longitude, radius_meter: primary.radius_meter });
+        }
+        (pegawai?.lokasis ?? []).forEach((l) => locs.push({ nama: l.nama, latitude: l.latitude, longitude: l.longitude, radius_meter: l.radius_meter }));
+        return locs;
+    }, [pegawai]);
+
     const geofence = useMemo(() => {
-        if (!currentPosition || !primaryUnit) return null;
-        const lat = parseFloat(primaryUnit.latitude);
-        const lon = parseFloat(primaryUnit.longitude);
-        if (isNaN(lat) || isNaN(lon)) return null;
-        const radius = primaryUnit.radius_meter ?? 50;
-        const { inside, distance } = checkGeofence(currentPosition.latitude, currentPosition.longitude, lat, lon, radius);
-        return { name: primaryUnit.nama_unit || primaryUnit.nama || 'Unit Sekolah', distance, radius, inside };
-    }, [currentPosition, primaryUnit]);
+        if (!currentPosition || geofenceLocations.length === 0) return null;
+        let best = null;
+        for (const loc of geofenceLocations) {
+            const lat = parseFloat(loc.latitude);
+            const lon = parseFloat(loc.longitude);
+            if (isNaN(lat) || isNaN(lon)) continue;
+            const radius = loc.radius_meter ?? 50;
+            const { inside, distance } = checkGeofence(currentPosition.latitude, currentPosition.longitude, lat, lon, radius);
+            const entry = { name: loc.nama || 'Unit Sekolah', distance, radius, inside, unit: loc };
+            if (inside) return entry;
+            if (!best || distance < best.distance) best = entry;
+        }
+        console.log('[geofence-tetap] locations:', geofenceLocations.length, 'gps:', currentPosition.latitude, currentPosition.longitude, 'best:', best?.name, Math.round(best?.distance) + 'm', 'inside:', best?.inside);
+        return best;
+    }, [currentPosition, geofenceLocations]);
 
     const geoBlocked = isTugasLuar ? false : (geofence && !geofence.inside);
     const geoReady = geofence !== null;
@@ -624,7 +642,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                             {loadingLocation ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <LocateFixed className="h-5 w-5 shrink-0" />}
                             <div className="min-w-0">
                                 <p className="text-[10px] font-bold uppercase tracking-wider">{phase === FOTO_PAGI ? 'GPS PAGI' : 'GPS SORE'}</p>
-                                <p className="truncate text-xs font-semibold">{geoReady ? `${Math.round(geofence.distance)} m dari unit` : geoStatus === 'error' ? 'Tidak tersedia' : 'Mendeteksi...'}</p>
+                                <p className="truncate text-xs font-semibold">{geoReady ? `${Math.round(geofence.distance)}m dari ${geofence.name}` : geoStatus === 'error' ? 'Tidak tersedia' : 'Mendeteksi...'}</p>
                             </div>
                         </div>
                         <div className={`flex min-h-14 items-center gap-2.5 rounded-xl border px-3 py-2.5 ${capturedPhoto ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'}`}>
@@ -725,11 +743,11 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                 <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-3">
                                     <div className="rounded-lg bg-white/90 px-3 py-2 text-slate-900 shadow-sm backdrop-blur-sm">
                                         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">Lokasi presensi</p>
-                                        <p className="mt-1 text-xs font-semibold">{primaryUnit?.nama || primaryUnit?.nama_unit || 'Unit'}</p>
+                                        <p className="mt-1 text-xs font-semibold">{geofence?.name || geofenceLocations[0]?.nama || primaryUnit?.nama || 'Unit'}</p>
                                         <p className="mt-1 font-mono text-[10px] tabular-nums text-slate-500">{currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}</p>
                                     </div>
                                     <div className={`rounded-lg px-2.5 py-2 text-[10px] font-bold ${geoReady && geofence.inside ? 'bg-emerald-400 text-emerald-950' : 'bg-rose-400 text-rose-950'}`}>
-                                        {geoReady && geofence.inside ? 'Dalam radius' : 'Di luar radius'}
+                                        {geoReady && geofence.inside ? 'Dalam radius' : `${Math.round(geofence.distance)}m dari ${geofence.name}`}
                                     </div>
                                 </div>
                                 <span className="absolute right-2 top-2 rounded bg-white/70 px-1.5 py-1 text-[8px] font-semibold text-slate-500" dangerouslySetInnerHTML={{ __html: MAP_ATTRIBUTION }}></span>
@@ -755,11 +773,11 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                 <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-3">
                                     <div className="rounded-lg bg-white/90 px-3 py-2 text-slate-900 shadow-sm backdrop-blur-sm">
                                         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">Lokasi presensi</p>
-                                        <p className="mt-1 text-xs font-semibold">{primaryUnit?.nama || primaryUnit?.nama_unit || 'Unit'}</p>
+                                        <p className="mt-1 text-xs font-semibold">{geofence?.name || geofenceLocations[0]?.nama || primaryUnit?.nama || 'Unit'}</p>
                                         <p className="mt-1 font-mono text-[10px] tabular-nums text-slate-500">{currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}</p>
                                     </div>
                                     <div className={`rounded-lg px-2.5 py-2 text-[10px] font-bold ${geoReady && geofence.inside ? 'bg-emerald-400 text-emerald-950' : 'bg-rose-400 text-rose-950'}`}>
-                                        {geoReady && geofence.inside ? 'Dalam radius' : 'Di luar radius'}
+                                        {geoReady && geofence.inside ? 'Dalam radius' : `${Math.round(geofence.distance)}m dari ${geofence.name}`}
                                     </div>
                                 </div>
                                 <span className="absolute right-2 top-2 rounded bg-white/70 px-1.5 py-1 text-[8px] font-semibold text-slate-500" dangerouslySetInnerHTML={{ __html: MAP_ATTRIBUTION }}></span>
