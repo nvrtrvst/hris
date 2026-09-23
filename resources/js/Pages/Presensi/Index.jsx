@@ -359,9 +359,7 @@ const lokasiLabel = (pegawai) => {
 };
 const presensiLokasiLabel = (presensi, key) => {
     const loc = key === 'masuk' ? presensi.unit_lokasi_masuk : presensi.unit_lokasi_keluar;
-    if (!loc?.nama) return null;
-    const unitNama = presensi.unit_sekolah?.nama || '';
-    return unitNama ? `${unitNama} ${loc.nama}` : loc.nama;
+    return loc?.nama || null;
 };
 
 const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openAudit, openTugasLuar, setConfirmStatus }) => {
