@@ -59,13 +59,17 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         clearGeolocation,
     } = useGeolocation();
 
-    // Unit geofence target: lembur -> unit primer; reguler -> unit jadwal terpilih (atau primer).
-    const lemburUnit =
-        pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
+    // Geofence target: semua assigned lokasi pegawai (sinkron dengan backend resolveGeofenceLocation).
     const selectedJadwal = jadwals.find((j) => j.id === jadwalId);
-    const targetUnit = isTugasLuar || isLembur
-        ? lemburUnit
-        : selectedJadwal?.unit_sekolah ?? lemburUnit;
+    const geofenceLocations = useMemo(() => {
+        const locs = [];
+        if (pegawai?.use_primary_location) {
+            const primary = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0];
+            if (primary) locs.push(primary);
+        }
+        (pegawai?.lokasis ?? []).forEach((l) => locs.push(l));
+        return locs;
+    }, [pegawai]);
 
     const isTeaching = !isLembur && !officeAttendance && Boolean(jadwalId);
     const kantorRecord = officeAttendance
@@ -99,25 +103,33 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const presensiComplete = allRecordsComplete || allJadwalDone;
 
     const geofence = useMemo(() => {
-        if (!currentPosition || !targetUnit) return null;
-        const lat = parseFloat(targetUnit.latitude);
-        const lon = parseFloat(targetUnit.longitude);
-        if (isNaN(lat) || isNaN(lon)) return null;
-        const radius = targetUnit.radius_meter ?? 50;
-        const { inside, distance } = checkGeofence(
-            currentPosition.latitude,
-            currentPosition.longitude,
-            lat,
-            lon,
-            radius
-        );
-        return {
-            name: targetUnit.nama_unit || targetUnit.nama || 'Unit Sekolah',
-            distance,
-            radius,
-            inside,
-        };
-    }, [currentPosition, targetUnit]);
+        if (!currentPosition || geofenceLocations.length === 0) return null;
+        let best = null;
+        for (const loc of geofenceLocations) {
+            const lat = parseFloat(loc.latitude);
+            const lon = parseFloat(loc.longitude);
+            if (isNaN(lat) || isNaN(lon)) continue;
+            const radius = loc.radius_meter ?? 50;
+            const { inside, distance } = checkGeofence(
+                currentPosition.latitude,
+                currentPosition.longitude,
+                lat,
+                lon,
+                radius
+            );
+            const entry = {
+                name: loc.nama_unit || loc.nama || 'Unit Sekolah',
+                distance,
+                radius,
+                inside,
+                unit: loc,
+            };
+            if (inside) return entry;
+            if (!best || distance < best.distance) best = entry;
+        }
+        return best;
+    }, [currentPosition, geofenceLocations]);
+    const targetUnit = geofence?.unit ?? geofenceLocations[0] ?? null;
 
     const geoBlocked = geofence && !geofence.inside && !isTugasLuar;
     const geoReady = geofence !== null;
