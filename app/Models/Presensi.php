@@ -15,6 +15,8 @@ class Presensi extends Model
         'pegawai_id',
         'jadwal_id',
         'unit_sekolah_id',
+        'unit_lokasi_masuk_id',
+        'unit_lokasi_keluar_id',
         'tipe_presensi',
         'tanggal',
         'jam_masuk',
@@ -134,6 +136,16 @@ class Presensi extends Model
     public function tugasLuar(): BelongsTo
     {
         return $this->belongsTo(TugasLuar::class);
+    }
+
+    public function unitLokasiMasuk(): BelongsTo
+    {
+        return $this->belongsTo(UnitLokasi::class, 'unit_lokasi_masuk_id');
+    }
+
+    public function unitLokasiKeluar(): BelongsTo
+    {
+        return $this->belongsTo(UnitLokasi::class, 'unit_lokasi_keluar_id');
     }
 
     public function scopeTugasLuar($query)

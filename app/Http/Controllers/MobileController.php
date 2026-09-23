@@ -854,6 +854,7 @@ class MobileController extends Controller
             $presensi->is_tugas_luar = $isTugasLuar;
             $presensi->tipe_presensi = $tipePresensi;
 
+            $unitLokasiId = $unit instanceof \App\Models\UnitLokasi ? $unit->id : null;
             if ($request->tipe === 'masuk') {
                 $presensi->jam_masuk = Carbon::now()->format('H:i:s');
                 $presensi->latitude_masuk = $request->latitude;
@@ -869,6 +870,7 @@ class MobileController extends Controller
                 $presensi->pos_a_accuracy = $request->filled('pos_a_accuracy') ? $request->pos_a_accuracy : null;
                 $presensi->pos_a_captured_at = $request->filled('pos_a_captured_at') ? $request->pos_a_captured_at : null;
                 $presensi->posisi_mencurigakan = $posisiMencurigakan;
+                $presensi->unit_lokasi_masuk_id = $unitLokasiId;
 
                 if ($isLembur) {
                     $presensi->status = 'hadir';
@@ -937,6 +939,7 @@ class MobileController extends Controller
                 $presensi->longitude_keluar = $request->longitude;
                 $presensi->foto_keluar_status = 'pending';
                 $presensi->jarak_keluar_meter = $distance;
+                $presensi->unit_lokasi_keluar_id = $unitLokasiId;
                 $presensi->akurasi_keluar = $accuracy;
                 $presensi->kecepatan_keluar = $speed;
                 $presensi->pos_a_lat = $request->filled('pos_a_lat') ? $request->pos_a_lat : null;
@@ -1365,6 +1368,7 @@ class MobileController extends Controller
             return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
         }
         $distance = $geofence['distance'];
+        $unitLokasiId = $geofence['matchedUnit'] instanceof \App\Models\UnitLokasi ? $geofence['matchedUnit']->id : null;
         $unit = $lokasiUnit;
 
         $accuracy = (float) $request->accuracy;
@@ -1377,7 +1381,7 @@ class MobileController extends Controller
         // Anti-deadlock (pola sama dengan storeAbsenTransaction): tanpa SELECT FOR UPDATE
         // untuk insert; untuk checkout pakai lockForUpdate pada record yang ada.
         // Unique index (pegawai_id, presensi_key) menolak slide ganda — race ditangkap di bawah.
-        $result = DB::transaction(function () use ($pegawai, $jadwal, $distance, $request, $accuracy, $tipe, $hariIni, $sekarang) {
+        $result = DB::transaction(function () use ($pegawai, $jadwal, $distance, $unitLokasiId, $request, $accuracy, $tipe, $hariIni, $sekarang) {
             if ($tipe === 'keluar') {
                 // Slide pulang mencatat jam_keluar di row JP TERAKHIR sesi
                 // (hari+kelas+mapel+unit sama) — row JP pertama hanya menyimpan
@@ -1404,6 +1408,7 @@ class MobileController extends Controller
                 $presensi->longitude_keluar = $request->longitude;
                 $presensi->jarak_keluar_meter = $distance;
                 $presensi->akurasi_keluar = $accuracy;
+                $presensi->unit_lokasi_keluar_id = $unitLokasiId;
                 $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 5;
                 $presensi->save();
 
@@ -1419,6 +1424,7 @@ class MobileController extends Controller
                     'jam_masuk' => Carbon::now()->format('H:i:s'),
                     'latitude_masuk' => $request->latitude,
                     'longitude_masuk' => $request->longitude,
+                    'unit_lokasi_masuk_id' => $unitLokasiId,
                     'jarak_masuk_meter' => $distance,
                     'akurasi_masuk' => $accuracy,
                     'tipe_presensi' => 'mengajar',

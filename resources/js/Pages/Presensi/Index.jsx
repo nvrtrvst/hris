@@ -404,14 +404,24 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                                 : <span className="text-xs text-text-secondary">Kantor</span>}
                     </td>
                     <td className="px-4 py-3.5 whitespace-nowrap">
-                        {parent.jam_masuk
-                            ? <span className="font-mono text-sm font-bold text-primary">{parent.jam_masuk.substring(0, 5)}</span>
-                            : <span className="text-sm text-text-secondary">—</span>}
+                        {parent.jam_masuk ? (
+                            <div className="flex flex-col">
+                                <span className="font-mono text-sm font-bold text-primary">{parent.jam_masuk.substring(0, 5)}</span>
+                                {parent.unit_lokasi_masuk?.nama && (
+                                    <span className="text-[10px] text-slate-500 flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{parent.unit_lokasi_masuk.nama}</span>
+                                )}
+                            </div>
+                        ) : <span className="text-sm text-text-secondary">—</span>}
                     </td>
                     <td className="px-4 py-3.5 whitespace-nowrap">
-                        {parent.jam_keluar
-                            ? <span className="font-mono text-sm font-bold text-primary">{parent.jam_keluar.substring(0, 5)}</span>
-                            : <span className="text-sm text-text-secondary">—</span>}
+                        {parent.jam_keluar ? (
+                            <div className="flex flex-col">
+                                <span className="font-mono text-sm font-bold text-primary">{parent.jam_keluar.substring(0, 5)}</span>
+                                {parent.unit_lokasi_keluar?.nama && (
+                                    <span className="text-[10px] text-slate-500 flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{parent.unit_lokasi_keluar.nama}</span>
+                                )}
+                            </div>
+                        ) : <span className="text-sm text-text-secondary">—</span>}
                     </td>
                     <td className="hidden md:table-cell px-4 py-3.5 whitespace-nowrap">
                         <div className="flex flex-wrap gap-1.5">
@@ -1106,7 +1116,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             <div className="flex flex-col">
                                                                 <span className="font-mono text-sm font-bold text-primary">{p.jam_masuk.substring(0, 5)}</span>
                                                                 {p.jarak_masuk_meter != null && (
-                                                                    <span className="text-[10px] text-text-secondary flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{p.jarak_masuk_meter}m</span>
+                                                                    <span className="text-[10px] text-text-secondary flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{p.jarak_masuk_meter}m{p.unit_lokasi_masuk?.nama ? ` • ${p.unit_lokasi_masuk.nama}` : ''}</span>
+                                                                )}
+                                                                {p.jarak_masuk_meter == null && p.unit_lokasi_masuk?.nama && (
+                                                                    <span className="text-[10px] text-slate-500 flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{p.unit_lokasi_masuk.nama}</span>
                                                                 )}
                                                             </div>
                                                         ) : <span className="text-sm text-text-secondary">—</span>}
@@ -1115,6 +1128,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                         {p.jam_keluar ? (
                                                             <div className="flex flex-col">
                                                                 <span className="font-mono text-sm font-bold text-primary">{p.jam_keluar.substring(0, 5)}</span>
+                                                                {p.unit_lokasi_keluar?.nama && (
+                                                                    <span className="text-[10px] text-slate-500 flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{p.unit_lokasi_keluar.nama}</span>
+                                                                )}
                                                                 {durasi && <span className="text-[10px] font-semibold text-emerald-600">{durasi}</span>}
                                                             </div>
                                                         ) : <span className="text-sm text-text-secondary">—</span>}
