@@ -123,6 +123,7 @@ class AtasanHierarchyTest extends TestCase
                 'status_aktif' => 'aktif',
                 'tmt_mengajar' => '2020-01-01',
                 'pendidikan_terakhir' => 'S1',
+                'lokasi_pilihan' => 'primary',
                 'atasan_langsung_id' => $kepsek->id,
             ])
             ->assertRedirect();
@@ -156,6 +157,7 @@ class AtasanHierarchyTest extends TestCase
                 'status_aktif' => 'aktif',
                 'tmt_mengajar' => '2020-01-01',
                 'pendidikan_terakhir' => 'S1',
+                'lokasi_pilihan' => 'primary',
                 'atasan_langsung_id' => $kepsekLain->id,
             ])
             ->assertSessionHasErrors('atasan_langsung_id');
