@@ -350,6 +350,8 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
     return rows;
 });
 
+const lokasiLabel = (pegawai) => pegawai?.lokasis?.length ? pegawai.lokasis.map((l) => l.nama).join(', ') : null;
+
 const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openAudit, openTugasLuar, setConfirmStatus }) => {
     const groups = React.useMemo(() => buildGroups(data), [data]);
 
@@ -381,6 +383,12 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                                     {parent.pegawai?.jabatans?.some(j => j.is_guru) ? 'Guru' : (parent.pegawai?.jabatans?.map(j => j.nama).filter(Boolean).join(', ') || '—')}
                                     {' • '}{parent.unit_sekolah?.nama || '—'}
                                 </div>
+                                {lokasiLabel(parent.pegawai) && (
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                        <MapPin className="h-2.5 w-2.5 shrink-0" />
+                                        {lokasiLabel(parent.pegawai)}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </td>
@@ -1064,6 +1072,12 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                                     {p.pegawai?.jabatans?.some(j => j.is_guru) ? 'Guru' : (p.pegawai?.jabatans?.map(j => j.nama).filter(Boolean).join(', ') || '—')}
                                                                     {' • '}{p.unit_sekolah?.nama || '—'}
                                                                 </div>
+                                                                {lokasiLabel(p.pegawai) && (
+                                                                    <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                                                        <MapPin className="h-2.5 w-2.5 shrink-0" />
+                                                                        {lokasiLabel(p.pegawai)}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </td>

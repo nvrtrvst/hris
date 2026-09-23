@@ -43,7 +43,7 @@ class PresensiController extends Controller
 
         $user = auth()->user();
         $isAdmin = $user && $user->can('view_presensi');
-        $query = Presensi::with(['unitSekolah', 'pegawai', 'jadwal.pegawaiMapel']);
+        $query = Presensi::with(['unitSekolah', 'pegawai.units:id,nama', 'pegawai.lokasis:id,nama', 'pegawai.jabatans:id,nama', 'jadwal.pegawaiMapel']);
 
         if ($this->isPimpinanReadOnly($user)) {
             if ($this->isKepsek($user)) {
@@ -487,6 +487,220 @@ class PresensiController extends Controller
             return $pdf->download('Daftar_Belum_Presensi_'.$unitSlug.'_'.$startDate.'.pdf');
         } catch (\Throwable $e) {
             \Log::error('PDF belum presensi gagal', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile().':'.$e->getLine(),
+            ]);
+
+            return response()->json(['message' => 'PDF gagal dibuat: '.substr($e->getMessage(), 0, 300)], 500);
+        }
+    }
+
+    /**
+     * Export PDF rekapitulasi presensi harian (format: kartu ringkasan + tabel guru + detail kelas).
+     * Mirip laporan yang diminta user — menampilkan semua guru beserta jadwal kelas hari itu.
+     */
+    public function exportRekapPresensiPdf(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('view_presensi')) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $validated = $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'unit_id' => 'nullable|integer|exists:unit_sekolah,id',
+            'jenis_filter' => 'nullable|in:pendidik,kependidikan',
+            'search' => 'nullable|string|max:100',
+        ]);
+
+        $startDate = $validated['start_date'] ?? Carbon::today()->toDateString();
+        $endDate = $validated['end_date'] ?? $startDate;
+
+        // ── Resolve unit / kop ──
+        $kopUnit = null;
+        if (! empty($validated['unit_id'])) {
+            $kopUnit = UnitSekolah::find($validated['unit_id']);
+        } elseif ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $kopUnit = UnitSekolah::find($user->unit_sekolah_id);
+        }
+        if (! $kopUnit) {
+            $kopUnit = UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
+        }
+        $unitName = $kopUnit?->nama ?? 'Semua Unit Sekolah';
+
+        $logoPath = $this->resolveLogoPath($kopUnit) ?? $this->resolveYayasanLogoPath();
+        $logoWidth = null;
+        if ($logoPath && file_exists($logoPath)) {
+            $sz = @getimagesize($logoPath);
+            if ($sz) {
+                $logoWidth = (int) round(64 * $sz[0] / $sz[1]);
+            }
+        }
+
+        $kop = [
+            'name' => $kopUnit?->nama ? strtoupper($kopUnit->nama) : config('yayasan.name'),
+            'tagline' => config('yayasan.tagline'),
+            'address' => $kopUnit?->alamat ?: config('yayasan.address'),
+            'phone' => $kopUnit?->telepon ?: config('yayasan.phone'),
+            'email' => config('yayasan.email'),
+            'website' => $kopUnit?->web ?: config('yayasan.website'),
+        ];
+
+        $periodeStr = $startDate === $endDate
+            ? Carbon::parse($startDate)->translatedFormat('d F Y')
+            : Carbon::parse($startDate)->translatedFormat('d/m/Y').' s/d '.Carbon::parse($endDate)->translatedFormat('d/m/Y');
+
+        // ── Query pegawai aktif ──
+        $pegawais = Pegawai::where('status_aktif', 'aktif')->with(['units', 'jabatans']);
+
+        if ($user->can('view_all_units')) {
+            // semua unit
+        } elseif ($user->unit_sekolah_id) {
+            $pegawais->forUnit($user->unit_sekolah_id);
+        }
+
+        if (! empty($validated['unit_id']) && $user->can('view_all_units')) {
+            $pegawais->forUnit($validated['unit_id']);
+        }
+
+        if (($validated['jenis_filter'] ?? null) === 'pendidik') {
+            $pegawais->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
+        } elseif (($validated['jenis_filter'] ?? null) === 'kependidikan') {
+            $pegawais->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
+        }
+
+        if (! empty($validated['search'])) {
+            $pegawais->where('nama_lengkap', 'like', '%'.$validated['search'].'%');
+        }
+
+        $pegawaiList = $pegawais->orderBy('nama_lengkap')->get();
+
+        // ── Presensi untuk rentang tanggal ──
+        $presensiMap = Presensi::whereBetween('tanggal', [$startDate, $endDate])
+            ->with('jadwal')
+            ->get()
+            ->groupBy('pegawai_id');
+
+        // ── Jadwal guru untuk hari pertama dalam rentang (biasanya 1 hari) ──
+        $hariMap = [
+            0 => 'Minggu', 1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu',
+            4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu',
+        ];
+        $hariIni = $hariMap[Carbon::parse($startDate)->dayOfWeek];
+
+        $jadwalMap = Jadwal::whereIn('pegawai_id', $pegawaiList->pluck('id'))
+            ->where('hari', $hariIni)
+            ->orderBy('jam_mulai')
+            ->get()
+            ->groupBy('pegawai_id');
+
+        // ── Build rows ──
+        $rows = $pegawaiList->map(function ($p) use ($presensiMap, $jadwalMap) {
+            $presensiList = $presensiMap->get($p->id, collect());
+            $jadwals = $jadwalMap->get($p->id, collect());
+
+            // Status presensi gabungan
+            $hasHadir = $presensiList->contains('status', 'hadir');
+            $hasTelat = $presensiList->contains('status', 'telat');
+            $hasSakit = $presensiList->contains('status', 'sakit');
+            $hasIzin = $presensiList->contains('status', 'izin');
+            $hasCuti = $presensiList->contains('status', 'cuti');
+
+            if ($presensiList->isEmpty()) {
+                $statusPresensi = 'Belum Presensi';
+            } elseif ($hasHadir) {
+                $statusPresensi = 'Hadir Tepat Waktu';
+            } elseif ($hasTelat) {
+                $statusPresensi = 'Terlambat';
+            } elseif ($hasSakit) {
+                $statusPresensi = 'Sakit';
+            } elseif ($hasIzin) {
+                $statusPresensi = 'Izin';
+            } elseif ($hasCuti) {
+                $statusPresensi = 'Cuti';
+            } else {
+                $statusPresensi = 'Alpa';
+            }
+
+            // Jam masuk / pulang
+            $jamMasuk = $presensiList->whereNotNull('jam_masuk')->sortBy('jam_masuk')->first()?->jam_masuk;
+            $jamKeluar = $presensiList->whereNotNull('jam_keluar')->sortByDesc('jam_keluar')->first()?->jam_keluar;
+
+            // Format jam
+            $jamMasukStr = $jamMasuk ? Carbon::parse($jamMasuk)->format('H:i').' WIB' : '-';
+            $jamKeluarStr = $jamKeluar ? Carbon::parse($jamKeluar)->format('H:i').' WIB' : '-';
+
+            // Daftar kelas hari ini
+            $kelasList = $jadwals->map(function ($j) {
+                $mapel = $j->mata_pelajaran?->nama ?? '-';
+                $ruangan = $j->unitSekolah?->singkatan ?? '';
+
+                return $j->kelas_label.' ('.$mapel.($ruangan ? ' • '.$ruangan : '').')';
+            })->implode(', ');
+
+            // Status mengajar
+            $totalKelas = $jadwals->count();
+            $selesaiKelas = $presensiList->where('jadwal_id', '!=', null)->count();
+            $statusMengajar = $totalKelas > 0 ? $selesaiKelas.'/'.$totalKelas.' Selesai' : '-';
+
+            return [
+                'nip' => $p->nip ?? '-',
+                'nama' => $p->nama_lengkap,
+                'unit' => $p->units->pluck('nama')->implode(', ') ?: '-',
+                'jabatan' => $p->jabatans->pluck('nama')->implode(', ') ?: '-',
+                'jam_masuk' => $jamMasukStr,
+                'jam_pulang' => $jamKeluarStr,
+                'status_presensi' => $statusPresensi,
+                'kelas_list' => $kelasList ?: '-',
+                'status_mengajar' => $statusMengajar,
+                'detail_kelas' => $jadwals->map(function ($j) use ($presensiList) {
+                    $presensiMatch = $presensiList->firstWhere('jadwal_id', $j->id);
+
+                    return [
+                        'jam_sesi' => $j->jam_mulai.' - '.$j->jam_selesai,
+                        'kelas_ruangan' => $j->kelas_label,
+                        'mata_pelajaran' => $j->mata_pelajaran?->nama ?? '-',
+                        'status' => $presensiMatch
+                            ? ($presensiMatch->status === 'telat' ? 'Terlambat '.Carbon::parse($presensiMatch->jam_masuk)->diffInMinutes(Carbon::parse($j->jam_mulai)).'m' : 'Tepat Waktu')
+                            : 'Tidak Mengajar',
+                    ];
+                })->all(),
+            ];
+        })->all();
+
+        // ── Summary stats ──
+        $totalGuru = count($rows);
+        $hadirCount = collect($rows)->filter(fn ($r) => str_contains($r['status_presensi'], 'Hadir') || str_contains($r['status_presensi'], 'Terlambat'))->count();
+        $izinCount = collect($rows)->filter(fn ($r) => in_array($r['status_presensi'], ['Sakit', 'Izin']))->count();
+        $alpaCount = collect($rows)->filter(fn ($r) => $r['status_presensi'] === 'Belum Presensi' || $r['status_presensi'] === 'Alpa')->count();
+        $totalKelasHari = collect($rows)->sum(function ($r) {
+            return (int) explode('/', $r['status_mengajar'])[0] ?? 0;
+        });
+        $selesaiKelasHari = collect($rows)->sum(function ($r) {
+            $parts = explode('/', $r['status_mengajar']);
+
+            return (int) ($parts[0] ?? 0);
+        });
+
+        $stats = [
+            'hadir' => $hadirCount,
+            'total_guru' => $totalGuru,
+            'izin_sakit_alpa' => $izinCount + $alpaCount,
+            'total_kelas' => $totalKelasHari,
+            'selesai_kelas' => $selesaiKelasHari,
+        ];
+
+        try {
+            $pdf = Pdf::loadView('exports.pdf-rekap-presensi', compact(
+                'rows', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop', 'stats'
+            ))->setPaper('A4', 'landscape');
+
+            $unitSlug = $kopUnit?->singkatan ?? preg_replace('/[^A-Za-z0-9]+/', '_', $unitName);
+
+            return $pdf->download('Rekap_Presensi_'.$unitSlug.'_'.$startDate.'.pdf');
+        } catch (\Throwable $e) {
+            \Log::error('PDF rekap presensi gagal', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile().':'.$e->getLine(),
             ]);

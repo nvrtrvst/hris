@@ -227,6 +227,11 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                                 <CalendarDays className="h-3 w-3" /> Wajib Kantor
                                             </span>
                                         )}
+                                        {pegawai.lokasis?.length > 0 && (
+                                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold text-slate-600">
+                                                <MapPin className="h-3 w-3" /> {pegawai.lokasis.map((l) => l.nama).join(', ')}
+                                            </span>
+                                        )}
                                         {canViewKontrak && kontrakSisa !== null && (
                                             <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${kontrakSisa <= 30 ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-border bg-surface text-text-secondary'}`}>
                                                 Kontrak sisa {kontrakSisa} hari

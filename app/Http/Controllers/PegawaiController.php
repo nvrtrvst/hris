@@ -102,7 +102,7 @@ class PegawaiController extends Controller
      * Query pegawai dengan semua filter index (search, unit, mapel, jabatan, jenis).
      * Dipakai index() dan export() agar hasil export selalu sama dengan yang terlihat.
      */
-    private function pegawaiQuery(Request $request, array $with = ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'statusRef:kode,label,is_tetap'])
+    private function pegawaiQuery(Request $request, array $with = ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'statusRef:kode,label,is_tetap', 'lokasis:id,nama'])
     {
         $request->validate([
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
@@ -199,7 +199,7 @@ class PegawaiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = $this->pegawaiQuery($request, ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'user:id,email,username', 'statusRef:kode,label,is_tetap']);
+        $query = $this->pegawaiQuery($request, ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'user:id,email,username', 'statusRef:kode,label,is_tetap', 'lokasis:id,nama']);
         $user = auth()->user();
 
         // Stats ringkasan: 1 query agregat + 1 count ringan (kontrak berakhir)
@@ -364,6 +364,7 @@ class PegawaiController extends Controller
             'createdBy' => fn ($q) => $q->select('id', 'name'),
             'units' => fn ($q) => $q->select('unit_sekolah.id', 'unit_sekolah.nama'),
             'jabatans' => fn ($q) => $q->select('jabatan.id', 'jabatan.nama'),
+            'lokasis' => fn ($q) => $q->select('unit_lokasi.id', 'unit_lokasi.nama'),
             'mapels' => fn ($q) => $q->select('mata_pelajaran.id', 'mata_pelajaran.nama'),
             'dokumen' => fn ($q) => $q->select('id', 'pegawai_id', 'nama_dokumen', 'jenis', 'created_at'),
             'riwayat' => fn ($q) => $q->latest('id')->limit(30),

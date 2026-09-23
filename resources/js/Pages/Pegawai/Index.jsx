@@ -16,6 +16,7 @@ import {
     GraduationCap,
     Loader2,
     Mail,
+    MapPin,
     Pencil,
     Plus,
     RotateCcw,
@@ -121,6 +122,8 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
     ];
 
     const filterSelect = 'select-field text-xs h-9 w-full';
+
+    const lokasiLabel = (p) => (p.lokasis?.length ? p.lokasis.map((l) => l.nama).join(', ') : null);
 
     return (
         <AuthenticatedLayout
@@ -273,6 +276,12 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                     <Building2 className="h-3 w-3 shrink-0 text-primary/50" />
                                                     <span className="truncate">{unitNames} • {jabatanNama}</span>
                                                 </div>
+                                                {lokasiLabel(pegawai) && (
+                                                    <div className="mt-1 flex items-center gap-1 text-[11px] text-slate-500">
+                                                        <MapPin className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{lokasiLabel(pegawai)}</span>
+                                                    </div>
+                                                )}
                                                 <div className="mt-2 flex items-center justify-between">
                                                     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${STATUS_AKTIF_BADGE(pegawai.status_aktif)}`}>
                                                         <span className={`h-1 w-1 rounded-full ${pegawai.status_aktif === 'aktif' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
@@ -349,6 +358,12 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                                                 <div className="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-blue-600">
                                                                                     <GraduationCap className="h-2.5 w-2.5" />
                                                                                     {mapels.map((m) => m.nama).join(', ')}
+                                                                                </div>
+                                                                            )}
+                                                                            {lokasiLabel(pegawai) && (
+                                                                                <div className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-500">
+                                                                                    <MapPin className="h-2.5 w-2.5 shrink-0" />
+                                                                                    {lokasiLabel(pegawai)}
                                                                                 </div>
                                                                             )}
                                                                         </div>
