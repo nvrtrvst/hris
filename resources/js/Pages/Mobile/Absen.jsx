@@ -65,9 +65,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         const locs = [];
         if (pegawai?.use_primary_location) {
             const primary = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0];
-            if (primary) locs.push(primary);
+            if (primary) locs.push({ nama: primary.nama, latitude: primary.latitude, longitude: primary.longitude, radius_meter: primary.radius_meter });
         }
-        (pegawai?.lokasis ?? []).forEach((l) => locs.push(l));
+        (pegawai?.lokasis ?? []).forEach((l) => locs.push({ nama: l.nama, latitude: l.latitude, longitude: l.longitude, radius_meter: l.radius_meter }));
         return locs;
     }, [pegawai]);
 
@@ -127,6 +127,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             if (inside) return entry;
             if (!best || distance < best.distance) best = entry;
         }
+        console.log('[geofence] locations:', geofenceLocations.length, 'gps:', currentPosition.latitude, currentPosition.longitude, 'best:', best?.name, Math.round(best?.distance) + 'm', 'inside:', best?.inside);
         return best;
     }, [currentPosition, geofenceLocations]);
     const targetUnit = geofence?.unit ?? geofenceLocations[0] ?? null;
@@ -442,7 +443,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     {loadingLocation ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <LocateFixed className="h-5 w-5 shrink-0" />}
                     <div className="min-w-0">
                         <p className="text-[10px] font-bold uppercase tracking-wider">GPS</p>
-                        <p className="truncate text-xs font-semibold">{geoReady ? `${Math.round(geofence.distance)} m dari unit` : geoStatus === 'error' ? 'Tidak tersedia' : 'Mendeteksi...'}</p>
+                        <p className="truncate text-xs font-semibold">{geoReady ? `${Math.round(geofence.distance)}m dari ${geofence.name}` : geoStatus === 'error' ? 'Tidak tersedia' : 'Mendeteksi...'}</p>
                     </div>
                 </div>
                 <div className={`flex min-h-14 items-center gap-2.5 rounded-xl border px-3 py-2.5 ${capturedPhoto ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'}`}>
@@ -609,7 +610,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                                 <p className="mt-1 font-mono text-[10px] tabular-nums text-slate-500">{currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}</p>
                             </div>
                             <div className={`rounded-lg px-2.5 py-2 text-[10px] font-bold ${geoReady && geofence.inside ? 'bg-emerald-400 text-emerald-950' : 'bg-rose-400 text-rose-950'}`}>
-                                {geoReady && geofence.inside ? 'Dalam radius' : 'Di luar radius'}
+                                {geoReady && geofence.inside ? 'Dalam radius' : `${Math.round(geofence.distance)}m dari ${geofence.name}`}
                             </div>
                         </div>
                         <span className="absolute right-2 top-2 rounded bg-white/70 px-1.5 py-1 text-[8px] font-semibold text-slate-500" dangerouslySetInnerHTML={{ __html: MAP_ATTRIBUTION }}></span>
@@ -644,7 +645,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                                 <p className="mt-1 font-mono text-[10px] tabular-nums text-slate-500">{currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}</p>
                             </div>
                             <div className={`rounded-lg px-2.5 py-2 text-[10px] font-bold ${geoReady && geofence.inside ? 'bg-emerald-400 text-emerald-950' : 'bg-rose-400 text-rose-950'}`}>
-                                {geoReady && geofence.inside ? 'Dalam radius' : 'Di luar radius'}
+                                {geoReady && geofence.inside ? 'Dalam radius' : `${Math.round(geofence.distance)}m dari ${geofence.name}`}
                             </div>
                         </div>
                         <span className="absolute right-2 top-2 rounded bg-white/70 px-1.5 py-1 text-[8px] font-semibold text-slate-500" dangerouslySetInnerHTML={{ __html: MAP_ATTRIBUTION }}></span>
