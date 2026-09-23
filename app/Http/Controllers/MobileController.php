@@ -581,9 +581,15 @@ class MobileController extends Controller
             if (! $jadwal) {
                 throw ValidationException::withMessages(['jadwal_id' => PresensiMessages::PEMILIH_JADWAL_DULU]);
             }
-            $unit = $jadwal->unitLokasi ?? $jadwal->unitSekolah;
+            $geo = $this->resolveGeofenceLocation($pegawai);
+            if (! $geo['unit']) {
+                $message = PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT;
+
+                return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
+            }
+            $unit = $geo['unit'];
             $unitSekolah = $jadwal->unitSekolah;
-            $assignedLocations = collect();
+            $assignedLocations = $geo['locations'];
         } elseif ($isLembur) {
             $geo = $this->resolveGeofenceLocation($pegawai);
             if (! $geo['unit']) {
