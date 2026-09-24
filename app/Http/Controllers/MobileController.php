@@ -11,6 +11,7 @@ use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use App\Models\TugasLuar;
+use App\Models\UnitLokasi;
 use App\Services\AttestationService;
 use App\Services\GeocodingService;
 use App\Services\SpoofDetector;
@@ -724,7 +725,7 @@ class MobileController extends Controller
         $lokasiPerluReview = $lokasiPerluReview || $spoofData['posisi_mencurigakan'];
 
         $now = Carbon::now();
-        $unitFullName = $unit instanceof \App\Models\UnitLokasi ? (($unitSekolah?->nama ?? '') . ' ' . $unit->nama) : $unit->nama;
+        $unitFullName = $unit instanceof UnitLokasi ? (($unitSekolah?->nama ?? '').' '.$unit->nama) : $unit->nama;
         $overlayData = [
             'label' => $isLembur ? 'BUKTI LEMBUR' : ($isTugasLuar ? 'TUGAS LUAR' : 'BUKTI PRESENSI'),
             'is_lembur' => $isLembur,
@@ -855,7 +856,7 @@ class MobileController extends Controller
             $presensi->is_tugas_luar = $isTugasLuar;
             $presensi->tipe_presensi = $tipePresensi;
 
-            $unitLokasiId = $unit instanceof \App\Models\UnitLokasi ? $unit->id : null;
+            $unitLokasiId = $unit instanceof UnitLokasi ? $unit->id : null;
             if ($request->tipe === 'masuk') {
                 $presensi->jam_masuk = Carbon::now()->format('H:i:s');
                 $presensi->latitude_masuk = $request->latitude;
@@ -1369,7 +1370,7 @@ class MobileController extends Controller
             return response()->json(['success' => false, 'message' => $message, 'errors' => ['geofence' => $message]], 422);
         }
         $distance = $geofence['distance'];
-        $unitLokasiId = $geofence['matchedUnit'] instanceof \App\Models\UnitLokasi ? $geofence['matchedUnit']->id : null;
+        $unitLokasiId = $geofence['matchedUnit'] instanceof UnitLokasi ? $geofence['matchedUnit']->id : null;
         $unit = $lokasiUnit;
 
         $accuracy = (float) $request->accuracy;
