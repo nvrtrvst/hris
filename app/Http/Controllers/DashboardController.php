@@ -234,6 +234,7 @@ class DashboardController extends Controller
                 'sakit_count' => $live['sakitCount'],
                 'alpa_count' => $live['alpaCount'],
                 'pegawai_dijadwalkan' => $live['pegawaiDijadwalkan'],
+                'pegawai_total' => $live['pegawaiTotal'],
                 'hadir_percentage' => $live['hadirPercentage'],
                 'pengeluaran_gaji' => $cached['pengeluaranGaji'],
                 'is_estimasi_payroll' => $cached['isEstimasiPayroll'],
@@ -395,8 +396,18 @@ class DashboardController extends Controller
         $sakitCount = (int) ($statusCounts->get('sakit', 0));
         $alpaCount = (int) ($statusCounts->get('alpa', 0));
 
-        $hadirPercentage = $pegawaiDijadwalkan > 0
-            ? min(100, round(($hadirHariIniCount / $pegawaiDijadwalkan) * 100))
+        // Total pegawai aktif dalam scope untuk % yang masuk akal (hadir <= total)
+        $pegawaiTotalQuery = Pegawai::where('status_aktif', 'aktif');
+        if ($bawahanIds !== null) {
+            $pegawaiTotalQuery->whereIn('id', $bawahanIds);
+        } elseif ($scopedUnit) {
+            $pegawaiTotalQuery->forUnit($scopedUnit);
+        } elseif ($unitId) {
+            $pegawaiTotalQuery->forUnit($unitId);
+        }
+        $pegawaiTotal = $pegawaiTotalQuery->count();
+        $hadirPercentage = $pegawaiTotal > 0
+            ? min(100, round(($hadirHariIniCount / $pegawaiTotal) * 100))
             : 0;
 
         // 4. Trend Kehadiran 7 Hari Terakhir
@@ -478,6 +489,7 @@ class DashboardController extends Controller
 
         return [
             'pegawaiDijadwalkan' => $pegawaiDijadwalkan,
+            'pegawaiTotal' => $pegawaiTotal,
             'hadirHariIniCount' => $hadirHariIniCount,
             'hadirPercentage' => $hadirPercentage,
             'telatCount' => $telatCount,

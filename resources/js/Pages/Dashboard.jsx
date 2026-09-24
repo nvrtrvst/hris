@@ -208,10 +208,11 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                         </div>
                         <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                             <div>
-                                <div className="flex items-baseline gap-3">
+                                <div className="flex items-baseline gap-3 flex-wrap">
                                     <p className="text-4xl font-extrabold text-success tabular-nums">{s.hadir_percentage || 0}%</p>
                                     <p className="text-sm text-text-secondary">
-                                        {s.hadir_hari_ini_count || 0} dari {s.pegawai_dijadwalkan || 0} dijadwalkan
+                                        {s.hadir_hari_ini_count || 0} dari {s.pegawai_total || s.total_pegawai || 0} total
+                                        {s.pegawai_dijadwalkan ? <span className="text-text-muted"> • {s.pegawai_dijadwalkan} terjadwal</span> : null}
                                     </p>
                                 </div>
                                 <div className="mt-3 h-3 w-full max-w-md overflow-hidden rounded-full bg-border/60" role="progressbar" aria-valuenow={s.hadir_percentage || 0} aria-valuemin={0} aria-valuemax={100} aria-label="Kehadiran hari ini">
