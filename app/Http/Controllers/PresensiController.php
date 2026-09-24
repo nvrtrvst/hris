@@ -253,7 +253,7 @@ class PresensiController extends Controller
         // $query sudah punya filter tanggal + unit/scope, jadi pegawai yang punya presensi
         // di rentang tanggal = COUNT(DISTINCT pegawai_id) dari query.
         $pegawaiWithPresensi = (clone $query)->distinct()->count('pegawai_id');
-        $totalPegawai = $this->countActivePegawaiInScope($query, $request);
+        $totalPegawai = $this->countActivePegawaiInScope($query);
         $stats['belum_presensi'] = max(0, $totalPegawai - $pegawaiWithPresensi);
 
         return $stats;
