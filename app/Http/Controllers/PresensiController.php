@@ -253,7 +253,7 @@ class PresensiController extends Controller
         // $query sudah punya filter tanggal + unit/scope, jadi pegawai yang punya presensi
         // di rentang tanggal = COUNT(DISTINCT pegawai_id) dari query.
         $pegawaiWithPresensi = (clone $query)->distinct()->count('pegawai_id');
-        $totalPegawai = $this->countActivePegawaiInScope($query);
+        $totalPegawai = $this->countActivePegawaiInScope($query, $request);
         $stats['belum_presensi'] = max(0, $totalPegawai - $pegawaiWithPresensi);
 
         return $stats;
@@ -263,16 +263,26 @@ class PresensiController extends Controller
      * Hitung total pegawai aktif yang termasuk dalam scope query presensi.
      * Mengekstrak scope unit/jenis dari query builder untuk diterapkan ke model Pegawai.
      */
-    private function countActivePegawaiInScope($presensiQuery): int
+    private function countActivePegawaiInScope($presensiQuery, ?Request $request = null): int
     {
         $user = auth()->user();
         $pegawais = Pegawai::where('status_aktif', 'aktif');
 
-        // Terapkan scope unit yang sama dengan index()
-        if ($user->can('view_all_units')) {
+        // Terapkan scope unit yang sama dengan index() + filter unit dari request
+        $request = $request ?? request();
+        if ($request && $request->unit_id && $user->can('view_all_units')) {
+            $pegawais->forUnit($request->unit_id);
+        } elseif ($user->can('view_all_units')) {
             // Semua unit — tidak perlu filter
         } elseif ($user->unit_sekolah_id) {
             $pegawais->forUnit($user->unit_sekolah_id);
+        }
+
+        // Terapkan filter jenis juga agar stats konsisten
+        if ($request && $request->jenis_filter === 'pendidik') {
+            $pegawais->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
+        } elseif ($request && $request->jenis_filter === 'kependidikan') {
+            $pegawais->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
         }
 
         return $pegawais->count();

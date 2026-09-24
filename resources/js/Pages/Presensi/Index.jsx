@@ -394,9 +394,9 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                                     {' • '}{parent.unit_sekolah?.nama || '—'}
                                 </div>
                                 {lokasiLabel(parent.pegawai) && (
-                                    <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 max-w-[180px] truncate">
                                         <MapPin className="h-2.5 w-2.5 shrink-0" />
-                                        {lokasiLabel(parent.pegawai)}
+                                        <span className="truncate">{lokasiLabel(parent.pegawai)}</span>
                                     </div>
                                 )}
                             </div>
@@ -679,13 +679,14 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         router.get(route('presensi.index'), buildParams(overrides), { preserveState: true, preserveScroll: true });
     }, [buildParams]);
 
-    // Klik kartu statistik → langsung filter ke data tersebut.
+    // Klik kartu statistik → langsung filter ke data tersebut (preserve unit/jenis/date).
     const applyStatFilter = (overrides) => {
         if ('status_filter' in overrides) setStatusFilter(overrides.status_filter);
         if ('lembur_filter' in overrides) setLemburFilter(overrides.lembur_filter);
         if ('lokasi_filter' in overrides) setLokasiFilter(overrides.lokasi_filter);
         if ('suspicious_filter' in overrides) setSuspiciousFilter(overrides.suspicious_filter);
-        applyFilters(overrides);
+        // Preserve current unit/jenis/search explicitly to avoid stale closure
+        applyFilters({ unit_id: unitId, jenis_filter: jenisFilter, search, ...overrides });
     };
 
     // Search otomatis dengan debounce
@@ -825,8 +826,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
             header={<h2 className="page-title">{isAdmin ? 'Manajemen Presensi' : 'Riwayat Presensi'}</h2>}
         >
             <Head title="Presensi" />
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="py-8 bg-surface min-h-screen overflow-x-hidden">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 overflow-hidden">
                     {/* Flash */}
                     {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
                     {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
@@ -1113,9 +1114,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                                     {' • '}{p.unit_sekolah?.nama || '—'}
                                                                 </div>
                                                                 {lokasiLabel(p.pegawai) && (
-                                                                    <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 max-w-[180px] truncate">
                                                                         <MapPin className="h-2.5 w-2.5 shrink-0" />
-                                                                        {lokasiLabel(p.pegawai)}
+                                                                        <span className="truncate">{lokasiLabel(p.pegawai)}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
