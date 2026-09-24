@@ -819,7 +819,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
     // flex-1 + min-w/basis: tiap kontrol mengisi penuh baris, baris terakhir
     // ikut meregang sampai ujung kanan (tidak ada lahan kosong seperti grid).
-    const filterSelect = 'select-field text-xs h-9 flex-1 min-w-[150px] basis-44';
+    const filterSelect = 'select-field text-xs h-11 flex-1 min-w-[150px] basis-44';
 
     return (
         <AuthenticatedLayout
@@ -837,7 +837,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
                         <div>
                             <h3 className="text-xl font-bold text-primary">
-                                {isAdmin ? 'Rekap Kehadiran Pegawai' : `Riwayat Absensi${pegawai ? ` — ${pegawai.nama_lengkap}` : ''}`}
+                                {isAdmin ? 'Kehadiran Harian' : `Riwayat Absensi${pegawai ? ` — ${pegawai.nama_lengkap}` : ''}`}
                             </h3>
                             <p className="mt-1 text-sm text-text-secondary">Pantau kehadiran, verifikasi lokasi, dan kelola status presensi.</p>
                         </div>
@@ -889,7 +889,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
                                         placeholder="Cari nama pegawai…"
-                                        className="input-field h-9 pl-9 text-xs w-full"
+                                        className="input-field h-11 pl-9 text-xs w-full"
                                     />
                                 </div>
                             )}

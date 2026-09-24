@@ -121,7 +121,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
         { label: 'Kontrak Berakhir', value: s.kontrak_berakhir, sub: '30 hari', Icon: CalendarClock, iconBg: s.kontrak_berakhir > 0 ? 'bg-amber-100' : 'bg-surface', iconCls: s.kontrak_berakhir > 0 ? 'text-amber-600' : 'text-border', alert: s.kontrak_berakhir > 0 },
     ];
 
-    const filterSelect = 'select-field text-xs h-9 w-full';
+    const filterSelect = 'select-field text-xs h-11 w-full';
 
     const lokasiLabel = (p) => {
         if (!p.lokasis?.length) return null;
@@ -190,7 +190,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     placeholder="Cari nama / NIK…"
-                                    className="input-field h-9 pl-9 text-xs w-full"
+                                    className="input-field h-11 pl-9 text-xs w-full"
                                 />
                             </div>
                             <select
@@ -320,7 +320,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                     <tr>
                                         <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Pegawai</th>
                                         <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Unit & Jabatan</th>
-                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status Pegawai</th>
+                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status Kepegawaian</th>
                                         <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status Aktif</th>
                                         <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Aksi</th>
                                     </tr>
