@@ -396,7 +396,7 @@ class DashboardController extends Controller
         $alpaCount = (int) ($statusCounts->get('alpa', 0));
 
         $hadirPercentage = $pegawaiDijadwalkan > 0
-            ? round(($hadirHariIniCount / $pegawaiDijadwalkan) * 100)
+            ? min(100, round(($hadirHariIniCount / $pegawaiDijadwalkan) * 100))
             : 0;
 
         // 4. Trend Kehadiran 7 Hari Terakhir
