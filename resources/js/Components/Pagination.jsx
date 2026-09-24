@@ -53,7 +53,7 @@ export default function Pagination({ links, pagination = null, data = null, pres
                     type="button"
                     onClick={() => navigate(currentPage - 1)}
                     disabled={currentPage <= 1}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40 min-h-[44px]"
                 >
                     « Sebelumnya
                 </button>
@@ -62,7 +62,7 @@ export default function Pagination({ links, pagination = null, data = null, pres
                     type="button"
                     onClick={() => navigate(currentPage + 1)}
                     disabled={currentPage >= lastPage}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40 min-h-[44px]"
                 >
                     Berikutnya »
                 </button>
@@ -71,7 +71,7 @@ export default function Pagination({ links, pagination = null, data = null, pres
     }
 
     const baseClass = (link) =>
-        `px-3.5 py-2 text-sm font-medium transition-all duration-150 rounded-button ${
+        `min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3.5 py-2 text-sm font-medium transition-all duration-150 rounded-button ${
             link.active
                 ? 'bg-primary text-white shadow-card'
                 : 'bg-white text-text-secondary hover:bg-primary-50 hover:text-primary border border-border hover:border-primary/20'

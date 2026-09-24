@@ -814,12 +814,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         { key: 'alpa', label: 'Alpa', value: s.alpa, Icon: UserX, iconBg: 'bg-rose-100', iconCls: 'text-rose-600', filter: { status_filter: 'alpa', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'alpa' },
         { key: 'belum_presensi', label: 'Belum Presensi', value: s.belum_presensi, Icon: UserRoundX, iconBg: 'bg-slate-100', iconCls: 'text-slate-600', filter: { status_filter: 'belum_presensi', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'belum_presensi' },
         { key: 'lembur_pending', label: 'Lembur Pending', value: s.lembur_pending, Icon: AlarmClock, iconBg: 'bg-orange-100', iconCls: 'text-orange-600', filter: { status_filter: '', lembur_filter: 'lembur_pending', lokasi_filter: '', suspicious_filter: '' }, active: lemburFilter === 'lembur_pending' },
-        { key: 'perlu_review', label: 'Perlu Review', value: s.perlu_review, Icon: ShieldAlert, iconBg: 'bg-red-100', iconCls: 'text-red-600', filter: { status_filter: '', lembur_filter: '', lokasi_filter: 'perlu_review', suspicious_filter: '' }, active: lokasiFilter === 'perlu_review' },
+        { key: 'perlu_review', label: 'Perlu Review', value: s.perlu_review, Icon: ShieldAlert, iconBg: 'bg-rose-100', iconCls: 'text-rose-600', filter: { status_filter: '', lembur_filter: '', lokasi_filter: 'perlu_review', suspicious_filter: '' }, active: lokasiFilter === 'perlu_review' },
     ];
 
-    // flex-1 + min-w/basis: tiap kontrol mengisi penuh baris, baris terakhir
-    // ikut meregang sampai ujung kanan (tidak ada lahan kosong seperti grid).
-    const filterSelect = 'select-field text-xs h-11 flex-1 min-w-[150px] basis-44';
+    const filterSelect = 'select-field text-xs h-11 w-full';
 
     return (
         <AuthenticatedLayout
@@ -855,8 +853,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     </div>
 
                     {/* Stats */}
-                    <div className="flex flex-wrap gap-3">
-                        {statsCards.map((card) => <div key={card.label} className="min-w-[140px] flex-1 basis-[140px] lg:basis-auto"><StatCard {...card} onClick={() => applyStatFilter(card.filter)} /></div>)}
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        {statsCards.map((card) => <div key={card.label} className="min-h-[88px]"><StatCard {...card} onClick={() => applyStatFilter(card.filter)} /></div>)}
                     </div>
 
                     {/* Kepsek view mode toggle */}
@@ -880,9 +878,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     {/* Filter bar */}
                     <div className="card p-5">
                         {/* Row 1: Search + Quick Filters */}
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                             {isAdmin && (
-                                <div className="relative min-w-[240px] flex-1 basis-72">
+                                <div className="relative">
                                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                     <input
                                         type="text"
@@ -890,58 +888,80 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         onChange={(e) => setSearch(e.target.value)}
                                         placeholder="Cari nama pegawai…"
                                         className="input-field h-11 pl-9 text-xs w-full"
+                                        aria-label="Cari nama pegawai"
                                     />
                                 </div>
                             )}
-                            <select className={filterSelect} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                                <option value="">Semua Status</option>
-                                {Object.entries(STATUS_META).map(([key, m]) => <option key={key} value={key}>{m.label}</option>)}
-                            </select>
-                            {isAdmin && auth.permissions?.includes('view_all_units') && (
-                                <select className={filterSelect} value={unitId} onChange={(e) => setUnitId(e.target.value)}>
-                                    <option value="">Semua Unit</option>
-                                    {units?.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
+                            <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
+                                <span>Status</span>
+                                <select className={filterSelect} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter status">
+                                    <option value="">Semua Status</option>
+                                    {Object.entries(STATUS_META).map(([key, m]) => <option key={key} value={key}>{m.label}</option>)}
                                 </select>
+                            </label>
+                            {isAdmin && auth.permissions?.includes('view_all_units') && (
+                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
+                                    <span>Unit</span>
+                                    <select className={filterSelect} value={unitId} onChange={(e) => setUnitId(e.target.value)} aria-label="Filter unit">
+                                        <option value="">Semua Unit</option>
+                                        {units?.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
+                                    </select>
+                                </label>
                             )}
                             {isAdmin && (
-                                <select className={filterSelect} value={jenisFilter} onChange={(e) => setJenisFilter(e.target.value)}>
-                                    <option value="">Semua Jenis</option>
-                                    <option value="pendidik">Pendidik (Guru)</option>
-                                    <option value="kependidikan">Tenaga Kependidikan</option>
-                                </select>
+                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
+                                    <span>Jenis</span>
+                                    <select className={filterSelect} value={jenisFilter} onChange={(e) => setJenisFilter(e.target.value)} aria-label="Filter jenis">
+                                        <option value="">Semua Jenis</option>
+                                        <option value="pendidik">Pendidik (Guru)</option>
+                                        <option value="kependidikan">Tenaga Kependidikan</option>
+                                    </select>
+                                </label>
                             )}
                         </div>
 
                         {/* Row 2: Extended Filters (admin only) */}
                         {isAdmin && (
-                            <div className="mt-3 flex flex-wrap items-center gap-3">
-                                <select className={filterSelect} value={jadwalFilter} onChange={(e) => {
-                                    setJadwalFilter(e.target.value);
-                                    if (e.target.value === 'sedang_berlangsung') {
-                                        setStartDate('');
-                                        setEndDate('');
-                                    }
-                                }}>
-                                    <option value="">Semua Jadwal</option>
-                                    <option value="sedang_berlangsung">Sedang Berlangsung</option>
-                                </select>
-                                <select className={filterSelect} value={lemburFilter} onChange={(e) => setLemburFilter(e.target.value)}>
-                                    <option value="">Semua Presensi</option>
-                                    <option value="lembur_semua">Semua Lembur</option>
-                                    <option value="lembur_pending">Lembur Pending</option>
-                                    <option value="lembur_disetujui">Lembur Disetujui</option>
-                                    <option value="lembur_ditolak">Lembur Ditolak</option>
-                                </select>
-                                <select className={filterSelect} value={lokasiFilter} onChange={(e) => setLokasiFilter(e.target.value)}>
-                                    <option value="">Semua Lokasi</option>
-                                    <option value="review_semua">Perlu Review (Semua)</option>
-                                    <option value="perlu_review">Perlu Review GPS</option>
-                                    <option value="pulang_awal">Pulang Awal</option>
-                                </select>
-                                <select className={filterSelect} value={suspiciousFilter} onChange={(e) => setSuspiciousFilter(e.target.value)}>
-                                    <option value="">Semua GPS</option>
-                                    <option value="1">Posisi Mencurigakan</option>
-                                </select>
+                            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
+                                    <span>Jadwal</span>
+                                    <select className={filterSelect} value={jadwalFilter} onChange={(e) => {
+                                        setJadwalFilter(e.target.value);
+                                        if (e.target.value === 'sedang_berlangsung') {
+                                            setStartDate('');
+                                            setEndDate('');
+                                        }
+                                    }} aria-label="Filter jadwal">
+                                        <option value="">Semua Jadwal</option>
+                                        <option value="sedang_berlangsung">Sedang Berlangsung</option>
+                                    </select>
+                                </label>
+                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
+                                    <span>Lembur</span>
+                                    <select className={filterSelect} value={lemburFilter} onChange={(e) => setLemburFilter(e.target.value)} aria-label="Filter lembur">
+                                        <option value="">Semua Presensi</option>
+                                        <option value="lembur_semua">Semua Lembur</option>
+                                        <option value="lembur_pending">Lembur Pending</option>
+                                        <option value="lembur_disetujui">Lembur Disetujui</option>
+                                        <option value="lembur_ditolak">Lembur Ditolak</option>
+                                    </select>
+                                </label>
+                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
+                                    <span>Lokasi</span>
+                                    <select className={filterSelect} value={lokasiFilter} onChange={(e) => setLokasiFilter(e.target.value)} aria-label="Filter lokasi">
+                                        <option value="">Semua Lokasi</option>
+                                        <option value="review_semua">Perlu Review (Semua)</option>
+                                        <option value="perlu_review">Perlu Review GPS</option>
+                                        <option value="pulang_awal">Pulang Awal</option>
+                                    </select>
+                                </label>
+                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
+                                    <span>GPS</span>
+                                    <select className={filterSelect} value={suspiciousFilter} onChange={(e) => setSuspiciousFilter(e.target.value)} aria-label="Filter GPS">
+                                        <option value="">Semua GPS</option>
+                                        <option value="1">Posisi Mencurigakan</option>
+                                    </select>
+                                </label>
                             </div>
                         )}
 
@@ -971,9 +991,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                                 {/* Rentang manual */}
                                 <div className="flex items-center gap-2">
-                                    <input type="date" className="input-field text-xs h-9" value={startDate} onChange={(e) => setStartDate(e.target.value)} aria-label="Tanggal mulai" />
+                                    <input type="date" className="input-field text-xs h-11" value={startDate} onChange={(e) => setStartDate(e.target.value)} aria-label="Tanggal mulai" />
                                     <span className="text-xs text-text-secondary">–</span>
-                                    <input type="date" className="input-field text-xs h-9" value={endDate} onChange={(e) => setEndDate(e.target.value)} aria-label="Tanggal selesai" />
+                                    <input type="date" className="input-field text-xs h-11" value={endDate} onChange={(e) => setEndDate(e.target.value)} aria-label="Tanggal selesai" />
                                 </div>
                             </div>
 
@@ -991,11 +1011,11 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     </button>
                                 )}
                                 {hasFilter && (
-                                    <button type="button" onClick={resetFilters} className="btn-secondary btn-sm flex items-center gap-1.5">
+                                    <button type="button" onClick={resetFilters} className="btn-secondary h-11 flex items-center gap-1.5 px-4">
                                         <RotateCcw className="h-3.5 w-3.5" /> Reset
                                     </button>
                                 )}
-                                <button type="button" onClick={() => applyFilters()} disabled={processing} className="btn-primary btn-sm flex items-center gap-1.5">
+                                <button type="button" onClick={() => applyFilters()} disabled={processing} className="btn-primary h-11 flex items-center gap-1.5 px-4">
                                     {processing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Filter className="h-3.5 w-3.5" />}
                                     Terapkan
                                 </button>
