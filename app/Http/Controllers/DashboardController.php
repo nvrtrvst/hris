@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\HariHelper;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Models\Announcement;
+use App\Models\HariLibur;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
 use App\Models\Pegawai;
@@ -144,8 +145,21 @@ class DashboardController extends Controller
                     ->whereIn('status', ['hadir', 'telat'])
                     ->count();
 
-                // Hitung kasar jadwal kerja
-                $jadwalBulanIni = 22; // Asumsi 22 hari kerja untuk Staff (bisa disesuaikan nanti)
+                $startBulan = Carbon::now('Asia/Jakarta')->startOfMonth();
+                $endBulan = Carbon::now('Asia/Jakarta')->endOfMonth();
+                $today = Carbon::today('Asia/Jakarta');
+                $endKehadiran = $today->gt($endBulan) ? $endBulan->copy() : $today->copy();
+                $unitIds = $pegawai->units?->pluck('id')->filter()->unique()->toArray() ?? [];
+                $holidayCount = HariLibur::whereBetween('tanggal', [$startBulan->toDateString(), $endKehadiran->toDateString()])
+                    ->where(function ($q) use ($unitIds) {
+                        $q->whereNull('unit_sekolah_id');
+                        if ($unitIds) {
+                            $q->orWhereIn('unit_sekolah_id', $unitIds);
+                        }
+                    })->get(['tanggal'])
+                    ->filter(fn ($h) => ! in_array((int) Carbon::parse($h->tanggal)->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]))
+                    ->count();
+                $jadwalBulanIni = $this->countWeekdaysInRange($startBulan, $endKehadiran, $holidayCount);
             }
 
             return inertia('DashboardSelfService', [
@@ -474,5 +488,25 @@ class DashboardController extends Controller
             'jadwalHariIni' => $jadwalHariIni,
             'presensiHariIni' => $presensiHariIni,
         ];
+    }
+
+    private function countWeekdaysInRange(Carbon $start, Carbon $end, int $exclude = 0): int
+    {
+        if ($start->gt($end)) {
+            return 0;
+        }
+        $totalDays = $start->diffInDays($end) + 1;
+        $fullWeeks = intdiv($totalDays, 7);
+        $remainderDays = $totalDays % 7;
+        $startDay = $start->dayOfWeek;
+        $count = $fullWeeks * 5;
+        for ($i = 0; $i < $remainderDays; $i++) {
+            $day = ($startDay + $i) % 7;
+            if ($day !== Carbon::SUNDAY && $day !== Carbon::SATURDAY) {
+                $count++;
+            }
+        }
+
+        return max(0, $count - $exclude);
     }
 }

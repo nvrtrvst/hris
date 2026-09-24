@@ -183,7 +183,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                 aria-label="Filter unit"
                                 value={selectedUnitId || ''}
                                 onChange={setUnitFilter}
-                                className="select-field h-9 pl-9 text-xs font-semibold"
+                                className="select-field h-11 pl-9 text-xs font-semibold"
                             >
                                 <option value="">Semua Unit</option>
                                 {units.map((u) => (
@@ -197,8 +197,8 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
         >
             <Head title={`Dashboard ${roleType}`} />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="py-8 bg-surface min-h-screen overflow-x-hidden">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 overflow-hidden">
                     {/* Kehadiran Hari Ini — prominent full-width */}
                     <div className="card p-6 relative overflow-hidden">
                         <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-emerald-500/5" />
@@ -214,7 +214,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                         {s.hadir_hari_ini_count || 0} dari {s.pegawai_dijadwalkan || 0} dijadwalkan
                                     </p>
                                 </div>
-                                <div className="mt-3 h-2.5 w-full max-w-md overflow-hidden rounded-full bg-border/60">
+                                <div className="mt-3 h-3 w-full max-w-md overflow-hidden rounded-full bg-border/60" role="progressbar" aria-valuenow={s.hadir_percentage || 0} aria-valuemin={0} aria-valuemax={100} aria-label="Kehadiran hari ini">
                                     <div
                                         className="h-full rounded-full bg-emerald-500 transition-all duration-700"
                                         style={{ width: `${Math.min(100, s.hadir_percentage || 0)}%` }}
