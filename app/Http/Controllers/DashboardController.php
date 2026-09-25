@@ -487,6 +487,23 @@ class DashboardController extends Controller
             })
             ->toArray();
 
+        // Kelas kosong & piket — terpisah mengajar vs piket
+        $presensiJadwalIds = Presensi::where('tanggal', $today->toDateString())->whereNotNull('jadwal_id')->pluck('jadwal_id')->toArray();
+        $baseKelasKosong = Jadwal::with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama', 'unitSekolah:id,nama'])
+            ->where('hari', $hariIniIndo)->whereNotIn('id', $presensiJadwalIds);
+        if ($bawahanIds !== null) {
+            $baseKelasKosong->whereIn('pegawai_id', $bawahanIds);
+        } elseif ($scopedUnit) {
+            $baseKelasKosong->where('unit_sekolah_id', $scopedUnit);
+        }
+        $kelasKosongMengajar = (clone $baseKelasKosong)->where('jenis_jadwal', 'mengajar')->orderBy('jam_mulai')->get()->toArray();
+        $kelasKosongPiket = (clone $baseKelasKosong)->where('jenis_jadwal', 'piket')->orderBy('jam_mulai')->get()->toArray();
+        $piketHariIni = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama'])
+            ->where('hari', $hariIniIndo)->where('jenis_jadwal', 'piket')
+            ->when($bawahanIds !== null, fn ($q) => $q->whereIn('pegawai_id', $bawahanIds))
+            ->when($scopedUnit && $bawahanIds === null, fn ($q) => $q->where('unit_sekolah_id', $scopedUnit))
+            ->orderBy('jam_mulai')->get()->toArray();
+
         return [
             'pegawaiDijadwalkan' => $pegawaiDijadwalkan,
             'pegawaiTotal' => $pegawaiTotal,
@@ -499,6 +516,9 @@ class DashboardController extends Controller
             'attendanceTrend' => $attendanceTrend,
             'jadwalHariIni' => $jadwalHariIni,
             'presensiHariIni' => $presensiHariIni,
+            'kelasKosongMengajar' => $kelasKosongMengajar,
+            'kelasKosongPiket' => $kelasKosongPiket,
+            'piketHariIni' => $piketHariIni,
         ];
     }
 

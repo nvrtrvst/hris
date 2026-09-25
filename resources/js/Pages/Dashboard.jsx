@@ -83,13 +83,13 @@ export default function Dashboard(props) {
     );
 }
 
-function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadwalHariIni, presensiHariIni, pengumuman = [], units = [], selectedUnitId = null, selectedUnitNama = null }) {
+function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadwalHariIni, presensiHariIni, pengumuman = [], units = [], selectedUnitId = null, selectedUnitNama = null, kelasKosongMengajar = [], kelasKosongPiket = [], piketHariIni = [] }) {
     const [detailPresensi, setDetailPresensi] = useState(null);
 
     // Live polling: refresh data kehadiran/jadwal/presensi tiap 60 detik (partial reload
     // Inertia — hanya prop yang di-`only` dikirim ulang). Berhenti saat tab tidak aktif.
     const isAdmin = roleType === 'Admin';
-    usePolling({ enabled: isAdmin, only: ['stats', 'trends', 'jadwalHariIni', 'presensiHariIni'] });
+    usePolling({ enabled: isAdmin, only: ['stats', 'trends', 'jadwalHariIni', 'presensiHariIni', 'kelasKosongMengajar', 'kelasKosongPiket', 'piketHariIni'] });
 
     // Filter unit (superadmin): reload penuh agar semua angka ter-scope ke unit.
     const setUnitFilter = (e) => {
@@ -253,6 +253,47 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                         <StatCard label="Pengajuan Pending" value={s.pengajuan_pending || 0} Icon={Clock3} iconBg={s.pengajuan_pending > 0 ? 'bg-rose-100' : 'bg-surface'} iconCls={s.pengajuan_pending > 0 ? 'text-rose-600' : 'text-border'} alert={s.pengajuan_pending > 0} />
                     </div>
 
+                    {/* Kelas Kosong — terpisah mengajar vs piket */}
+                    {(kelasKosongMengajar?.length > 0) && (
+                        <div className="card border-amber-200 bg-amber-50 p-4">
+                            <h4 className="flex items-center gap-2 text-sm font-bold text-amber-800">
+                                <AlertTriangle className="h-4 w-4" /> Kelas Kosong Mengajar — {kelasKosongMengajar.length} JP belum ada guru
+                            </h4>
+                            <div className="mt-2 space-y-1">
+                                {kelasKosongMengajar.slice(0, 5).map((j) => (
+                                    <div key={j.id} className="flex items-center justify-between text-xs">
+                                        <span className="font-medium text-amber-900">{j.jam_mulai?.substring(0,5)}–{j.jam_selesai?.substring(0,5)} • {j.kelas_label || '—'} • {j.pegawai?.nama_lengkap || '-'}</span>
+                                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-amber-700">{j.pegawaiMapel?.mataPelajaran?.nama || j.jenis_jadwal}</span>
+                                    </div>
+                                ))}
+                                {kelasKosongMengajar.length > 5 && <p className="text-[11px] text-amber-700">+{kelasKosongMengajar.length - 5} lagi</p>}
+                            </div>
+                        </div>
+                    )}
+                    {(kelasKosongPiket?.length > 0) && (
+                        <div className="card border-sky-200 bg-sky-50 p-4">
+                            <h4 className="flex items-center gap-2 text-sm font-bold text-sky-800">
+                                <Clock3 className="h-4 w-4" /> Piket Kosong — {kelasKosongPiket.length} belum ada petugas
+                            </h4>
+                            <div className="mt-2 space-y-1">
+                                {kelasKosongPiket.slice(0, 5).map((j) => (
+                                    <div key={j.id} className="flex items-center justify-between text-xs">
+                                        <span className="font-medium text-sky-900">{j.jam_mulai?.substring(0,5)}–{j.jam_selesai?.substring(0,5)} • {j.pegawai?.nama_lengkap || '-'}</span>
+                                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-sky-700">Piket</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {piketHariIni?.length > 0 && kelasKosongPiket?.length === 0 && (
+                        <div className="card border-emerald-200 bg-emerald-50 p-4">
+                            <h4 className="flex items-center gap-2 text-sm font-bold text-emerald-800">
+                                <CheckCircle2 className="h-4 w-4" /> Piket Hari Ini — {piketHariIni.length} petugas terjadwal
+                            </h4>
+                            <p className="mt-1 text-xs text-emerald-700">{piketHariIni.map((j) => j.pegawai?.nama_lengkap).join(', ')}</p>
+                        </div>
+                    )}
+
                     {/* Jadwal Hari Ini */}
                     <div className="card p-0 overflow-hidden">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 bg-surface/50 px-5 py-4">
@@ -301,6 +342,11 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                         </td>
                                                         <td className="px-4 py-3">
                                                             <span className="font-medium text-text-primary">{j.mata_pelajaran?.nama || j.jenis_jadwal || '-'}</span>
+                                                            {j.jenis_jadwal === 'piket' ? (
+                                                                <span className="ml-1.5 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Piket</span>
+                                                            ) : j.jenis_jadwal !== 'mengajar' ? (
+                                                                <span className="ml-1.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{j.jenis_jadwal}</span>
+                                                            ) : null}
                                                         </td>
                                                         <td className="hidden sm:table-cell px-4 py-3 text-text-secondary">{j.kelas_label || '-'}</td>
                                                         <td className="px-4 py-3 whitespace-nowrap">
