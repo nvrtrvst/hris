@@ -68,6 +68,9 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('presensi/belum-presensi/pdf', [PresensiController::class, 'exportBelumPresensiPdf'])
         ->middleware('throttle:30,1')
         ->name('presensi.belum-presensi-pdf');
+    Route::get('presensi/rekap-pdf', [PresensiController::class, 'exportRekapPresensiPdf'])
+        ->middleware('throttle:30,1')
+        ->name('presensi.rekap-pdf');
 
     // Penggajian — index/show bisa diakses staff (lihat slip gaji sendiri)
     Route::get('penggajian', [PenggajianController::class, 'index'])->name('penggajian.index');
@@ -242,6 +245,7 @@ Route::middleware('auth:web_admin')->group(function () {
 
     Route::get('laporan/rekap-mengajar', [LaporanController::class, 'exportRekapMengajar'])->name('laporan.rekap-mengajar');
     Route::get('laporan/rekap-kehadiran', [LaporanController::class, 'exportRekapKehadiran'])->name('laporan.rekap-kehadiran');
+    Route::get('laporan/rekap-kehadiran-harian', [LaporanController::class, 'exportRekapKehadiranHarian'])->name('laporan.rekap-kehadiran-harian');
     Route::get('laporan/rekap-detail', [LaporanController::class, 'rekapDetail'])->name('laporan.rekap-detail');
     Route::get('laporan/rekap-mengajar-detail', [LaporanController::class, 'rekapMengajarDetail'])->name('laporan.rekap-mengajar-detail');
 

@@ -55,8 +55,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         // 1. Fetch presensi rows.
         $query = Presensi::with(['pegawai.jabatans', 'pegawai.units'])
             ->whereBetween('tanggal', [$this->start_date, $this->end_date])
-            ->where('is_lembur', false)
-            ->whereNull('jadwal_id');   // kehadiran harian saja
+            ->where('is_lembur', false);
 
         if ($this->unit_id) {
             $query->where('unit_sekolah_id', $this->unit_id);
@@ -71,7 +70,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         $rows = $query->get(['pegawai_id', 'tanggal', 'status', 'jadwal_id', 'unit_sekolah_id']);
 
         // 2. Dedup passive vs active per pegawai per date.
-        $byPegawai = $rows->groupBy('pegawai_id')->map(fn ($pegawaiRows) => $this->dedupPassiveByActiveDate($pegawaiRows));
+        $byPegawai = $rows->groupBy('pegawai_id')->map(fn ($pegawaiRows) => self::dedupStatusPerTanggal($pegawaiRows));
 
         // 3. Build pegawai map (eager-load info).
         $pegawaiIds = $byPegawai->keys()->all();
@@ -85,10 +84,10 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             $this->unit_id ? [$this->unit_id] : [],
             $rows->pluck('unit_sekolah_id')->filter()->unique()->all(),
         ));
-        $holidayMap = $this->buildHolidayWeekdayMap($unitIds, $start, $end);
+        $holidayMap = self::buildHolidayWeekdayMap($unitIds, $start, $end);
 
         // 5. Uniform working days: Senin-Jumat − libur (sama untuk semua pegawai).
-        $hariKerja = $this->computeUniformWorkingDays($start, $end, $holidayMap);
+        $hariKerja = self::computeUniformWorkingDays($start, $end, $holidayMap);
 
         // 6. Assemble final rekap.
         $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja) {
@@ -108,18 +107,17 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
     }
 
     /**
-     * Dedup: 1 hari = 1 status. Active wins over passive, hadir wins over telat.
+     * Dedup: 1 hari = 1 status per pegawai (satu aturan untuk rekap,
+     * rincian, dan matriks harian — jangan tulis logika lain).
+     * Priority: hadir > telat > sakit > izin > cuti > alpa.
      */
-    private function dedupPassiveByActiveDate(Collection $rows): Collection
+    public static function dedupStatusPerTanggal(Collection $rows): Collection
     {
-        // Priority: hadir > telat > sakit > izin > cuti > alpa.
         $priority = ['hadir' => 0, 'telat' => 1, 'sakit' => 2, 'izin' => 3, 'cuti' => 4, 'alpa' => 5];
 
-        // Group by tanggal, pick best record per date.
         return $rows
             ->groupBy(fn ($p) => $p->tanggal instanceof \DateTimeInterface ? $p->tanggal->format('Y-m-d') : (string) $p->tanggal)
-            // ->map(fn ($dateRows) => $dateRows->sortBy(fn ($p) => $priority[$p->status] ?? 9)->first())
-            ->sortBy(fn ($p) => [$p->status === 'sakit' || $p->status === 'izin' || $p->status === 'cuti' ? 0 : 1, $p->jam_masuk ?? '99:99:99'])
+            ->map(fn ($dateRows) => $dateRows->sortBy(fn ($p) => $priority[$p->status] ?? 9)->first())
             ->values();
     }
 
@@ -127,7 +125,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
      * Uniform working days: Senin-Jumat dalam range − libur.
      * Sama untuk semua pegawai — bukan per jadwal.
      */
-    private function computeUniformWorkingDays(Carbon $start, Carbon $end, array $holidayMap): int
+    public static function computeUniformWorkingDays(Carbon $start, Carbon $end, array $holidayMap): int
     {
         $weekdays = [1, 2, 3, 4, 5]; // Senin–Jumat
         $hariMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -156,7 +154,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         return $count;
     }
 
-    private function buildHolidayWeekdayMap(array $unitIds, Carbon $start, Carbon $end): array
+    public static function buildHolidayWeekdayMap(array $unitIds, Carbon $start, Carbon $end): array
     {
         $rows = HariLibur::whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
             ->where(function ($q) use ($unitIds) {
@@ -267,7 +265,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells("A2:{$lastCol}2");
-                $sheet->setCellValue('A2', 'LAPORAN REKAPITULASI KEHADIRAN HARIAN');
+                $sheet->setCellValue('A2', 'LAPORAN REKAPITULASI KEHADIRAN');
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 

@@ -6,6 +6,7 @@ use App\Exports\LaporanLemburanExport;
 use App\Exports\LaporanPenggajianExport;
 use App\Exports\LaporanPresensiExport;
 use App\Exports\LaporanRekapKehadiranExport;
+use App\Exports\LaporanRekapKehadiranHarianExport;
 use App\Exports\LaporanRekapMengajarExport;
 use App\Http\Requests\KcdReportRequest;
 use App\Http\Requests\LaporanGenerateRequest;
@@ -64,6 +65,8 @@ class LaporanController extends Controller
             $export = new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
         } elseif ($validated['type'] === 'rekap_kehadiran') {
             $export = new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
+        } elseif ($validated['type'] === 'rekap_kehadiran_harian') {
+            $export = new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
         }
 
         if (! $export) {
@@ -92,6 +95,13 @@ class LaporanController extends Controller
 
         // Khusus rekap kehadiran: sertakan summary stats + pegawai IDs untuk drill-down.
         if ($validated['type'] === 'rekap_kehadiran') {
+            $payload['summary'] = $export->summaryData();
+            $payload['pegawai_ids'] = $data->pluck('pegawai.id')->values();
+        }
+
+        // Matriks kehadiran harian: sel per pegawai per tanggal + summary.
+        if ($validated['type'] === 'rekap_kehadiran_harian') {
+            $payload['matrix'] = $export->matrixData($data);
             $payload['summary'] = $export->summaryData();
             $payload['pegawai_ids'] = $data->pluck('pegawai.id')->values();
         }
@@ -135,6 +145,18 @@ class LaporanController extends Controller
         );
     }
 
+    public function exportRekapKehadiranHarian(LaporanGenerateRequest $request)
+    {
+        $validated = $request->validated();
+        $unitId = $this->resolveEffectiveUnitId($validated['unit_sekolah_id'] ?? null);
+        $unitSlug = $this->resolveUnitSlug($unitId);
+
+        return Excel::download(
+            new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
+            'Laporan_Rekap_Kehadiran_Harian_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
+        );
+    }
+
     public function exportPenggajian(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
@@ -173,6 +195,7 @@ class LaporanController extends Controller
             'lemburan' => new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
             'rekap_mengajar' => new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
             'rekap_kehadiran' => new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
+            'rekap_kehadiran_harian' => new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
         };
 
         $rows = $export->collection()->map(fn ($item) => $export->map($item))->all();
@@ -222,6 +245,7 @@ class LaporanController extends Controller
             'lemburan' => 'LAPORAN LEMBUR PEGAWAI',
             'rekap_mengajar' => 'LAPORAN REKAPITULASI PRESENSI MENGAJAR',
             'rekap_kehadiran' => 'LAPORAN REKAPITULASI KEHADIRAN',
+            'rekap_kehadiran_harian' => 'LAPORAN REKAPITULASI KEHADIRAN HARIAN',
         };
 
         $filename = match ($type) {
@@ -230,17 +254,10 @@ class LaporanController extends Controller
             'lemburan' => 'Laporan_Lemburan',
             'rekap_mengajar' => 'Laporan_Rekap_Mengajar',
             'rekap_kehadiran' => 'Laporan_Rekap_Kehadiran',
+            'rekap_kehadiran_harian' => 'Laporan_Rekap_Kehadiran_Harian',
         };
 
         $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
-
-        $filename = match ($type) {
-            'presensi' => 'Laporan_Presensi',
-            'penggajian' => 'Laporan_Rekap_Gaji',
-            'lemburan' => 'Laporan_Lemburan',
-            'rekap_mengajar' => 'Laporan_Rekap_Mengajar',
-            'rekap_kehadiran' => 'Laporan_Rekap_Kehadiran',
-        };
 
         try {
             $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop', 'type'))
@@ -278,8 +295,13 @@ class LaporanController extends Controller
             ->where('pegawai_id', $pegawai->id)
             ->whereBetween('tanggal', [$request->start_date, $request->end_date])
             ->where('is_lembur', false)
-            ->orderBy('tanggal')
             ->get();
+
+        // 1 pegawai per tanggal = 1 status — aturan sama dengan rekap agregat,
+        // supaya rincian tidak pernah beda hitungan dengan rekap.
+        $rows = LaporanRekapKehadiranExport::dedupStatusPerTanggal($rows)
+            ->sortBy(fn ($p) => $p->tanggal->format('Y-m-d'))
+            ->values();
 
         $detail = $rows->map(fn ($p) => [
             'tanggal' => $p->tanggal->format('Y-m-d'),

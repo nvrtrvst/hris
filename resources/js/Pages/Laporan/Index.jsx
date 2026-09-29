@@ -60,6 +60,15 @@ const TipeBadge = ({ tipe }) => {
     );
 };
 
+const LETTER_STYLES = {
+    H: 'bg-green-100 text-green-800',
+    T: 'bg-amber-100 text-amber-800',
+    S: 'bg-indigo-100 text-indigo-800',
+    I: 'bg-sky-100 text-sky-800',
+    C: 'bg-violet-100 text-violet-800',
+    A: 'bg-red-100 text-red-800',
+};
+
 const computePresensiSummary = (data, headings) => {
     const statusIdx = headings.findIndex((h) => String(h).toLowerCase() === 'status');
     const tally = { hadir: 0, telat: 0, izin: 0, sakit: 0, cuti: 0, alpa: 0 };
@@ -116,18 +125,32 @@ export default function LaporanIndex({ auth, units }) {
             setActivePreview({ ...filter });
         } catch (error) {
             console.error('Preview failed', error);
-            alert('Gagal memuat pratinjau data. Pastikan rentang tanggal valid.');
+            const data = error?.response?.data;
+            const msg = data?.message
+                || Object.values(data?.errors || {}).flat().join('\n')
+                || 'Gagal memuat pratinjau data. Pastikan rentang tanggal valid.';
+            alert(msg);
         }
         setLoading(false);
     };
 
     const handleDownload = () => {
+        if (filter.report_type === 'rekap_kehadiran_harian') {
+            const s = new Date(filter.start_date + 'T00:00:00');
+            const e = new Date(filter.end_date + 'T00:00:00');
+            if ((e - s) / 86400000 > 30) {
+                alert('Rekap Kehadiran Harian maksimal 31 hari per generate. Pecah periode menjadi beberapa generate.');
+                return;
+            }
+        }
+
         let url = '';
         if (filter.report_type === 'presensi') url = route('laporan.presensi');
         if (filter.report_type === 'penggajian') url = route('laporan.penggajian');
         if (filter.report_type === 'lemburan') url = route('laporan.lemburan');
         if (filter.report_type === 'rekap_mengajar') url = route('laporan.rekap-mengajar');
         if (filter.report_type === 'rekap_kehadiran') url = route('laporan.rekap-kehadiran');
+        if (filter.report_type === 'rekap_kehadiran_harian') url = route('laporan.rekap-kehadiran-harian');
 
         const params = new URLSearchParams();
         params.append('type', filter.report_type);
@@ -153,6 +176,40 @@ export default function LaporanIndex({ auth, units }) {
         }
         if (!filter.end_date) {
             alert('Isi tanggal akhir terlebih dahulu.');
+            return;
+        }
+
+        // Rekap Presensi Harian punya route terpisah
+        if (filter.report_type === 'rekap_presensi_harian') {
+            const url = route('presensi.rekap-pdf');
+            const params = new URLSearchParams();
+            params.append('start_date', filter.start_date);
+            params.append('end_date', filter.end_date);
+            if (filter.unit_sekolah_id) params.append('unit_id', filter.unit_sekolah_id);
+            if (filter.jenis_filter) params.append('jenis_filter', filter.jenis_filter);
+
+            try {
+                const res = await fetch(`${url}?${params.toString()}`);
+                if (!res.ok) {
+                    let msg = 'PDF gagal dibuat. Coba lagi atau hubungi administrator.';
+                    try {
+                        const body = await res.json();
+                        msg = body.message || body.error || msg;
+                    } catch { /* non-JSON */ }
+                    alert(msg);
+                    return;
+                }
+                const blob = await res.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `Rekap_Presensi_Harian_${filter.start_date}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(a.href);
+            } catch {
+                alert('Koneksi terputus saat membuat PDF.');
+            }
             return;
         }
 
@@ -207,6 +264,8 @@ export default function LaporanIndex({ auth, units }) {
         lemburan: 'Detail Lembur & Potongan',
         rekap_mengajar: 'Rekap Mengajar',
         rekap_kehadiran: 'Rekap Kehadiran',
+        rekap_kehadiran_harian: 'Rekap Kehadiran Harian',
+        rekap_presensi_harian: 'Rekap Presensi Harian',
     };
 
     return (
@@ -237,7 +296,9 @@ export default function LaporanIndex({ auth, units }) {
                                     >
                                         <option value="presensi">Laporan Presensi</option>
                                         <option value="rekap_kehadiran">Rekap Kehadiran</option>
+                                        <option value="rekap_kehadiran_harian">Rekap Kehadiran Harian (per Tanggal)</option>
                                         <option value="rekap_mengajar">Rekap Presensi Mengajar</option>
+                                        <option value="rekap_presensi_harian">Rekap Presensi Harian</option>
                                         <option value="penggajian">Laporan Rekap Gaji</option>
                                         <option value="lemburan">Laporan Detail Lembur & Potongan</option>
                                     </select>
@@ -314,10 +375,15 @@ export default function LaporanIndex({ auth, units }) {
                             )}
                         </div>
 
-                        <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row">
-                            <button onClick={handlePreview} disabled={loading} className="btn-primary inline-flex items-center gap-2">
-                                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat…</> : <><Search className="h-4 w-4" /> Tampilkan Data</>}
-                            </button>
+                        <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center">
+                            {filter.report_type !== 'rekap_presensi_harian' && (
+                                <button onClick={handlePreview} disabled={loading} className="btn-primary inline-flex items-center gap-2">
+                                    {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat…</> : <><Search className="h-4 w-4" /> Tampilkan Data</>}
+                                </button>
+                            )}
+                            {filter.report_type === 'rekap_presensi_harian' && (
+                                <p className="text-xs text-text-muted italic">Jenis ini langsung menghasilkan PDF (tanpa pratinjau). Atur filter, lalu klik &quot;Download PDF&quot;.</p>
+                            )}
                             <button onClick={handleDownload} className="btn-secondary inline-flex items-center gap-2">
                                 <Download className="h-4 w-4" /> Download Excel
                             </button>
@@ -450,6 +516,84 @@ export default function LaporanIndex({ auth, units }) {
                                 );
                             })()}
 
+                            {activePreview.report_type === 'rekap_kehadiran_harian' && previewData.matrix && (() => {
+                                const mx = previewData.matrix;
+                                const dayShort = (ds) => {
+                                    const dt = new Date(ds + 'T00:00:00');
+                                    return ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][dt.getDay()];
+                                };
+                                const dateLabel = (ds) => {
+                                    const dt = new Date(ds + 'T00:00:00');
+                                    return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+                                };
+                                const LETTER_NAMES = { H: 'Hadir', T: 'Telat', S: 'Sakit', I: 'Izin', C: 'Cuti', A: 'Alpa' };
+                                return (
+                                    <div className="overflow-x-auto">
+                                        <div className="px-4 py-2 text-xs text-text-muted bg-surface border-b border-border italic">
+                                            % Kehadiran = (Hadir + Telat) / Hari Kerja &times; 100 &mdash; 1 sel = 1 status per tanggal.
+                                        </div>
+                                        <table className="min-w-full divide-y divide-border">
+                                            <thead className="bg-surface">
+                                                <tr>
+                                                    <th className="sticky left-0 z-10 bg-surface px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Nama Pegawai</th>
+                                                    {mx.dates.map((ds) => (
+                                                        <th key={ds} className="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider text-text-muted">
+                                                            <div>{dayShort(ds)}</div>
+                                                            <div className="font-extrabold text-text-secondary">{dateLabel(ds)}</div>
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border bg-white">
+                                                {mx.rows.map((r) => (
+                                                    <tr key={r.id ?? r.nama} className="transition-colors hover:bg-surface">
+                                                        <td
+                                                            className="sticky left-0 z-10 bg-white px-4 py-2.5 text-sm font-semibold text-primary whitespace-nowrap cursor-pointer hover:underline"
+                                                            onClick={() => {
+                                                                if (!r.id) return;
+                                                                router.get(route('laporan.rekap-detail'), {
+                                                                    pegawai_id: r.id,
+                                                                    start_date: activePreview.start_date,
+                                                                    end_date: activePreview.end_date,
+                                                                });
+                                                            }}
+                                                        >
+                                                            {r.nama}
+                                                        </td>
+                                                        {mx.dates.map((ds) => {
+                                                            const letter = r.cells[ds];
+                                                            return (
+                                                                <td key={ds} className="px-1 py-1.5 text-center" title={letter && LETTER_NAMES[letter] ? LETTER_NAMES[letter] : 'Tanpa record'}>
+                                                                    <span className={`inline-flex min-w-[2.2rem] items-center justify-center rounded-lg px-1.5 py-1 text-[11px] font-bold ${LETTER_STYLES[letter] || 'bg-border/40 text-text-muted'}`}>
+                                                                        {letter || '—'}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                ))}
+                                                {mx.rows.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={mx.dates.length + 1} className="px-4 py-10 text-center text-sm text-text-muted">
+                                                            Tidak ada data kehadiran untuk periode ini.
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                        <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border px-6 py-3 text-xs text-text-secondary">
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-green-400" /> H Hadir</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-amber-400" /> T Telat</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-indigo-400" /> S Sakit</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-sky-400" /> I Izin</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-violet-400" /> C Cuti</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-red-400" /> A Alpa</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-border" /> — Tanpa record</span>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
                             {activePreview.report_type === 'presensi' && (() => {
                                 const s = computePresensiSummary(previewData.data, previewData.headings);
                                 const segs = [
@@ -518,7 +662,7 @@ export default function LaporanIndex({ auth, units }) {
                                 );
                             })()}
 
-                            {activePreview.report_type === 'rekap_kehadiran' && previewData.summary && (() => {
+                            {['rekap_kehadiran', 'rekap_kehadiran_harian'].includes(activePreview.report_type) && previewData.summary && (() => {
                                 const s = previewData.summary;
                                 return (
                                     <div className="px-6 py-5">
@@ -596,7 +740,7 @@ export default function LaporanIndex({ auth, units }) {
                             </div>
                             )}
 
-                            {activePreview.report_type !== 'rekap_kehadiran' && !(activePreview.report_type === 'rekap_mengajar' && viewMode === 'kalender') && (
+                            {!['rekap_kehadiran', 'rekap_kehadiran_harian'].includes(activePreview.report_type) && !(activePreview.report_type === 'rekap_mengajar' && viewMode === 'kalender') && (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface">

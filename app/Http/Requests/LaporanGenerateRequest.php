@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Validator;
 
 class LaporanGenerateRequest extends FormRequest
 {
@@ -31,7 +33,7 @@ class LaporanGenerateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => 'required|in:presensi,penggajian,lemburan,rekap_mengajar,rekap_kehadiran',
+            'type' => 'required|in:presensi,penggajian,lemburan,rekap_mengajar,rekap_kehadiran,rekap_kehadiran_harian',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
@@ -46,7 +48,7 @@ class LaporanGenerateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'type.in' => 'Tipe laporan harus salah satu dari: presensi, penggajian, lemburan',
+            'type.in' => 'Tipe laporan harus salah satu dari: presensi, penggajian, lemburan, rekap_mengajar, rekap_kehadiran, rekap_kehadiran_harian',
             'start_date.required' => 'Tanggal awal harus diisi',
             'end_date.required' => 'Tanggal akhir harus diisi',
             'end_date.after_or_equal' => 'Tanggal akhir harus sama atau setelah tanggal awal',
@@ -54,6 +56,28 @@ class LaporanGenerateRequest extends FormRequest
             'jenis_filter.in' => 'Jenis pegawai harus salah satu dari: pendidik, kependidikan',
             'tipe_filter.in' => 'Tipe presensi harus salah satu dari: kantor, mengajar',
         ];
+    }
+
+    /**
+     * Rekap Kehadiran Harian (matriks) maksimal 31 hari per generate —
+     * kolom per tanggal, lebar Excel/PDF & memori DOMPDF terbatas.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            if ($this->input('type') !== 'rekap_kehadiran_harian') {
+                return;
+            }
+            if (! $this->filled('start_date') || ! $this->filled('end_date')) {
+                return;
+            }
+
+            $start = Carbon::parse($this->input('start_date'));
+            $end = Carbon::parse($this->input('end_date'));
+            if (abs($end->diffInDays($start)) > 30) {
+                $validator->errors()->add('end_date', 'Rekap Kehadiran Harian maksimal 31 hari per generate. Pecah periode menjadi beberapa generate.');
+            }
+        });
     }
 
     /**

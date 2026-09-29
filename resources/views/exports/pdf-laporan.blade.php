@@ -39,7 +39,7 @@
     <div class="doc-title">{{ $title }}</div>
     <div class="doc-meta">Periode: {{ $periodeStr }} &nbsp;|&nbsp; Unit: {{ $unitName }}</div>
 
-    @if($type === 'rekap_kehadiran')
+    @if(in_array($type, ['rekap_kehadiran', 'rekap_kehadiran_harian']))
     <div style="font-size:9px;color:#6b7280;font-style:italic;margin-bottom:6px;">
         % Kehadiran = (Hadir + Telat) / Hari Kerja &times; 100 &mdash; Sakit, Izin, Cuti, Alpa tidak dihitung sebagai hadir.
     </div>
