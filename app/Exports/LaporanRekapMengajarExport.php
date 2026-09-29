@@ -33,14 +33,17 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
 
     protected $jenis;
 
+    protected $search;
+
     protected $weeks = [];
 
-    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null)
+    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $search = null)
     {
         $this->start_date = $start_date;
         $this->end_date = $end_date;
         $this->unit_id = $unit_id;
         $this->jenis = $jenis;
+        $this->search = $search;
 
         // Minggu dihitung di constructor (bukan collection) supaya headings()
         // — yang dipanggil Maatwebsite SEBELUM iterasi collection — sudah
@@ -80,6 +83,10 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
             $query->whereHas('pegawai', fn ($q) => $q->guru());
         } elseif ($this->jenis === 'kependidikan') {
             $query->whereHas('pegawai', fn ($q) => $q->nonGuru());
+        }
+
+        if ($this->search !== null && $this->search !== '') {
+            $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', '%'.$this->search.'%'));
         }
 
         $rows = $query->get();
@@ -164,6 +171,10 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
             $rawQuery->whereHas('pegawai', fn ($q) => $q->guru());
         } elseif ($this->jenis === 'kependidikan') {
             $rawQuery->whereHas('pegawai', fn ($q) => $q->nonGuru());
+        }
+
+        if ($this->search !== null && $this->search !== '') {
+            $rawQuery->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', '%'.$this->search.'%'));
         }
 
         foreach ($rawQuery->get() as $c) {

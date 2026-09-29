@@ -27,12 +27,15 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
 
     protected $jenis;
 
-    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null)
+    protected $search;
+
+    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $search = null)
     {
         $this->start_date = $start_date;
         $this->end_date = $end_date;
         $this->unit_id = $unit_id;
         $this->jenis = $jenis;
+        $this->search = $search;
     }
 
     public function collection()
@@ -59,6 +62,10 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
             $query->whereHas('pegawai', fn ($q) => $q->guru());
         } elseif ($this->jenis === 'kependidikan') {
             $query->whereHas('pegawai', fn ($q) => $q->nonGuru());
+        }
+
+        if ($this->search !== null && $this->search !== '') {
+            $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', '%'.$this->search.'%'));
         }
 
         return $query->orderByRaw('LOWER(nama_lengkap) asc')

@@ -54,19 +54,20 @@ class LaporanController extends Controller
 
         $jenis = $validated['jenis_filter'] ?? null;
         $tipe = $validated['tipe_filter'] ?? null;
+        $search = $validated['search'] ?? null;
         $export = null;
         if ($validated['type'] === 'presensi') {
-            $export = new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $tipe);
+            $export = new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $tipe, $search);
         } elseif ($validated['type'] === 'penggajian') {
-            $export = new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
+            $export = new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search);
         } elseif ($validated['type'] === 'lemburan') {
-            $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
+            $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search);
         } elseif ($validated['type'] === 'rekap_mengajar') {
-            $export = new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
+            $export = new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search);
         } elseif ($validated['type'] === 'rekap_kehadiran') {
-            $export = new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
+            $export = new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search);
         } elseif ($validated['type'] === 'rekap_kehadiran_harian') {
-            $export = new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $jenis);
+            $export = new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search);
         }
 
         if (! $export) {
@@ -116,7 +117,7 @@ class LaporanController extends Controller
         $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null),
+            new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null, $validated['search'] ?? null),
             'Laporan_Presensi_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -128,7 +129,7 @@ class LaporanController extends Controller
         $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
+            new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
             'Laporan_Rekap_Mengajar_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -140,7 +141,7 @@ class LaporanController extends Controller
         $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
+            new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
             'Laporan_Rekap_Kehadiran_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -152,7 +153,7 @@ class LaporanController extends Controller
         $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
+            new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
             'Laporan_Rekap_Kehadiran_Harian_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -164,7 +165,7 @@ class LaporanController extends Controller
         $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
+            new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
             'Laporan_Rekap_Gaji_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -176,7 +177,7 @@ class LaporanController extends Controller
         $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
+            new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
             'Laporan_Lemburan_Potongan_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -190,12 +191,12 @@ class LaporanController extends Controller
         set_time_limit(300);
 
         $export = match ($type) {
-            'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null),
-            'penggajian' => new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
-            'lemburan' => new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
-            'rekap_mengajar' => new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
-            'rekap_kehadiran' => new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
-            'rekap_kehadiran_harian' => new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null),
+            'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null, $validated['search'] ?? null),
+            'penggajian' => new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
+            'lemburan' => new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
+            'rekap_mengajar' => new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
+            'rekap_kehadiran' => new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
+            'rekap_kehadiran_harian' => new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
         };
 
         $rows = $export->collection()->map(fn ($item) => $export->map($item))->all();

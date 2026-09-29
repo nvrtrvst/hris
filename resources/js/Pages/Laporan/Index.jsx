@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
-import { Building2, Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users } from 'lucide-react';
+import { Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users, X } from 'lucide-react';
 import axios from 'axios';
+import ComboSelect from '@/Components/ComboSelect';
 
 const Field = ({ label, children }) => (
     <div>
@@ -100,7 +101,8 @@ export default function LaporanIndex({ auth, units }) {
         report_type: 'presensi',
         unit_sekolah_id: isSuperadmin ? '' : (userUnitId || ''),
         jenis_filter: '',
-        tipe_filter: ''
+        tipe_filter: '',
+        search: ''
     });
 
     const [previewData, setPreviewData] = useState(null);
@@ -118,7 +120,8 @@ export default function LaporanIndex({ auth, units }) {
                     end_date: filter.end_date,
                     unit_sekolah_id: filter.unit_sekolah_id,
                     jenis_filter: filter.jenis_filter,
-                    tipe_filter: filter.tipe_filter
+                    tipe_filter: filter.tipe_filter,
+                    search: filter.search
                 }
             });
             setPreviewData(res.data);
@@ -165,6 +168,9 @@ export default function LaporanIndex({ auth, units }) {
         if (filter.tipe_filter) {
             params.append('tipe_filter', filter.tipe_filter);
         }
+        if (filter.search) {
+            params.append('search', filter.search);
+        }
 
         window.location.href = `${url}?${params.toString()}`;
     };
@@ -187,6 +193,7 @@ export default function LaporanIndex({ auth, units }) {
             params.append('end_date', filter.end_date);
             if (filter.unit_sekolah_id) params.append('unit_id', filter.unit_sekolah_id);
             if (filter.jenis_filter) params.append('jenis_filter', filter.jenis_filter);
+            if (filter.search) params.append('search', filter.search);
 
             try {
                 const res = await fetch(`${url}?${params.toString()}`);
@@ -226,6 +233,9 @@ export default function LaporanIndex({ auth, units }) {
         }
         if (filter.tipe_filter) {
             params.append('tipe_filter', filter.tipe_filter);
+        }
+        if (filter.search) {
+            params.append('search', filter.search);
         }
 
         try {
@@ -327,21 +337,16 @@ export default function LaporanIndex({ auth, units }) {
                                 </div>
                             </Field>
                             <Field label="Unit Sekolah">
-                                <div className="relative">
-                                    <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <select
-                                        className="select-field pl-9"
-                                        value={filter.unit_sekolah_id}
-                                        disabled={!isSuperadmin}
-                                        onChange={(e) => setFilter({ ...filter, unit_sekolah_id: e.target.value })}
-                                    >
-                                        {!isSuperadmin && <option value={userUnitId}>{units.find((u) => u.id === userUnitId)?.nama || 'Unit Saya'}</option>}
-                                        {isSuperadmin && <option value="">-- Semua Unit Sekolah --</option>}
-                                        {units.map((u) => (
-                                            <option key={u.id} value={u.id}>{u.nama}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <ComboSelect
+                                    value={filter.unit_sekolah_id}
+                                    onChange={(v) => setFilter({ ...filter, unit_sekolah_id: v })}
+                                    options={[
+                                        ...(isSuperadmin ? [{ value: '', label: '-- Semua Unit Sekolah --' }] : []),
+                                        ...units.map((u) => ({ value: u.id, label: u.nama }))
+                                    ]}
+                                    disabled={!isSuperadmin}
+                                    placeholder={isSuperadmin ? 'Ketik untuk cari unit…' : 'Unit saya'}
+                                />
                             </Field>
                             <Field label="Jenis Pegawai (Opsional)">
                                 <div className="relative">
@@ -355,6 +360,28 @@ export default function LaporanIndex({ auth, units }) {
                                         <option value="pendidik">Pendidik (Guru)</option>
                                         <option value="kependidikan">Tenaga Kependidikan</option>
                                     </select>
+                                </div>
+                            </Field>
+                            <Field label="Cari Nama Pegawai">
+                                <div className="relative">
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                    <input
+                                        type="text"
+                                        className="input-field pl-9 pr-9"
+                                        placeholder="Nama pegawai…"
+                                        value={filter.search}
+                                        onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                                    />
+                                    {filter.search && (
+                                        <button
+                                            type="button"
+                                            aria-label="Bersihkan pencarian"
+                                            onClick={() => setFilter({ ...filter, search: '' })}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-text-muted hover:bg-black/5 hover:text-primary"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </Field>
                             {filter.report_type === 'presensi' && (

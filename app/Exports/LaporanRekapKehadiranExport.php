@@ -31,15 +31,18 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
 
     protected $jenis;
 
+    protected $search;
+
     /** @var Collection<int, array{pegawai: Pegawai, hadir: int, telat: int, sakit: int, izin: int, cuti: int, alpa: int, hariKerja: int}> */
     protected $rekap;
 
-    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null)
+    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $search = null)
     {
         $this->start_date = $start_date;
         $this->end_date = $end_date;
         $this->unit_id = $unit_id;
         $this->jenis = $jenis;
+        $this->search = $search;
 
         $this->buildRekap();
     }
@@ -65,6 +68,10 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             $query->whereHas('pegawai', fn ($q) => $q->guru());
         } elseif ($this->jenis === 'kependidikan') {
             $query->whereHas('pegawai', fn ($q) => $q->nonGuru());
+        }
+
+        if ($this->search !== null && $this->search !== '') {
+            $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', '%'.$this->search.'%'));
         }
 
         $rows = $query->get(['pegawai_id', 'tanggal', 'status', 'jadwal_id', 'unit_sekolah_id']);

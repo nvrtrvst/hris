@@ -1,9 +1,21 @@
+import { useMemo, useState } from 'react';
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOption, ComboboxOptions, Label, Field } from '@headlessui/react'
 import { ChevronDown, Check } from 'lucide-react'
 
-export default function ComboSelect({ label, value, onChange, options, placeholder, error, required }) {
-    const optionList = typeof options === 'function' ? [] : (options || []);
-    const selected = optionList.find(o => o.value === value) || null;
+export default function ComboSelect({ label, value, onChange, options, placeholder, error, required, disabled }) {
+    const [query, setQuery] = useState('');
+    const fullList = typeof options === 'function' ? [] : (options || []);
+    const optionList = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) return fullList;
+        return fullList.filter(o => String(o.label ?? '').toLowerCase().includes(q));
+    }, [fullList, query]);
+    const selected = fullList.find(o => o.value === value) || null;
+
+    const select = (opt) => {
+        setQuery('');
+        onChange(opt ? opt.value : '');
+    };
 
     return (
         <Field>
@@ -12,17 +24,16 @@ export default function ComboSelect({ label, value, onChange, options, placehold
                     {label} {required && <span className="text-rose-500">*</span>}
                 </Label>
             )}
-            <Combobox
-                value={selected}
-                onChange={(opt) => onChange(opt ? opt.value : '')}
-            >
+            <Combobox value={selected} onChange={select}>
                 <div className="relative">
                     <ComboboxInput
-                        placeholder={placeholder || 'Pilih…'}
-                        className="w-full rounded-xl border-border bg-surface px-4 py-2.5 pr-10 text-sm text-primary ring-1 ring-black/5 placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder={placeholder || 'Ketik untuk mencari…'}
+                        disabled={disabled}
+                        className="w-full rounded-xl border-border bg-surface px-4 py-2.5 pr-10 text-sm text-primary ring-1 ring-black/5 placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
                         displayValue={(opt) => opt?.label || ''}
+                        onChange={(e) => setQuery(e.target.value)}
                     />
-                    <ComboboxButton className="group absolute inset-y-0 right-0 px-2.5">
+                    <ComboboxButton className="group absolute inset-y-0 right-0 px-2.5" disabled={disabled}>
                         <ChevronDown className="h-4 w-4 text-text-secondary group-data-open:rotate-180 transition-transform" />
                     </ComboboxButton>
                 </div>
@@ -30,6 +41,11 @@ export default function ComboSelect({ label, value, onChange, options, placehold
                     anchor="bottom"
                     className="z-50 mt-1 w-(--input-width) rounded-xl border border-border bg-white p-1 shadow-lg empty:invisible"
                 >
+                    {optionList.length === 0 && (
+                        <ComboboxOption disabled value="" className="px-3 py-2 text-sm text-text-secondary">
+                            Tidak ditemukan
+                        </ComboboxOption>
+                    )}
                     {optionList.map((opt) => (
                         <ComboboxOption
                             key={opt.value}

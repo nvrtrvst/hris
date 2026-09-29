@@ -39,6 +39,7 @@ class LaporanGenerateRequest extends FormRequest
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
             'jenis_filter' => 'nullable|in:pendidik,kependidikan',
             'tipe_filter' => 'nullable|in:kantor,mengajar',
+            'search' => 'nullable|string|max:100',
         ];
     }
 
@@ -55,6 +56,7 @@ class LaporanGenerateRequest extends FormRequest
             'unit_sekolah_id.exists' => 'Unit sekolah tidak ditemukan',
             'jenis_filter.in' => 'Jenis pegawai harus salah satu dari: pendidik, kependidikan',
             'tipe_filter.in' => 'Tipe presensi harus salah satu dari: kantor, mengajar',
+            'search.max' => 'Kata kunci pencarian maksimal 100 karakter',
         ];
     }
 

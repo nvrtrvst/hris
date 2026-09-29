@@ -29,13 +29,16 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
     protected $tipe;
 
-    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $tipe = null)
+    protected $search;
+
+    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $tipe = null, $search = null)
     {
         $this->start_date = $start_date;
         $this->end_date = $end_date;
         $this->unit_id = $unit_id;
         $this->jenis = $jenis;
         $this->tipe = $tipe;
+        $this->search = $search;
     }
 
     public function collection()
@@ -50,6 +53,10 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
         $this->applyJenisFilter($query);
         $this->applyTipeFilter($query);
+
+        if ($this->search !== null && $this->search !== '') {
+            $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', '%'.$this->search.'%'));
+        }
 
         return $query->orderBy('tanggal', 'asc')
             ->orderByRaw('LOWER(nama_lengkap) asc')
