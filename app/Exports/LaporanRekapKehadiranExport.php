@@ -55,7 +55,8 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         // 1. Fetch presensi rows.
         $query = Presensi::with(['pegawai.jabatans', 'pegawai.units'])
             ->whereBetween('tanggal', [$this->start_date, $this->end_date])
-            ->where('is_lembur', false);
+            ->where('is_lembur', false)
+            ->whereNull('jadwal_id');   // kehadiran harian saja
 
         if ($this->unit_id) {
             $query->where('unit_sekolah_id', $this->unit_id);
@@ -117,7 +118,8 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         // Group by tanggal, pick best record per date.
         return $rows
             ->groupBy(fn ($p) => $p->tanggal instanceof \DateTimeInterface ? $p->tanggal->format('Y-m-d') : (string) $p->tanggal)
-            ->map(fn ($dateRows) => $dateRows->sortBy(fn ($p) => $priority[$p->status] ?? 9)->first())
+            // ->map(fn ($dateRows) => $dateRows->sortBy(fn ($p) => $priority[$p->status] ?? 9)->first())
+            ->sortBy(fn ($p) => [$p->status === 'sakit' || $p->status === 'izin' || $p->status === 'cuti' ? 0 : 1, $p->jam_masuk ?? '99:99:99'])
             ->values();
     }
 
@@ -265,7 +267,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells("A2:{$lastCol}2");
-                $sheet->setCellValue('A2', 'LAPORAN REKAPITULASI KEHADIRAN');
+                $sheet->setCellValue('A2', 'LAPORAN REKAPITULASI KEHADIRAN HARIAN');
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
