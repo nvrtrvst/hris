@@ -903,6 +903,88 @@ class JadwalController extends Controller
         });
     }
 
+    /**
+     * Tukar slot waktu: pemilik + mapel + kelas tetap, yang bertukar hanya
+     * hari/jam_mulai/jam_selesai antar 2 jadwal. Satu unit wajib; satu
+     * pemilik = rearrange valid. Semua gagal → throw (rollback atomik).
+     */
+    public function swapSlot(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('manage_jadwal')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'jadwal_a_id' => 'required|exists:jadwal,id',
+            'jadwal_b_id' => 'required|exists:jadwal,id|different:jadwal_a_id',
+        ]);
+
+        return DB::transaction(function () use ($validated, $user) {
+            $rows = Jadwal::whereIn('id', [$validated['jadwal_a_id'], $validated['jadwal_b_id']])
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            if ($rows->count() !== 2) {
+                abort(404);
+            }
+            $x = $rows[$validated['jadwal_a_id']];
+            $y = $rows[$validated['jadwal_b_id']];
+
+            if ($x->unit_sekolah_id !== $y->unit_sekolah_id) {
+                throw ValidationException::withMessages(['conflict' => 'Tukar slot hanya bisa dalam satu unit yang sama.']);
+            }
+            if ($user->unit_sekolah_id && ! $user->can('view_all_units') && $x->unit_sekolah_id !== $user->unit_sekolah_id) {
+                abort(403, 'Akses ditolak. Tidak bisa menukar lintas unit tanpa akses Superadmin.');
+            }
+            if ($x->hari === $y->hari && $x->jam_mulai === $y->jam_mulai && $x->jam_selesai === $y->jam_selesai) {
+                throw ValidationException::withMessages(['conflict' => 'Kedua jadwal sudah berada di slot waktu yang sama.']);
+            }
+
+            // Bentrok: slot baru masing-masing (= slot lawan) vs jadwal lain miliknya sendiri.
+            $conflictX = Jadwal::where('pegawai_id', $x->pegawai_id)
+                ->where('hari', $y->hari)
+                ->where('id', '!=', $x->id)
+                ->where(fn ($q) => $q->where('jam_mulai', '<', $y->jam_selesai)
+                    ->where('jam_selesai', '>', $y->jam_mulai))
+                ->exists();
+            if ($conflictX) {
+                throw ValidationException::withMessages(['conflict' => 'Tukar slot gagal! Jadwal milik pegawai A bentrok dengan slot tujuan.']);
+            }
+
+            $conflictY = Jadwal::where('pegawai_id', $y->pegawai_id)
+                ->where('hari', $x->hari)
+                ->where('id', '!=', $y->id)
+                ->where(fn ($q) => $q->where('jam_mulai', '<', $x->jam_selesai)
+                    ->where('jam_selesai', '>', $x->jam_mulai))
+                ->exists();
+            if ($conflictY) {
+                throw ValidationException::withMessages(['conflict' => 'Tukar slot gagal! Jadwal milik pegawai B bentrok dengan slot tujuan.']);
+            }
+
+            // Batas jam mengajar mingguan (durasi slot bisa beda) — per sisi, jenis masing-masing baris.
+            if ($x->jenis_jadwal === 'mengajar') {
+                $exceeded = $this->exceedsWeeklyHourLimit($x->pegawai_id, $x->unit_sekolah_id, $y->jam_mulai, $y->jam_selesai, $x->id);
+                if ($exceeded) {
+                    throw ValidationException::withMessages(['conflict' => 'Tukar slot gagal! '.$exceeded]);
+                }
+            }
+            if ($y->jenis_jadwal === 'mengajar') {
+                $exceeded = $this->exceedsWeeklyHourLimit($y->pegawai_id, $y->unit_sekolah_id, $x->jam_mulai, $x->jam_selesai, $y->id);
+                if ($exceeded) {
+                    throw ValidationException::withMessages(['conflict' => 'Tukar slot gagal! '.$exceeded]);
+                }
+            }
+
+            $slotX = ['hari' => $x->hari, 'jam_mulai' => $x->jam_mulai, 'jam_selesai' => $x->jam_selesai];
+            $x->update(['hari' => $y->hari, 'jam_mulai' => $y->jam_mulai, 'jam_selesai' => $y->jam_selesai]);
+            $y->update($slotX);
+
+            $this->clearJadwalCache($x->pegawai_id);
+            $this->clearJadwalCache($y->pegawai_id);
+
+            return redirect()->route('jadwal.index')->with('message', 'Slot waktu berhasil ditukar!');
+        });
+    }
+
     public function destroy(string $id)
     {
         $user = auth()->user();

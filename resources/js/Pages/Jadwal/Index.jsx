@@ -154,6 +154,13 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
     const [bulkUnit, setBulkUnit] = useState('');
     const [bulkPairs, setBulkPairs] = useState([{ asal: '', tujuan: '' }]);
 
+    // Modal Tukar Slot waktu (hari+jam, pemilik & mapel tetap)
+    const [showSlotModal, setShowSlotModal] = useState(false);
+    const [slotUnit, setSlotUnit] = useState('');
+    const [slotA, setSlotA] = useState('');
+    const [slotB, setSlotB] = useState('');
+    const [slotSubmitting, setSlotSubmitting] = useState(false);
+
     // Modal Import
     const [showImportModal, setShowImportModal] = useState(false);
     const [importMode, setImportMode] = useState('excel');
@@ -297,6 +304,12 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showBulkModal, bulkUnit]);
 
+    useEffect(() => {
+        if (!showSlotModal || !slotUnit) return;
+        fetchSwapCandidates(Number(slotUnit));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showSlotModal, slotUnit]);
+
     const buildParams = (overrides = {}) => ({
         unit_sekolah_id: unitFilter,
         kelas_label: kelasFilter,
@@ -386,6 +399,22 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
             pairs: pairs.map((p) => ({ jadwal_asal_id: p.asal, jadwal_tujuan_id: p.tujuan })),
         }, {
             onSuccess: () => setShowBulkModal(false),
+        });
+    };
+
+    const handleSwapSlot = () => {
+        if (!slotA || !slotB) return;
+        setSlotSubmitting(true);
+        router.post(route('jadwal.swap-slot'), {
+            jadwal_a_id: slotA,
+            jadwal_b_id: slotB,
+        }, {
+            onSuccess: () => {
+                setShowSlotModal(false);
+                setSlotA('');
+                setSlotB('');
+            },
+            onFinish: () => setSlotSubmitting(false),
         });
     };
 
@@ -521,6 +550,15 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                             className="btn-secondary btn-sm flex items-center gap-1.5"
                                         >
                                             <ArrowLeftRight className="h-3.5 w-3.5" /> Tukar Banyak
+                                        </button>
+                                    )}
+                                    {canMutateJadwal && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { setSlotUnit(unitFilter || units[0]?.id || ''); setSlotA(''); setSlotB(''); setShowSlotModal(true); }}
+                                            className="btn-secondary btn-sm flex items-center gap-1.5"
+                                        >
+                                            <Clock3 className="h-3.5 w-3.5" /> Tukar Slot
                                         </button>
                                     )}
                                     {canMutateJadwal && (
@@ -1204,6 +1242,13 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                         >
                                             Tukar banyak →
                                         </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setShowSwapModal(false); setSlotUnit(unitFilter || units[0]?.id || ''); setSlotA(''); setSlotB(''); setShowSlotModal(true); }}
+                                            className="text-primary font-semibold hover:underline"
+                                        >
+                                            Tukar slot →
+                                        </button>
                                     </div>
                                     <div className="flex gap-3">
                                         <button type="button" onClick={() => setShowSwapModal(false)} className="btn-secondary">
@@ -1445,6 +1490,107 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     >
                                         <ArrowLeftRight className="h-4 w-4 mr-1.5" />
                                         Eksekusi Tukar Semua
+                                    </button>
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
+
+                    {/* ─── MODAL: Tukar Slot waktu (pemilik & mapel tetap) ─── */}
+                    {canMutateJadwal && (
+                        <Modal show={showSlotModal} onClose={() => setShowSlotModal(false)} maxWidth="lg">
+                            <div className="px-6 py-5">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-primary">Tukar Slot Waktu</h3>
+                                        <p className="text-sm text-text-secondary">Guru, mapel, dan kelas tetap — yang bertukar hanya hari & jam pelajaran.</p>
+                                    </div>
+                                    <Clock3 className="h-5 w-5 text-primary shrink-0" />
+                                </div>
+
+                                {errors?.conflict && (
+                                    <div className="mb-4 p-3 bg-danger-light border border-danger/30 rounded-card text-sm text-danger">
+                                        {errors.conflict}
+                                    </div>
+                                )}
+
+                                <div className="mb-4">
+                                    <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Unit Sekolah</label>
+                                    <select value={slotUnit} onChange={(e) => { setSlotUnit(e.target.value); setSlotA(''); setSlotB(''); }} className="select-field">
+                                        {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
+                                    </select>
+                                </div>
+
+                                {!swapCandidates && swapLoading && (
+                                    <p className="text-sm text-text-muted py-4 text-center">Memuat daftar jadwal…</p>
+                                )}
+                                {swapError && !swapCandidates && (
+                                    <p className="text-sm text-danger py-4 text-center">{swapError}</p>
+                                )}
+
+                                {swapCandidates && (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Jadwal A</label>
+                                                <select value={slotA} onChange={(e) => setSlotA(e.target.value)} className="select-field text-xs">
+                                                    <option value="">— Pilih —</option>
+                                                    {swapCandidates.jadwals
+                                                        .filter((j) => j.id !== Number(slotB))
+                                                        .map((j) => <option key={j.id} value={j.id}>{jadwalOptionLabel(j)}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Jadwal B</label>
+                                                <select value={slotB} onChange={(e) => setSlotB(e.target.value)} className="select-field text-xs">
+                                                    <option value="">— Pilih —</option>
+                                                    {swapCandidates.jadwals
+                                                        .filter((j) => j.id !== Number(slotA))
+                                                        .map((j) => <option key={j.id} value={j.id}>{jadwalOptionLabel(j)}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {slotA && slotB && (() => {
+                                            const ax = candJadwalById.get(Number(slotA));
+                                            const bx = candJadwalById.get(Number(slotB));
+                                            if (!ax || !bx) return null;
+
+                                            return (
+                                                <div className="mb-4 p-3 bg-info-light border border-info/30 rounded-card">
+                                                    <p className="text-xs font-bold text-info uppercase tracking-wider mb-2">Preview Slot Baru</p>
+                                                    <div className="space-y-1 text-sm">
+                                                        <div>
+                                                            <span className="font-semibold text-text-primary">{candNamaById.get(ax.pegawai_id) || '?'} ({ax.mapel_nama || ax.jenis_jadwal}):</span>{' '}
+                                                            <span className="text-text-muted">{ax.hari} {String(ax.jam_mulai || '').substring(0, 5)}-{String(ax.jam_selesai || '').substring(0, 5)}</span>
+                                                            {' → '}
+                                                            <span className="font-semibold text-text-primary">{bx.hari} {String(bx.jam_mulai || '').substring(0, 5)}-{String(bx.jam_selesai || '').substring(0, 5)}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-semibold text-text-primary">{candNamaById.get(bx.pegawai_id) || '?'} ({bx.mapel_nama || bx.jenis_jadwal}):</span>{' '}
+                                                            <span className="text-text-muted">{bx.hari} {String(bx.jam_mulai || '').substring(0, 5)}-{String(bx.jam_selesai || '').substring(0, 5)}</span>
+                                                            {' → '}
+                                                            <span className="font-semibold text-text-primary">{ax.hari} {String(ax.jam_mulai || '').substring(0, 5)}-{String(ax.jam_selesai || '').substring(0, 5)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </>
+                                )}
+
+                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                    <button type="button" onClick={() => setShowSlotModal(false)} className="btn-secondary">
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleSwapSlot}
+                                        disabled={!slotA || !slotB || slotSubmitting}
+                                        className="btn-primary"
+                                    >
+                                        <ArrowLeftRight className="h-4 w-4 mr-1.5" />
+                                        {slotSubmitting ? 'Memproses…' : 'Eksekusi Tukar Slot'}
                                     </button>
                                 </div>
                             </div>
