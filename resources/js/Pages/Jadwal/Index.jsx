@@ -141,6 +141,19 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
     const [swapError, setSwapError] = useState('');
     const swapCache = useRef({});
 
+    // Modal Tukar Seharian (B)
+    const [showDayModal, setShowDayModal] = useState(false);
+    const [dayUnit, setDayUnit] = useState('');
+    const [dayA, setDayA] = useState('');
+    const [dayB, setDayB] = useState('');
+    const [dayHari, setDayHari] = useState([]);
+    const [daySubmitting, setDaySubmitting] = useState(false);
+
+    // Modal Tukar Banyak / multi-pasangan (A)
+    const [showBulkModal, setShowBulkModal] = useState(false);
+    const [bulkUnit, setBulkUnit] = useState('');
+    const [bulkPairs, setBulkPairs] = useState([{ asal: '', tujuan: '' }]);
+
     // Modal Import
     const [showImportModal, setShowImportModal] = useState(false);
     const [importMode, setImportMode] = useState('excel');
@@ -196,6 +209,23 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         return m;
     }, [swapCandidates]);
 
+    const candNamaById = useMemo(() => {
+        const m = new Map();
+        (swapCandidates?.pegawais || []).forEach((p) => m.set(p.id, p.nama_lengkap));
+
+        return m;
+    }, [swapCandidates]);
+
+    const candJadwalById = useMemo(() => {
+        const m = new Map();
+        (swapCandidates?.jadwals || []).forEach((j) => m.set(j.id, j));
+
+        return m;
+    }, [swapCandidates]);
+
+    const jadwalOptionLabel = (j) =>
+        `${candNamaById.get(j.pegawai_id) || `Pegawai #${j.pegawai_id}`} — ${j.hari} ${String(j.jam_mulai || '').substring(0, 5)}-${String(j.jam_selesai || '').substring(0, 5)} (${j.jenis_jadwal})`;
+
     // Index O(1): presensi mengajar hari ini per jadwal (badge live di matriks).
     const presensiByJadwal = useMemo(() => {
         const m = new Map();
@@ -225,21 +255,18 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchName]);
 
-    // Kandidat swap diambil lazy per unit asal — TIDAK ikut filter search matriks.
-    useEffect(() => {
-        if (!showSwapModal) return;
-        const asal = jadwalById.get(swapData.jadwal_asal_id);
-        const unitId = asal?.unit_sekolah_id;
-        // Tanpa filter unit di halaman (superadmin) → kandidat lintas unit, spt skrg.
-        const key = unitFilter ? `u${unitId}` : 'all';
+    // Kandidat swap diambil lazy per unit — TIDAK ikut filter search matriks.
+    const fetchSwapCandidates = (unitId) => {
+        const key = unitId ? `u${unitId}` : 'all';
         if (swapCache.current[key]) {
             setSwapCandidates(swapCache.current[key]);
+
             return;
         }
         setSwapLoading(true);
         setSwapError('');
         const params = new URLSearchParams();
-        if (unitFilter && unitId) params.append('unit_sekolah_id', unitId);
+        if (unitId) params.append('unit_sekolah_id', unitId);
         fetch(`${route('jadwal.swap-candidates')}?${params.toString()}`, { headers: { Accept: 'application/json' } })
             .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
             .then((data) => {
@@ -248,8 +275,27 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
             })
             .catch(() => setSwapError('Gagal memuat daftar pegawai. Tutup lalu buka ulang modal.'))
             .finally(() => setSwapLoading(false));
+    };
+
+    useEffect(() => {
+        if (!showSwapModal) return;
+        const asal = jadwalById.get(swapData.jadwal_asal_id);
+        // Tanpa filter unit di halaman (superadmin) → kandidat lintas unit, spt skrg.
+        fetchSwapCandidates(unitFilter && asal?.unit_sekolah_id ? asal.unit_sekolah_id : null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSwapModal, swapData.jadwal_asal_id]);
+
+    useEffect(() => {
+        if (!showDayModal || !dayUnit) return;
+        fetchSwapCandidates(Number(dayUnit));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showDayModal, dayUnit]);
+
+    useEffect(() => {
+        if (!showBulkModal || !bulkUnit) return;
+        fetchSwapCandidates(Number(bulkUnit));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showBulkModal, bulkUnit]);
 
     const buildParams = (overrides = {}) => ({
         unit_sekolah_id: unitFilter,
@@ -311,6 +357,35 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                 setSwapData({ jadwal_asal_id: '', jadwal_tujuan_id: '' });
                 setTargetPegawaiId('');
             },
+        });
+    };
+
+    const handleSwapHari = () => {
+        if (!dayA || !dayB || !dayHari.length) return;
+        setDaySubmitting(true);
+        router.post(route('jadwal.swap-hari'), {
+            pegawai_a_id: dayA,
+            pegawai_b_id: dayB,
+            hari: dayHari,
+            unit_sekolah_id: dayUnit,
+        }, {
+            onSuccess: () => {
+                setShowDayModal(false);
+                setDayA('');
+                setDayB('');
+                setDayHari([]);
+            },
+            onFinish: () => setDaySubmitting(false),
+        });
+    };
+
+    const handleSwapBulk = () => {
+        const pairs = bulkPairs.filter((p) => p.asal && p.tujuan);
+        if (!pairs.length) return;
+        router.post(route('jadwal.swap-bulk'), {
+            pairs: pairs.map((p) => ({ jadwal_asal_id: p.asal, jadwal_tujuan_id: p.tujuan })),
+        }, {
+            onSuccess: () => setShowBulkModal(false),
         });
     };
 
@@ -428,6 +503,24 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     {canMutateJadwal && (
                                         <button type="button" onClick={() => setShowImportModal(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
                                             <Upload className="h-3.5 w-3.5" /> Import Jadwal
+                                        </button>
+                                    )}
+                                    {canMutateJadwal && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { setDayUnit(unitFilter || units[0]?.id || ''); setShowDayModal(true); }}
+                                            className="btn-secondary btn-sm flex items-center gap-1.5"
+                                        >
+                                            <ArrowLeftRight className="h-3.5 w-3.5" /> Tukar Seharian
+                                        </button>
+                                    )}
+                                    {canMutateJadwal && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { setBulkUnit(unitFilter || units[0]?.id || ''); setBulkPairs([{ asal: '', tujuan: '' }]); setShowBulkModal(true); }}
+                                            className="btn-secondary btn-sm flex items-center gap-1.5"
+                                        >
+                                            <ArrowLeftRight className="h-3.5 w-3.5" /> Tukar Banyak
                                         </button>
                                     )}
                                     {canMutateJadwal && (
@@ -1095,17 +1188,263 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     );
                                 })()}
 
+                                <div className="flex justify-between items-center gap-3 pt-4 border-t border-border">
+                                    <div className="flex gap-3 text-xs">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setShowSwapModal(false); setDayUnit(unitFilter || units[0]?.id || ''); setShowDayModal(true); }}
+                                            className="text-primary font-semibold hover:underline"
+                                        >
+                                            Tukar seharian →
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setShowSwapModal(false); setBulkUnit(unitFilter || units[0]?.id || ''); setBulkPairs([{ asal: '', tujuan: '' }]); setShowBulkModal(true); }}
+                                            className="text-primary font-semibold hover:underline"
+                                        >
+                                            Tukar banyak →
+                                        </button>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button type="button" onClick={() => setShowSwapModal(false)} className="btn-secondary">
+                                            Batal
+                                        </button>
+                                        <button
+                                            onClick={handleSwap}
+                                            disabled={!swapData.jadwal_tujuan_id}
+                                            className="btn-primary"
+                                        >
+                                            <ArrowLeftRight className="h-4 w-4 mr-1.5" />
+                                            Eksekusi Tukar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
+
+                    {/* ─── MODAL: Tukar Seharian (B) ─── */}
+                    {canMutateJadwal && (
+                        <Modal show={showDayModal} onClose={() => setShowDayModal(false)} maxWidth="lg">
+                            <div className="px-6 py-5">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-primary">Tukar Seharian</h3>
+                                        <p className="text-sm text-text-secondary">Semua jadwal dua pegawai pada hari terpilih bertukar sekaligus (atomik).</p>
+                                    </div>
+                                    <ArrowLeftRight className="h-5 w-5 text-primary shrink-0" />
+                                </div>
+
+                                {errors?.conflict && (
+                                    <div className="mb-4 p-3 bg-danger-light border border-danger/30 rounded-card text-sm text-danger">
+                                        {errors.conflict}
+                                    </div>
+                                )}
+
+                                <div className="mb-4">
+                                    <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Unit Sekolah</label>
+                                    <select value={dayUnit} onChange={(e) => { setDayUnit(e.target.value); setDayA(''); setDayB(''); }} className="select-field">
+                                        {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
+                                    </select>
+                                </div>
+
+                                {!swapCandidates && swapLoading && (
+                                    <p className="text-sm text-text-muted py-4 text-center">Memuat daftar pegawai…</p>
+                                )}
+                                {swapError && !swapCandidates && (
+                                    <p className="text-sm text-danger py-4 text-center">{swapError}</p>
+                                )}
+
+                                {swapCandidates && (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Pegawai A</label>
+                                                <select value={dayA} onChange={(e) => setDayA(e.target.value)} className="select-field">
+                                                    <option value="">— Pilih —</option>
+                                                    {swapCandidates.pegawais
+                                                        .filter((p) => p.id !== Number(dayB))
+                                                        .map((p) => <option key={p.id} value={p.id}>{p.nama_lengkap}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Pegawai B</label>
+                                                <select value={dayB} onChange={(e) => setDayB(e.target.value)} className="select-field">
+                                                    <option value="">— Pilih —</option>
+                                                    {swapCandidates.pegawais
+                                                        .filter((p) => p.id !== Number(dayA))
+                                                        .map((p) => <option key={p.id} value={p.id}>{p.nama_lengkap}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Hari</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {DAYS.map((h) => {
+                                                    const checked = dayHari.includes(h);
+
+                                                    return (
+                                                        <button
+                                                            key={h}
+                                                            type="button"
+                                                            onClick={() => setDayHari(checked ? dayHari.filter((x) => x !== h) : [...dayHari, h])}
+                                                            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors cursor-pointer ${
+                                                                checked ? 'bg-primary text-white border-primary' : 'bg-surface border-border text-text-secondary hover:border-primary/40'
+                                                            }`}
+                                                        >
+                                                            {h}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {dayA && dayB && dayHari.length > 0 && (
+                                            <div className="mb-4 p-3 bg-info-light border border-info/30 rounded-card">
+                                                <p className="text-xs font-bold text-info uppercase tracking-wider mb-2">Preview</p>
+                                                {dayHari.map((h) => {
+                                                    const jadwals = swapCandidates.jadwals;
+                                                    const a = jadwals.filter((j) => j.pegawai_id === Number(dayA) && j.hari === h).length;
+                                                    const b = jadwals.filter((j) => j.pegawai_id === Number(dayB) && j.hari === h).length;
+
+                                                    return (
+                                                        <div key={h} className="text-sm text-text-primary flex justify-between">
+                                                            <span className="font-semibold">{h}</span>
+                                                            <span>{a} jadwal ↔ {b} jadwal</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
                                 <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                                    <button type="button" onClick={() => setShowSwapModal(false)} className="btn-secondary">
+                                    <button type="button" onClick={() => setShowDayModal(false)} className="btn-secondary">
                                         Batal
                                     </button>
                                     <button
-                                        onClick={handleSwap}
-                                        disabled={!swapData.jadwal_tujuan_id}
+                                        type="button"
+                                        onClick={handleSwapHari}
+                                        disabled={!dayA || !dayB || !dayHari.length || daySubmitting}
                                         className="btn-primary"
                                     >
                                         <ArrowLeftRight className="h-4 w-4 mr-1.5" />
-                                        Eksekusi Tukar
+                                        {daySubmitting ? 'Memproses…' : 'Eksekusi Tukar'}
+                                    </button>
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
+
+                    {/* ─── MODAL: Tukar Banyak / multi-pasangan (A) ─── */}
+                    {canMutateJadwal && (
+                        <Modal show={showBulkModal} onClose={() => setShowBulkModal(false)} maxWidth="2xl">
+                            <div className="px-6 py-5">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-primary">Tukar Banyak Jadwal</h3>
+                                        <p className="text-sm text-text-secondary">Beberapa pasangan tukar dalam 1 transaksi — satu gagal, semua batal.</p>
+                                    </div>
+                                    <ArrowLeftRight className="h-5 w-5 text-primary shrink-0" />
+                                </div>
+
+                                {errors?.conflict && (
+                                    <div className="mb-4 p-3 bg-danger-light border border-danger/30 rounded-card text-sm text-danger">
+                                        {errors.conflict}
+                                    </div>
+                                )}
+
+                                <div className="mb-4">
+                                    <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Unit Sekolah (sumber daftar)</label>
+                                    <select value={bulkUnit} onChange={(e) => setBulkUnit(e.target.value)} className="select-field">
+                                        {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
+                                    </select>
+                                </div>
+
+                                {!swapCandidates && swapLoading && (
+                                    <p className="text-sm text-text-muted py-4 text-center">Memuat daftar pegawai…</p>
+                                )}
+                                {swapError && !swapCandidates && (
+                                    <p className="text-sm text-danger py-4 text-center">{swapError}</p>
+                                )}
+
+                                {swapCandidates && (
+                                    <>
+                                        <div className="space-y-3 mb-4">
+                                            {bulkPairs.map((pair, idx) => {
+                                                const usedOther = bulkPairs
+                                                    .filter((_, i) => i !== idx)
+                                                    .flatMap((p) => [p.asal, p.tujuan])
+                                                    .filter(Boolean)
+                                                    .map(Number);
+                                                const options = swapCandidates.jadwals.filter((j) => !usedOther.includes(j.id));
+                                                const asalJ = candJadwalById.get(Number(pair.asal));
+                                                const tujuanJ = candJadwalById.get(Number(pair.tujuan));
+
+                                                return (
+                                                    <div key={idx} className="p-3 border border-border rounded-card bg-surface">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <span className="text-xs font-bold text-text-secondary">Pasangan #{idx + 1}</span>
+                                                            {bulkPairs.length > 1 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setBulkPairs(bulkPairs.filter((_, i) => i !== idx))}
+                                                                    className="text-xs text-danger font-semibold hover:underline cursor-pointer"
+                                                                >
+                                                                    Hapus
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <select value={pair.asal} onChange={(e) => setBulkPairs(bulkPairs.map((p, i) => (i === idx ? { ...p, asal: e.target.value, tujuan: p.tujuan === e.target.value ? '' : p.tujuan } : p)))} className="select-field text-xs">
+                                                                <option value="">— Jadwal asal —</option>
+                                                                {options.map((j) => <option key={j.id} value={j.id}>{jadwalOptionLabel(j)}</option>)}
+                                                            </select>
+                                                            <select value={pair.tujuan} onChange={(e) => setBulkPairs(bulkPairs.map((p, i) => (i === idx ? { ...p, tujuan: e.target.value } : p)))} className="select-field text-xs">
+                                                                <option value="">— Jadwal tujuan —</option>
+                                                                {options.filter((j) => j.id !== Number(pair.asal)).map((j) => <option key={j.id} value={j.id}>{jadwalOptionLabel(j)}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        {asalJ && tujuanJ && (
+                                                            <div className="mt-2 text-xs bg-info-light border border-info/30 rounded p-2">
+                                                                <span className="text-text-muted">{candNamaById.get(tujuanJ.pegawai_id) || '?'}</span> ←
+                                                                <span className="font-semibold text-text-primary"> {jadwalOptionLabel(asalJ)}</span>
+                                                                <span className="mx-2 text-text-muted">│</span>
+                                                                <span className="text-text-muted">{candNamaById.get(asalJ.pegawai_id) || '?'}</span> ←
+                                                                <span className="font-semibold text-text-primary"> {jadwalOptionLabel(tujuanJ)}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {bulkPairs.length < 20 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setBulkPairs([...bulkPairs, { asal: '', tujuan: '' }])}
+                                                className="btn-secondary btn-sm mb-4"
+                                            >
+                                                <Plus className="h-3.5 w-3.5 mr-1.5" /> Tambah Pasangan
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+
+                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                    <button type="button" onClick={() => setShowBulkModal(false)} className="btn-secondary">
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleSwapBulk}
+                                        disabled={!bulkPairs.some((p) => p.asal && p.tujuan)}
+                                        className="btn-primary"
+                                    >
+                                        <ArrowLeftRight className="h-4 w-4 mr-1.5" />
+                                        Eksekusi Tukar Semua
                                     </button>
                                 </div>
                             </div>

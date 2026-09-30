@@ -127,6 +127,12 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('jadwal/swap-candidates', [JadwalController::class, 'swapCandidates'])
         ->middleware('throttle:30,1')
         ->name('jadwal.swap-candidates');
+    Route::post('jadwal/swap-hari', [JadwalController::class, 'swapHari'])
+        ->middleware('throttle:30,1')
+        ->name('jadwal.swap-hari');
+    Route::post('jadwal/swap-bulk', [JadwalController::class, 'swapBulk'])
+        ->middleware('throttle:30,1')
+        ->name('jadwal.swap-bulk');
     Route::delete('jadwal/{jadwal}', [JadwalController::class, 'destroy'])
         ->middleware('throttle:60,1')
         ->name('jadwal.destroy');

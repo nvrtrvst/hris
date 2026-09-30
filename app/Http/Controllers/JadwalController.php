@@ -715,6 +715,185 @@ class JadwalController extends Controller
         ]);
     }
 
+    /**
+     * Tukar seharian: semua jadwal pegawai A ↔ B pada hari terpilih (unit sama)
+     * dalam satu transaksi atomik. All-or-nothing — satu pasangan gagal, semua batal.
+     */
+    public function swapHari(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('manage_jadwal')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'pegawai_a_id' => 'required|exists:pegawai,id',
+            'pegawai_b_id' => 'required|exists:pegawai,id|different:pegawai_a_id',
+            'hari' => 'required|array|min:1',
+            'hari.*' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu|distinct',
+            'unit_sekolah_id' => 'required|exists:unit_sekolah,id',
+        ]);
+
+        $unitId = ($user->unit_sekolah_id && ! $user->can('view_all_units'))
+            ? (int) $user->unit_sekolah_id
+            : (int) $validated['unit_sekolah_id'];
+        foreach (['pegawai_a_id', 'pegawai_b_id'] as $key) {
+            if (! $this->pegawaiBelongsToUnit($validated[$key], $unitId)) {
+                abort(403, 'Pegawai tidak terdaftar di unit ini.');
+            }
+        }
+
+        return DB::transaction(function () use ($validated, $unitId) {
+            $a = (int) $validated['pegawai_a_id'];
+            $b = (int) $validated['pegawai_b_id'];
+
+            // Kunci semua row terlibat urut id (anti-deadlock).
+            $ids = Jadwal::where(function ($q) use ($a, $b) {
+                $q->where('pegawai_id', $a)->orWhere('pegawai_id', $b);
+            })->whereIn('hari', $validated['hari'])
+                ->where('unit_sekolah_id', $unitId)
+                ->pluck('id')->sort()->values();
+            $rows = Jadwal::whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
+            $byPegHari = $rows->groupBy(fn ($j) => $j->pegawai_id.'|'.$j->hari);
+            $swapIds = $ids->all();
+
+            $unit = UnitSekolah::find($unitId);
+            $total = 0;
+            foreach ($validated['hari'] as $hari) {
+                $rowsA = $byPegHari->get($a.'|'.$hari, collect());
+                $rowsB = $byPegHari->get($b.'|'.$hari, collect());
+                if ($rowsA->isEmpty() || $rowsB->isEmpty()) {
+                    return back()->withErrors(['conflict' => "Hari {$hari}: salah satu pihak tidak punya jadwal di unit ini."]);
+                }
+
+                // Tiap row pindahan dicek vs row penerima yang TIDAK ikut pindah (unit mana pun, hari sama).
+                foreach ([[$rowsA, $b], [$rowsB, $a]] as [$incoming, $recipient]) {
+                    $staying = Jadwal::where('pegawai_id', $recipient)
+                        ->where('hari', $hari)
+                        ->whereNotIn('id', $swapIds)
+                        ->get();
+                    foreach ($incoming as $r) {
+                        $bentrok = $staying->first(fn ($s) => $s->jam_mulai < $r->jam_selesai && $s->jam_selesai > $r->jam_mulai);
+                        if ($bentrok) {
+                            return back()->withErrors(['conflict' => "Hari {$hari}: bentrok dengan jadwal {$bentrok->jam_mulai}-{$bentrok->jam_selesai} yang tidak ikut ditukar."]);
+                        }
+                    }
+                }
+
+                // Batas jam mengajar mingguan: existing (di luar set pindah) + incoming.
+                if ($unit?->max_jam_minggu) {
+                    foreach ([[$a, $rowsA, $rowsB], [$b, $rowsB, $rowsA]] as [$peg, $out, $in]) {
+                        $exist = Jadwal::where('pegawai_id', $peg)
+                            ->where('jenis_jadwal', 'mengajar')
+                            ->whereNotIn('id', $out->pluck('id')->all())
+                            ->get()
+                            ->sum(fn ($j) => $this->minutesBetween($j->jam_mulai, $j->jam_selesai));
+                        $masuk = $in->where('jenis_jadwal', 'mengajar')
+                            ->sum(fn ($j) => $this->minutesBetween($j->jam_mulai, $j->jam_selesai));
+                        if ($exist + $masuk > $unit->max_jam_minggu * 60) {
+                            return back()->withErrors(['conflict' => "Hari {$hari}: total jam mengajar/minggu penerima melebihi batas {$unit->max_jam_minggu} jam."]);
+                        }
+                    }
+                }
+
+                Jadwal::whereIn('id', $rowsA->pluck('id'))->update(['pegawai_id' => $b]);
+                Jadwal::whereIn('id', $rowsB->pluck('id'))->update(['pegawai_id' => $a]);
+                $total += $rowsA->count() + $rowsB->count();
+            }
+
+            $this->clearJadwalCache($a);
+            $this->clearJadwalCache($b);
+
+            return redirect()->route('jadwal.index')->with('message', "Tukar seharian berhasil ({$total} jadwal).");
+        });
+    }
+
+    /**
+     * Tukar multi-pasangan dalam 1 klik: loop validasi+tukar isi swap() per
+     * pasangan dalam transaksi yang sama (all-or-nothing, bernomor).
+     */
+    public function swapBulk(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('manage_jadwal')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'pairs' => 'required|array|min:1|max:20',
+            'pairs.*.jadwal_asal_id' => 'required|exists:jadwal,id',
+            'pairs.*.jadwal_tujuan_id' => 'required|exists:jadwal,id|different:pairs.*.jadwal_asal_id',
+        ]);
+
+        $ids = collect($validated['pairs'])
+            ->flatMap(fn ($p) => [$p['jadwal_asal_id'], $p['jadwal_tujuan_id']]);
+        if ($ids->unique()->count() !== $ids->count()) {
+            return back()->withErrors(['conflict' => 'Satu jadwal hanya boleh muncul di satu pasangan.']);
+        }
+
+        return DB::transaction(function () use ($validated, $user, $ids) {
+            $rows = Jadwal::whereIn('id', $ids->sort()->values())->orderBy('id')
+                ->lockForUpdate()->get()->keyBy('id');
+            if ($rows->count() !== $ids->unique()->count()) {
+                abort(404);
+            }
+            if ($user->unit_sekolah_id && ! $user->can('view_all_units')
+                && $rows->contains(fn ($j) => $j->unit_sekolah_id !== $user->unit_sekolah_id)) {
+                abort(403, 'Akses ditolak. Tidak bisa menukar lintas unit tanpa akses Superadmin.');
+            }
+
+            $touched = collect();
+            foreach (array_values($validated['pairs']) as $i => $pair) {
+                $no = $i + 1;
+                $jadwalAsal = $rows[$pair['jadwal_asal_id']];
+                $jadwalTujuan = $rows[$pair['jadwal_tujuan_id']];
+
+                // Cek bentrok — query baca state transaksi terkini (hasil pasangan sebelumnya).
+                $conflictAsal = Jadwal::where('pegawai_id', $jadwalAsal->pegawai_id)
+                    ->where('hari', $jadwalTujuan->hari)
+                    ->where('id', '!=', $jadwalAsal->id)
+                    ->where(fn ($q) => $q->where('jam_mulai', '<', $jadwalTujuan->jam_selesai)
+                        ->where('jam_selesai', '>', $jadwalTujuan->jam_mulai))
+                    ->exists();
+                if ($conflictAsal) {
+                    return back()->withErrors(['conflict' => "Pasangan #{$no} gagal! Pegawai asal bentrok dengan jadwal tujuan."]);
+                }
+
+                $conflictTujuan = Jadwal::where('pegawai_id', $jadwalTujuan->pegawai_id)
+                    ->where('hari', $jadwalAsal->hari)
+                    ->where('id', '!=', $jadwalTujuan->id)
+                    ->where(fn ($q) => $q->where('jam_mulai', '<', $jadwalAsal->jam_selesai)
+                        ->where('jam_selesai', '>', $jadwalAsal->jam_mulai))
+                    ->exists();
+                if ($conflictTujuan) {
+                    return back()->withErrors(['conflict' => "Pasangan #{$no} gagal! Pegawai tujuan bentrok dengan jadwal asal."]);
+                }
+
+                if ($jadwalAsal->jenis_jadwal === 'mengajar') {
+                    $exceeded = $this->exceedsWeeklyHourLimit($jadwalTujuan->pegawai_id, $jadwalTujuan->unit_sekolah_id, $jadwalAsal->jam_mulai, $jadwalAsal->jam_selesai, $jadwalTujuan->id);
+                    if ($exceeded) {
+                        return back()->withErrors(['conflict' => "Pasangan #{$no} gagal! {$exceeded}"]);
+                    }
+                }
+                if ($jadwalTujuan->jenis_jadwal === 'mengajar') {
+                    $exceeded = $this->exceedsWeeklyHourLimit($jadwalAsal->pegawai_id, $jadwalAsal->unit_sekolah_id, $jadwalTujuan->jam_mulai, $jadwalTujuan->jam_selesai, $jadwalAsal->id);
+                    if ($exceeded) {
+                        return back()->withErrors(['conflict' => "Pasangan #{$no} gagal! {$exceeded}"]);
+                    }
+                }
+
+                $tempPegawaiId = $jadwalAsal->pegawai_id;
+                $jadwalAsal->update(['pegawai_id' => $jadwalTujuan->pegawai_id]);
+                $jadwalTujuan->update(['pegawai_id' => $tempPegawaiId]);
+                $touched->push($jadwalAsal->pegawai_id, $jadwalTujuan->pegawai_id);
+            }
+
+            $touched->unique()->each(fn ($pid) => $this->clearJadwalCache($pid));
+
+            return redirect()->route('jadwal.index')->with('message', count($validated['pairs']).' pasangan jadwal berhasil ditukar!');
+        });
+    }
+
     public function destroy(string $id)
     {
         $user = auth()->user();
