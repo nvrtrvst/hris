@@ -763,7 +763,7 @@ class JadwalController extends Controller
                 $rowsA = $byPegHari->get($a.'|'.$hari, collect());
                 $rowsB = $byPegHari->get($b.'|'.$hari, collect());
                 if ($rowsA->isEmpty() || $rowsB->isEmpty()) {
-                    return back()->withErrors(['conflict' => "Hari {$hari}: salah satu pihak tidak punya jadwal di unit ini."]);
+                    throw ValidationException::withMessages(['conflict' => "Hari {$hari}: salah satu pihak tidak punya jadwal di unit ini."]);
                 }
 
                 // Tiap row pindahan dicek vs row penerima yang TIDAK ikut pindah (unit mana pun, hari sama).
@@ -775,7 +775,7 @@ class JadwalController extends Controller
                     foreach ($incoming as $r) {
                         $bentrok = $staying->first(fn ($s) => $s->jam_mulai < $r->jam_selesai && $s->jam_selesai > $r->jam_mulai);
                         if ($bentrok) {
-                            return back()->withErrors(['conflict' => "Hari {$hari}: bentrok dengan jadwal {$bentrok->jam_mulai}-{$bentrok->jam_selesai} yang tidak ikut ditukar."]);
+                            throw ValidationException::withMessages(['conflict' => "Hari {$hari}: bentrok dengan jadwal {$bentrok->jam_mulai}-{$bentrok->jam_selesai} yang tidak ikut ditukar."]);
                         }
                     }
                 }
@@ -791,13 +791,18 @@ class JadwalController extends Controller
                         $masuk = $in->where('jenis_jadwal', 'mengajar')
                             ->sum(fn ($j) => $this->minutesBetween($j->jam_mulai, $j->jam_selesai));
                         if ($exist + $masuk > $unit->max_jam_minggu * 60) {
-                            return back()->withErrors(['conflict' => "Hari {$hari}: total jam mengajar/minggu penerima melebihi batas {$unit->max_jam_minggu} jam."]);
+                            throw ValidationException::withMessages(['conflict' => "Hari {$hari}: total jam mengajar/minggu penerima melebihi batas {$unit->max_jam_minggu} jam."]);
                         }
                     }
                 }
 
-                Jadwal::whereIn('id', $rowsA->pluck('id'))->update(['pegawai_id' => $b]);
-                Jadwal::whereIn('id', $rowsB->pluck('id'))->update(['pegawai_id' => $a]);
+                // Instance update (bukan mass query) supaya updated_at ikut terbarui.
+                foreach ($rowsA as $r) {
+                    $r->update(['pegawai_id' => $b]);
+                }
+                foreach ($rowsB as $r) {
+                    $r->update(['pegawai_id' => $a]);
+                }
                 $total += $rowsA->count() + $rowsB->count();
             }
 
@@ -848,6 +853,10 @@ class JadwalController extends Controller
                 $jadwalAsal = $rows[$pair['jadwal_asal_id']];
                 $jadwalTujuan = $rows[$pair['jadwal_tujuan_id']];
 
+                if ($jadwalAsal->pegawai_id === $jadwalTujuan->pegawai_id) {
+                    throw ValidationException::withMessages(['conflict' => "Pasangan #{$no} gagal! Kedua jadwal milik pegawai yang sama."]);
+                }
+
                 // Cek bentrok — query baca state transaksi terkini (hasil pasangan sebelumnya).
                 $conflictAsal = Jadwal::where('pegawai_id', $jadwalAsal->pegawai_id)
                     ->where('hari', $jadwalTujuan->hari)
@@ -856,7 +865,7 @@ class JadwalController extends Controller
                         ->where('jam_selesai', '>', $jadwalTujuan->jam_mulai))
                     ->exists();
                 if ($conflictAsal) {
-                    return back()->withErrors(['conflict' => "Pasangan #{$no} gagal! Pegawai asal bentrok dengan jadwal tujuan."]);
+                    throw ValidationException::withMessages(['conflict' => "Pasangan #{$no} gagal! Pegawai asal bentrok dengan jadwal tujuan."]);
                 }
 
                 $conflictTujuan = Jadwal::where('pegawai_id', $jadwalTujuan->pegawai_id)
@@ -866,19 +875,19 @@ class JadwalController extends Controller
                         ->where('jam_selesai', '>', $jadwalAsal->jam_mulai))
                     ->exists();
                 if ($conflictTujuan) {
-                    return back()->withErrors(['conflict' => "Pasangan #{$no} gagal! Pegawai tujuan bentrok dengan jadwal asal."]);
+                    throw ValidationException::withMessages(['conflict' => "Pasangan #{$no} gagal! Pegawai tujuan bentrok dengan jadwal asal."]);
                 }
 
                 if ($jadwalAsal->jenis_jadwal === 'mengajar') {
                     $exceeded = $this->exceedsWeeklyHourLimit($jadwalTujuan->pegawai_id, $jadwalTujuan->unit_sekolah_id, $jadwalAsal->jam_mulai, $jadwalAsal->jam_selesai, $jadwalTujuan->id);
                     if ($exceeded) {
-                        return back()->withErrors(['conflict' => "Pasangan #{$no} gagal! {$exceeded}"]);
+                        throw ValidationException::withMessages(['conflict' => "Pasangan #{$no} gagal! {$exceeded}"]);
                     }
                 }
                 if ($jadwalTujuan->jenis_jadwal === 'mengajar') {
                     $exceeded = $this->exceedsWeeklyHourLimit($jadwalAsal->pegawai_id, $jadwalAsal->unit_sekolah_id, $jadwalTujuan->jam_mulai, $jadwalTujuan->jam_selesai, $jadwalAsal->id);
                     if ($exceeded) {
-                        return back()->withErrors(['conflict' => "Pasangan #{$no} gagal! {$exceeded}"]);
+                        throw ValidationException::withMessages(['conflict' => "Pasangan #{$no} gagal! {$exceeded}"]);
                     }
                 }
 
