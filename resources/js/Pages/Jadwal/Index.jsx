@@ -136,6 +136,10 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
     const [showSwapModal, setShowSwapModal] = useState(false);
     const [swapData, setSwapData] = useState({ jadwal_asal_id: '', jadwal_tujuan_id: '' });
     const [targetPegawaiId, setTargetPegawaiId] = useState('');
+    const [swapCandidates, setSwapCandidates] = useState(null);
+    const [swapLoading, setSwapLoading] = useState(false);
+    const [swapError, setSwapError] = useState('');
+    const swapCache = useRef({});
 
     // Modal Import
     const [showImportModal, setShowImportModal] = useState(false);
@@ -181,6 +185,17 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         return m;
     }, [jadwals]);
 
+    // Index kandidat swap — dari endpoint unfiltered, bukan prop matriks.
+    const candJadwalByPegawai = useMemo(() => {
+        const m = new Map();
+        (swapCandidates?.jadwals || []).forEach((j) => {
+            if (!m.has(j.pegawai_id)) m.set(j.pegawai_id, []);
+            m.get(j.pegawai_id).push(j);
+        });
+
+        return m;
+    }, [swapCandidates]);
+
     // Index O(1): presensi mengajar hari ini per jadwal (badge live di matriks).
     const presensiByJadwal = useMemo(() => {
         const m = new Map();
@@ -209,6 +224,32 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchName]);
+
+    // Kandidat swap diambil lazy per unit asal — TIDAK ikut filter search matriks.
+    useEffect(() => {
+        if (!showSwapModal) return;
+        const asal = jadwalById.get(swapData.jadwal_asal_id);
+        const unitId = asal?.unit_sekolah_id;
+        // Tanpa filter unit di halaman (superadmin) → kandidat lintas unit, spt skrg.
+        const key = unitFilter ? `u${unitId}` : 'all';
+        if (swapCache.current[key]) {
+            setSwapCandidates(swapCache.current[key]);
+            return;
+        }
+        setSwapLoading(true);
+        setSwapError('');
+        const params = new URLSearchParams();
+        if (unitFilter && unitId) params.append('unit_sekolah_id', unitId);
+        fetch(`${route('jadwal.swap-candidates')}?${params.toString()}`, { headers: { Accept: 'application/json' } })
+            .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+            .then((data) => {
+                swapCache.current[key] = data;
+                setSwapCandidates(data);
+            })
+            .catch(() => setSwapError('Gagal memuat daftar pegawai. Tutup lalu buka ulang modal.'))
+            .finally(() => setSwapLoading(false));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showSwapModal, swapData.jadwal_asal_id]);
 
     const buildParams = (overrides = {}) => ({
         unit_sekolah_id: unitFilter,
@@ -966,12 +1007,14 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     >
                                         <option value="">-- Pilih Pegawai --</option>
                                         {(() => {
+                                            if (swapLoading && !swapCandidates) return <option value="" disabled>Memuat daftar pegawai…</option>;
+                                            if (swapError && !swapCandidates) return <option value="" disabled>{swapError}</option>;
                                             const asal = jadwalById.get(swapData.jadwal_asal_id);
                                             const unitId = asal?.unit_sekolah_id;
 
-                                            return pegawais.filter((p) => {
+                                            return (swapCandidates?.pegawais || []).filter((p) => {
                                                 if (asal && asal.pegawai_id === p.id) return false;
-                                                if (unitId) return p.units?.some((u) => u.id == unitId);
+                                                if (unitId) return (p.unit_ids || []).some((id) => id == unitId);
 
                                                 return true;
                                             }).map((p) => <option key={p.id} value={p.id}>{p.nama_lengkap}</option>);
@@ -990,7 +1033,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                             {(() => {
                                                 const asal = jadwalById.get(swapData.jadwal_asal_id);
                                                 const unitId = asal?.unit_sekolah_id;
-                                                const targets = (jadwalByPegawai.get(Number(targetPegawaiId)) || [])
+                                                const targets = (candJadwalByPegawai.get(Number(targetPegawaiId)) || [])
                                                     .filter((j) => !unitId || j.unit_sekolah_id == unitId);
                                                 if (targets.length === 0) {
                                                     return <p className="p-3 bg-surface border border-border rounded-card text-sm text-text-muted">Pegawai ini tidak memiliki jadwal.</p>;
@@ -1013,7 +1056,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                 <span className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase border ${jenisBadge(j.jenis_jadwal).badge}`}>{j.jenis_jadwal}</span>
                                                             </div>
                                                             <div className="text-xs text-text-secondary text-right">
-                                                                {j.mata_pelajaran?.nama && <div>{j.mata_pelajaran.nama}</div>}
+                                                                {j.mapel_nama && <div>{j.mapel_nama}</div>}
                                                                 {j.kelas_label && <div>{j.kelas_label}</div>}
                                                             </div>
                                                         </div>

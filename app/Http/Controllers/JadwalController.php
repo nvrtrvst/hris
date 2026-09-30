@@ -658,6 +658,63 @@ class JadwalController extends Controller
         });
     }
 
+    /**
+     * Kandidat tukar jadwal: pegawai aktif + jadwal per unit TANPA filter
+     * search/jenis/kelas halaman. Dipakai modal swap (langkah 2 & 3) yang
+     * tidak boleh ikut terfilter seperti matriks.
+     */
+    public function swapCandidates(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('manage_jadwal')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'unit_sekolah_id' => 'nullable|integer|exists:unit_sekolah,id',
+        ]);
+
+        // admin_unit dipaksa unit sendiri (pola sama dgn index/store/swap).
+        $unitId = ($user->unit_sekolah_id && ! $user->can('view_all_units'))
+            ? (int) $user->unit_sekolah_id
+            : ($validated['unit_sekolah_id'] ?? null);
+
+        $pegawaiQuery = Pegawai::with(['units:id,singkatan'])
+            ->select(['id', 'nama_lengkap'])
+            ->where('status_aktif', 'aktif');
+        $jadwalQuery = Jadwal::with(['pegawaiMapel.mataPelajaran:id,nama'])
+            ->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 WHEN 'Minggu' THEN 7 END")
+            ->orderBy('jam_mulai');
+
+        if ($unitId) {
+            $pegawaiQuery->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitId));
+            $jadwalQuery->where('unit_sekolah_id', $unitId);
+        }
+
+        // Map ke array datar: hindari appends berat (foto_url, nik_masked).
+        return response()->json([
+            'pegawais' => $pegawaiQuery->orderBy('nama_lengkap')->get()->map(fn ($p) => [
+                'id' => $p->id,
+                'nama_lengkap' => $p->nama_lengkap,
+                'unit_ids' => $p->units->pluck('id')->values(),
+            ])->values(),
+            'jadwals' => $jadwalQuery->get([
+                'id', 'pegawai_id', 'unit_sekolah_id', 'hari',
+                'jam_mulai', 'jam_selesai', 'jenis_jadwal', 'kelas_label', 'pegawai_mapel_id',
+            ])->map(fn ($j) => [
+                'id' => $j->id,
+                'pegawai_id' => $j->pegawai_id,
+                'unit_sekolah_id' => $j->unit_sekolah_id,
+                'hari' => $j->hari,
+                'jam_mulai' => $j->jam_mulai,
+                'jam_selesai' => $j->jam_selesai,
+                'jenis_jadwal' => $j->jenis_jadwal,
+                'kelas_label' => $j->kelas_label,
+                'mapel_nama' => $j->pegawaiMapel?->mataPelajaran?->nama,
+            ])->values(),
+        ]);
+    }
+
     public function destroy(string $id)
     {
         $user = auth()->user();
