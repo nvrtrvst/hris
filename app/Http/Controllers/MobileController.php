@@ -778,7 +778,25 @@ class MobileController extends Controller
         return response()->json([
             'success' => true,
             'message' => $successMessage,
+            'status' => $presensi->status,
+            'jam_masuk' => $request->tipe === 'masuk' ? $presensi->jam_masuk : null,
+            'batas' => $this->batasHadirFor($request, $jadwal, $unitSekolah ?? $unit, $isLembur, $isTugasLuar),
         ]);
+    }
+
+    /**
+     * Batas hadir = jadwal.jam_mulai + toleransi_menit unit — mirror persis dari
+     * statusAt() di storeAbsenTransaction (hanya untuk menampilkan alasan "telat").
+     */
+    private function batasHadirFor(Request $request, ?Jadwal $jadwal, $unit, bool $isLembur, bool $isTugasLuar): ?string
+    {
+        if ($request->tipe !== 'masuk' || ! $jadwal || $isLembur || $isTugasLuar) {
+            return null;
+        }
+
+        return Carbon::parse($jadwal->jam_mulai)
+            ->addMinutes((int) $unit->toleransi_menit)
+            ->format('H:i:s');
     }
 
     /**
@@ -1453,7 +1471,7 @@ class MobileController extends Controller
                 ? $this->coverSesiMengajar($pegawai, $jadwal, $hariIni, $sekarang)
                 : [];
 
-            return ['status' => $presensi->status, 'covered' => $covered];
+            return ['status' => $presensi->status, 'covered' => $covered, 'jam_masuk' => $presensi->jam_masuk];
         }, 3);
 
         return response()->json([
@@ -1462,6 +1480,10 @@ class MobileController extends Controller
                 ? 'Presensi pulang jadwal tercatat.'
                 : ($result['status'] === 'telat' ? 'Kehadiran jadwal tercatat (telat).' : 'Kehadiran jadwal tercatat.'),
             'status' => $result['status'],
+            'jam_masuk' => $tipe === 'masuk' ? $result['jam_masuk'] : null,
+            'batas' => $tipe === 'masuk'
+                ? Carbon::parse($jadwal->jam_mulai)->addMinutes((int) $jadwal->unitSekolah->toleransi_menit)->format('H:i:s')
+                : null,
             'cover_count' => count($result['covered']),
             'covered_jadwal_ids' => $result['covered'],
         ]);

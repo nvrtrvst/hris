@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
+import { fmtDetik, batasHadir } from '@/Utils/waktuPresensi';
 import { Card, SectionTitle, Badge, Empty } from '@/Components/MobileUI';
 import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -215,11 +216,16 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                         <div className="min-w-0">
                                             <p className="truncate font-bold text-slate-800">{label}</p>
                                             <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
-                                                <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{formatJam(p.jam_masuk)}–{formatJam(p.jam_keluar)}</span>
+                                                <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{fmtDetik(p.jam_masuk)}–{fmtDetik(p.jam_keluar)}</span>
                                                 {p.jarak_meter != null && (
                                                     <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-400" />{p.jarak_meter}m</span>
                                                 )}
                                             </p>
+                                            {p.status === 'telat' && !isKantor && p.jam_masuk && batasHadir(p.jadwal?.jam_mulai, p.jadwal?.unit_sekolah?.toleransi_menit ?? p.unit_sekolah?.toleransi_menit) && (
+                                                <p className="mt-0.5 text-[11px] font-semibold text-amber-600">
+                                                    Batas hadir {batasHadir(p.jadwal?.jam_mulai, p.jadwal?.unit_sekolah?.toleransi_menit ?? p.unit_sekolah?.toleransi_menit)}
+                                                </p>
+                                            )}
                                         </div>
                                         <Badge tone={badge.tone} icon={badge.icon}>{badge.label}</Badge>
                                     </Card>

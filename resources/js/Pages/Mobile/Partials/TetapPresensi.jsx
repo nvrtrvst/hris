@@ -446,9 +446,15 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         }
 
         const count = allCoveredIds.length;
-        setSuccessMessage(tipe === 'keluar'
+        let slideMsg = tipe === 'keluar'
             ? 'Presensi pulang tercatat.'
-            : (count > 1 ? `Kehadiran tercatat (${count} jam).` : 'Kehadiran tercatat.'));
+            : (count > 1 ? `Kehadiran tercatat (${count} jam).` : 'Kehadiran tercatat.');
+        if (tipe === 'masuk' && data?.jam_masuk) {
+            slideMsg += data.status === 'telat'
+                ? ` Masuk ${data.jam_masuk}${data.batas ? `, batas ${data.batas}` : ''}.`
+                : ` Masuk ${data.jam_masuk}.`;
+        }
+        setSuccessMessage(slideMsg);
         setTimeout(() => setSuccessMessage(null), 2000);
         setSlideLoading(null);
         setTapLoading(null);

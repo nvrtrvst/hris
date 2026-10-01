@@ -174,12 +174,12 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                     {c.jam_masuk
-                        ? <span className="font-mono text-sm font-bold text-primary">{c.jam_masuk.substring(0, 5)}</span>
+                                ? <span className="font-mono text-sm font-bold text-primary">{c.jam_masuk.substring(0, 8)}</span>
                         : <span className="text-sm text-text-secondary">—</span>}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                     {c.jam_keluar
-                        ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 5)}</span>
+                                ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 8)}</span>
                         : <span className="text-sm text-text-secondary">—</span>}
                 </td>
                 <td className="px-4 py-3.5 whitespace-nowrap">
@@ -294,12 +294,12 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                             {c.jam_masuk
-                                ? <span className="font-mono text-sm font-bold text-primary">{c.jam_masuk.substring(0, 5)}</span>
+                        ? <span className="font-mono text-sm font-bold text-primary">{c.jam_masuk.substring(0, 8)}</span>
                                 : <span className="text-sm text-text-secondary">—</span>}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                             {c.jam_keluar
-                                ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 5)}</span>
+                        ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 8)}</span>
                                 : <span className="text-sm text-text-secondary">—</span>}
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap">
@@ -416,7 +416,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                     <td className="px-4 py-3.5 whitespace-nowrap">
                         {parent.jam_masuk ? (
                             <div className="flex flex-col">
-                                <span className="font-mono text-sm font-bold text-primary">{parent.jam_masuk.substring(0, 5)}</span>
+                                <span className="font-mono text-sm font-bold text-primary">{parent.jam_masuk.substring(0, 8)}</span>
                                 {presensiLokasiLabel(parent, 'masuk') ? (
                                     <span className="text-[10px] lowercase text-slate-500" title={parent.foto_masuk && new Date(parent.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(parent, 'masuk').toLowerCase()}</span>
                                 ) : null}
@@ -426,7 +426,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                     <td className="px-4 py-3.5 whitespace-nowrap">
                         {parent.jam_keluar ? (
                             <div className="flex flex-col">
-                                <span className="font-mono text-sm font-bold text-primary">{parent.jam_keluar.substring(0, 5)}</span>
+                                <span className="font-mono text-sm font-bold text-primary">{parent.jam_keluar.substring(0, 8)}</span>
                                 {presensiLokasiLabel(parent, 'keluar') ? (
                                     <span className="text-[10px] lowercase text-slate-500" title={parent.foto_keluar && new Date(parent.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(parent, 'keluar').toLowerCase()}</span>
                                 ) : null}
@@ -1145,7 +1145,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                                         {p.jam_masuk ? (
                                                             <div className="flex flex-col">
-                                                                <span className="font-mono text-sm font-bold text-primary">{p.jam_masuk.substring(0, 5)}</span>
+                                                                <span className="font-mono text-sm font-bold text-primary">{p.jam_masuk.substring(0, 8)}</span>
                                                                 {presensiLokasiLabel(p, 'masuk') ? (
                                                                     <span className="text-[10px] lowercase text-slate-500" title={p.foto_masuk && new Date(p.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(p, 'masuk').toLowerCase()}</span>
                                                                 ) : p.jarak_masuk_meter != null ? (
@@ -1157,7 +1157,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                                         {p.jam_keluar ? (
                                                             <div className="flex flex-col">
-                                                                <span className="font-mono text-sm font-bold text-primary">{p.jam_keluar.substring(0, 5)}</span>
+                                                                <span className="font-mono text-sm font-bold text-primary">{p.jam_keluar.substring(0, 8)}</span>
                                                                 {presensiLokasiLabel(p, 'keluar') ? (
                                                                     <span className="text-[10px] lowercase text-slate-500" title={p.foto_keluar && new Date(p.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(p, 'keluar').toLowerCase()}</span>
                                                                 ) : durasi ? <span className="text-[10px] font-semibold text-emerald-600">{durasi}</span> : null}
@@ -1285,8 +1285,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                 <div>
                                                     <div className="text-sm font-bold text-primary">{format(parseDate(p.tanggal), 'EEEE, d MMMM yyyy', { locale: id })}</div>
                                                     <div className="mt-0.5 flex items-center gap-3 text-xs text-text-secondary">
-                                                        <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Masuk <b className="font-mono text-primary">{p.jam_masuk?.substring(0, 5) || '—'}</b></span>
-                                                        <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Keluar <b className="font-mono text-primary">{p.jam_keluar?.substring(0, 5) || '—'}</b></span>
+                                                        <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Masuk <b className="font-mono text-primary">{p.jam_masuk?.substring(0, 8) || '—'}</b></span>
+                                                        <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Keluar <b className="font-mono text-primary">{p.jam_keluar?.substring(0, 8) || '—'}</b></span>
                                                         {p.tipe_presensi === 'mengajar' && (
                                                             <span className="flex items-center gap-2 text-[11px] text-text-muted">
                                                                 {p.jadwal?.mata_pelajaran?.nama || ''}

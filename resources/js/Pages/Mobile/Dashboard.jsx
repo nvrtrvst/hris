@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import MobileLayout from '@/Layouts/MobileLayout';
+import { fmtDetik } from '@/Utils/waktuPresensi';
 import { Badge, Card, Empty, SectionTitle } from '@/Components/MobileUI';
 import {
     ArrowRight,
@@ -121,7 +122,7 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                     <div className="flex flex-col justify-between px-5 py-4">
                         <div>
                             <p className="flex items-center gap-1.5 text-xs text-emerald-100"><LogIn className="h-4 w-4" /> Masuk</p>
-                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(primary?.jam_masuk)}</p>
+                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{fmtDetik(primary?.jam_masuk, '--:--')}</p>
                         </div>
                         {primary?.jam_masuk && (
                             <div className="mt-4 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-inner">
@@ -138,7 +139,7 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                     <div className="flex flex-col justify-between px-5 py-4">
                         <div>
                             <p className="flex items-center gap-1.5 text-xs text-emerald-100"><LogOut className="h-4 w-4" /> Keluar</p>
-                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{time(primary?.jam_keluar)}</p>
+                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{fmtDetik(primary?.jam_keluar, '--:--')}</p>
                         </div>
                         {primary?.jam_keluar && (
                             <div className="mt-4 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-inner">
@@ -256,7 +257,7 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                         </div>
                         <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold text-slate-800">{format(new Date(record.tanggal), 'EEEE, d MMM', { locale: id })}</p>
-                            <p className="mt-0.5 text-xs text-slate-500">{time(record.jam_masuk)} - {time(record.jam_keluar)}</p>
+                            <p className="mt-0.5 text-xs text-slate-500">{fmtDetik(record.jam_masuk)} - {fmtDetik(record.jam_keluar)}</p>
                         </div>
                         <Badge tone={statusTone[record.status] || 'slate'}>{statusLabel[record.status] || record.status}</Badge>
                     </div>

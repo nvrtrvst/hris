@@ -638,8 +638,8 @@ class PresensiController extends Controller
             $jamKeluar = $presensiList->whereNotNull('jam_keluar')->sortByDesc('jam_keluar')->first()?->jam_keluar;
 
             // Format jam
-            $jamMasukStr = $jamMasuk ? Carbon::parse($jamMasuk)->format('H:i').' WIB' : '-';
-            $jamKeluarStr = $jamKeluar ? Carbon::parse($jamKeluar)->format('H:i').' WIB' : '-';
+            $jamMasukStr = $jamMasuk ? Carbon::parse($jamMasuk)->format('H:i:s').' WIB' : '-';
+            $jamKeluarStr = $jamKeluar ? Carbon::parse($jamKeluar)->format('H:i:s').' WIB' : '-';
 
             // Daftar kelas hari ini
             $kelasList = $jadwals->map(function ($j) {

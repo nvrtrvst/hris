@@ -411,11 +411,11 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                             <div className="grid grid-cols-2 gap-2 text-xs">
                                                 <div>
                                                     <span className="text-text-muted">Masuk</span>
-                                                    <p className="font-semibold text-primary">{harian?.jam_masuk?.substring(0, 5) || '—'}</p>
+                                                    <p className="font-semibold text-primary">{harian?.jam_masuk?.substring(0, 8) || '—'}</p>
                                                 </div>
                                                 <div>
                                                     <span className="text-text-muted">Keluar</span>
-                                                    <p className="font-semibold text-primary">{harian?.jam_keluar?.substring(0, 5) || '—'}</p>
+                                                    <p className="font-semibold text-primary">{harian?.jam_keluar?.substring(0, 8) || '—'}</p>
                                                 </div>
                                                 <div>
                                                     <span className="text-text-muted">Status</span>
@@ -431,7 +431,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                             <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">Per Jadwal Mengajar</p>
                                             {pNgajar.length > 0 ? pNgajar.slice(0, 3).map((p, i) => (
                                                 <div key={i} className="mb-1.5 flex items-center gap-2 text-xs last:mb-0">
-                                                    <span className="font-mono text-text-muted">{p.jam_masuk?.substring(0, 5)}–{p.jam_keluar?.substring(0, 5) || '?'}</span>
+                                                    <span className="font-mono text-text-muted">{p.jam_masuk?.substring(0, 8)}–{p.jam_keluar?.substring(0, 8) || '?'}</span>
                                                     <StatusBadge status={p.status} />
                                                 </div>
                                             )) : <p className="text-xs text-text-muted">Belum ada absen per jadwal</p>}

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { checkGeofence } from '@/Utils/geo';
+import { fmtDetik, batasHadir } from '@/Utils/waktuPresensi';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '@/Constants/AppConstants';
 import { Head, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
@@ -332,7 +333,13 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             }
             const data = await res.json();
             if (data.success) {
-                setSuccessMessage(data.message || 'Presensi berhasil dikirim.');
+                let message = data.message || 'Presensi berhasil dikirim.';
+                if (data.jam_masuk) {
+                    message += data.status === 'telat'
+                        ? ` Masuk ${fmtDetik(data.jam_masuk)}${data.batas ? `, batas ${data.batas}` : ''}.`
+                        : ` Masuk ${fmtDetik(data.jam_masuk)}.`;
+                }
+                setSuccessMessage(message);
                 clearCamera();
                 setJadwalId(null);
                 setTimeout(() => {
@@ -475,6 +482,9 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                                 </div>
                                 <p className="mt-1 text-xs text-slate-500">{j.kelas_label || (j.hari || '')}</p>
                                 <p className="mt-1 font-mono text-xs font-bold tabular-nums text-primary">{j.jam_mulai} - {j.jam_selesai}</p>
+                                {batasHadir(j.jam_mulai, j.unit_sekolah?.toleransi_menit) && (
+                                    <p className="mt-0.5 text-[10px] font-semibold text-slate-400">Batas hadir {batasHadir(j.jam_mulai, j.unit_sekolah?.toleransi_menit)}</p>
+                                )}
                             </button>
                         ))}
                     </div>

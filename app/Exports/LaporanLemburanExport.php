@@ -90,8 +90,8 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $unitName,
             $presensi->tanggal->format('d/m/Y'),
-            $jamMulai->format('H:i'),
-            $jamSelesai->format('H:i'),
+            $jamMulai->format('H:i:s'),
+            $jamSelesai->format('H:i:s'),
             $totalHours,
             FileHelper::fotoUrl($presensi->foto_masuk),
         ];

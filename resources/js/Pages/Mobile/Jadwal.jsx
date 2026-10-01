@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Head } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Empty } from '@/Components/MobileUI';
+import { fmtDetik, batasHadir } from '@/Utils/waktuPresensi';
 import { ArrowRight, Calendar, Clock3, WifiOff, X, CheckCircle, XCircle, AlertTriangle, Users, MapPin } from 'lucide-react';
 
 const hariUrut = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -86,11 +87,11 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                         <div className="flex items-center gap-2">
                             <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
                             <span className="text-xs font-bold text-white/90">Kantor</span>
-                            <span className="font-mono text-xs font-bold text-white/70">{fmtJam(kantor.jam_masuk)}</span>
+                            <span className="font-mono text-xs font-bold text-white/70">{fmtDetik(kantor.jam_masuk)}</span>
                             {kantor.jam_keluar && (
                                 <>
                                     <span className="text-white/40">→</span>
-                                    <span className="font-mono text-xs font-bold text-white/70">{fmtJam(kantor.jam_keluar)}</span>
+                                    <span className="font-mono text-xs font-bold text-white/70">{fmtDetik(kantor.jam_keluar)}</span>
                                 </>
                             )}
                         </div>
@@ -155,6 +156,7 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                         const [smh, smm] = (j.jam_mulai || '').split(':').map(Number);
                         const mulai = new Date(now); mulai.setHours(smh || 0, smm || 0, 0, 0);
                         const sedangBerlangsung = isToday && j.jam_mulai && j.jam_selesai && now >= mulai && now <= selesai;
+                        const batas = batasHadir(j.jam_mulai, j.unit_sekolah?.toleransi_menit);
 
                         return (
                             <button key={j.id} type="button" onClick={() => onOpenDetail?.(j)} className="w-full text-left">
@@ -179,6 +181,13 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                                             <p className="mt-0.5 truncate text-xs text-slate-500">
                                                 {[kelas, unit].filter(Boolean).join(' • ')}
                                             </p>
+                                            {batas && (
+                                                <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">
+                                                    {badge === 'telat' && rec?.jam_masuk
+                                                        ? `Masuk ${fmtDetik(rec.jam_masuk)} · batas ${batas}`
+                                                        : `Batas hadir ${batas}`}
+                                                </p>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             {badge && <StatusBadge status={badge} />}
@@ -209,11 +218,11 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <Clock3 className="h-3.5 w-3.5 text-amber-500" />
-                                        <span className="font-mono text-xs font-bold text-slate-700">{fmtJam(p.jam_masuk)}</span>
+                                        <span className="font-mono text-xs font-bold text-slate-700">{fmtDetik(p.jam_masuk)}</span>
                                         {p.jam_keluar && (
                                             <>
                                                 <span className="text-slate-400">→</span>
-                                                <span className="font-mono text-xs font-bold text-slate-700">{fmtJam(p.jam_keluar)}</span>
+                                                <span className="font-mono text-xs font-bold text-slate-700">{fmtDetik(p.jam_keluar)}</span>
                                             </>
                                         )}
                                     </div>
@@ -429,6 +438,11 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
                                     {selected.unit_sekolah?.nama || selected.unit_sekolah?.singkatan || ''}
                                 </p>
                                  <p className="mt-2 font-mono text-sm font-bold tabular-nums text-primary">{fmtJam(selected.jam_mulai)} - {fmtJam(selected.jam_selesai)}</p>
+                                 {batasHadir(selected.jam_mulai, selected.unit_sekolah?.toleransi_menit) && (
+                                     <p className="mt-0.5 text-xs font-semibold text-slate-400">
+                                         Batas hadir {batasHadir(selected.jam_mulai, selected.unit_sekolah?.toleransi_menit)}
+                                     </p>
+                                 )}
                             </div>
                             <button type="button" onClick={() => setSelected(null)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 active:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" aria-label="Tutup detail jadwal">
                                 <X className="h-5 w-5" />
