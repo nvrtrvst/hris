@@ -1610,7 +1610,7 @@ class RouteSmokeTest extends TestCase
         ];
 
         return match ($name) {
-            'laporan.preview', 'laporan.presensi', 'laporan.penggajian', 'laporan.lemburan', 'laporan.rekap-mengajar', 'laporan.rekap-kehadiran', 'laporan.pdf' => array_merge(['type' => 'presensi'], $range),
+            'laporan.preview', 'laporan.presensi', 'laporan.penggajian', 'laporan.lemburan', 'laporan.rekap-mengajar', 'laporan.rekap-kehadiran', 'laporan.rekap-kehadiran-harian', 'laporan.pdf' => array_merge(['type' => 'presensi'], $range),
             // Drill-down rekap: butuh pegawai_id + rentang tanggal.
             'laporan.rekap-detail', 'laporan.rekap-mengajar-detail' => array_merge(['pegawai_id' => $this->pegawai->id], $range),
             'penggajian.export-bank' => ['periode_bulan' => now()->format('m-Y')],
