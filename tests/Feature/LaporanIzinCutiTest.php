@@ -27,6 +27,7 @@ class LaporanIzinCutiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->travelTo(now()->addWeekdays(1));
         $this->seed(RolePermissionSeeder::class);
         Notification::fake();
 

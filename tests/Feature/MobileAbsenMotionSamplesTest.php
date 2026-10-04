@@ -19,6 +19,7 @@ class MobileAbsenMotionSamplesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->travelTo(now()->addWeekdays(1));
 
         $this->unit = UnitSekolah::create([
             'nama' => 'SMP Test',
