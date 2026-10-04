@@ -211,7 +211,8 @@ class PayrollAttendanceDedupTest extends TestCase
             ->where('periode_bulan', '07-2026')
             ->firstOrFail();
 
-        // 2 hari kalender (06 & 13) × 20000 = 40000 — BUKAN 3 record × 20000
+        // Tunjangan = present days (hari unik hadir/telat): 06 & 13 Juli →
+        // 2 hari × 20000 = 40000 — BUKAN 3 record (2 record hadir 06 = 1 hari).
         $tunjanganDetail = $penggajian->details()->where('nama_komponen', 'Tunjangan Kehadiran')->first();
         $this->assertSame(40000.0, (float) $tunjanganDetail->nominal);
 
@@ -219,12 +220,13 @@ class PayrollAttendanceDedupTest extends TestCase
         $telatDetail = $penggajian->details()->where('nama_komponen', 'Potongan Telat')->first();
         $this->assertSame(10000.0, (float) $telatDetail->nominal);
 
-        // Alpa: 3 jadwal Senin × 4 Senin (Juli 2026: 6,13,20,27) = 12 hari kerja.
-        // hadir 2 + telat 1 = 3 terisi → alpa = 12 - 3 = 9.
-        // Jika record lembur ikut dihitung hadir, alpa jadi 8 — assertion ini
+        // Alpa: dedup (hari, unit) — 3 jadwal Senin unit sama = 4 Senin (Juli
+        // 2026: 6,13,20,27) = 4 hari kerja, BUKAN 3 × 4 = 12.
+        // isian = hadir 1 (hari unik 06) + telat 1 (13) = 2 → alpa = 4 - 2 = 2.
+        // Jika record lembur ikut dihitung hadir, alpa jadi 1 — assertion ini
         // mengunci filter is_lembur=false di attendanceRaw (bukan hanya presentDays).
         $alpaDetail = $penggajian->details()->where('nama_komponen', 'Potongan Alpa')->first();
-        $this->assertSame(9000.0, (float) $alpaDetail->nominal);
+        $this->assertSame(2000.0, (float) $alpaDetail->nominal);
 
         // Verifikasi lembur tidak dihitung sebagai hadir: total pendapatan hanya tunjangan
         $this->assertSame(40000.0, (float) $penggajian->total_pendapatan);

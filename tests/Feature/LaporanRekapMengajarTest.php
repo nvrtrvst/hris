@@ -155,6 +155,42 @@ class LaporanRekapMengajarTest extends TestCase
         $this->assertSame('2/2 (telat 1)', $row[10]);
     }
 
+    public function test_jadwal_blok_dihitung_per_jp(): void
+    {
+        // 1 baris presensi, jadwal blok 08:00-11:00 = 180 mnt ÷ 45 = 4 JP.
+        $guru = $this->makeGuru('Guru Blok');
+        $mapel = MataPelajaran::create(['nama' => 'Fisika']);
+        $pm = PegawaiMapel::create([
+            'pegawai_id' => $guru->id,
+            'mata_pelajaran_id' => $mapel->id,
+            'unit_sekolah_id' => $this->unit->id,
+        ]);
+        $j = $this->makeJadwal($guru, $pm, 'Senin', '08:00:00', '11:00:00');
+        $this->makePresensiMengajar($guru, $j, '2026-09-07', 'hadir');
+
+        $res = $this->actingAs($this->superadmin)
+            ->getJson('/laporan/preview?'.http_build_query([
+                'type' => 'rekap_mengajar',
+                'start_date' => '2026-09-01',
+                'end_date' => '2026-09-09',
+            ]))
+            ->assertOk();
+
+        // Rekap: 1 baris → 4 JP terjadwal/hadir, persen 100.
+        $row = $res->json('data.0');
+        $this->assertSame(4, $row[4]);
+        $this->assertSame(4, $row[5]);
+        $this->assertSame('100%', $row[8]);
+
+        // Kalender: sel tanggal = [jp, hadir, telat, alpa] berbobot 4.
+        $cells = $res->json('calendar.guru.0.cells.2026-09-07');
+        $this->assertSame([4, 4, 0, 0], $cells);
+
+        // Summary ikut bobot.
+        $this->assertSame(4, $res->json('summary.totalTerjadwal'));
+        $this->assertSame(4, $res->json('summary.totalHadir'));
+    }
+
     public function test_rekap_exclude_presensi_kantor(): void
     {
         $guru = $this->makeGuru('Guru B');

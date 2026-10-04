@@ -6,7 +6,9 @@ use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileGajiController;
 use App\Http\Controllers\MobileIzinController;
+use App\Http\Controllers\MobileKoreksiController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PengajuanKoreksiController;
 use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PushSubscriptionController;
@@ -62,6 +64,14 @@ Route::middleware('auth:web_mobile')->group(function () {
         ->name('presensi.izin.comments');
     Route::post('/izin/{pengajuan}/reply', [MobileIzinController::class, 'reply'])
         ->middleware('throttle:60,1')->name('presensi.izin.reply');
+
+    // Rute Koreksi Presensi Mobile — /create SEBELUM wildcard supaya gak ketangkap
+    Route::get('/koreksi', [MobileKoreksiController::class, 'index'])->name('presensi.koreksi.index');
+    Route::get('/koreksi/create', [MobileKoreksiController::class, 'create'])->name('presensi.koreksi.create');
+    Route::post('/koreksi', [MobileKoreksiController::class, 'store'])
+        ->middleware('throttle:10,1')->name('presensi.koreksi.store');
+    Route::get('/koreksi/{koreksi}/cetak', [PengajuanKoreksiController::class, 'print'])
+        ->name('presensi.koreksi.cetak');
 
     Route::get('/absen', [MobileController::class, 'absen'])->name('presensi.absen');
     Route::post('/absen', [MobileController::class, 'storeAbsen'])

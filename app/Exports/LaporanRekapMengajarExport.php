@@ -18,8 +18,9 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 /**
  * Rekap presensi mengajar per guru: total periode + breakdown per minggu.
- * Sumber data = presensi per JP (cron finalize-alpa melengkapi JP yang tak
- * di-slide sebagai alpa), jadi terjadwal = total row per jadwal.
+ * Sumber data = presensi per jadwal (finalize-alpa melengkapi yang tak
+ * di-slide). Semua count berbobot JP = durasi jadwal ÷ durasi_jp unit,
+ * sehingga jadwal blok (multi-JP dalam 1 baris) dihitung beberapa JP.
  */
 class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
@@ -36,6 +37,12 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
     protected $search;
 
     protected $weeks = [];
+
+    /** Cache rows — collection() dipanggil 2-3x (preview, summary, calendar). */
+    private ?Collection $cachedRows = null;
+
+    /** Rows mentah per pegawai (groupBy) — sumber calendarData tanpa query ulang. */
+    private Collection $rawRows;
 
     public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $search = null)
     {
@@ -66,11 +73,13 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
 
     public function collection(): Collection
     {
-        $weeks = $this->weeks;
-        $start = Carbon::parse($this->start_date);
-        $end = Carbon::parse($this->end_date);
+        if ($this->cachedRows !== null) {
+            return $this->cachedRows;
+        }
 
-        $query = Presensi::with(['pegawai.jabatans', 'pegawai.mapels', 'jadwal'])
+        $weeks = $this->weeks;
+
+        $query = Presensi::with(['pegawai.jabatans', 'pegawai.mapels', 'jadwal.unitSekolah:id,durasi_jp'])
             ->whereBetween('tanggal', [$this->start_date, $this->end_date])
             ->whereNotNull('jadwal_id')
             ->where('tipe_presensi', 'mengajar');
@@ -90,59 +99,85 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
         }
 
         $rows = $query->get();
+        $this->rawRows = $rows->groupBy('pegawai_id');
 
-        // Agregasi per guru + per minggu: JP terjadwal (total row), hadir,
-        // telat, alpa. Izin/sakit/cuti pada JP mengajar jarang (blok hari
-        // penuh) — tetap dihitung sebagai tidak hadir mengajar.
+        // Agregasi per guru + per minggu: JP terjadwal (bobot durasi ÷ durasi_jp
+        // unit — jadwal blok dihitung beberapa JP), hadir, telat, alpa.
+        // Izin/sakit/cuti pada JP mengajar jarang (blok hari penuh) — tetap
+        // dihitung sebagai tidak hadir mengajar.
         $byPegawai = [];
         foreach ($rows as $p) {
             $pid = $p->pegawai_id;
             if (! isset($byPegawai[$pid])) {
                 $byPegawai[$pid] = [
                     'pegawai' => $p->pegawai,
-                    'total' => ['terjadwal' => 0, 'hadir' => 0, 'telat' => 0, 'alpa' => 0],
+                    'total' => ['terjadwal' => 0.0, 'hadir' => 0.0, 'telat' => 0.0, 'alpa' => 0.0],
                     'minggu' => [],
                 ];
             }
             $d = &$byPegawai[$pid];
 
-            $d['total']['terjadwal']++;
+            $w = $this->jpWeight($p);
+            $d['total']['terjadwal'] += $w;
             if ($p->status === 'telat') {
-                $d['total']['telat']++;
+                $d['total']['telat'] += $w;
             } elseif ($p->status === 'hadir') {
-                $d['total']['hadir']++;
+                $d['total']['hadir'] += $w;
             } elseif ($p->status === 'alpa') {
-                $d['total']['alpa']++;
+                $d['total']['alpa'] += $w;
             }
 
             $tanggal = $p->tanggal->toDateString();
-            foreach ($weeks as $i => $w) {
-                if ($tanggal >= $w['start'] && $tanggal <= $w['end']) {
+            foreach ($weeks as $i => $w2) {
+                if ($tanggal >= $w2['start'] && $tanggal <= $w2['end']) {
                     if (! isset($d['minggu'][$i])) {
-                        $d['minggu'][$i] = ['terjadwal' => 0, 'hadir' => 0, 'telat' => 0, 'alpa' => 0];
+                        $d['minggu'][$i] = ['terjadwal' => 0.0, 'hadir' => 0.0, 'telat' => 0.0, 'alpa' => 0.0];
                     }
-                    $d['minggu'][$i]['terjadwal']++;
+                    $d['minggu'][$i]['terjadwal'] += $w;
                     if ($p->status === 'telat') {
-                        $d['minggu'][$i]['telat']++;
+                        $d['minggu'][$i]['telat'] += $w;
                     } elseif ($p->status === 'hadir') {
-                        $d['minggu'][$i]['hadir']++;
+                        $d['minggu'][$i]['hadir'] += $w;
                     } elseif ($p->status === 'alpa') {
-                        $d['minggu'][$i]['alpa']++;
+                        $d['minggu'][$i]['alpa'] += $w;
                     }
                     break;
                 }
             }
+            unset($d);
         }
 
-        return collect(array_values($byPegawai))->sortBy(fn ($d) => $d['pegawai']->nama_lengkap ?? '')->values();
+        // Pembulatan ditangani output (map/summary/calendar) — hindari dobel.
+        return $this->cachedRows = collect(array_values($byPegawai))->sortBy(fn ($d) => $d['pegawai']->nama_lengkap ?? '')->values();
+    }
+
+    /**
+     * Bobot JP 1 baris presensi = durasi jadwal ÷ durasi_jp unit (default 45).
+     * Jadwal dibuat kelipatan durasi_jp (import/generate) → mayoritas integer.
+     */
+    private function jpWeight($p): float
+    {
+        $jadwal = $p->jadwal;
+        if (! $jadwal) {
+            return 0.0;
+        }
+        $durasiJp = (int) ($jadwal->unitSekolah?->durasi_jp ?? 45);
+        if ($durasiJp <= 0) {
+            $durasiJp = 45;
+        }
+        $menit = Carbon::parse($jadwal->jam_mulai)->diffInMinutes(Carbon::parse($jadwal->jam_selesai));
+
+        return round(max(0, $menit) / $durasiJp, 2);
     }
 
     /**
      * Data kalender untuk grid FE: daftar tanggal periode (weekday) +
      * per guru per tanggal ringkasan {jp, hadir, telat, alpa}.
      * Dipakai preview (controller) — bukan oleh Maatwebsite.
+     * Diturunkan dari collection() yang sama (satu query, tanpa SQL mentah
+     * yang bergantung dialek driver, tanpa pemangkasan take(500)).
      */
-    public function calendarData(Collection $rows): array
+    public function calendarData(): array
     {
         $dates = [];
         $cursor = Carbon::parse($this->start_date);
@@ -155,39 +190,32 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
         }
 
         $cells = [];
-        $rawQuery = Presensi::whereBetween('tanggal', [$this->start_date, $this->end_date])
-            ->whereNotNull('jadwal_id')
-            ->where('tipe_presensi', 'mengajar')
-            ->selectRaw('pegawai_id, tanggal, COUNT(*) as jp,
-                SUM(CASE WHEN status = "hadir" THEN 1 ELSE 0 END) as hadir,
-                SUM(CASE WHEN status = "telat" THEN 1 ELSE 0 END) as telat,
-                SUM(CASE WHEN status = "alpa" THEN 1 ELSE 0 END) as alpa')
-            ->groupBy('pegawai_id', 'tanggal');
-
-        if ($this->unit_id) {
-            $rawQuery->where('unit_sekolah_id', $this->unit_id);
+        $this->collection(); // isi rawRows
+        foreach ($this->rawRows as $pegId => $pegRows) {
+            foreach ($pegRows as $p) {
+                $w = $this->jpWeight($p);
+                $tanggal = $p->tanggal->toDateString();
+                if (! isset($cells[$pegId][$tanggal])) {
+                    $cells[$pegId][$tanggal] = [0.0, 0.0, 0.0, 0.0];
+                }
+                $cells[$pegId][$tanggal][0] += $w;
+                if ($p->status === 'hadir') {
+                    $cells[$pegId][$tanggal][1] += $w;
+                } elseif ($p->status === 'telat') {
+                    $cells[$pegId][$tanggal][2] += $w;
+                } elseif ($p->status === 'alpa') {
+                    $cells[$pegId][$tanggal][3] += $w;
+                }
+            }
         }
-        if ($this->jenis === 'pendidik') {
-            $rawQuery->whereHas('pegawai', fn ($q) => $q->guru());
-        } elseif ($this->jenis === 'kependidikan') {
-            $rawQuery->whereHas('pegawai', fn ($q) => $q->nonGuru());
-        }
-
-        if ($this->search !== null && $this->search !== '') {
-            $rawQuery->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', '%'.$this->search.'%'));
-        }
-
-        foreach ($rawQuery->get() as $c) {
-            $tanggal = $c->tanggal instanceof \DateTimeInterface
-                ? $c->tanggal->format('Y-m-d')
-                : (string) $c->tanggal;
-            $cells[$c->pegawai_id][$tanggal] = [
-                (int) $c->jp, (int) $c->hadir, (int) $c->telat, (int) $c->alpa,
-            ];
+        foreach ($cells as $pid => $byDate) {
+            foreach ($byDate as $tanggal => $vals) {
+                $cells[$pid][$tanggal] = array_map(fn ($v) => $this->numJp($v), $vals);
+            }
         }
 
         $guru = [];
-        foreach ($rows as $d) {
+        foreach ($this->collection() as $d) {
             $guru[] = [
                 'id' => $d['pegawai']?->id,
                 'nama' => $d['pegawai']?->nama_lengkap ?? '-',
@@ -217,17 +245,18 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
         return [
             'totalPegawai' => $total,
             'avgKehadiran' => $avgPersen,
-            'totalTerjadwal' => $rows->sum(fn ($d) => $d['total']['terjadwal']),
-            'totalHadir' => $rows->sum(fn ($d) => $d['total']['hadir']),
-            'totalTelat' => $rows->sum(fn ($d) => $d['total']['telat']),
-            'totalAlpa' => $rows->sum(fn ($d) => $d['total']['alpa']),
+            'totalTerjadwal' => $this->numJp($rows->sum(fn ($d) => $d['total']['terjadwal'])),
+            'totalHadir' => $this->numJp($rows->sum(fn ($d) => $d['total']['hadir'])),
+            'totalTelat' => $this->numJp($rows->sum(fn ($d) => $d['total']['telat'])),
+            'totalAlpa' => $this->numJp($rows->sum(fn ($d) => $d['total']['alpa'])),
         ];
     }
 
     public function map($d): array
     {
-        $hadirPersen = $d['total']['terjadwal'] > 0
-            ? round((($d['total']['hadir'] + $d['total']['telat']) / $d['total']['terjadwal']) * 100)
+        $terjadwal = (float) $d['total']['terjadwal'];
+        $hadirPersen = $terjadwal > 0
+            ? round(((($d['total']['hadir'] + $d['total']['telat']) / $terjadwal)) * 100)
             : 0;
 
         $pegawai = $d['pegawai'];
@@ -236,10 +265,10 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
             $pegawai?->nuptk ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $pegawai?->mapels?->pluck('nama')->unique()->implode(', ') ?: '-',
-            $d['total']['terjadwal'],
-            $d['total']['hadir'],
-            $d['total']['telat'],
-            $d['total']['alpa'],
+            $this->numJp($d['total']['terjadwal']),
+            $this->numJp($d['total']['hadir']),
+            $this->numJp($d['total']['telat']),
+            $this->numJp($d['total']['alpa']),
             $hadirPersen.'%',
         ];
 
@@ -247,11 +276,27 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
         foreach ($this->weeks as $i => $w) {
             $m = $d['minggu'][$i] ?? null;
             $row[] = $m
-                ? sprintf('%d/%d (telat %d)', $m['hadir'] + $m['telat'], $m['terjadwal'], $m['telat'])
+                ? sprintf('%s/%s (telat %s)', $this->fmtJp($m['hadir'] + $m['telat']), $this->fmtJp($m['terjadwal']), $this->fmtJp($m['telat']))
                 : '-';
         }
 
         return array_map([self::class, 'escapeFormula'], $row);
+    }
+
+    /** Format JP: bulat tampil tanpa desimal, pecahan tampil 2 desimal (teks mingguan). */
+    private function fmtJp($value): string
+    {
+        $v = round((float) $value, 2);
+
+        return fmod($v, 1.0) === 0.0 ? (string) (int) $v : (string) $v;
+    }
+
+    /** JP numerik utk sel Excel/JSON: int bila bulat, float 2 desimal bila pecahan. */
+    private function numJp($value): int|float
+    {
+        $v = round((float) $value, 2);
+
+        return fmod($v, 1.0) === 0.0 ? (int) $v : $v;
     }
 
     public function headings(): array

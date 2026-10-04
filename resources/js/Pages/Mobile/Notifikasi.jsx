@@ -16,6 +16,9 @@ function getNotificationRoute(n) {
     if (type === 'status_izin' || type === 'izin_baru') {
         return { name: 'presensi.izin.index', params: null };
     }
+    if (type === 'koreksi_baru' || type === 'status_koreksi') {
+        return { name: 'presensi.koreksi.index', params: null };
+    }
     if (type === 'announcement') {
         return { name: 'presensi.pengumuman', params: null };
     }

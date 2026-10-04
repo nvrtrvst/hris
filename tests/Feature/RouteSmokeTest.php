@@ -14,6 +14,7 @@ use App\Models\Pegawai;
 use App\Models\PegawaiDokumen;
 use App\Models\PegawaiMapel;
 use App\Models\PengajuanIzin;
+use App\Models\PengajuanKoreksi;
 use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
 use App\Models\Presensi;
@@ -132,6 +133,7 @@ class RouteSmokeTest extends TestCase
         'unit-sekolah.create' => 'UnitSekolah/Create',
         'unit-sekolah.edit' => 'UnitSekolah/Edit',
         'pengajuan-izin.index' => 'PengajuanIzin/Index',
+        'koreksi-presensi.index' => 'Koreksi/Index',
         'laporan.index' => 'Laporan/Index',
         'users.index' => 'Users/Index',
         'users.create' => 'Users/Create',
@@ -161,6 +163,8 @@ class RouteSmokeTest extends TestCase
         'presensi.izin.index' => 'Mobile/Izin/Index',
         'presensi.izin.create' => 'Mobile/Izin/Create',
         'presensi.izin.show' => 'Mobile/Izin/Show',
+        'presensi.koreksi.index' => 'Mobile/Koreksi/Index',
+        'presensi.koreksi.create' => 'Mobile/Koreksi/Create',
         'presensi.absen' => 'Mobile/Absen',
         'presensi.profile.edit' => 'Mobile/Profile',
         // presensi.lengkapi-data → Mobile/LengkapiData karena test berjalan di
@@ -441,6 +445,8 @@ class RouteSmokeTest extends TestCase
 
     private Presensi $presensiLembur2;
 
+    private PengajuanKoreksi $koreksi;
+
     private KomponenGaji $komponen;
 
     private Penggajian $penggajianDraft;
@@ -636,6 +642,27 @@ class RouteSmokeTest extends TestCase
         ]);
         $this->presensiLembur2 = $this->presensiLembur->replicate()->fill(['id' => null]);
         $this->presensiLembur2->save();
+
+        // Pengajuan koreksi pending atas presensi TERPISAH — supaya
+        // presensi.koreksi.create (query presensi_id=$this->presensi) tak
+        // terkena cek "sudah ada pending" (422).
+        $presensiKoreksi = Presensi::create([
+            'pegawai_id' => $this->pegawai->id,
+            'jadwal_id' => null,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => now()->format('Y-m-d'),
+            'jam_masuk' => now()->format('H:i:s'),
+            'status' => 'hadir',
+            'tipe_presensi' => 'kantor',
+        ]);
+        $this->koreksi = PengajuanKoreksi::create([
+            'pegawai_id' => $this->pegawai->id,
+            'presensi_id' => $presensiKoreksi->id,
+            'tanggal' => $presensiKoreksi->tanggal,
+            'nilai_baru' => '17:00',
+            'alasan' => 'lupa_presensi',
+            'nomor' => 'KOR/SMOKE/0001',
+        ]);
 
         $this->komponen = KomponenGaji::create([
             'nama' => 'Gaji Pokok',
@@ -1591,12 +1618,14 @@ class RouteSmokeTest extends TestCase
                 $routeName === 'pengajuan-izin.approve' => $this->pengajuanApprove->id,
                 $routeName === 'pengajuan-izin.reject' => $this->pengajuanReject->id,
                 $routeName === 'penggajian.destroy' => $this->penggajianDraft->id,
+                $routeName === 'koreksi-presensi.cetak' => $this->koreksi->id,
                 default => $this->penggajianDraft->id,
             },
             'hari_libur' => $routeName === 'hari-libur.destroy' ? $this->disposableHariLibur->id : $this->hariLibur->id,
             'tugas_luar' => $routeName === 'tugas-luar.destroy' ? $this->disposableTugasLuar->id : $this->tugasLuar->id,
             'reminder' => in_array($routeName, ['reminders.destroy', 'reminders.send'], true) ? $this->disposableReminder->id : $this->reminder->id,
             'lokasi' => $this->lokasi->id,
+            'koreksi' => $this->koreksi->id,
             default => throw new \RuntimeException("Param route tak dikenal: {$param} @ {$routeName}"),
         };
     }
@@ -1619,6 +1648,9 @@ class RouteSmokeTest extends TestCase
             // butuh props terisi, jadi kirim filter unit.
             'jadwal.index' => ['unit_sekolah_id' => $this->unit->id],
             'presensi.jadwal.kelas' => ['jadwal_id' => $this->jadwal->id],
+            // Form koreksi butuh presensi pemilik (milik mobileUser) — tanpa
+            // query ini controller balas 404.
+            'presensi.koreksi.create' => ['presensi_id' => $this->presensi->id],
             'laporan.kcd.preview', 'laporan.kcd.pdf' => [
                 'unit_sekolah_id' => $this->unit->id,
                 'periode' => now()->format('Y-m'),

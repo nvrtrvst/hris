@@ -89,7 +89,7 @@ class LaporanController extends Controller
         // Khusus rekap mengajar: sertakan data kalender (guru × tanggal)
         // untuk tampilan grid mingguan di frontend.
         if ($validated['type'] === 'rekap_mengajar') {
-            $payload['calendar'] = $export->calendarData($data);
+            $payload['calendar'] = $export->calendarData();
             $payload['summary'] = $export->summaryData();
             $payload['pegawai_ids'] = $data->pluck('pegawai.id')->values();
         }
@@ -355,7 +355,7 @@ class LaporanController extends Controller
 
         $pegawai = Pegawai::with(['jabatans', 'units', 'mapels'])->findOrFail($request->pegawai_id);
 
-        $rows = Presensi::with(['jadwal.pegawaiMapel.mataPelajaran', 'unitSekolah'])
+        $rows = Presensi::with(['jadwal.pegawaiMapel.mataPelajaran', 'jadwal.unitSekolah:id,durasi_jp', 'unitSekolah'])
             ->where('pegawai_id', $pegawai->id)
             ->whereBetween('tanggal', [$request->start_date, $request->end_date])
             ->whereNotNull('jadwal_id')
@@ -364,6 +364,18 @@ class LaporanController extends Controller
             ->orderByRaw('COALESCE(jam_masuk, "23:59") asc')
             ->get();
 
+        // Bobot JP per baris: durasi jadwal ÷ durasi_jp unit (paritas dengan
+        // LaporanRekapMengajarExport::jpWeight — jadwal blok = beberapa JP).
+        $jpWeight = function ($p): float {
+            $durasiJp = (int) ($p->jadwal?->unitSekolah?->durasi_jp ?? 45);
+            if ($durasiJp <= 0) {
+                $durasiJp = 45;
+            }
+            $menit = Carbon::parse($p->jadwal?->jam_mulai)->diffInMinutes(Carbon::parse($p->jadwal?->jam_selesai));
+
+            return round(max(0, $menit) / $durasiJp, 2);
+        };
+
         $detail = $rows->map(fn ($p) => [
             'tanggal' => $p->tanggal->format('Y-m-d'),
             'hari' => $p->tanggal->locale('id')->translatedFormat('l'),
@@ -371,15 +383,16 @@ class LaporanController extends Controller
             'kelas' => $p->jadwal?->kelas_label ?? '-',
             'jam_mulai' => $p->jam_masuk,
             'jam_selesai' => $p->jam_keluar,
+            'jp' => $jpWeight($p),
             'status' => $p->status,
             'unit' => $p->unitSekolah?->nama ?? '-',
         ]);
 
         $summary = [
-            'terjadwal' => $rows->count(),
-            'hadir' => $rows->where('status', 'hadir')->count(),
-            'telat' => $rows->where('status', 'telat')->count(),
-            'alpa' => $rows->where('status', 'alpa')->count(),
+            'terjadwal' => round((float) $rows->sum($jpWeight), 2),
+            'hadir' => round((float) $rows->where('status', 'hadir')->sum($jpWeight), 2),
+            'telat' => round((float) $rows->where('status', 'telat')->sum($jpWeight), 2),
+            'alpa' => round((float) $rows->where('status', 'alpa')->sum($jpWeight), 2),
         ];
 
         $periode = [

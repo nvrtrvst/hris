@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
-import { fmtDetik, batasHadir } from '@/Utils/waktuPresensi';
+import { fmtDetik, batasHadir, fmtJp, hitungJp, splitJadwalKeJp } from '@/Utils/waktuPresensi';
 import { Card, SectionTitle, Badge, Empty } from '@/Components/MobileUI';
 import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -73,7 +73,9 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                 groups.push({
                     type: 'group', nama, kelas, items,
                     timeRange: `${formatJam(items[0].jadwal?.jam_mulai)}–${formatJam(items[items.length - 1].jadwal?.jam_selesai)}`,
-                    count: items.length,
+                    // Jumlah JP berbobot (durasi ÷ durasi_jp) — jadwal blok >1 row = 1 baris.
+                    count: fmtJp(items.reduce((sum, p) =>
+                        sum + hitungJp(p, p.jadwal?.unit_sekolah?.durasi_jp ?? p.unit_sekolah?.durasi_jp ?? 45), 0)),
                 });
             });
 
@@ -123,8 +125,19 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
             <Head title="Riwayat Presensi" />
 
             <div className="mb-5 px-1">
-                <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Riwayat</h1>
-                <p className="mt-0.5 text-sm text-slate-500">Rekap kehadiran Anda</p>
+                <div className="flex items-start justify-between gap-2">
+                    <div>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Riwayat</h1>
+                        <p className="mt-0.5 text-sm text-slate-500">Rekap kehadiran Anda</p>
+                    </div>
+                    <Link
+                        href={route('presensi.koreksi.index')}
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition active:scale-95"
+                    >
+                        <FileText className="h-3.5 w-3.5" />
+                        Koreksi
+                    </Link>
+                </div>
             </div>
 
             <label className="mb-5 block">
@@ -212,22 +225,33 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                     ? { tone: 'amber', label: 'Belum pulang', icon: Clock }
                                     : b;
                                 return (
-                                    <Card key={p.id} className="flex items-center justify-between py-3.5">
-                                        <div className="min-w-0">
-                                            <p className="truncate font-bold text-slate-800">{label}</p>
-                                            <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
-                                                <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{fmtDetik(p.jam_masuk)}–{fmtDetik(p.jam_keluar)}</span>
-                                                {p.jarak_meter != null && (
-                                                    <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-400" />{p.jarak_meter}m</span>
-                                                )}
-                                            </p>
-                                            {p.status === 'telat' && !isKantor && p.jam_masuk && batasHadir(p.jadwal?.jam_mulai, p.jadwal?.unit_sekolah?.toleransi_menit ?? p.unit_sekolah?.toleransi_menit) && (
-                                                <p className="mt-0.5 text-[11px] font-semibold text-amber-600">
-                                                    Batas hadir {batasHadir(p.jadwal?.jam_mulai, p.jadwal?.unit_sekolah?.toleransi_menit ?? p.unit_sekolah?.toleransi_menit)}
+                                    <Card key={p.id} className="py-3.5">
+                                        <div className="flex items-center justify-between">
+                                            <div className="min-w-0">
+                                                <p className="truncate font-bold text-slate-800">{label}</p>
+                                                <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
+                                                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{fmtDetik(p.jam_masuk)}–{fmtDetik(p.jam_keluar)}</span>
+                                                    {p.jarak_meter != null && (
+                                                        <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-400" />{p.jarak_meter}m</span>
+                                                    )}
                                                 </p>
-                                            )}
+                                                {p.status === 'telat' && !isKantor && p.jam_masuk && batasHadir(p.jadwal?.jam_mulai, p.jadwal?.unit_sekolah?.toleransi_menit ?? p.unit_sekolah?.toleransi_menit) && (
+                                                    <p className="mt-0.5 text-[11px] font-semibold text-amber-600">
+                                                        Batas hadir {batasHadir(p.jadwal?.jam_mulai, p.jadwal?.unit_sekolah?.toleransi_menit ?? p.unit_sekolah?.toleransi_menit)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <Badge tone={badge.tone} icon={badge.icon}>{badge.label}</Badge>
                                         </div>
-                                        <Badge tone={badge.tone} icon={badge.icon}>{badge.label}</Badge>
+                                        {belumPulang && (
+                                            <button
+                                                type="button"
+                                                onClick={() => router.visit(route('presensi.koreksi.create', { presensi_id: p.id }))}
+                                                className="mt-2.5 w-full rounded-xl bg-primary/10 py-2 text-xs font-bold text-primary transition active:scale-95"
+                                            >
+                                                Ajukan Koreksi Jam Keluar
+                                            </button>
+                                        )}
                                     </Card>
                                 );
                             }
@@ -256,14 +280,27 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                     </button>
                                     {expanded && (
                                         <div className="ml-4 mt-1 space-y-1 border-l-2 border-slate-100 pl-3">
-                                            {g.items.map((p) => {
+                                            {g.items.flatMap((p) => {
                                                 const ib = getStatusBadge(p.status);
-                                                return (
-                                                    <div key={p.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                                                        <span className="text-xs font-semibold text-slate-600">{formatJam(p.jadwal?.jam_mulai)}–{formatJam(p.jadwal?.jam_selesai)}</span>
-                                                        <Badge tone={ib.tone} icon={ib.icon}>{ib.label}</Badge>
+                                                const durasi = p.jadwal?.unit_sekolah?.durasi_jp ?? p.unit_sekolah?.durasi_jp ?? 45;
+                                                const slots = splitJadwalKeJp(p, durasi);
+                                                return slots.map((s, si) => (
+                                                    <div key={`${p.id}-${si}`} className="rounded-xl bg-slate-50 px-3 py-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-xs font-semibold text-slate-600">{s.mulai}–{s.selesai}</span>
+                                                            <Badge tone={ib.tone} icon={ib.icon}>{ib.label}</Badge>
+                                                        </div>
+                                                        {si === slots.length - 1 && p.jam_masuk && !p.jam_keluar && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => router.visit(route('presensi.koreksi.create', { presensi_id: p.id }))}
+                                                                className="mt-1.5 w-full rounded-lg bg-primary/10 py-1.5 text-[11px] font-bold text-primary transition active:scale-95"
+                                                            >
+                                                                Ajukan Koreksi Jam Keluar
+                                                            </button>
+                                                        )}
                                                     </div>
-                                                );
+                                                ));
                                             })}
                                         </div>
                                     )}

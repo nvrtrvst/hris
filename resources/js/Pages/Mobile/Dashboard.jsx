@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { fmtDetik } from '@/Utils/waktuPresensi';
-import { Badge, Card, Empty, SectionTitle } from '@/Components/MobileUI';
+import { Badge } from '@/Components/MobileUI';
 import {
     ArrowRight,
     CalendarDays,
@@ -245,24 +245,6 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                 </span>
                 <ArrowRight className="h-5 w-5 text-primary" />
             </Link>
-
-            <SectionTitle icon={Clock3} className="mt-6">Riwayat Terbaru</SectionTitle>
-            <Card press={false} className="divide-y divide-slate-100 p-0">
-                {records.length === 0 ? (
-                    <Empty icon={Clock3} title="Belum ada riwayat" subtitle="Presensi terbaru akan tampil di sini." />
-                ) : records.slice(0, 3).map((record) => (
-                    <div key={record.id} className="flex items-center gap-3 px-4 py-3.5">
-                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${record.status === 'telat' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-primary'}`}>
-                            <CalendarDays className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm font-bold text-slate-800">{format(new Date(record.tanggal), 'EEEE, d MMM', { locale: id })}</p>
-                            <p className="mt-0.5 text-xs text-slate-500">{fmtDetik(record.jam_masuk)} - {fmtDetik(record.jam_keluar)}</p>
-                        </div>
-                        <Badge tone={statusTone[record.status] || 'slate'}>{statusLabel[record.status] || record.status}</Badge>
-                    </div>
-                ))}
-            </Card>
         </MobileLayout>
     );
 }

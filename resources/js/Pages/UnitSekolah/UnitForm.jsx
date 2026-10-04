@@ -160,6 +160,24 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                             onChange={(e) => setData('toleransi_slide_menit', e.target.value)} className={inputClass} />
                     </Field>
                 </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border bg-surface p-3">
+                            <input type="checkbox" checked={Boolean(data.wajib_pulang_mengajar)}
+                                onChange={(e) => setData('wajib_pulang_mengajar', e.target.checked ? 1 : 0)}
+                                className="h-4 w-4 accent-[#0F3D3E]" />
+                            <span className="text-sm font-semibold text-text-primary">Wajib Pulang Mengajar</span>
+                        </label>
+                        <p className="form-hint">ON: absen keluar mengajar lewat tombol &quot;Selesai Mengajar&quot; (tanpa auto). OFF: pulang otomatis dari jadwal seperti biasa.</p>
+                        {errors.wajib_pulang_mengajar && <p className="form-error">{errors.wajib_pulang_mengajar}</p>}
+                    </div>
+                    <Field label="Tombol Pulang (Menit Sebelum Selesai)" error={errors.pulang_sebelum_menit}
+                        hint="Tombol &quot;Selesai Mengajar&quot; muncul N menit sebelum sesi berakhir. Default 20.">
+                        <input type="number" min="1" max="120" value={data.pulang_sebelum_menit ?? 20}
+                            onChange={(e) => setData('pulang_sebelum_menit', e.target.value)} className={inputClass} />
+                    </Field>
+                </div>
             </SectionCard>
 
             {/* Jam Kantor */}

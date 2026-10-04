@@ -602,10 +602,18 @@ class PenggajianController extends Controller
         // [FIX] Auto-alpha: hari kerja (dari jadwal, kecuali lembur) - (hadir/telat/izin/cuti/alpa terkonfirmasi)
         // Hari libur (nasional + unit) di-exclude agar pegawai tak dihitung alpa di kalender merah.
         $workingDays = 0;
+        $seenHariUnit = [];
         foreach ($pegawai->jadwals as $jadwal) {
             if ($jadwal->jenis_jadwal === 'lembur') {
                 continue;
             }
+            // Dedup (hari, unit): 2 jadwal Senin di unit sama = 1 hari kerja,
+            // bukan 2 (kalau tidak, alpa auto ter-overcount).
+            $key = $jadwal->hari.'|'.$jadwal->unit_sekolah_id;
+            if (isset($seenHariUnit[$key])) {
+                continue;
+            }
+            $seenHariUnit[$key] = true;
             $workingDays += max(0, $this->countWeekdayInRange(
                 $jadwal->hari, $periodeStart, $attendanceCutoff,
                 $this->holidayCountFor($holidayMap, $jadwal->unit_sekolah_id, $jadwal->hari)

@@ -75,7 +75,12 @@ class PresensiAggregator
             ->groupBy('pegawai_id')
             ->map(fn ($pegawaiRows) => $this->dedupPassiveByActiveDate($pegawaiRows)
                 ->groupBy('status')
-                ->map(fn ($statusRows) => (object) ['status' => $statusRows->first()->status, 'total' => $statusRows->count()])
+                // 1 hari = 1 hitungan: 2 record aktif tanggal sama (multi-unit/
+                // cover+real) jangan dobel.
+                ->map(fn ($statusRows) => (object) [
+                    'status' => $statusRows->first()->status,
+                    'total' => $statusRows->unique(fn ($p) => $p->tanggal->toDateString())->count(),
+                ])
                 ->values());
     }
 

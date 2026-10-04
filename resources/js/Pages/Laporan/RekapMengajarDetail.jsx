@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, User, Calendar, BookOpen } from 'lucide-react';
+import { fmtJp } from '@/Utils/waktuPresensi';
 
 const STATUS_STYLES = {
     hadir: 'bg-green-100 text-green-800 ring-green-600/20',
@@ -85,17 +86,17 @@ export default function RekapMengajarDetail({ auth, pegawai, detail, summary, pe
                     {/* Summary Cards */}
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                         <KpiCard label="% Kehadiran" value={`${persen}%`} accent />
-                        <KpiCard label="Total JP" value={summary.terjadwal} />
-                        <KpiCard label="Hadir" value={summary.hadir} />
-                        <KpiCard label="Telat" value={summary.telat} />
-                        <KpiCard label="Alpa" value={summary.alpa} />
+                        <KpiCard label="Total JP" value={fmtJp(summary.terjadwal)} />
+                        <KpiCard label="Hadir" value={fmtJp(summary.hadir)} />
+                        <KpiCard label="Telat" value={fmtJp(summary.telat)} />
+                        <KpiCard label="Alpa" value={fmtJp(summary.alpa)} />
                     </div>
 
                     {/* Detail Table */}
                     <div className="card overflow-hidden">
                         <div className="border-b border-border bg-surface px-6 py-4">
                             <h4 className="text-sm font-extrabold uppercase tracking-wide text-primary">Rincian Presensi Mengajar</h4>
-                            <p className="mt-0.5 text-xs text-text-muted">{detail.length} JP tercatat</p>
+                            <p className="mt-0.5 text-xs text-text-muted">{fmtJp(summary.terjadwal)} JP tercatat ({detail.length} sesi)</p>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-border">
@@ -108,6 +109,7 @@ export default function RekapMengajarDetail({ auth, pegawai, detail, summary, pe
                                         <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Kelas</th>
                                         <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Jam Masuk</th>
                                         <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Jam Selesai</th>
+                                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">JP</th>
                                         <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Unit</th>
                                     </tr>
                                 </thead>
@@ -121,12 +123,13 @@ export default function RekapMengajarDetail({ auth, pegawai, detail, summary, pe
                                             <td className="whitespace-nowrap px-4 py-3 text-sm text-text-secondary">{row.kelas}</td>
                                             <td className="whitespace-nowrap px-4 py-3 text-sm text-text-secondary tabular-nums">{row.jam_mulai || '-'}</td>
                                             <td className="whitespace-nowrap px-4 py-3 text-sm text-text-secondary tabular-nums">{row.jam_selesai || '-'}</td>
+                                            <td className="whitespace-nowrap px-4 py-3 text-sm text-text-secondary tabular-nums">{fmtJp(row.jp)}</td>
                                             <td className="whitespace-nowrap px-4 py-3 text-sm text-text-secondary">{row.unit}</td>
                                         </tr>
                                     ))}
                                     {detail.length === 0 && (
                                         <tr>
-                                            <td colSpan={8} className="px-4 py-10 text-center text-sm text-text-muted">
+                                            <td colSpan={9} className="px-4 py-10 text-center text-sm text-text-muted">
                                                 Tidak ada data mengajar untuk periode ini.
                                             </td>
                                         </tr>

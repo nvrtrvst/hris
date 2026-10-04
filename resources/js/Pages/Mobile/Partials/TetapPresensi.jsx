@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { checkGeofence } from '@/Utils/geo';
+import { menitKeJam } from '@/Utils/waktuPresensi';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '@/Constants/AppConstants';
 import { Card, Toggle, Empty } from '@/Components/MobileUI';
 import SlideToConfirm from '@/Components/SlideToConfirm';
@@ -622,10 +623,35 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                             )}
                                         </>
                                     ) : done && !closed ? (
-                                        <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
-                                            <CheckCircle className="h-4 w-4" /> Presensi mengajar tercatat
-                                            {count > 1 && <span className="text-emerald-500">({count} jam)</span>}
-                                        </div>
+                                        g.unit_sekolah?.wajib_pulang_mengajar ? (
+                                            jamSekarang >= toMin(g.jamSelesaiLast) - (g.unit_sekolah?.pulang_sebelum_menit ?? 20) ? (
+                                                <>
+                                                    <SlideToConfirm
+                                                        onConfirm={() => handleSlideGroup(g, 'keluar')}
+                                                        disabled={slideLoading !== null || !geofence?.inside}
+                                                        confirmed={false}
+                                                        label="Selesai Mengajar"
+                                                    />
+                                                    {!geofence?.inside && (
+                                                        <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
+                                                            <MapPin className="h-3 w-3 shrink-0" />
+                                                            {!currentPosition ? 'Tunggu GPS aktif…' : 'Di luar radius unit — geser tidak aktif'}
+                                                        </p>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-semibold text-emerald-700">
+                                                    <CheckCircle className="h-4 w-4" /> Presensi mengajar tercatat
+                                                    {count > 1 && <span className="text-emerald-500">({count} jam)</span>}
+                                                    <span className="text-slate-400">· tombol pulang {menitKeJam(toMin(g.jamSelesaiLast) - (g.unit_sekolah?.pulang_sebelum_menit ?? 20))}</span>
+                                                </div>
+                                            )
+                                        ) : (
+                                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
+                                                <CheckCircle className="h-4 w-4" /> Presensi mengajar tercatat
+                                                {count > 1 && <span className="text-emerald-500">({count} jam)</span>}
+                                            </div>
+                                        )
                                     ) : done && closed ? (
                                         <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
                                             <CheckCircle className="h-4 w-4" /> Presensi mengajar lengkap

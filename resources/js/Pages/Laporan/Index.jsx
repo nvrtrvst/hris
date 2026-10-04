@@ -4,6 +4,7 @@ import { Head, router } from '@inertiajs/react';
 import { Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users, X } from 'lucide-react';
 import axios from 'axios';
 import ComboSelect from '@/Components/ComboSelect';
+import { fmtJp } from '@/Utils/waktuPresensi';
 
 const Field = ({ label, children }) => (
     <div>
@@ -511,12 +512,12 @@ export default function LaporanIndex({ auth, units }) {
                                                             const cell = g.cells[ds];
                                                             const [jp, hadir, telat, alpa] = cell || [0, 0, 0, 0];
                                                             const title = cell
-                                                                ? `${jp} JP: ${hadir} hadir, ${telat} telat, ${alpa} alpa`
+                                                                ? `${fmtJp(jp)} JP: ${fmtJp(hadir)} hadir, ${fmtJp(telat)} telat, ${fmtJp(alpa)} alpa`
                                                                 : 'Tidak ada jadwal mengajar';
                                                             return (
                                                                 <td key={ds} className="px-1 py-1.5 text-center" title={title}>
                                                                     <span className={`inline-flex min-w-[2.2rem] items-center justify-center rounded-lg px-1.5 py-1 text-[11px] font-bold tabular-nums ${cellStyle(cell)}`}>
-                                                                        {cell ? `${hadir + telat}/${jp}` : '—'}
+                                                                        {cell ? `${fmtJp(hadir + telat)}/${fmtJp(jp)}` : '—'}
                                                                     </span>
                                                                 </td>
                                                             );
@@ -680,10 +681,10 @@ export default function LaporanIndex({ auth, units }) {
                                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                                             <KpiCard label="Total Pegawai" value={s.totalPegawai} />
                                             <KpiCard label="Rata-rata Kehadiran" value={`${s.avgKehadiran}%`} accent />
-                                            <KpiCard label="JP Terjadwal" value={s.totalTerjadwal} />
-                                            <KpiCard label="Hadir" value={s.totalHadir} />
-                                            <KpiCard label="Telat" value={s.totalTelat} />
-                                            <KpiCard label="Alpa" value={s.totalAlpa} />
+                                            <KpiCard label="JP Terjadwal" value={fmtJp(s.totalTerjadwal)} />
+                                            <KpiCard label="Hadir" value={fmtJp(s.totalHadir)} />
+                                            <KpiCard label="Telat" value={fmtJp(s.totalTelat)} />
+                                            <KpiCard label="Alpa" value={fmtJp(s.totalAlpa)} />
                                         </div>
                                     </div>
                                 );

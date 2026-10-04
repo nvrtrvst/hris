@@ -938,7 +938,12 @@ class MobileController extends Controller
 
                     // Pre-fill jam_keluar dari jadwal — tidak perlu absen keluar
                     // per JP; waktunya final dari jadwal, bukan aktual.
-                    $presensi->jam_keluar = $jadwal->jam_selesai;
+                    // Wajib pulang mengajar (hanya pegawai tetap): pre-fill OFF —
+                    // keluar dikunci via tombol Selesai Mengajar. Honorer tetap
+                    // pre-fill (tanpa tombol keluar — jangan sampai buntu).
+                    if (! ($unitSekolah?->wajib_pulang_mengajar && $pegawai->is_tetap)) {
+                        $presensi->jam_keluar = $jadwal->jam_selesai;
+                    }
                 }
 
                 // Auto-close kantor terbuka saat mulai dinas luar. UPDATE atomik dengan
@@ -1368,6 +1373,19 @@ class MobileController extends Controller
                     'message' => sprintf(PresensiMessages::SLIDE_SUDAH_BERAKHIR, $batasSlide),
                 ], 422);
             }
+        } else {
+            // Wajib pulang mengajar: tombol keluar hanya >= sesiEnd - pulang_sebelum_menit.
+            // Terlalu awal = 422; terlambat tetap boleh (fallback lupa → admin ralat).
+            $unitCfg = $jadwal->unitSekolah;
+            if ($unitCfg->wajib_pulang_mengajar) {
+                $batasPulang = Carbon::parse($sesiEnd)->subMinutes((int) $unitCfg->pulang_sebelum_menit)->format('H:i:s');
+                if ($sekarang < $batasPulang) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => sprintf(PresensiMessages::PULANG_BELUM_WAKTUNYA, substr($batasPulang, 0, 5)),
+                    ], 422);
+                }
+            }
         }
 
         $pagiRecord = Presensi::where('pegawai_id', $pegawai->id)
@@ -1453,7 +1471,9 @@ class MobileController extends Controller
                 $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 5;
                 $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $jadwal->unitSekolah->toleransi_menit);
                 // Jam keluar mengajar final dari jadwal — tidak perlu slide pulang per JP.
-                if ($jadwal->jenis_jadwal === 'mengajar') {
+                // Flag wajib_pulang_mengajar ON: pre-fill dimatikan; keluar dikunci via
+                // tombol Selesai Mengajar (slide keluar) pada row JP terakhir sesi.
+                if ($jadwal->jenis_jadwal === 'mengajar' && ! $jadwal->unitSekolah->wajib_pulang_mengajar) {
                     $presensi->jam_keluar = $jadwal->jam_selesai;
                 }
                 $presensi->save();
@@ -1555,7 +1575,9 @@ class MobileController extends Controller
                     'tipe_presensi' => 'mengajar',
                     // Jam cover final dari jadwal JP masing-masing.
                     'jam_masuk' => $jp->jam_mulai,
-                    'jam_keluar' => $jp->jam_selesai,
+                    // Flag wajib_pulang_mengajar ON: cover rows tanpa jam_keluar —
+                    // terkunci via slide keluar pada row JP terakhir sesi.
+                    'jam_keluar' => $jp->unitSekolah->wajib_pulang_mengajar ? null : $jp->jam_selesai,
                 ]);
                 $presensi->is_lembur = false;
                 $presensi->status = 'hadir';
@@ -1591,7 +1613,7 @@ class MobileController extends Controller
      */
     private function sesiMengajar(Pegawai $pegawai, Jadwal $anchor, string $hari): Collection
     {
-        $kandidat = Jadwal::where('pegawai_id', $pegawai->id)
+        $kandidat = Jadwal::with('unitSekolah')->where('pegawai_id', $pegawai->id)
             ->where('hari', $hari)
             ->where('jenis_jadwal', 'mengajar')
             ->where('unit_sekolah_id', $anchor->unit_sekolah_id)

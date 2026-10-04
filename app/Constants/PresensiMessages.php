@@ -76,6 +76,9 @@ class PresensiMessages
 
     public const SLIDE_SUDAH_BERAKHIR = 'Jadwal sudah berakhir. Batas slide: %s.';
 
+    /** Toggle unit wajib_pulang_mengajar: tombol keluar hanya >= sesiEnd - N menit. */
+    public const PULANG_BELUM_WAKTUNYA = 'Tombol pulang tersedia pukul %s.';
+
     // Tugas Luar
     public const LABEL_TUGAS_LUAR = 'Tugas Luar';
 
