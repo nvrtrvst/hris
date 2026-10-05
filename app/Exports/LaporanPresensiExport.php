@@ -58,10 +58,23 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
             $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', '%'.$this->search.'%'));
         }
 
-        return $query->orderBy('tanggal', 'asc')
+        $rows = $query->orderBy('tanggal', 'asc')
             ->orderByRaw('LOWER(nama_lengkap) asc')
             ->join('pegawai', 'pegawai.id', '=', 'presensi.pegawai_id')
             ->get();
+
+        // Mode kantor: 1 baris per pegawai per tanggal — utk hari ber-jadwal
+        // dengan alpa, tampilkan ketidakhadiran harian (finalize-alpa membuatnya
+        // per JP). Bila ada baris non-alpa di tanggal sama, baris itulah yang
+        // menang (kehadiran harian > alpa per JP).
+        if ($this->tipe === 'kantor') {
+            $rows = $rows
+                ->groupBy(fn ($p) => $p->pegawai_id.'|'.$p->tanggal->format('Y-m-d'))
+                ->map(fn ($group) => $group->firstWhere('status', '!=', 'alpa') ?? $group->first())
+                ->values();
+        }
+
+        return $rows;
     }
 
     /**
@@ -73,7 +86,11 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
     protected function applyTipeFilter($query): void
     {
         if ($this->tipe === 'kantor') {
-            $query->whereNull('jadwal_id');
+            // Kantor = kehadiran harian: baris tanpa jadwal ATAU alpa apa pun
+            // (alpa ber-jadwal dari finalize-alpa tetap ketidakhadiran harian).
+            $query->where(function ($q) {
+                $q->whereNull('jadwal_id')->orWhere('status', 'alpa');
+            });
         } elseif ($this->tipe === 'mengajar') {
             $query->whereNotNull('jadwal_id')->where('tipe_presensi', 'mengajar');
         }
@@ -100,6 +117,10 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
      */
     protected function tipePresensiLabel($presensi): string
     {
+        if ($this->tipe === 'kantor' && $presensi->status === 'alpa') {
+            return 'Kantor';
+        }
+
         $tipe = $presensi->tipe_presensi;
 
         if (! $tipe || ($tipe === 'mengajar' && ! $presensi->jadwal_id)) {

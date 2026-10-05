@@ -460,6 +460,12 @@ export default function LaporanIndex({ auth, units }) {
                                 )}
                             </div>
 
+                            {typeof previewData.total === 'number' && previewData.total > previewData.data.length && (
+                                <div className="border-b border-warning/30 bg-warning-light px-6 py-2.5 text-xs font-semibold text-warning">
+                                    Menampilkan {previewData.data.length} baris pertama dari {previewData.total.toLocaleString('id-ID')} baris — persempit filter periode/pencarian atau gunakan Export Excel untuk data lengkap.
+                                </div>
+                            )}
+
                             {activePreview.report_type === 'rekap_mengajar' && viewMode === 'kalender' && previewData.calendar && (() => {
                                 const cal = previewData.calendar;
                                 const dateLabel = (ds) => {

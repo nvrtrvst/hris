@@ -74,7 +74,9 @@ class LaporanController extends Controller
             return response()->json(['error' => 'Invalid type'], 400);
         }
 
-        $data = $export->collection()->take(500);
+        $all = $export->collection();
+        $total = $all->count();
+        $data = $all->take(500);
         $headings = $export->headings();
 
         $mappedData = $data->map(function ($item) use ($export) {
@@ -84,6 +86,7 @@ class LaporanController extends Controller
         $payload = [
             'headings' => $headings,
             'data' => $mappedData,
+            'total' => $total,
         ];
 
         // Khusus rekap mengajar: sertakan data kalender (guru × tanggal)
