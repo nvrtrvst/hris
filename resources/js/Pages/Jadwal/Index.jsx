@@ -466,6 +466,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                 <button
                                     type="button"
                                     onClick={() => setViewMode('matrix')}
+                                    aria-pressed={viewMode === 'matrix'}
                                     className={`btn-sm flex items-center gap-1.5 ${viewMode === 'matrix' ? 'btn-primary' : 'btn-secondary'}`}
                                 >
                                     <LayoutGrid className="h-3.5 w-3.5" /> Matriks
@@ -473,6 +474,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                 <button
                                     type="button"
                                     onClick={() => setViewMode('guru')}
+                                    aria-pressed={viewMode === 'guru'}
                                     className={`btn-sm flex items-center gap-1.5 ${viewMode === 'guru' ? 'btn-primary' : 'btn-secondary'}`}
                                 >
                                     <UserRound className="h-3.5 w-3.5" /> Per Guru
@@ -711,7 +713,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                                                 return (
                                                     <div key={day}>
-                                                        <div className="text-[10px] font-bold uppercase text-gray-400 mb-1">{day}</div>
+                                                        <div className="text-[10px] font-bold uppercase text-muted mb-1">{day}</div>
                                                         <div className="flex flex-wrap gap-1.5">
                                                             {dayJadwals.map((jadwal) => {
                                                                 const meta = jenisBadge(jadwal.jenis_jadwal);
@@ -725,7 +727,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                             <span className="mt-0.5 text-[10px] font-semibold text-gray-700 leading-tight">{jadwal.mata_pelajaran.nama}</span>
                                                                         )}
                                                                         {jadwal.kelas_label && (
-                                                                            <span className="text-[9px] text-gray-400 leading-tight">Kls {jadwal.kelas_label}</span>
+                                                                            <span className="text-[9px] text-muted leading-tight">Kls {jadwal.kelas_label}</span>
                                                                         )}
                                                                         <span className={`mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border ${meta.badge}`}>
                                                                             {meta.label}
@@ -807,7 +809,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                                 <span className="mt-0.5 text-[10px] font-semibold text-gray-700 leading-tight">{jadwal.mata_pelajaran.nama}</span>
                                                                             )}
                                                                             {jadwal.kelas_label && (
-                                                                                <span className="text-[9px] text-gray-400 leading-tight">Kls {jadwal.kelas_label}</span>
+                                                                                <span className="text-[9px] text-muted leading-tight">Kls {jadwal.kelas_label}</span>
                                                                             )}
                                                                             <span className={`mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border ${meta.badge}`}>
                                                                                 {meta.label}
@@ -820,7 +822,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                                             {/* Action Overlay */}
                                             {canMutateJadwal && (
-                                            <div className="absolute inset-0 bg-primary/90 opacity-0 group-hover/card:opacity-100 flex items-center justify-center gap-2 rounded-lg transition-opacity backdrop-blur-sm print:hidden">
+                                            <div className="absolute inset-0 bg-primary/90 opacity-0 pointer-events-none group-hover/card:opacity-100 group-hover/card:pointer-events-auto group-focus-within/card:opacity-100 group-focus-within/card:pointer-events-auto flex items-center justify-center gap-2 rounded-lg transition-opacity backdrop-blur-sm print:hidden">
                                                                                 <button
                                                                                     type="button"
                                                                                     onClick={() => router.get(route('jadwal.edit', jadwal.id))}
@@ -860,7 +862,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                          </div>
                                                                     );
                                                                 }) : (
-                                                                    <div className="text-gray-300 text-center py-2 text-xs">-</div>
+                                                                    <div className="text-text-muted text-center py-2 text-xs">-</div>
                                                                 )}
                                                             </div>
                                                         </td>
