@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOption, ComboboxOptions, Label, Field } from '@headlessui/react'
 import { ChevronDown, Check } from 'lucide-react'
 
-export default function ComboSelect({ label, value, onChange, options, placeholder, error, required, disabled }) {
+export default function ComboSelect({ id, label, value, onChange, options, placeholder, error, required, disabled }) {
     const [query, setQuery] = useState('');
     const fullList = typeof options === 'function' ? [] : (options || []);
     const optionList = useMemo(() => {
@@ -27,6 +27,7 @@ export default function ComboSelect({ label, value, onChange, options, placehold
             <Combobox value={selected} onChange={select}>
                 <div className="relative">
                     <ComboboxInput
+                        id={id}
                         placeholder={placeholder || 'Ketik untuk mencari…'}
                         disabled={disabled}
                         className="w-full rounded-xl border-border bg-surface px-4 py-2.5 pr-10 text-sm text-primary ring-1 ring-black/5 placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"

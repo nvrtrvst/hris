@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users, X } from 'lucide-react';
 import axios from 'axios';
 import ComboSelect from '@/Components/ComboSelect';
 import { fmtJp } from '@/Utils/waktuPresensi';
 
+const fieldId = (label) => label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
 const Field = ({ label, children }) => (
     <div>
-        <label className="form-label text-xs">{label}</label>
+        <label htmlFor={fieldId(label)} className="form-label text-xs">{label}</label>
         <div className="mt-1">{children}</div>
     </div>
 );
@@ -301,6 +303,7 @@ export default function LaporanIndex({ auth, units }) {
                                 <div className="relative">
                                     <FileText className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                     <select
+                                        id={fieldId('Jenis Laporan')}
                                         className="select-field pl-9"
                                         value={filter.report_type}
                                         onChange={(e) => setFilter({ ...filter, report_type: e.target.value, tipe_filter: e.target.value === 'presensi' ? filter.tipe_filter : '' })}
@@ -319,6 +322,7 @@ export default function LaporanIndex({ auth, units }) {
                                 <div className="relative">
                                     <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                     <input
+                                        id={fieldId('Tanggal Mulai')}
                                         type="date"
                                         className="input-field pl-9"
                                         value={filter.start_date}
@@ -330,6 +334,7 @@ export default function LaporanIndex({ auth, units }) {
                                 <div className="relative">
                                     <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                     <input
+                                        id={fieldId('Tanggal Akhir')}
                                         type="date"
                                         className="input-field pl-9"
                                         value={filter.end_date}
@@ -339,6 +344,7 @@ export default function LaporanIndex({ auth, units }) {
                             </Field>
                             <Field label="Unit Sekolah">
                                 <ComboSelect
+                                    id={fieldId('Unit Sekolah')}
                                     value={filter.unit_sekolah_id}
                                     onChange={(v) => setFilter({ ...filter, unit_sekolah_id: v })}
                                     options={[
@@ -353,6 +359,7 @@ export default function LaporanIndex({ auth, units }) {
                                 <div className="relative">
                                     <Users className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                     <select
+                                        id={fieldId('Jenis Pegawai (Opsional)')}
                                         className="select-field pl-9"
                                         value={filter.jenis_filter}
                                         onChange={(e) => setFilter({ ...filter, jenis_filter: e.target.value })}
@@ -367,6 +374,7 @@ export default function LaporanIndex({ auth, units }) {
                                 <div className="relative">
                                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                     <input
+                                        id={fieldId('Cari Nama Pegawai')}
                                         type="text"
                                         className="input-field pl-9 pr-9"
                                         placeholder="Nama pegawai…"
@@ -390,6 +398,7 @@ export default function LaporanIndex({ auth, units }) {
                                     <div className="relative">
                                         <FileText className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                         <select
+                                            id={fieldId('Tipe Presensi (Opsional)')}
                                             className="select-field pl-9"
                                             value={filter.tipe_filter}
                                             onChange={(e) => setFilter({ ...filter, tipe_filter: e.target.value })}
@@ -450,6 +459,7 @@ export default function LaporanIndex({ auth, units }) {
                                             <button
                                                 key={v.k}
                                                 type="button"
+                                                aria-pressed={viewMode === v.k}
                                                 onClick={() => setViewMode(v.k)}
                                                 className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${viewMode === v.k ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:text-primary'}`}
                                             >
@@ -489,9 +499,9 @@ export default function LaporanIndex({ auth, units }) {
                                         <table className="min-w-full divide-y divide-border">
                                             <thead className="bg-surface">
                                                 <tr>
-                                                    <th className="sticky left-0 z-10 bg-surface px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Nama Guru</th>
+                                                    <th scope="col" className="sticky left-0 z-10 bg-surface px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Nama Guru</th>
                                                     {cal.dates.map((ds) => (
-                                                        <th key={ds} className="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider text-text-muted">
+                                                        <th key={ds} scope="col" className="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider text-text-muted">
                                                             <div>{dayShort(ds)}</div>
                                                             <div className="font-extrabold text-text-secondary">{dateLabel(ds)}</div>
                                                         </th>
@@ -501,18 +511,21 @@ export default function LaporanIndex({ auth, units }) {
                                             <tbody className="divide-y divide-border bg-white">
                                                 {cal.guru.map((g) => (
                                                     <tr key={g.id ?? g.nama} className="transition-colors hover:bg-surface">
-                                                        <td
-                                                            className="sticky left-0 z-10 bg-white px-4 py-2.5 text-sm font-semibold text-primary whitespace-nowrap cursor-pointer hover:underline"
-                                                            onClick={() => {
-                                                                if (!g.id) return;
-                                                                router.get(route('laporan.rekap-mengajar-detail'), {
-                                                                    pegawai_id: g.id,
-                                                                    start_date: activePreview.start_date,
-                                                                    end_date: activePreview.end_date,
-                                                                });
-                                                            }}
-                                                        >
-                                                            {g.nama}
+                                                        <td className="sticky left-0 z-10 bg-white px-4 py-2.5 text-sm font-semibold text-primary whitespace-nowrap">
+                                                            {g.id ? (
+                                                                <Link
+                                                                    href={route('laporan.rekap-mengajar-detail', {
+                                                                        pegawai_id: g.id,
+                                                                        start_date: activePreview.start_date,
+                                                                        end_date: activePreview.end_date,
+                                                                    })}
+                                                                    className="hover:underline"
+                                                                >
+                                                                    {g.nama}
+                                                                </Link>
+                                                            ) : (
+                                                                g.nama
+                                                            )}
                                                         </td>
                                                         {cal.dates.map((ds) => {
                                                             const cell = g.cells[ds];
@@ -569,9 +582,9 @@ export default function LaporanIndex({ auth, units }) {
                                         <table className="min-w-full divide-y divide-border">
                                             <thead className="bg-surface">
                                                 <tr>
-                                                    <th className="sticky left-0 z-10 bg-surface px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Nama Pegawai</th>
+                                                    <th scope="col" className="sticky left-0 z-10 bg-surface px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Nama Pegawai</th>
                                                     {mx.dates.map((ds) => (
-                                                        <th key={ds} className="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider text-text-muted">
+                                                        <th key={ds} scope="col" className="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider text-text-muted">
                                                             <div>{dayShort(ds)}</div>
                                                             <div className="font-extrabold text-text-secondary">{dateLabel(ds)}</div>
                                                         </th>
@@ -581,18 +594,21 @@ export default function LaporanIndex({ auth, units }) {
                                             <tbody className="divide-y divide-border bg-white">
                                                 {mx.rows.map((r) => (
                                                     <tr key={r.id ?? r.nama} className="transition-colors hover:bg-surface">
-                                                        <td
-                                                            className="sticky left-0 z-10 bg-white px-4 py-2.5 text-sm font-semibold text-primary whitespace-nowrap cursor-pointer hover:underline"
-                                                            onClick={() => {
-                                                                if (!r.id) return;
-                                                                router.get(route('laporan.rekap-detail'), {
-                                                                    pegawai_id: r.id,
-                                                                    start_date: activePreview.start_date,
-                                                                    end_date: activePreview.end_date,
-                                                                });
-                                                            }}
-                                                        >
-                                                            {r.nama}
+                                                        <td className="sticky left-0 z-10 bg-white px-4 py-2.5 text-sm font-semibold text-primary whitespace-nowrap">
+                                                            {r.id ? (
+                                                                <Link
+                                                                    href={route('laporan.rekap-detail', {
+                                                                        pegawai_id: r.id,
+                                                                        start_date: activePreview.start_date,
+                                                                        end_date: activePreview.end_date,
+                                                                    })}
+                                                                    className="hover:underline"
+                                                                >
+                                                                    {r.nama}
+                                                                </Link>
+                                                            ) : (
+                                                                r.nama
+                                                            )}
                                                         </td>
                                                         {mx.dates.map((ds) => {
                                                             const letter = r.cells[ds];
@@ -717,7 +733,7 @@ export default function LaporanIndex({ auth, units }) {
                                     <thead className="bg-surface">
                                         <tr>
                                             {previewData.headings.map((head, idx) => (
-                                                <th key={idx} className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">{head}</th>
+                                                <th key={idx} scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">{head}</th>
                                             ))}
                                         </tr>
                                     </thead>
@@ -738,18 +754,27 @@ export default function LaporanIndex({ auth, units }) {
                                                     // Nama pegawai (kolom pertama) — clickable untuk drill-down
                                                     if (cellIdx === 0 && previewData.pegawai_ids) {
                                                         const pegawaiId = previewData.pegawai_ids[rowIdx];
-                                                        const handleClick = () => {
-                                                            if (!pegawaiId) return;
-                                                            router.get(route('laporan.rekap-detail'), {
-                                                                pegawai_id: pegawaiId,
-                                                                start_date: activePreview.start_date,
-                                                                end_date: activePreview.end_date,
-                                                            });
-                                                        };
+
+                                                        if (!pegawaiId) {
+                                                            return (
+                                                                <td key={cellIdx} className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary">
+                                                                    {displayValue}
+                                                                </td>
+                                                            );
+                                                        }
 
                                                         return (
-                                                            <td key={cellIdx} className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary hover:underline cursor-pointer" onClick={handleClick}>
-                                                                {displayValue}
+                                                            <td key={cellIdx} className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary">
+                                                                <Link
+                                                                    href={route('laporan.rekap-detail', {
+                                                                        pegawai_id: pegawaiId,
+                                                                        start_date: activePreview.start_date,
+                                                                        end_date: activePreview.end_date,
+                                                                    })}
+                                                                    className="hover:underline"
+                                                                >
+                                                                    {displayValue}
+                                                                </Link>
                                                             </td>
                                                         );
                                                     }
@@ -780,7 +805,7 @@ export default function LaporanIndex({ auth, units }) {
                                     <thead className="bg-surface">
                                         <tr>
                                             {previewData.headings.map((head, idx) => (
-                                                <th key={idx} className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">{head}</th>
+                                                <th key={idx} scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">{head}</th>
                                             ))}
                                         </tr>
                                     </thead>
@@ -801,18 +826,27 @@ export default function LaporanIndex({ auth, units }) {
                                                     // Nama pegawai (kolom pertama) — clickable untuk drill-down
                                                     if (cellIdx === 0 && previewData.pegawai_ids) {
                                                         const pegawaiId = previewData.pegawai_ids[rowIdx];
-                                                        const handleClick = () => {
-                                                            if (!pegawaiId) return;
-                                                            router.get(route('laporan.rekap-mengajar-detail'), {
-                                                                pegawai_id: pegawaiId,
-                                                                start_date: activePreview.start_date,
-                                                                end_date: activePreview.end_date,
-                                                            });
-                                                        };
+
+                                                        if (!pegawaiId) {
+                                                            return (
+                                                                <td key={cellIdx} className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary">
+                                                                    {displayValue}
+                                                                </td>
+                                                            );
+                                                        }
 
                                                         return (
-                                                            <td key={cellIdx} className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary hover:underline cursor-pointer" onClick={handleClick}>
-                                                                {displayValue}
+                                                            <td key={cellIdx} className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary">
+                                                                <Link
+                                                                    href={route('laporan.rekap-mengajar-detail', {
+                                                                        pegawai_id: pegawaiId,
+                                                                        start_date: activePreview.start_date,
+                                                                        end_date: activePreview.end_date,
+                                                                    })}
+                                                                    className="hover:underline"
+                                                                >
+                                                                    {displayValue}
+                                                                </Link>
                                                             </td>
                                                         );
                                                     }

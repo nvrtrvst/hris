@@ -4,9 +4,11 @@ import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import { Building2, Calendar, Download, Loader2, Search } from 'lucide-react';
 
+const fieldId = (label) => label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
 const Field = ({ label, children }) => (
     <div>
-        <label className="form-label text-xs">{label}</label>
+        <label htmlFor={fieldId(label)} className="form-label text-xs">{label}</label>
         <div className="mt-1">{children}</div>
     </div>
 );
@@ -68,7 +70,7 @@ export default function Kcd({ auth, units }) {
                                 <Field label="Unit Sekolah">
                                     <div className="relative">
                                         <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                        <select className="select-field pl-9" value={unitId} onChange={(e) => setUnitId(e.target.value)}>
+                                        <select id={fieldId('Unit Sekolah')} className="select-field pl-9" value={unitId} onChange={(e) => setUnitId(e.target.value)}>
                                             {units.map((u) => (
                                                 <option key={u.id} value={u.id}>{u.nama}</option>
                                             ))}
@@ -79,13 +81,13 @@ export default function Kcd({ auth, units }) {
                             <Field label="Bulan">
                                 <div className="relative">
                                     <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <input type="month" className="input-field pl-9" value={period} onChange={(e) => setPeriod(e.target.value)} />
+                                    <input id={fieldId('Bulan')} type="month" className="input-field pl-9" value={period} onChange={(e) => setPeriod(e.target.value)} />
                                 </div>
                             </Field>
                             <Field label="Minggu">
                                 <div className="relative">
                                     <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <select className="select-field pl-9" value={minggu} onChange={(e) => setMinggu(e.target.value)}>
+                                    <select id={fieldId('Minggu')} className="select-field pl-9" value={minggu} onChange={(e) => setMinggu(e.target.value)}>
                                         <option value="">Semua (1 bulan)</option>
                                         {Array.from({ length: weekCount }, (_, i) => (
                                             <option key={i + 1} value={i + 1}>Minggu {i + 1}</option>
@@ -122,21 +124,21 @@ export default function Kcd({ auth, units }) {
                                         <table className="min-w-full divide-y divide-border text-sm">
                                             <thead className="bg-surface">
                                                 <tr>
-                                                    <th className="px-3 py-2 text-left text-xs font-bold text-text-muted">No</th>
-                                                    <th className="px-3 py-2 text-left text-xs font-bold text-text-muted">Nama</th>
+                                                    <th scope="col" className="px-3 py-2 text-left text-xs font-bold text-text-muted">No</th>
+                                                    <th scope="col" className="px-3 py-2 text-left text-xs font-bold text-text-muted">Nama</th>
                                                     {week.days.map((d) => (
-                                                        <th key={d.date} className="px-3 py-2 text-center text-xs font-bold text-text-muted" colSpan={2}>
+                                                        <th key={d.date} scope="col" className="px-3 py-2 text-center text-xs font-bold text-text-muted" colSpan={2}>
                                                             {d.label} {d.short}
                                                         </th>
                                                     ))}
                                                 </tr>
                                                 <tr>
-                                                    <th></th>
-                                                    <th></th>
+                                                    <th scope="col"></th>
+                                                    <th scope="col"></th>
                                                     {week.days.map((d) => (
                                                         <Fragment key={d.date}>
-                                                            <th className="px-2 py-1 text-center text-[10px] font-semibold text-text-muted">Masuk</th>
-                                                            <th className="px-2 py-1 text-center text-[10px] font-semibold text-text-muted">Pulang</th>
+                                                            <th scope="col" className="px-2 py-1 text-center text-[10px] font-semibold text-text-muted">Masuk</th>
+                                                            <th scope="col" className="px-2 py-1 text-center text-[10px] font-semibold text-text-muted">Pulang</th>
                                                         </Fragment>
                                                     ))}
                                                 </tr>
