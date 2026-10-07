@@ -40,6 +40,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         'I' => 'FFE0F2FE',
         'C' => 'FFEDE9FE',
         'A' => 'FFFEE2E2',
+        'L' => 'FFF2F4F7',
     ];
 
     protected $start_date;
@@ -115,8 +116,10 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         ));
         $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap($unitIds, $start, $end);
         $hariKerja = LaporanRekapKehadiranExport::computeUniformWorkingDays($start, $end, $holidayMap);
+        $holidayDates = array_flip($holidayMap['dates'] ?? []);
+        $dates = $this->dates;
 
-        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja) {
+        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja, $holidayDates, $dates) {
             $cells = [];
             $counts = ['hadir' => 0, 'telat' => 0, 'sakit' => 0, 'izin' => 0, 'cuti' => 0, 'alpa' => 0];
 
@@ -128,6 +131,15 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                 }
             }
 
+            // Sel kosong: hari libur/akhir pekan = 'L', hari kerja tanpa record = 'A'
+            // (alpa, sejalan dengan rumus rekap agregat & payroll).
+            foreach ($dates as $ds) {
+                if (isset($cells[$ds])) {
+                    continue;
+                }
+                $cells[$ds] = (Carbon::parse($ds)->isWeekend() || isset($holidayDates[$ds])) ? 'L' : 'A';
+            }
+
             return [
                 'pegawai' => $pegawaiMap->get($pegawaiId),
                 'cells' => $cells,
@@ -136,7 +148,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                 'sakit' => $counts['sakit'],
                 'izin' => $counts['izin'],
                 'cuti' => $counts['cuti'],
-                'alpa' => $counts['alpa'],
+                'alpa' => max(0, $hariKerja - $counts['hadir'] - $counts['telat'] - $counts['sakit'] - $counts['izin'] - $counts['cuti']),
                 'hariKerja' => $hariKerja,
             ];
         })->sortBy(fn ($r) => mb_strtolower($r['pegawai']?->nama_lengkap ?? ''))->values();
@@ -254,7 +266,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells("A5:{$lastCol}5");
-                $sheet->setCellValue('A5', 'Sel = status 1 pegawai per tanggal (H Hadir, T Telat, S Sakit, I Izin, C Cuti, A Alpa, - tanpa record). % Kehadiran = (Hadir + Telat) / Hari Kerja × 100.');
+                $sheet->setCellValue('A5', 'Sel = status 1 pegawai per tanggal (H Hadir, T Telat, S Sakit, I Izin, C Cuti, A Alpa/Tidak Hadir, L Libur). % Kehadiran = (Hadir + Telat) / Hari Kerja × 100.');
                 $sheet->getStyle('A5')->getFont()->setSize(9)->setColor(new Color('FF6B7280'));
                 $sheet->getStyle('A5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
@@ -293,7 +305,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                         $present = 0;
                         foreach ($rekap as $d) {
                             $letter = $d['cells'][$ds] ?? '-';
-                            if ($letter === '-') {
+                            if ($letter === '-' || $letter === 'L') {
                                 continue;
                             }
                             $terekam++;

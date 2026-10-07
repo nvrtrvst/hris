@@ -73,6 +73,7 @@ const LETTER_STYLES = {
     I: 'bg-info-light text-info',
     C: 'bg-info-light text-info',
     A: 'bg-danger-light text-danger',
+    L: 'bg-border/50 text-text-muted',
 };
 
 const computePresensiSummary = (data, headings) => {
@@ -593,7 +594,7 @@ export default function LaporanIndex({ auth, units }) {
                                     const dt = new Date(ds + 'T00:00:00');
                                     return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
                                 };
-                                const LETTER_NAMES = { H: 'Hadir', T: 'Telat', S: 'Sakit', I: 'Izin', C: 'Cuti', A: 'Alpa' };
+                                const LETTER_NAMES = { H: 'Hadir', T: 'Telat', S: 'Sakit', I: 'Izin', C: 'Cuti', A: 'Alpa / Tidak Hadir', L: 'Libur (Akhir Pekan / Hari Libur)' };
                                 return (
                                     <div className="overflow-x-auto">
                                         <div className="px-4 py-2 text-xs text-text-muted bg-surface border-b border-border italic">
@@ -657,8 +658,8 @@ export default function LaporanIndex({ auth, units }) {
                                             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-info" /> S Sakit</span>
                                             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-info" /> I Izin</span>
                                             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-info" /> C Cuti</span>
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-danger" /> A Alpa</span>
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-border" /> Tanpa record</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-danger" /> A Alpa / Tidak Hadir</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-border/50" /> L Libur</span>
                                         </div>
                                     </div>
                                 );

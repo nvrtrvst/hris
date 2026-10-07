@@ -324,8 +324,17 @@ class LaporanController extends Controller
             'sakit' => $rows->where('status', 'sakit')->count(),
             'izin' => $rows->where('status', 'izin')->count(),
             'cuti' => $rows->where('status', 'cuti')->count(),
-            'alpa' => $rows->where('status', 'alpa')->count(),
         ];
+
+        // Alpa = hari kerja tanpa record — rumus sama dengan rekap agregat & payroll.
+        $unitIds = $rows->pluck('unit_sekolah_id')->filter()->unique()->all();
+        $start = Carbon::parse($request->start_date);
+        $end = Carbon::parse($request->end_date);
+        $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap($unitIds, $start, $end);
+        $hariKerja = LaporanRekapKehadiranExport::computeUniformWorkingDays($start, $end, $holidayMap);
+
+        $summary['alpa'] = max(0, $hariKerja - $summary['hadir'] - $summary['telat'] - $summary['sakit'] - $summary['izin'] - $summary['cuti']);
+        $summary['hariKerja'] = $hariKerja;
 
         $periode = [
             'start_date' => $request->start_date,

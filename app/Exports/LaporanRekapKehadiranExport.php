@@ -99,15 +99,22 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         // 6. Assemble final rekap.
         $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja) {
             $counts = $deduped->groupBy('status')->map(fn ($g) => $g->count())->all();
+            $hadir = $counts['hadir'] ?? 0;
+            $telat = $counts['telat'] ?? 0;
+            $sakit = $counts['sakit'] ?? 0;
+            $izin = $counts['izin'] ?? 0;
+            $cuti = $counts['cuti'] ?? 0;
 
             return [
                 'pegawai' => $pegawaiMap->get($pegawaiId),
-                'hadir' => $counts['hadir'] ?? 0,
-                'telat' => $counts['telat'] ?? 0,
-                'sakit' => $counts['sakit'] ?? 0,
-                'izin' => $counts['izin'] ?? 0,
-                'cuti' => $counts['cuti'] ?? 0,
-                'alpa' => $counts['alpa'] ?? 0,
+                'hadir' => $hadir,
+                'telat' => $telat,
+                'sakit' => $sakit,
+                'izin' => $izin,
+                'cuti' => $cuti,
+                // Alpa = hari kerja tanpa record (sama dengan rumus payroll):
+                // termasuk pegawai yang tidak absen sama sekali, bukan hanya status alpa manual.
+                'alpa' => max(0, $hariKerja - $hadir - $telat - $sakit - $izin - $cuti),
                 'hariKerja' => $hariKerja,
             ];
         })->sortBy(fn ($r) => mb_strtolower($r['pegawai']?->nama_lengkap ?? ''))->values();
@@ -175,8 +182,10 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         $idMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         $national = [];
         $units = [];
+        $dates = [];
         foreach ($rows as $h) {
             $wd = $idMap[(int) Carbon::parse($h->tanggal)->dayOfWeek];
+            $dates[] = Carbon::parse($h->tanggal)->toDateString();
             if ($h->unit_sekolah_id === null) {
                 $national[$wd] = ($national[$wd] ?? 0) + 1;
             } else {
@@ -184,7 +193,8 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             }
         }
 
-        return ['national' => $national, 'units' => $units];
+        // 'dates' dipakai matriks harian untuk menandai sel libur per tanggal.
+        return ['national' => $national, 'units' => $units, 'dates' => array_values(array_unique($dates))];
     }
 
     public function collection(): Collection
@@ -282,7 +292,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells("A5:{$lastCol}5");
-                $sheet->setCellValue('A5', '% Kehadiran = (Hadir + Telat) / Hari Kerja × 100 — Sakit, Izin, Cuti, Alpa tidak dihitung sebagai hadir.');
+                $sheet->setCellValue('A5', '% Kehadiran = (Hadir + Telat) / Hari Kerja × 100 — Sakit, Izin, Cuti tidak dihitung sebagai hadir. Alpa = Hari Kerja − (Hadir + Telat + Sakit + Izin + Cuti), termasuk hari tanpa record.');
                 $sheet->getStyle('A5')->getFont()->setItalic(true)->setSize(9)->setColor(new Color('FF6B7280'));
                 $sheet->getStyle('A5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 

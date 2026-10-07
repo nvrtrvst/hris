@@ -29,8 +29,7 @@ const KpiCard = ({ label, value, accent }) => (
 );
 
 export default function RekapDetail({ auth, pegawai, detail, summary, periode }) {
-    const totalStatus = summary.hadir + summary.telat + summary.sakit + summary.izin + summary.cuti + summary.alpa;
-    const persen = totalStatus > 0 ? Math.round(((summary.hadir + summary.telat) / totalStatus) * 100) : 0;
+    const persen = summary.hariKerja > 0 ? Math.round(((summary.hadir + summary.telat) / summary.hariKerja) * 100) : 0;
 
     return (
         <AuthenticatedLayout
@@ -79,7 +78,7 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                     </div>
 
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-8">
                         <KpiCard label="% Kehadiran" value={`${persen}%`} accent />
                         <KpiCard label="Hadir" value={summary.hadir} />
                         <KpiCard label="Telat" value={summary.telat} />
@@ -87,6 +86,7 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                         <KpiCard label="Izin" value={summary.izin} />
                         <KpiCard label="Cuti" value={summary.cuti} />
                         <KpiCard label="Alpa" value={summary.alpa} />
+                        <KpiCard label="Hari Kerja" value={summary.hariKerja} />
                     </div>
 
                     {/* Detail Table */}
