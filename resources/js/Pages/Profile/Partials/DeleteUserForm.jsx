@@ -98,7 +98,7 @@ export default function DeleteUserForm({ className = '' }) {
                             Password
                         </label>
                         <div className="relative">
-                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-text-muted">
                                 <Lock className="h-4 w-4" />
                             </span>
                             <input
@@ -109,7 +109,7 @@ export default function DeleteUserForm({ className = '' }) {
                                 onChange={(e) =>
                                     setData('password', e.target.value)
                                 }
-                                className="block w-full rounded-lg border border-border bg-white pl-10 pr-3 py-2.5 text-sm text-text-primary shadow-sm placeholder:text-gray-400 focus:border-danger focus:outline-none focus:ring-2 focus:ring-danger/20"
+                                className="block w-full rounded-lg border border-border bg-white pl-10 pr-3 py-2.5 text-sm text-text-primary shadow-sm placeholder:text-text-muted focus:border-danger focus:outline-none focus:ring-2 focus:ring-danger/20"
                                 placeholder="Password Anda"
                             />
                         </div>
