@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import { Building2, Calendar, Download, Loader2, Search } from 'lucide-react';
+import { Building2, Calendar, Download, Loader2, Search, X } from 'lucide-react';
 
 const fieldId = (label) => label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -20,6 +20,7 @@ export default function Kcd({ auth, units }) {
     const [minggu, setMinggu] = useState('');
     const [preview, setPreview] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     const weekCount = (() => {
         const [y, m] = period.split('-').map(Number);
@@ -33,18 +34,20 @@ export default function Kcd({ auth, units }) {
 
     const handlePreview = async () => {
         setLoading(true);
+        setError('');
         try {
             const params = { unit_sekolah_id: unitId, periode: period };
             if (minggu) params.minggu = minggu;
             const res = await axios.get(route('laporan.kcd.preview'), { params });
             setPreview(res.data);
         } catch (e) {
-            alert('Gagal memuat pratinjau. Pastikan unit & periode valid.');
+            setError('Gagal memuat pratinjau. Pastikan unit & periode valid.');
         }
         setLoading(false);
     };
 
     const handleDownload = () => {
+        setError('');
         const params = new URLSearchParams();
         params.append('unit_sekolah_id', unitId);
         params.append('periode', period);
@@ -96,6 +99,21 @@ export default function Kcd({ auth, units }) {
                                 </div>
                             </Field>
                         </div>
+
+                        {error && (
+                            <div role="alert" className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm font-semibold text-danger">
+                                <span className="whitespace-pre-line">{error}</span>
+                                <button
+                                    type="button"
+                                    aria-label="Tutup pesan"
+                                    onClick={() => setError('')}
+                                    className="shrink-0 rounded-md p-1 hover:bg-danger/10"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
+
                         <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row">
                             <button onClick={handlePreview} disabled={loading} className="btn-primary inline-flex items-center gap-2">
                                 {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat…</> : <><Search className="h-4 w-4" /> Tampilkan Pratinjau</>}
@@ -107,7 +125,7 @@ export default function Kcd({ auth, units }) {
                     </div>
 
                     {loading && (
-                        <div className="card flex items-center justify-center gap-3 p-12">
+                        <div role="status" className="card flex items-center justify-center gap-3 p-12">
                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
                             <span className="text-sm font-semibold text-text-secondary">Memuat…</span>
                         </div>
@@ -118,7 +136,7 @@ export default function Kcd({ auth, units }) {
                             {preview.weeks.map((week, wi) => (
                                 <div key={wi} className="card overflow-hidden">
                                     <div className="px-6 py-3 border-b border-border bg-surface">
-                                        <h4 className="text-sm font-extrabold text-primary">Minggu {wi + 1} &mdash; {preview.periode}</h4>
+                                        <h4 className="text-sm font-extrabold text-primary">Minggu {wi + 1}, {preview.periode}</h4>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="min-w-full divide-y divide-border text-sm">
@@ -137,13 +155,13 @@ export default function Kcd({ auth, units }) {
                                                     <th scope="col"></th>
                                                     {week.days.map((d) => (
                                                         <Fragment key={d.date}>
-                                                            <th scope="col" className="px-2 py-1 text-center text-[10px] font-semibold text-text-muted">Masuk</th>
-                                                            <th scope="col" className="px-2 py-1 text-center text-[10px] font-semibold text-text-muted">Pulang</th>
+                                                            <th scope="col" className="px-2 py-1 text-center text-xs font-semibold text-text-muted">Masuk</th>
+                                                            <th scope="col" className="px-2 py-1 text-center text-xs font-semibold text-text-muted">Pulang</th>
                                                         </Fragment>
                                                     ))}
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-border bg-white">
+                                            <tbody className="divide-y divide-border">
                                                 {preview.pegawai.map((p) => (
                                                     <tr key={p.no}>
                                                         <td className="px-3 py-2 text-text-secondary">{p.no}</td>

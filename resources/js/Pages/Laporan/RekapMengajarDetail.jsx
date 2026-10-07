@@ -4,14 +4,14 @@ import { ArrowLeft, User, Calendar, BookOpen } from 'lucide-react';
 import { fmtJp } from '@/Utils/waktuPresensi';
 
 const STATUS_STYLES = {
-    hadir: 'bg-green-100 text-green-800 ring-green-600/20',
-    telat: 'bg-amber-100 text-amber-800 ring-amber-600/20',
-    alpa: 'bg-red-100 text-red-800 ring-red-600/20',
+    hadir: 'bg-success-light text-success ring-success/30',
+    telat: 'bg-warning-light text-warning ring-warning/30',
+    alpa: 'bg-danger-light text-danger ring-danger/30',
 };
 
 const StatusBadge = ({ status }) => {
     const key = String(status ?? '').toLowerCase();
-    const cls = STATUS_STYLES[key] || 'bg-gray-100 text-gray-700 ring-gray-500/20';
+    const cls = STATUS_STYLES[key] || 'bg-surface text-text-secondary ring-border';
     return (
         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${cls}`}>
             {status}
@@ -113,7 +113,7 @@ export default function RekapMengajarDetail({ auth, pegawai, detail, summary, pe
                                         <th scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Unit</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border bg-white">
+                                <tbody className="divide-y divide-border">
                                     {detail.map((row, idx) => (
                                         <tr key={idx} className="transition-colors hover:bg-surface">
                                             <td className="whitespace-nowrap px-4 py-3 text-sm text-text-secondary tabular-nums">{row.tanggal}</td>

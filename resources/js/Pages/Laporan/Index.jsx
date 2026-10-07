@@ -15,19 +15,21 @@ const Field = ({ label, children }) => (
     </div>
 );
 
+const NEUTRAL_BADGE = 'bg-surface text-text-secondary ring-border';
+
 const STATUS_STYLES = {
-    hadir: 'bg-green-100 text-green-800 ring-green-600/20',
-    telat: 'bg-amber-100 text-amber-800 ring-amber-600/20',
-    izin: 'bg-sky-100 text-sky-800 ring-sky-600/20',
-    sakit: 'bg-indigo-100 text-indigo-800 ring-indigo-600/20',
-    cuti: 'bg-violet-100 text-violet-800 ring-violet-600/20',
-    alpa: 'bg-red-100 text-red-800 ring-red-600/20',
-    disetujui: 'bg-green-100 text-green-800 ring-green-600/20',
-    ditolak: 'bg-red-100 text-red-800 ring-red-600/20',
-    pending: 'bg-amber-100 text-amber-800 ring-amber-600/20',
-    finalized: 'bg-blue-100 text-blue-800 ring-blue-600/20',
-    paid: 'bg-emerald-100 text-emerald-800 ring-emerald-600/20',
-    draft: 'bg-gray-100 text-gray-700 ring-gray-500/20',
+    hadir: 'bg-success-light text-success ring-success/30',
+    telat: 'bg-warning-light text-warning ring-warning/30',
+    izin: 'bg-info-light text-info ring-info/30',
+    sakit: 'bg-info-light text-info ring-info/30',
+    cuti: 'bg-info-light text-info ring-info/30',
+    alpa: 'bg-danger-light text-danger ring-danger/30',
+    disetujui: 'bg-success-light text-success ring-success/30',
+    ditolak: 'bg-danger-light text-danger ring-danger/30',
+    pending: 'bg-warning-light text-warning ring-warning/30',
+    finalized: 'bg-info-light text-info ring-info/30',
+    paid: 'bg-success-light text-success ring-success/30',
+    draft: 'bg-surface text-text-secondary ring-border',
 };
 
 const KpiCard = ({ label, value, accent }) => (
@@ -39,7 +41,7 @@ const KpiCard = ({ label, value, accent }) => (
 
 const StatusBadge = ({ status }) => {
     const key = String(status ?? '').toLowerCase();
-    const cls = STATUS_STYLES[key] || 'bg-gray-100 text-gray-700 ring-gray-500/20';
+    const cls = STATUS_STYLES[key] || NEUTRAL_BADGE;
     return (
         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${cls}`}>
             {status}
@@ -48,15 +50,15 @@ const StatusBadge = ({ status }) => {
 };
 
 const TIPE_STYLES = {
-    mengajar: 'bg-emerald-100 text-emerald-800 ring-emerald-600/20',
-    kantor: 'bg-slate-100 text-slate-700 ring-slate-500/20',
-    lembur: 'bg-amber-100 text-amber-800 ring-amber-600/20',
-    'tugas luar': 'bg-sky-100 text-sky-800 ring-sky-600/20',
+    mengajar: 'bg-success-light text-success ring-success/30',
+    kantor: 'bg-info-light text-info ring-info/30',
+    lembur: 'bg-warning-light text-warning ring-warning/30',
+    'tugas luar': 'bg-accent-100 text-accent-700 ring-accent-500/30',
 };
 
 const TipeBadge = ({ tipe }) => {
     const key = String(tipe ?? '').toLowerCase();
-    const cls = TIPE_STYLES[key] || 'bg-gray-100 text-gray-700 ring-gray-500/20';
+    const cls = TIPE_STYLES[key] || NEUTRAL_BADGE;
     return (
         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${cls}`}>
             {tipe || '-'}
@@ -65,12 +67,12 @@ const TipeBadge = ({ tipe }) => {
 };
 
 const LETTER_STYLES = {
-    H: 'bg-green-100 text-green-800',
-    T: 'bg-amber-100 text-amber-800',
-    S: 'bg-indigo-100 text-indigo-800',
-    I: 'bg-sky-100 text-sky-800',
-    C: 'bg-violet-100 text-violet-800',
-    A: 'bg-red-100 text-red-800',
+    H: 'bg-success-light text-success',
+    T: 'bg-warning-light text-warning',
+    S: 'bg-info-light text-info',
+    I: 'bg-info-light text-info',
+    C: 'bg-info-light text-info',
+    A: 'bg-danger-light text-danger',
 };
 
 const computePresensiSummary = (data, headings) => {
@@ -112,9 +114,11 @@ export default function LaporanIndex({ auth, units }) {
     const [activePreview, setActivePreview] = useState(null);
     const [loading, setLoading] = useState(false);
     const [viewMode, setViewMode] = useState('rekap');
+    const [error, setError] = useState('');
 
     const handlePreview = async () => {
         setLoading(true);
+        setError('');
         try {
             const res = await axios.get(route('laporan.preview'), {
                 params: {
@@ -135,17 +139,18 @@ export default function LaporanIndex({ auth, units }) {
             const msg = data?.message
                 || Object.values(data?.errors || {}).flat().join('\n')
                 || 'Gagal memuat pratinjau data. Pastikan rentang tanggal valid.';
-            alert(msg);
+            setError(msg);
         }
         setLoading(false);
     };
 
     const handleDownload = () => {
+        setError('');
         if (filter.report_type === 'rekap_kehadiran_harian') {
             const s = new Date(filter.start_date + 'T00:00:00');
             const e = new Date(filter.end_date + 'T00:00:00');
             if ((e - s) / 86400000 > 30) {
-                alert('Rekap Kehadiran Harian maksimal 31 hari per generate. Pecah periode menjadi beberapa generate.');
+                setError('Rekap Kehadiran Harian maksimal 31 hari per generate. Pecah periode menjadi beberapa generate.');
                 return;
             }
         }
@@ -179,12 +184,13 @@ export default function LaporanIndex({ auth, units }) {
     };
 
     const handleDownloadPdf = async () => {
+        setError('');
         if (!filter.start_date) {
-            alert('Isi tanggal mulai terlebih dahulu.');
+            setError('Isi tanggal mulai terlebih dahulu.');
             return;
         }
         if (!filter.end_date) {
-            alert('Isi tanggal akhir terlebih dahulu.');
+            setError('Isi tanggal akhir terlebih dahulu.');
             return;
         }
 
@@ -206,7 +212,7 @@ export default function LaporanIndex({ auth, units }) {
                         const body = await res.json();
                         msg = body.message || body.error || msg;
                     } catch { /* non-JSON */ }
-                    alert(msg);
+                    setError(msg);
                     return;
                 }
                 const blob = await res.blob();
@@ -218,7 +224,7 @@ export default function LaporanIndex({ auth, units }) {
                 a.remove();
                 URL.revokeObjectURL(a.href);
             } catch {
-                alert('Koneksi terputus saat membuat PDF.');
+                setError('Koneksi terputus saat membuat PDF.');
             }
             return;
         }
@@ -255,7 +261,7 @@ export default function LaporanIndex({ auth, units }) {
                     const text = await res.text();
                     msg = text.startsWith('PDF gagal') ? text : msg;
                 }
-                alert(msg);
+                setError(msg);
                 return;
             }
             const blob = await res.blob();
@@ -267,7 +273,7 @@ export default function LaporanIndex({ auth, units }) {
             a.remove();
             URL.revokeObjectURL(a.href);
         } catch {
-            alert('Koneksi terputus saat membuat PDF.');
+            setError('Koneksi terputus saat membuat PDF.');
         }
     };
 
@@ -412,6 +418,20 @@ export default function LaporanIndex({ auth, units }) {
                             )}
                         </div>
 
+                        {error && (
+                            <div role="alert" className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm font-semibold text-danger">
+                                <span className="whitespace-pre-line">{error}</span>
+                                <button
+                                    type="button"
+                                    aria-label="Tutup pesan"
+                                    onClick={() => setError('')}
+                                    className="shrink-0 rounded-md p-1 hover:bg-danger/10"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
+
                         <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center">
                             {filter.report_type !== 'rekap_presensi_harian' && (
                                 <button onClick={handlePreview} disabled={loading} className="btn-primary inline-flex items-center gap-2">
@@ -421,10 +441,10 @@ export default function LaporanIndex({ auth, units }) {
                             {filter.report_type === 'rekap_presensi_harian' && (
                                 <p className="text-xs text-text-muted italic">Jenis ini langsung menghasilkan PDF (tanpa pratinjau). Atur filter, lalu klik &quot;Download PDF&quot;.</p>
                             )}
-                            <button onClick={handleDownload} className="btn-secondary inline-flex items-center gap-2">
+                            <button onClick={handleDownload} disabled={loading} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60">
                                 <Download className="h-4 w-4" /> Download Excel
                             </button>
-                            <button onClick={handleDownloadPdf} className="btn-secondary inline-flex items-center gap-2">
+                            <button onClick={handleDownloadPdf} disabled={loading} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60">
                                 <FileText className="h-4 w-4" /> Download PDF
                             </button>
                         </div>
@@ -432,7 +452,7 @@ export default function LaporanIndex({ auth, units }) {
 
                     {/* Preview */}
                     {loading && (
-                        <div className="card flex items-center justify-center gap-3 p-12">
+                        <div role="status" className="card flex items-center justify-center gap-3 p-12">
                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
                             <span className="text-sm font-semibold text-text-secondary">Memuat Data Pratinjau...</span>
                         </div>
@@ -472,7 +492,7 @@ export default function LaporanIndex({ auth, units }) {
 
                             {typeof previewData.total === 'number' && previewData.total > previewData.data.length && (
                                 <div className="border-b border-warning/30 bg-warning-light px-6 py-2.5 text-xs font-semibold text-warning">
-                                    Menampilkan {previewData.data.length} baris pertama dari {previewData.total.toLocaleString('id-ID')} baris — persempit filter periode/pencarian atau gunakan Export Excel untuk data lengkap.
+                                    Menampilkan {previewData.data.length} baris pertama dari {previewData.total.toLocaleString('id-ID')} baris. Persempit filter periode/pencarian atau gunakan Export Excel untuk data lengkap.
                                 </div>
                             )}
 
@@ -489,10 +509,10 @@ export default function LaporanIndex({ auth, units }) {
                                 const cellStyle = (cell) => {
                                     if (!cell) return 'bg-border/40 text-text-muted';
                                     const [jp, hadir, telat, alpa] = cell;
-                                    if (alpa > 0) return 'bg-red-100 text-red-800';
-                                    if (telat > 0) return 'bg-amber-100 text-amber-800';
-                                    if (hadir >= jp) return 'bg-green-100 text-green-800';
-                                    return 'bg-slate-100 text-slate-700';
+                                    if (alpa > 0) return 'bg-danger-light text-danger';
+                                    if (telat > 0) return 'bg-warning-light text-warning';
+                                    if (hadir >= jp) return 'bg-success-light text-success';
+                                    return 'bg-surface text-text-secondary';
                                 };
                                 return (
                                     <div className="overflow-x-auto">
@@ -508,10 +528,10 @@ export default function LaporanIndex({ auth, units }) {
                                                     ))}
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-border bg-white">
+                                            <tbody className="divide-y divide-border">
                                                 {cal.guru.map((g) => (
                                                     <tr key={g.id ?? g.nama} className="transition-colors hover:bg-surface">
-                                                        <td className="sticky left-0 z-10 bg-white px-4 py-2.5 text-sm font-semibold text-primary whitespace-nowrap">
+                                                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-2.5 text-sm font-semibold text-primary whitespace-nowrap">
                                                             {g.id ? (
                                                                 <Link
                                                                     href={route('laporan.rekap-mengajar-detail', {
@@ -535,7 +555,7 @@ export default function LaporanIndex({ auth, units }) {
                                                                 : 'Tidak ada jadwal mengajar';
                                                             return (
                                                                 <td key={ds} className="px-1 py-1.5 text-center" title={title}>
-                                                                    <span className={`inline-flex min-w-[2.2rem] items-center justify-center rounded-lg px-1.5 py-1 text-[11px] font-bold tabular-nums ${cellStyle(cell)}`}>
+                                                                    <span className={`inline-flex min-w-[2.2rem] items-center justify-center rounded-lg px-1.5 py-1 text-xs font-bold tabular-nums ${cellStyle(cell)}`}>
                                                                         {cell ? `${fmtJp(hadir + telat)}/${fmtJp(jp)}` : '—'}
                                                                     </span>
                                                                 </td>
@@ -553,9 +573,9 @@ export default function LaporanIndex({ auth, units }) {
                                             </tbody>
                                         </table>
                                         <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border px-6 py-3 text-xs text-text-secondary">
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-green-400" /> Semua JP hadir</span>
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-amber-400" /> Ada telat</span>
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-red-400" /> Ada alpa</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-success" /> Semua JP hadir</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-warning" /> Ada telat</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-danger" /> Ada alpa</span>
                                             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-border" /> Tanpa jadwal</span>
                                             <span className="ml-auto text-text-muted">Format: hadir+telat / JP</span>
                                         </div>
@@ -577,7 +597,7 @@ export default function LaporanIndex({ auth, units }) {
                                 return (
                                     <div className="overflow-x-auto">
                                         <div className="px-4 py-2 text-xs text-text-muted bg-surface border-b border-border italic">
-                                            % Kehadiran = (Hadir + Telat) / Hari Kerja &times; 100 &mdash; 1 sel = 1 status per tanggal.
+                                            % Kehadiran = (Hadir + Telat) / Hari Kerja &times; 100. 1 sel = 1 status per tanggal.
                                         </div>
                                         <table className="min-w-full divide-y divide-border">
                                             <thead className="bg-surface">
@@ -591,10 +611,10 @@ export default function LaporanIndex({ auth, units }) {
                                                     ))}
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-border bg-white">
+                                            <tbody className="divide-y divide-border">
                                                 {mx.rows.map((r) => (
                                                     <tr key={r.id ?? r.nama} className="transition-colors hover:bg-surface">
-                                                        <td className="sticky left-0 z-10 bg-white px-4 py-2.5 text-sm font-semibold text-primary whitespace-nowrap">
+                                                        <td className="sticky left-0 z-10 bg-surface-card px-4 py-2.5 text-sm font-semibold text-primary whitespace-nowrap">
                                                             {r.id ? (
                                                                 <Link
                                                                     href={route('laporan.rekap-detail', {
@@ -614,7 +634,7 @@ export default function LaporanIndex({ auth, units }) {
                                                             const letter = r.cells[ds];
                                                             return (
                                                                 <td key={ds} className="px-1 py-1.5 text-center" title={letter && LETTER_NAMES[letter] ? LETTER_NAMES[letter] : 'Tanpa record'}>
-                                                                    <span className={`inline-flex min-w-[2.2rem] items-center justify-center rounded-lg px-1.5 py-1 text-[11px] font-bold ${LETTER_STYLES[letter] || 'bg-border/40 text-text-muted'}`}>
+                                                                    <span className={`inline-flex min-w-[2.2rem] items-center justify-center rounded-lg px-1.5 py-1 text-xs font-bold ${LETTER_STYLES[letter] || 'bg-border/40 text-text-muted'}`}>
                                                                         {letter || '—'}
                                                                     </span>
                                                                 </td>
@@ -632,13 +652,13 @@ export default function LaporanIndex({ auth, units }) {
                                             </tbody>
                                         </table>
                                         <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border px-6 py-3 text-xs text-text-secondary">
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-green-400" /> H Hadir</span>
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-amber-400" /> T Telat</span>
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-indigo-400" /> S Sakit</span>
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-sky-400" /> I Izin</span>
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-violet-400" /> C Cuti</span>
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-red-400" /> A Alpa</span>
-                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-border" /> — Tanpa record</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-success" /> H Hadir</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-warning" /> T Telat</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-info" /> S Sakit</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-info" /> I Izin</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-info" /> C Cuti</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-danger" /> A Alpa</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-border" /> Tanpa record</span>
                                         </div>
                                     </div>
                                 );
@@ -647,12 +667,10 @@ export default function LaporanIndex({ auth, units }) {
                             {activePreview.report_type === 'presensi' && (() => {
                                 const s = computePresensiSummary(previewData.data, previewData.headings);
                                 const segs = [
-                                    { key: 'hadir', label: 'Hadir', val: s.hadir, color: 'bg-green-500' },
-                                    { key: 'telat', label: 'Telat', val: s.telat, color: 'bg-amber-500' },
-                                    { key: 'izin', label: 'Izin', val: s.izin, color: 'bg-sky-500' },
-                                    { key: 'sakit', label: 'Sakit', val: s.sakit, color: 'bg-indigo-500' },
-                                    { key: 'cuti', label: 'Cuti', val: s.cuti, color: 'bg-violet-500' },
-                                    { key: 'alpa', label: 'Alpa', val: s.alpa, color: 'bg-red-500' },
+                                    { key: 'hadir', label: 'Hadir', val: s.hadir, color: 'bg-success' },
+                                    { key: 'telat', label: 'Telat', val: s.telat, color: 'bg-warning' },
+                                    { key: 'izin', label: 'Izin/Sakit/Cuti', val: s.izin + s.sakit + s.cuti, color: 'bg-info' },
+                                    { key: 'alpa', label: 'Alpa', val: s.alpa, color: 'bg-danger' },
                                 ].filter((x) => x.val > 0);
                                 return (
                                     <div className="space-y-4 px-6 py-5">
@@ -727,7 +745,7 @@ export default function LaporanIndex({ auth, units }) {
                             {activePreview.report_type === 'rekap_kehadiran' && (
                             <div className="overflow-x-auto">
                                 <div className="px-4 py-2 text-xs text-text-muted bg-surface border-b border-border italic">
-                                    % Kehadiran = (Hadir + Telat) / Hari Kerja &times; 100 &mdash; Sakit, Izin, Cuti, Alpa tidak dihitung sebagai hadir.
+                                    % Kehadiran = (Hadir + Telat) / Hari Kerja &times; 100. Sakit, Izin, Cuti, Alpa tidak dihitung sebagai hadir.
                                 </div>
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface">
@@ -737,7 +755,7 @@ export default function LaporanIndex({ auth, units }) {
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-border bg-white">
+                                    <tbody className="divide-y divide-border">
                                         {previewData.data.map((row, rowIdx) => (
                                             <tr key={rowIdx} className="transition-colors hover:bg-surface">
                                                 {row.map((cell, cellIdx) => {
@@ -751,7 +769,7 @@ export default function LaporanIndex({ auth, units }) {
                                                         displayValue = new Intl.NumberFormat('id-ID').format(cell);
                                                     }
 
-                                                    // Nama pegawai (kolom pertama) — clickable untuk drill-down
+                                                    // Nama pegawai (kolom pertama) - clickable untuk drill-down
                                                     if (cellIdx === 0 && previewData.pegawai_ids) {
                                                         const pegawaiId = previewData.pegawai_ids[rowIdx];
 
@@ -809,7 +827,7 @@ export default function LaporanIndex({ auth, units }) {
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-border bg-white">
+                                    <tbody className="divide-y divide-border">
                                         {previewData.data.map((row, rowIdx) => (
                                             <tr key={rowIdx} className="transition-colors hover:bg-surface">
                                                 {row.map((cell, cellIdx) => {
@@ -823,7 +841,7 @@ export default function LaporanIndex({ auth, units }) {
                                                         displayValue = new Intl.NumberFormat('id-ID').format(cell);
                                                     }
 
-                                                    // Nama pegawai (kolom pertama) — clickable untuk drill-down
+                                                    // Nama pegawai (kolom pertama) - clickable untuk drill-down
                                                     if (cellIdx === 0 && previewData.pegawai_ids) {
                                                         const pegawaiId = previewData.pegawai_ids[rowIdx];
 
