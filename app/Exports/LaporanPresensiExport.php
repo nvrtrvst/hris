@@ -61,7 +61,15 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
         $rows = $query->orderBy('tanggal', 'asc')
             ->orderByRaw('LOWER(nama_lengkap) asc')
             ->join('pegawai', 'pegawai.id', '=', 'presensi.pegawai_id')
-            ->get();
+            ->get([
+                // Kolom eksplisit (prefixed — ada join pegawai): hindari transfer
+                // blob JSON (motion/trajectory/exif) yang tak dipakai export.
+                // Tanpa `id`: duplikat dari 2 tabel, `$p->id` = pegawai.id (PDO last-wins).
+                'presensi.pegawai_id', 'presensi.unit_sekolah_id', 'presensi.jadwal_id',
+                'presensi.tanggal', 'presensi.jam_masuk', 'presensi.jam_keluar',
+                'presensi.status', 'presensi.tipe_presensi', 'presensi.is_lembur',
+                'presensi.is_tugas_luar', 'presensi.keterangan',
+            ]);
 
         // Mode kantor: 1 baris per pegawai per tanggal — utk hari ber-jadwal
         // dengan alpa, tampilkan ketidakhadiran harian (finalize-alpa membuatnya

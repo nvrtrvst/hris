@@ -98,7 +98,10 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
             $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', '%'.$this->search.'%'));
         }
 
-        $rows = $query->get();
+        $rows = $query->get([
+            'presensi.pegawai_id', 'presensi.jadwal_id',
+            'presensi.tanggal', 'presensi.status',
+        ]);
         $this->rawRows = $rows->groupBy('pegawai_id');
 
         // Agregasi per guru + per minggu: JP terjadwal (bobot durasi ÷ durasi_jp

@@ -70,7 +70,12 @@ class LaporanPenggajianExport implements FromCollection, ShouldAutoSize, WithCus
 
         return $query->orderByRaw('LOWER(nama_lengkap) asc')
             ->join('pegawai', 'pegawai.id', '=', 'penggajian.pegawai_id')
-            ->get();
+            // Kolom eksplisit (prefixed — join pegawai): tanpa `id` (duplikat 2 tabel).
+            ->get([
+                'penggajian.pegawai_id', 'penggajian.periode_bulan',
+                'penggajian.total_pendapatan', 'penggajian.total_potongan',
+                'penggajian.gaji_bersih', 'penggajian.status',
+            ]);
     }
 
     public function map($penggajian): array

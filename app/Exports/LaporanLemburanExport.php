@@ -69,7 +69,11 @@ class LaporanLemburanExport implements FromCollection, ShouldAutoSize, WithCusto
         return $query->orderBy('tanggal')
             ->orderByRaw('LOWER(nama_lengkap) asc')
             ->join('pegawai', 'pegawai.id', '=', 'presensi.pegawai_id')
-            ->get();
+            // Kolom eksplisit (prefixed — join pegawai): tanpa `id` (duplikat 2 tabel).
+            ->get([
+                'presensi.pegawai_id', 'presensi.tanggal', 'presensi.jam_masuk',
+                'presensi.jam_keluar', 'presensi.foto_masuk',
+            ]);
     }
 
     public function map($presensi): array
