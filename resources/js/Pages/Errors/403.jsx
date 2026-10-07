@@ -5,7 +5,7 @@ export default function Forbidden() {
         <>
             <Head title="403 - Forbidden" />
 
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-surface">
                 <div className="text-center">
                     <div className="text-8xl font-bold text-gray-800">
                         403
@@ -21,7 +21,7 @@ export default function Forbidden() {
 
                     <Link
                         href="/dashboard"
-                        className="inline-block mt-6 rounded-lg bg-indigo-600 px-5 py-3 text-sm font-medium text-white hover:bg-indigo-700"
+                        className="inline-block mt-6 rounded-lg bg-primary px-5 py-3 text-sm font-medium text-white hover:bg-primary-800"
                     >
                         Kembali ke Dashboard
                     </Link>

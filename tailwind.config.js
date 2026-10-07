@@ -51,8 +51,8 @@ export default {
                     dark: '#C5CAD4',
                 },
                 'text-primary': '#1A1D23',
-                'text-secondary': '#6B7280',
-                'text-muted': '#9CA3AF',
+                'text-secondary': '#656C79',
+                'text-muted': '#69707C',
                 success: {
                     DEFAULT: '#2E7D5B',
                     light: '#E8F5EF',
