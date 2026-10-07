@@ -290,7 +290,7 @@ export default function LaporanIndex({ auth, units }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="page-title">Modul Laporan</h2>}
+            header={<h1 className="page-title">Modul Laporan</h1>}
         >
             <Head title="Laporan" />
 
@@ -298,7 +298,7 @@ export default function LaporanIndex({ auth, units }) {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
                     {/* Header */}
                     <div>
-                        <h3 className="text-xl font-extrabold text-text-primary">Ekspor & Pratinjau Laporan</h3>
+                        <h2 className="text-xl font-extrabold text-text-primary">Ekspor & Pratinjau Laporan</h2>
                         <p className="text-sm text-text-muted">Pilih jenis laporan, atur periode, lalu pratinjau atau unduh ke Excel.</p>
                     </div>
 

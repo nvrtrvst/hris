@@ -35,7 +35,7 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="page-title">Detail Kehadiran Pegawai</h2>}
+            header={<h1 className="page-title">Detail Kehadiran Pegawai</h1>}
         >
             <Head title={`Kehadiran - ${pegawai.nama}`} />
 
@@ -57,7 +57,7 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                                 <User className="h-6 w-6" />
                             </div>
                             <div>
-                                <h3 className="text-xl font-extrabold text-text-primary">{pegawai.nama}</h3>
+                                <h2 className="text-xl font-extrabold text-text-primary">{pegawai.nama}</h2>
                                 <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-text-muted">
                                     <span className="inline-flex items-center gap-1">
                                         <Building2 className="h-3.5 w-3.5" />
@@ -92,7 +92,7 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                     {/* Detail Table */}
                     <div className="card overflow-hidden">
                         <div className="border-b border-border bg-surface px-6 py-4">
-                            <h4 className="text-sm font-extrabold uppercase tracking-wide text-primary">Rincian Kehadiran Harian</h4>
+                            <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary">Rincian Kehadiran Harian</h3>
                             <p className="mt-0.5 text-xs text-text-muted">{detail.length} hari tercatat</p>
                         </div>
                         <div className="overflow-x-auto">

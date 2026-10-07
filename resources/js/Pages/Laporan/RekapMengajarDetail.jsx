@@ -34,7 +34,7 @@ export default function RekapMengajarDetail({ auth, pegawai, detail, summary, pe
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="page-title">Detail Mengajar Pegawai</h2>}
+            header={<h1 className="page-title">Detail Mengajar Pegawai</h1>}
         >
             <Head title={`Mengajar - ${pegawai.nama}`} />
 
@@ -56,7 +56,7 @@ export default function RekapMengajarDetail({ auth, pegawai, detail, summary, pe
                                 <User className="h-6 w-6" />
                             </div>
                             <div>
-                                <h3 className="text-xl font-extrabold text-text-primary">{pegawai.nama}</h3>
+                                <h2 className="text-xl font-extrabold text-text-primary">{pegawai.nama}</h2>
                                 <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-text-muted">
                                     <span className="inline-flex items-center gap-1">
                                         <BookOpen className="h-3.5 w-3.5" />
@@ -95,7 +95,7 @@ export default function RekapMengajarDetail({ auth, pegawai, detail, summary, pe
                     {/* Detail Table */}
                     <div className="card overflow-hidden">
                         <div className="border-b border-border bg-surface px-6 py-4">
-                            <h4 className="text-sm font-extrabold uppercase tracking-wide text-primary">Rincian Presensi Mengajar</h4>
+                            <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary">Rincian Presensi Mengajar</h3>
                             <p className="mt-0.5 text-xs text-text-muted">{fmtJp(summary.terjadwal)} JP tercatat ({detail.length} sesi)</p>
                         </div>
                         <div className="overflow-x-auto">

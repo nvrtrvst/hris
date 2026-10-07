@@ -56,12 +56,12 @@ export default function Kcd({ auth, units }) {
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Laporan KCD</h2>}>
+        <AuthenticatedLayout user={auth.user} header={<h1 className="page-title">Laporan KCD</h1>}>
             <Head title="Laporan KCD" />
             <div className="py-8 bg-surface min-h-screen">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
                     <div>
-                        <h3 className="text-xl font-extrabold text-text-primary">Laporan Presensi KCD (Bulanan)</h3>
+                        <h2 className="text-xl font-extrabold text-text-primary">Laporan Presensi KCD (Bulanan)</h2>
                         <p className="text-sm text-text-muted">
                             Pilih unit &amp; bulan, lalu pratinjau atau unduh PDF daftar hadir per minggu (Senin&ndash;Jumat).
                         </p>
@@ -136,7 +136,7 @@ export default function Kcd({ auth, units }) {
                             {preview.weeks.map((week, wi) => (
                                 <div key={wi} className="card overflow-hidden">
                                     <div className="px-6 py-3 border-b border-border bg-surface">
-                                        <h4 className="text-sm font-extrabold text-primary">Minggu {wi + 1}, {preview.periode}</h4>
+                                        <h3 className="text-sm font-extrabold text-primary">Minggu {wi + 1}, {preview.periode}</h3>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="min-w-full divide-y divide-border text-sm">
