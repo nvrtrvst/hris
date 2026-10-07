@@ -154,6 +154,19 @@ else
         || warn "Gagal pasang cron (perlu akses crontab). Pasang manual: $CRON_CMD"
 fi
 
+# ── Cron prune notifikasi pengingat presensi ────────────────────────────────
+# Hapus ReminderPush/PresensiReminder kadaluarsa (>7 hari) tiap hari 01:30.
+# Idempoten: tidak menambah duplikat.
+step "Cron prune notifikasi presensi"
+CRON_PRUNE="30 1 * * * cd $REPO_DIR && php artisan notification:prune-presensi-reminder >> /dev/null 2>&1"
+if crontab -l 2>/dev/null | grep -qF "notification:prune-presensi-reminder"; then
+    info "Cron prune notifikasi sudah terpasang."
+else
+    ( crontab -l 2>/dev/null; echo "$CRON_PRUNE" ) | crontab - 2>/dev/null \
+        && info "Cron prune notifikasi dipasang." \
+        || warn "Gagal pasang cron prune (perlu akses crontab). Pasang manual: $CRON_PRUNE"
+fi
+
 # ── Smoke check ───────────────────────────────────────────────────────────
 step "Smoke check endpoint"
 check_url() {
