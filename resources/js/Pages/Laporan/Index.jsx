@@ -98,6 +98,16 @@ export default function LaporanIndex({ auth, units }) {
     const firstDay = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
     const today = d.toISOString().split('T')[0];
 
+    const iso = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    const dayShift = (n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+    const presets = [
+        { label: 'Hari ini', s: today, e: today },
+        { label: 'Kemarin', s: iso(dayShift(-1)), e: iso(dayShift(-1)) },
+        { label: '7 Hari', s: iso(dayShift(-6)), e: today },
+        { label: 'Bulan Ini', s: firstDay, e: today },
+        { label: 'Bulan Lalu', s: iso(new Date(currentYear, currentMonth - 2, 1)), e: iso(new Date(currentYear, currentMonth - 1, 0)) },
+    ];
+
     const isSuperadmin = auth.permissions?.includes('view_all_units');
     const userUnitId = auth.user?.unit_sekolah_id;
 
@@ -357,6 +367,19 @@ export default function LaporanIndex({ auth, units }) {
                                     />
                                 </div>
                             </Field>
+                            <div className="col-span-full flex flex-wrap items-center gap-2">
+                                <span className="text-xs text-text-muted">Cepat:</span>
+                                {presets.map((p) => (
+                                    <button
+                                        key={p.label}
+                                        type="button"
+                                        onClick={() => setFilter({ ...filter, start_date: p.s, end_date: p.e })}
+                                        className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${filter.start_date === p.s && filter.end_date === p.e ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text-secondary hover:bg-surface hover:text-text-primary'}`}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
+                            </div>
                             <Field label="Unit Sekolah">
                                 <ComboSelect
                                     id={fieldId('Unit Sekolah')}
