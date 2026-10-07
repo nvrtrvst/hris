@@ -88,6 +88,14 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
 
+        // Deteksi portal (pola sama EnsurePegawaiComplete): portal mobile tidak
+        // punya route /dashboard, jadi CTA halaman error harus beda per portal.
+        $portalOf = fn (Request $request): string => ($request->getHost() === config('domains.mobile') || $request->is('mobile') || $request->is('mobile/*')) ? 'mobile' : 'admin';
+
+        // Pesan kustom dari abort(403, '...') untuk ditampilkan di halaman error.
+        // abort(403) tanpa pesan → null (pakai teks default UI).
+        $abortMessage = fn (HttpException $e): ?string => $e->getMessage() !== '' ? $e->getMessage() : null;
+
         /*
         |--------------------------------------------------------------------------
         | Custom 403 - AuthorizationException
@@ -103,8 +111,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (
             AuthorizationException $e,
             Request $request
-        ) {
-            return Inertia::render('Errors/403')
+        ) use ($portalOf) {
+            return Inertia::render('Errors/403', ['portal' => $portalOf($request)])
                 ->toResponse($request)
                 ->setStatusCode(403);
         });
@@ -124,9 +132,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (
             HttpException $e,
             Request $request
-        ) {
+        ) use ($portalOf, $abortMessage) {
             if ($e->getStatusCode() === 403) {
-                return Inertia::render('Errors/403')
+                return Inertia::render('Errors/403', [
+                    'portal' => $portalOf($request),
+                    'message' => $abortMessage($e),
+                ])
                     ->toResponse($request)
                     ->setStatusCode(403);
             }
@@ -143,10 +154,10 @@ return Application::configure(basePath: dirname(__DIR__))
         |
         */
 
-        $exceptions->respond(function ($response) {
+        $exceptions->respond(function ($response) use ($portalOf) {
 
             if ($response->getStatusCode() === 500) {
-                return Inertia::render('Errors/500')
+                return Inertia::render('Errors/500', ['portal' => $portalOf(request())])
                     ->toResponse(request())
                     ->setStatusCode(500);
             }

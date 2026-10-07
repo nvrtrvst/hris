@@ -18,10 +18,14 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // Mobile PWA Routes untuk Pegawai (presensi.nuurulmuttaqiin)
+// Route login TANPA middleware guest: web_mobile. Alasan: user yang sesinya
+// masih aktif (mis. superadmin yang kena 403 di portal mobile) harus bisa
+// membuka halaman login untuk re-login dengan akun lain, tanpa logout.
+// Dengan guest, user aktif dipantul ke presensi.dashboard → 403 loop.
 Route::get('/login', [MobileAuthController::class, 'create'])
-    ->middleware('guest:web_mobile')->name('presensi.login');
+    ->name('presensi.login');
 Route::post('/login', [MobileAuthController::class, 'store'])
-    ->middleware('guest:web_mobile')->middleware('throttle:5,1')->name('presensi.login.store');
+    ->middleware('throttle:5,1')->name('presensi.login.store');
 // Client error telemetry (ErrorBoundary). Endpoint PUBLIK — user yang sesi-nya
 // expired tetap harus bisa kirim laporan error (kalau dibalik auth, justru
 // error pertama yang muncul setelah sesi jatuh tidak akan pernah tercatat).
