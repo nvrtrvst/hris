@@ -117,7 +117,7 @@ export default function PerbandinganUnit({ units, filter }) {
                                         <tr>
                                             <td colSpan={9}>
                                                 <div className="empty-state">
-                                                    <p className="empty-state-desc">Belum ada data presensi untuk periode ini.</p>
+                                                    <p className="empty-state-desc">Belum ada data presensi untuk periode ini. Ubah periode atau unit perbandingan.</p>
                                                 </div>
                                             </td>
                                         </tr>

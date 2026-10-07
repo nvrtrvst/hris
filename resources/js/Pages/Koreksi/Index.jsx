@@ -336,7 +336,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
 
                             {selectedItem.penjelasan_khusus && (
                                 <div className="rounded-card border border-amber-200 bg-amber-50 p-3">
-                                    <p className="text-xs font-semibold uppercase text-amber-800">⚠ Lewat kuota — Penjelasan Khusus</p>
+                                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase text-amber-800"><AlertCircle className="h-3.5 w-3.5 shrink-0" /> Lewat kuota — Penjelasan Khusus</p>
                                     <p className="mt-1 text-amber-900">{selectedItem.penjelasan_khusus}</p>
                                 </div>
                             )}

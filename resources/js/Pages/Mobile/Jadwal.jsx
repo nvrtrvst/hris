@@ -283,7 +283,7 @@ function BawahanPresensiCard({ bawahanPresensi }) {
                                         <p className="font-mono text-[10px] text-slate-400">→ {masuk.jam_keluar}</p>
                                     )}
                                     {lembur.length > 0 && (
-                                        <p className="text-[10px] text-amber-600 font-bold">🔴 Lembur</p>
+                                        <span className="inline-flex items-center rounded border border-accent-200 bg-accent-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent-700">Lembur</span>
                                     )}
                                 </div>
                             </div>

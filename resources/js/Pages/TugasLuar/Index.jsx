@@ -123,6 +123,7 @@ export default function Index({ auth, tugasLuar, units, pegawais, filters = {} }
                                                         <CalendarDays className="h-8 w-8 text-border" />
                                                     </div>
                                                     <p className="mt-4 text-base font-bold text-primary">Belum ada jadwal tugas luar</p>
+                                                    <p className="mt-1 text-xs text-text-secondary">Klik Tambah Jadwal Tugas Luar untuk membuat jadwal baru.</p>
                                                 </div>
                                             </td>
                                         </tr>

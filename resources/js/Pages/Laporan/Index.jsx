@@ -533,7 +533,7 @@ export default function LaporanIndex({ auth, units }) {
                                                 {cal.guru.length === 0 && (
                                                     <tr>
                                                         <td colSpan={cal.dates.length + 1} className="px-4 py-10 text-center text-sm text-text-muted">
-                                                            Tidak ada data mengajar untuk periode ini.
+                                                            Tidak ada data mengajar untuk periode ini. Ubah filter periode atau unit.
                                                         </td>
                                                     </tr>
                                                 )}
@@ -609,7 +609,7 @@ export default function LaporanIndex({ auth, units }) {
                                                 {mx.rows.length === 0 && (
                                                     <tr>
                                                         <td colSpan={mx.dates.length + 1} className="px-4 py-10 text-center text-sm text-text-muted">
-                                                            Tidak ada data kehadiran untuk periode ini.
+                                                            Tidak ada data kehadiran untuk periode ini. Ubah filter periode atau unit.
                                                         </td>
                                                     </tr>
                                                 )}
@@ -765,7 +765,7 @@ export default function LaporanIndex({ auth, units }) {
                                         {previewData.data.length === 0 && (
                                             <tr>
                                                 <td colSpan={previewData.headings.length} className="px-4 py-10 text-center text-sm text-text-muted">
-                                                    Tidak ada data untuk filter dan rentang tanggal yang dipilih.
+                                                    Tidak ada data untuk filter dan rentang tanggal yang dipilih. Ubah filter tanggal atau unit.
                                                 </td>
                                             </tr>
                                         )}
@@ -828,7 +828,7 @@ export default function LaporanIndex({ auth, units }) {
                                         {previewData.data.length === 0 && (
                                             <tr>
                                                 <td colSpan={previewData.headings.length} className="px-4 py-10 text-center text-sm text-text-muted">
-                                                    Tidak ada data untuk filter dan rentang tanggal yang dipilih.
+                                                    Tidak ada data untuk filter dan rentang tanggal yang dipilih. Ubah filter tanggal atau unit.
                                                 </td>
                                             </tr>
                                         )}

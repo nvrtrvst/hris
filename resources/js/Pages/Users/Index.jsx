@@ -130,6 +130,7 @@ export default function Index({ auth, users, filters, stats, flash }) {
                                             <td colSpan="4" className="px-6 py-12 text-center text-sm text-text-muted">
                                                 <Inbox className="mx-auto mb-2 h-6 w-6 text-border" />
                                                 Tidak ada data user.
+                                                <p className="mt-1 text-xs">Gunakan tombol Tambah User untuk membuat akun baru.</p>
                                             </td>
                                         </tr>
                                     )}

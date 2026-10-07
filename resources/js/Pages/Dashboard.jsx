@@ -458,7 +458,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                 {chartData.length === 0 ? (
                                     <div className="flex h-full flex-col items-center justify-center text-center">
                                         <TrendingUp className="mb-2 h-8 w-8 text-border" />
-                                        <p className="text-sm text-text-secondary">Belum ada data kehadiran.</p>
+                                        <p className="text-sm text-text-secondary">Tidak ada data kehadiran 7 hari terakhir.</p>
                                     </div>
                                 ) : (
                                     <ResponsiveContainer width="100%" height="100%">

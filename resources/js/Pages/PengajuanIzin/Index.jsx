@@ -317,6 +317,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                             <div className="card px-6 py-12 text-center">
                                 <FileText className="w-10 h-10 text-border mx-auto mb-3" />
                                 <p className="text-sm font-bold text-primary">Tidak ada data</p>
+                                <p className="mt-1 text-xs text-text-secondary">Ubah tanggal atau status filter untuk melihat pengajuan lain.</p>
                             </div>
                         ) : pengajuans.data.map((item) => (
                             <div key={item.id} className="card p-4">
@@ -387,6 +388,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                             <td colSpan="6" className="empty-state py-12">
                                                 <FileText className="w-12 h-12 text-border mx-auto mb-3" />
                                                 <p className="empty-state-desc">Tidak ada data pengajuan yang ditemukan.</p>
+                                                <p className="mt-1 text-xs text-text-muted">Ubah kata kunci, tanggal, atau status filter.</p>
                                             </td>
                                         </tr>
                                     ) : pengajuans.data.map((item) => (

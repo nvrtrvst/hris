@@ -1634,7 +1634,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                 <div className="grid grid-cols-2 gap-3 text-sm">
                                                     <div><span className="text-text-secondary">EXIF GPS:</span> <b className="font-mono text-primary">{d.exif_meta.gps_lat ? `${d.exif_meta.gps_lat.toFixed(5)}, ${d.exif_meta.gps_lng?.toFixed(5)}` : '-'}</b></div>
                                                     <div><span className="text-text-secondary">DateTimeOriginal:</span> <b className="text-primary">{d.exif_meta.datetime_original || '-'}</b></div>
-                                                    {d.exif_meta.mismatch && <div className="col-span-2"><span className="font-bold text-danger">⚠ Mismatch {d.exif_meta.mismatch_distance_m}m dengan koordinat reported</span></div>}
+                                                    {d.exif_meta.mismatch && <div className="col-span-2"><span className="inline-flex items-center gap-1 font-bold text-danger"><AlertTriangle className="h-3 w-3 shrink-0" /> Mismatch {d.exif_meta.mismatch_distance_m}m dengan koordinat reported</span></div>}
                                                 </div>
                                             </div>
                                         )}
@@ -1687,7 +1687,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                 : d.tugas_luar_status === 'ditolak' ? 'bg-rose-50 text-rose-700 border-rose-200'
                                                 : 'bg-sky-50 text-sky-700 border-sky-200'
                                             }`}>
-                                                {d.tugas_luar_status === 'disetujui' ? '✓ Disetujui' : d.tugas_luar_status === 'ditolak' ? '✗ Ditolak' : '⏳ Pending'}
+                                                {d.tugas_luar_status === 'disetujui' ? 'Disetujui' : d.tugas_luar_status === 'ditolak' ? 'Ditolak' : 'Pending'}
                                             </span>
                                         </div>
 

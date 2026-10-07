@@ -166,6 +166,7 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                             <div className="text-center py-12">
                                 <Bell className="mx-auto h-12 w-12 text-text-muted/30" />
                                 <p className="mt-3 text-sm text-text-muted">Belum ada reminder.</p>
+                                <p className="mt-1 text-xs text-text-muted">Klik Buat Reminder untuk membuat pengingat otomatis.</p>
                             </div>
                         ) : (
                             <div className="divide-y divide-border">
