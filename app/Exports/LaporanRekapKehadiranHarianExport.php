@@ -53,19 +53,22 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
 
     protected $search;
 
+    protected $status;
+
     /** @var string[] Daftar tanggal periode (semua hari, termasuk weekend). */
     protected $dates = [];
 
     /** @var Collection<int, array{pegawai: Pegawai, cells: array<string, string>, hadir: int, telat: int, sakit: int, izin: int, cuti: int, alpa: int, hariKerja: int}> */
     protected $rekap;
 
-    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $search = null)
+    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $search = null, $status = null)
     {
         $this->start_date = $start_date;
         $this->end_date = $end_date;
         $this->unit_id = $unit_id;
         $this->jenis = $jenis;
         $this->search = $search;
+        $this->status = $status;
 
         $cursor = Carbon::parse($start_date);
         $end = Carbon::parse($end_date);
@@ -152,6 +155,14 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                 'hariKerja' => $hariKerja,
             ];
         })->sortBy(fn ($r) => mb_strtolower($r['pegawai']?->nama_lengkap ?? ''))->values();
+
+        if ($this->status !== null && $this->status !== '') {
+            $status = $this->status;
+            // Sama dengan rekap agregat: alpa = rumus alpa, bukan status manual.
+            $this->rekap = $this->rekap
+                ->filter(fn ($r) => $status === 'alpa' ? $r['alpa'] > 0 : ($r[$status] ?? 0) > 0)
+                ->values();
+        }
     }
 
     public function collection(): Collection

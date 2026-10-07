@@ -108,6 +108,7 @@ export default function LaporanIndex({ auth, units }) {
         unit_sekolah_id: isSuperadmin ? '' : (userUnitId || ''),
         jenis_filter: '',
         tipe_filter: '',
+        status_filter: '',
         search: ''
     });
 
@@ -129,6 +130,7 @@ export default function LaporanIndex({ auth, units }) {
                     unit_sekolah_id: filter.unit_sekolah_id,
                     jenis_filter: filter.jenis_filter,
                     tipe_filter: filter.tipe_filter,
+                    status_filter: filter.status_filter,
                     search: filter.search
                 }
             });
@@ -176,6 +178,9 @@ export default function LaporanIndex({ auth, units }) {
         }
         if (filter.tipe_filter) {
             params.append('tipe_filter', filter.tipe_filter);
+        }
+        if (filter.status_filter) {
+            params.append('status_filter', filter.status_filter);
         }
         if (filter.search) {
             params.append('search', filter.search);
@@ -243,6 +248,9 @@ export default function LaporanIndex({ auth, units }) {
         }
         if (filter.tipe_filter) {
             params.append('tipe_filter', filter.tipe_filter);
+        }
+        if (filter.status_filter) {
+            params.append('status_filter', filter.status_filter);
         }
         if (filter.search) {
             params.append('search', filter.search);
@@ -313,7 +321,7 @@ export default function LaporanIndex({ auth, units }) {
                                         id={fieldId('Jenis Laporan')}
                                         className="select-field pl-9"
                                         value={filter.report_type}
-                                        onChange={(e) => setFilter({ ...filter, report_type: e.target.value, tipe_filter: e.target.value === 'presensi' ? filter.tipe_filter : '' })}
+                                        onChange={(e) => setFilter({ ...filter, report_type: e.target.value, tipe_filter: e.target.value === 'presensi' ? filter.tipe_filter : '', status_filter: ['presensi', 'rekap_kehadiran', 'rekap_kehadiran_harian'].includes(e.target.value) ? filter.status_filter : '' })}
                                     >
                                         <option value="presensi">Laporan Presensi</option>
                                         <option value="rekap_kehadiran">Rekap Kehadiran</option>
@@ -413,6 +421,27 @@ export default function LaporanIndex({ auth, units }) {
                                             <option value="">Semua (Kantor + Mengajar)</option>
                                             <option value="kantor">Kantor (Harian)</option>
                                             <option value="mengajar">Mengajar (per JP)</option>
+                                        </select>
+                                    </div>
+                                </Field>
+                            )}
+                            {['presensi', 'rekap_kehadiran', 'rekap_kehadiran_harian'].includes(filter.report_type) && (
+                                <Field label="Status (Opsional)">
+                                    <div className="relative">
+                                        <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                        <select
+                                            id={fieldId('Status (Opsional)')}
+                                            className="select-field pl-9"
+                                            value={filter.status_filter}
+                                            onChange={(e) => setFilter({ ...filter, status_filter: e.target.value })}
+                                        >
+                                            <option value="">-- Semua Status --</option>
+                                            <option value="hadir">Hadir</option>
+                                            <option value="telat">Telat</option>
+                                            <option value="sakit">Sakit</option>
+                                            <option value="izin">Izin</option>
+                                            <option value="cuti">Cuti</option>
+                                            <option value="alpa">Alpa / Tidak Hadir</option>
                                         </select>
                                     </div>
                                 </Field>

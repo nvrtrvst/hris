@@ -33,16 +33,19 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
 
     protected $search;
 
+    protected $status;
+
     /** @var Collection<int, array{pegawai: Pegawai, hadir: int, telat: int, sakit: int, izin: int, cuti: int, alpa: int, hariKerja: int}> */
     protected $rekap;
 
-    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $search = null)
+    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $search = null, $status = null)
     {
         $this->start_date = $start_date;
         $this->end_date = $end_date;
         $this->unit_id = $unit_id;
         $this->jenis = $jenis;
         $this->search = $search;
+        $this->status = $status;
 
         $this->buildRekap();
     }
@@ -118,6 +121,24 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 'hariKerja' => $hariKerja,
             ];
         })->sortBy(fn ($r) => mb_strtolower($r['pegawai']?->nama_lengkap ?? ''))->values();
+
+        $this->applyStatusFilter();
+    }
+
+    /**
+     * Filter status (opsional): tampilkan hanya pegawai yang mengalami status
+     * terpilih pada periode. Alpa pakai rumus alpa (bukan status alpa manual).
+     */
+    private function applyStatusFilter(): void
+    {
+        if ($this->status === null || $this->status === '') {
+            return;
+        }
+
+        $status = $this->status;
+        $this->rekap = $this->rekap
+            ->filter(fn ($r) => $status === 'alpa' ? $r['alpa'] > 0 : ($r[$status] ?? 0) > 0)
+            ->values();
     }
 
     /**
