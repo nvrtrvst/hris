@@ -21,6 +21,12 @@ const TABS = [
     { key: 'semua', label: 'Semua' },
 ];
 
+// Format lokal Y-m-D — toISOString() bisa mundur 1 hari di UTC+7.
+const todayLocalISO = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export default function Index({ auth, pengajuans, filters, stats }) {
     const { flash } = usePage().props;
     const [selectedItem, setSelectedItem] = useState(null);
@@ -33,7 +39,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
 
     const [search, setSearch] = useState(filters?.search || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || 'semua');
-    const [dateFilter, setDateFilter] = useState(filters?.tanggal || '');
+    const [dateFilter, setDateFilter] = useState(filters?.tanggal ?? todayLocalISO());
     const [jenisFilter, setJenisFilter] = useState(filters?.jenis_filter || '');
     const [activeTab, setActiveTab] = useState(filters?.tab || 'l1');
 
@@ -96,7 +102,8 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         }
         const timer = setTimeout(() => handleFilter(), 300);
         return () => clearTimeout(timer);
-    }, [search, statusFilter, dateFilter, jenisFilter]);
+        // `search` sengaja TIDAK di dependency: pencarian manual via tombol Cari / Enter.
+    }, [statusFilter, dateFilter, jenisFilter]);
 
     const getStatusBadge = (status) => {
         switch (status) {
@@ -237,18 +244,29 @@ export default function Index({ auth, pengajuans, filters, stats }) {
 
                     {/* Filter Section */}
                     <div className="card p-4 sm:p-5 mb-6 flex flex-col gap-3">
-                        <div className="relative w-full max-w-md">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Search className="h-5 w-5 text-text-muted" />
+                        <form
+                            className="relative w-full max-w-md flex gap-2"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleFilter();
+                            }}
+                        >
+                            <div className="relative flex-1">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Search className="h-5 w-5 text-text-muted" />
+                                </div>
+                                <input
+                                    type="text"
+                                    className="input-field pl-10"
+                                    placeholder="Cari nama pegawai atau NIK..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
                             </div>
-                            <input
-                                type="text"
-                                className="input-field pl-10"
-                                placeholder="Cari nama pegawai atau NIK..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
+                            <button type="submit" className="btn-primary btn-sm whitespace-nowrap px-3">
+                                Cari
+                            </button>
+                        </form>
                         <div className="flex flex-wrap gap-2">
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

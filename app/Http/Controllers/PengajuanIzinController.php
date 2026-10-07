@@ -77,9 +77,13 @@ class PengajuanIzinController extends Controller
             $query->where('status', $request->status);
         }
 
-        if ($request->filled('tanggal')) {
-            $query->whereDate('tanggal_mulai', '<=', $request->tanggal)
-                ->whereDate('tanggal_selesai', '>=', $request->tanggal);
+        // URL bersih (tanpa key `tanggal`) = default hari ini; `tanggal` eksplisit
+        // (isi / null karena ConvertEmptyStringsToNull) = hormati — kosong = lihat semua.
+        $explicitTanggal = array_key_exists('tanggal', $request->query());
+        $tanggal = $explicitTanggal ? $request->query('tanggal') : now()->toDateString();
+        if (! empty($tanggal)) {
+            $query->whereDate('tanggal_mulai', '<=', $tanggal)
+                ->whereDate('tanggal_selesai', '>=', $tanggal);
         }
 
         // Filter jenis pegawai (Dapodik): pendidik = punya jabatan guru, kependidikan = tidak.
@@ -104,9 +108,13 @@ class PengajuanIzinController extends Controller
             return $item;
         });
 
+        // `tanggal` eksplisit → string ('' utk kosong, isi utk filter); URL bersih → null (FE default hari ini).
+        $filters = $request->only(['search', 'status', 'tanggal', 'tab', 'jenis_filter']);
+        $filters['tanggal'] = $explicitTanggal ? (string) ($request->query('tanggal') ?? '') : null;
+
         return Inertia::render('PengajuanIzin/Index', [
             'pengajuans' => $pengajuans,
-            'filters' => $request->only(['search', 'status', 'tanggal', 'tab', 'jenis_filter']),
+            'filters' => $filters,
             'stats' => $stats,
         ]);
     }
