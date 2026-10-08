@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -13,6 +14,8 @@ use Tests\TestCase;
  */
 class CsrfMetaTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_mobile_login_page_renders_csrf_token_meta(): void
     {
         $response = $this->get('/mobile/login');

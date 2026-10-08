@@ -18,6 +18,7 @@ import { Head } from '@inertiajs/react';
  * @param {ReactNode} [heroContent] Konten pengayaan panel kiri (desktop only)
  * @param {ReactNode} [heroFooter] Baris trust/copyright (desktop only)
  * @param {ReactNode} [cardBelow] Konten di bawah kartu form (mobile only)
+ * @param {Array<{nama: string, singkatan: string, logo: string|null}>} [lembaga] Daftar lembaga binaan yayasan
  * @param {ReactNode} children    Isi kartu form (dibungkus kartu putih)
  */
 export default function AuthShell({
@@ -29,6 +30,7 @@ export default function AuthShell({
     heroContent = null,
     heroFooter = null,
     cardBelow = null,
+    lembaga = null,
     children,
 }) {
     return (
@@ -44,8 +46,8 @@ export default function AuthShell({
 
                 <div className="relative z-10 mx-auto w-full max-w-sm md:mx-0 md:max-w-none">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
-                            <ApplicationLogo className="h-7 w-7 text-white" />
+                        <div className="flex h-14 shrink-0 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-white/20">
+                            <ApplicationLogo className="h-full w-auto max-w-40" />
                         </div>
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">Yayasan Nuurul Muttaqiin</p>
@@ -60,6 +62,26 @@ export default function AuthShell({
                         </h1>
                         {description && <p className="mt-3 max-w-sm text-sm leading-relaxed text-emerald-50/80">{description}</p>}
                     </div>
+
+                    {lembaga?.length > 0 && (
+                        <div className="mt-8">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">Lembaga Binaan</p>
+                            <ul className="mt-3 flex flex-wrap gap-2">
+                                {lembaga.map((unit) => (
+                                    <li key={unit.nama} className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-2.5 py-1.5 ring-1 ring-white/15">
+                                        {unit.logo ? (
+                                            <img src={unit.logo} alt={`Logo ${unit.nama}`} className="h-6 w-6 shrink-0 object-contain" />
+                                        ) : (
+                                            <span className="flex h-6 shrink-0 items-center justify-center rounded bg-white/20 px-1 text-[10px] font-bold text-white">
+                                                {unit.singkatan}
+                                            </span>
+                                        )}
+                                        <span className="text-xs font-semibold text-white">{unit.nama}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
 
                     {heroContent && <div className="mt-10 hidden md:block">{heroContent}</div>}
                 </div>

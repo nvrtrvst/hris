@@ -10,7 +10,7 @@ const TRUST_ITEMS = [
     { icon: Lock, text: 'Session terisolasi per portal', desc: 'Sesi admin dan pegawai dipisahkan secara aman.' },
 ];
 
-export default function Login({ status, canResetPassword }) {
+export default function Login({ status, canResetPassword, lembaga }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -29,6 +29,7 @@ export default function Login({ status, canResetPassword }) {
         <AuthShell
             title="Masuk"
             portal="Portal Admin"
+            lembaga={lembaga}
             eyebrow="Selamat datang kembali"
             heading={
                 <>
