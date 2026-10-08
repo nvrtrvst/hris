@@ -103,6 +103,7 @@ export default function Login({ status, canResetPassword, lembaga }) {
                     spellCheck="false"
                     autoFocus
                     placeholder="admin@yayasan.sch.id"
+                    required
                     value={data.email}
                     error={errors.email}
                     onChange={(event) => setData('email', event.target.value)}
@@ -116,6 +117,7 @@ export default function Login({ status, canResetPassword, lembaga }) {
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     placeholder="Masukkan kata sandi"
+                    required
                     value={data.password}
                     error={errors.password}
                     onChange={(event) => setData('password', event.target.value)}
@@ -152,8 +154,8 @@ export default function Login({ status, canResetPassword, lembaga }) {
 
                 <button
                     type="submit"
-                    disabled={processing || !data.email || !data.password}
-                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                    disabled={processing}
+                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] hover:bg-primary-600 disabled:cursor-wait disabled:opacity-70"
                 >
                     {processing ? (
                         <>

@@ -25,7 +25,7 @@ export default function AuthField({ id, label, icon: Icon, error, suffix, ...pro
                     id={id}
                     aria-invalid={Boolean(error)}
                     aria-describedby={errorId}
-                    className={`min-h-14 w-full rounded-xl border bg-slate-50 py-3.5 pl-12 text-[15px] font-medium text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:bg-white focus:ring-4 ${
+                    className={`min-h-14 w-full rounded-xl border bg-slate-50 py-3.5 pl-12 text-[15px] font-medium text-slate-950 outline-none transition-colors placeholder:text-slate-500 focus:bg-white focus:ring-4 ${
                         suffix ? 'pr-14' : 'pr-4'
                     } ${
                         props.readOnly

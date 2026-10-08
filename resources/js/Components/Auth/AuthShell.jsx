@@ -63,11 +63,11 @@ export default function AuthShell({
                                     <li key={unit.nama} className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-2.5 py-1.5 ring-1 ring-white/15">
                                         {unit.logo ? (
                                             <img src={unit.logo} alt={`Logo ${unit.nama}`} className="h-6 w-6 shrink-0 object-contain" />
-                                        ) : (
+                                        ) : unit.singkatan && unit.singkatan !== unit.nama ? (
                                             <span className="flex h-6 shrink-0 items-center justify-center rounded bg-white/20 px-1 text-[10px] font-bold text-white">
                                                 {unit.singkatan}
                                             </span>
-                                        )}
+                                        ) : null}
                                         <span className="text-xs font-semibold text-white">{unit.nama}</span>
                                     </li>
                                 ))}
@@ -84,13 +84,13 @@ export default function AuthShell({
             {/* Form panel — kartu melayang di mobile, terpusat di desktop */}
             <section className="relative z-10 mx-auto -mt-16 w-full max-w-sm px-4 pb-[max(2rem,env(safe-area-inset-bottom))] md:mt-0 md:flex md:w-1/2 md:max-w-none md:items-center md:justify-center md:px-10">
                 <div className="w-full max-w-md">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.45)] sm:p-6">
+                    <div className="rounded-2xl bg-white p-5 shadow-[0_18px_44px_-28px_rgba(15,23,42,0.45)] sm:p-6">
                         {children}
                     </div>
 
                     {cardBelow}
 
-                    <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-500 md:hidden">
+                    <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-500">
                         &copy; {new Date().getFullYear()} Yayasan Nuurul Muttaqiin
                     </p>
                 </div>
