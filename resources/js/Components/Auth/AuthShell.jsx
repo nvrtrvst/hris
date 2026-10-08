@@ -40,12 +40,10 @@ export default function AuthShell({
             {/* Branding panel — teal */}
             <section className="relative overflow-hidden bg-primary px-5 pb-28 pt-[max(2rem,env(safe-area-inset-top))] text-white md:flex md:w-1/2 md:flex-col md:justify-between md:px-10 md:pb-10 md:pt-10 lg:px-14 lg:pb-14 lg:pt-14">
                 <div className="relative z-10 mx-auto w-full max-w-sm md:mx-0 md:max-w-none">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-14 shrink-0 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-white/20">
-                            <ApplicationLogo className="h-full w-auto max-w-40" />
-                        </div>
+                    <div className="flex items-center gap-4">
+                        <ApplicationLogo className="h-16 w-auto shrink-0 md:h-20" />
                         <div>
-                            <p className="text-base font-bold">{portal}</p>
+                            <p className="text-lg font-bold">{portal}</p>
                         </div>
                     </div>
 
