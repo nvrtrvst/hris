@@ -39,19 +39,13 @@ export default function AuthShell({
 
             {/* Branding panel — teal */}
             <section className="relative overflow-hidden bg-primary px-5 pb-28 pt-[max(2rem,env(safe-area-inset-top))] text-white md:flex md:w-1/2 md:flex-col md:justify-between md:px-10 md:pb-10 md:pt-10 lg:px-14 lg:pb-14 lg:pt-14">
-                {/* Dekorasi halus (glow) */}
-                <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary-700/70 blur-3xl" />
-                <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -left-20 h-80 w-80 rounded-full bg-primary-600/40 blur-3xl" />
-                <div aria-hidden="true" className="pointer-events-none absolute right-10 top-1/3 hidden h-40 w-40 rounded-full bg-accent-500/10 blur-2xl md:block" />
-
                 <div className="relative z-10 mx-auto w-full max-w-sm md:mx-0 md:max-w-none">
                     <div className="flex items-center gap-3">
                         <div className="flex h-14 shrink-0 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-white/20">
                             <ApplicationLogo className="h-full w-auto max-w-40" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">Yayasan Nuurul Muttaqiin</p>
-                            <p className="mt-0.5 text-base font-bold">{portal}</p>
+                            <p className="text-base font-bold">{portal}</p>
                         </div>
                     </div>
 
