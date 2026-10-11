@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\PdfTooLargeException;
 use App\Exports\LaporanLemburanExport;
 use App\Exports\LaporanPenggajianExport;
 use App\Exports\LaporanPresensiExport;
@@ -15,10 +16,10 @@ use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Services\KcdReportService;
+use App\Services\LaporanPdfService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -186,112 +187,28 @@ class LaporanController extends Controller
         );
     }
 
+    /**
+     * Export PDF sync. Guard jumlah baris + memory limit di LaporanPdfService —
+     * di atas guard, tolak dengan 422 dan sarankan Excel.
+     */
     public function exportPdf(LaporanGenerateRequest $request)
     {
         $validated = $request->validated();
-        $type = $validated['type'];
         $unitId = $this->resolveEffectiveUnitId($validated['unit_sekolah_id'] ?? null);
 
-        set_time_limit(300);
-        // DomPDF boros memori pada tabel ribuan baris; worker OOM → koneksi
-        // diputus di tengah render (error "Koneksi terputus" di FE).
-        ini_set('memory_limit', '512M');
-
-        $export = match ($type) {
-            'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
-            'penggajian' => new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
-            'lemburan' => new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
-            'rekap_mengajar' => new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
-            'rekap_kehadiran' => new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
-            'rekap_kehadiran_harian' => new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
-        };
-
         try {
-            // Hitung dulu, map belakangan — hindari build array besar sebelum
-            // guard. Cap 2000: di atas itu DomPDF rawan OOM/timeout.
-            $total = $export->collection()->count();
+            $result = app(LaporanPdfService::class)->generate($validated, $unitId);
 
-            if ($total > 2000) {
-                return response()->json([
-                    'message' => 'Data terlalu banyak untuk PDF ('.$total.' baris, maksimal 2000). Gunakan filter yang lebih spesifik atau export ke Excel.',
-                ], 422);
-            }
-
-            $rows = $export->collection()->map(fn ($item) => $export->map($item))->all();
-        } catch (\Throwable $e) {
-            \Log::error('PDF laporan gagal (siapkan data)', [
-                'type' => $type,
-                'message' => $e->getMessage(),
-                'file' => $e->getFile().':'.$e->getLine(),
+            return response($result['content'], 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$result['filename'].'"',
+                'Content-Length' => strlen($result['content']),
             ]);
-
-            return response()->json([
-                'message' => 'Gagal menyiapkan data PDF: '.substr($e->getMessage(), 0, 300),
-            ], 500);
-        }
-
-        $headings = $export->headings();
-
-        // Kop surat: unit terpilih (atau auto-resolved dari scope user) → data unit itu;
-        // semua unit (superadmin) → unit induk "Yayasan"; fallback terakhir → config env.
-        $kopUnit = null;
-        if ($unitId) {
-            $kopUnit = UnitSekolah::find($unitId);
-        }
-        if (! $kopUnit) {
-            $kopUnit = UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
-        }
-        $unitName = $kopUnit?->nama ?? 'Semua Unit Sekolah';
-
-        $periodeStr = Carbon::parse($validated['start_date'])->format('d/m/Y')
-            .' s/d '.Carbon::parse($validated['end_date'])->format('d/m/Y');
-
-        $logoPath = $this->resolveUnitLogoPath($kopUnit) ?? $this->resolveYayasanLogoPath();
-        $logoWidth = null;
-        if ($logoPath && file_exists($logoPath)) {
-            $sz = @getimagesize($logoPath);
-            if ($sz) {
-                $logoWidth = (int) round(64 * $sz[0] / $sz[1]);
-            }
-        }
-
-        $kop = [
-            'name' => $kopUnit?->nama ? strtoupper($kopUnit->nama) : config('yayasan.name'),
-            'tagline' => config('yayasan.tagline'),
-            'address' => $kopUnit?->alamat ?: config('yayasan.address'),
-            'phone' => $kopUnit?->telepon ?: config('yayasan.phone'),
-            'email' => config('yayasan.email'),
-            'website' => $kopUnit?->web ?: config('yayasan.website'),
-        ];
-
-        $title = match ($type) {
-            'presensi' => 'LAPORAN REKAPITULASI PRESENSI PEGAWAI',
-            'penggajian' => 'LAPORAN REKAPITULASI PENGGAJIAN PEGAWAI',
-            'lemburan' => 'LAPORAN LEMBUR PEGAWAI',
-            'rekap_mengajar' => 'LAPORAN REKAPITULASI PRESENSI MENGAJAR',
-            'rekap_kehadiran' => 'LAPORAN REKAPITULASI KEHADIRAN',
-            'rekap_kehadiran_harian' => 'LAPORAN REKAPITULASI KEHADIRAN HARIAN',
-        };
-
-        $filename = match ($type) {
-            'presensi' => 'Laporan_Presensi',
-            'penggajian' => 'Laporan_Rekap_Gaji',
-            'lemburan' => 'Laporan_Lemburan',
-            'rekap_mengajar' => 'Laporan_Rekap_Mengajar',
-            'rekap_kehadiran' => 'Laporan_Rekap_Kehadiran',
-            'rekap_kehadiran_harian' => 'Laporan_Rekap_Kehadiran_Harian',
-        };
-
-        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
-
-        try {
-            $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop', 'type'))
-                ->setPaper('A4', 'landscape');
-
-            return $pdf->download($filename.'_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf');
+        } catch (PdfTooLargeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             \Log::error('PDF laporan gagal', [
-                'type' => $type,
+                'type' => $validated['type'] ?? null,
                 'message' => $e->getMessage(),
                 'file' => $e->getFile().':'.$e->getLine(),
                 'trace' => $e->getTraceAsString(),
@@ -528,15 +445,7 @@ class LaporanController extends Controller
      */
     protected function resolveUnitLogoPath(?UnitSekolah $unit): ?string
     {
-        if (! $unit?->logo) {
-            return null;
-        }
-
-        $disk = config('filesystems.image_disk', 'public');
-        $root = config("filesystems.disks.$disk.root");
-        $path = rtrim($root, '/').'/'.ltrim($unit->logo, '/');
-
-        return file_exists($path) ? $path : null;
+        return app(LaporanPdfService::class)->resolveUnitLogoPath($unit);
     }
 
     /**
@@ -544,32 +453,12 @@ class LaporanController extends Controller
      */
     protected function resolveYayasanLogoPath(): ?string
     {
-        $rel = config('kcd.yayasan_logo');
-        if (! $rel) {
-            return null;
-        }
-
-        $public = public_path($rel);
-        if (file_exists($public)) {
-            return $public;
-        }
-
-        $disk = config('filesystems.image_disk', 'public');
-        $root = config("filesystems.disks.$disk.root");
-        $path = rtrim($root, '/').'/'.ltrim($rel, '/');
-
-        return file_exists($path) ? $path : null;
+        return app(LaporanPdfService::class)->resolveYayasanLogoPath();
     }
 
     private function resolveUnitSlug(?int $unitId): string
     {
-        if (! $unitId) {
-            return 'semua_unit';
-        }
-
-        $unit = UnitSekolah::find($unitId);
-
-        return Str::slug($unit?->nama ?? 'unit_lain', '_');
+        return app(LaporanPdfService::class)->resolveUnitSlug($unitId);
     }
 
     /**
