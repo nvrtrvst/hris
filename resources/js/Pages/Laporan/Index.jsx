@@ -125,6 +125,7 @@ export default function LaporanIndex({ auth, units }) {
     const [previewData, setPreviewData] = useState(null);
     const [activePreview, setActivePreview] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [pdfLoading, setPdfLoading] = useState(false);
     const [viewMode, setViewMode] = useState('rekap');
     const [error, setError] = useState('');
 
@@ -210,15 +211,63 @@ export default function LaporanIndex({ auth, units }) {
             return;
         }
 
-        // Rekap Presensi Harian punya route terpisah
-        if (filter.report_type === 'rekap_presensi_harian') {
-            const url = route('presensi.rekap-pdf');
+        setPdfLoading(true);
+        try {
+            // Rekap Presensi Harian punya route terpisah
+            if (filter.report_type === 'rekap_presensi_harian') {
+                const url = route('presensi.rekap-pdf');
+                const params = new URLSearchParams();
+                params.append('start_date', filter.start_date);
+                params.append('end_date', filter.end_date);
+                if (filter.unit_sekolah_id) params.append('unit_id', filter.unit_sekolah_id);
+                if (filter.jenis_filter) params.append('jenis_filter', filter.jenis_filter);
+                if (filter.search) params.append('search', filter.search);
+
+                try {
+                    const res = await fetch(`${url}?${params.toString()}`);
+                    if (!res.ok) {
+                        let msg = 'PDF gagal dibuat. Coba lagi atau hubungi administrator.';
+                        try {
+                            const body = await res.json();
+                            msg = body.message || body.error || msg;
+                        } catch { /* non-JSON */ }
+                        setError(msg);
+                        return;
+                    }
+                    const blob = await res.blob();
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `Rekap_Presensi_Harian_${filter.start_date}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(a.href);
+                } catch {
+                    setError('Koneksi terputus saat membuat PDF. Coba perkecil rentang tanggal atau gunakan Export Excel.');
+                }
+                return;
+            }
+
+            const url = route('laporan.pdf');
             const params = new URLSearchParams();
+            params.append('type', filter.report_type);
             params.append('start_date', filter.start_date);
             params.append('end_date', filter.end_date);
-            if (filter.unit_sekolah_id) params.append('unit_id', filter.unit_sekolah_id);
-            if (filter.jenis_filter) params.append('jenis_filter', filter.jenis_filter);
-            if (filter.search) params.append('search', filter.search);
+            if (filter.unit_sekolah_id) {
+                params.append('unit_sekolah_id', filter.unit_sekolah_id);
+            }
+            if (filter.jenis_filter) {
+                params.append('jenis_filter', filter.jenis_filter);
+            }
+            if (filter.tipe_filter) {
+                params.append('tipe_filter', filter.tipe_filter);
+            }
+            if (filter.status_filter) {
+                params.append('status_filter', filter.status_filter);
+            }
+            if (filter.search) {
+                params.append('search', filter.search);
+            }
 
             try {
                 const res = await fetch(`${url}?${params.toString()}`);
@@ -227,72 +276,29 @@ export default function LaporanIndex({ auth, units }) {
                     try {
                         const body = await res.json();
                         msg = body.message || body.error || msg;
-                    } catch { /* non-JSON */ }
+                        if (body.errors) {
+                            msg = Object.values(body.errors).flat().join('\n');
+                        }
+                    } catch {
+                        const text = await res.text();
+                        msg = text.startsWith('PDF gagal') ? text : msg;
+                    }
                     setError(msg);
                     return;
                 }
                 const blob = await res.blob();
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = `Rekap_Presensi_Harian_${filter.start_date}.pdf`;
+                a.download = `${filter.report_type}_${filter.start_date}_to_${filter.end_date}.pdf`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
                 URL.revokeObjectURL(a.href);
             } catch {
-                setError('Koneksi terputus saat membuat PDF.');
+                setError('Koneksi terputus saat membuat PDF. Coba perkecil rentang tanggal atau gunakan Export Excel.');
             }
-            return;
-        }
-
-        const url = route('laporan.pdf');
-        const params = new URLSearchParams();
-        params.append('type', filter.report_type);
-        params.append('start_date', filter.start_date);
-        params.append('end_date', filter.end_date);
-        if (filter.unit_sekolah_id) {
-            params.append('unit_sekolah_id', filter.unit_sekolah_id);
-        }
-        if (filter.jenis_filter) {
-            params.append('jenis_filter', filter.jenis_filter);
-        }
-        if (filter.tipe_filter) {
-            params.append('tipe_filter', filter.tipe_filter);
-        }
-        if (filter.status_filter) {
-            params.append('status_filter', filter.status_filter);
-        }
-        if (filter.search) {
-            params.append('search', filter.search);
-        }
-
-        try {
-            const res = await fetch(`${url}?${params.toString()}`);
-            if (!res.ok) {
-                let msg = 'PDF gagal dibuat. Coba lagi atau hubungi administrator.';
-                try {
-                    const body = await res.json();
-                    msg = body.message || body.error || msg;
-                    if (body.errors) {
-                        msg = Object.values(body.errors).flat().join('\n');
-                    }
-                } catch {
-                    const text = await res.text();
-                    msg = text.startsWith('PDF gagal') ? text : msg;
-                }
-                setError(msg);
-                return;
-            }
-            const blob = await res.blob();
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `${filter.report_type}_${filter.start_date}_to_${filter.end_date}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(a.href);
-        } catch {
-            setError('Koneksi terputus saat membuat PDF.');
+        } finally {
+            setPdfLoading(false);
         }
     };
 
@@ -497,8 +503,8 @@ export default function LaporanIndex({ auth, units }) {
                             <button onClick={handleDownload} disabled={loading} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60">
                                 <Download className="h-4 w-4" /> Download Excel
                             </button>
-                            <button onClick={handleDownloadPdf} disabled={loading} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60">
-                                <FileText className="h-4 w-4" /> Download PDF
+                            <button onClick={handleDownloadPdf} disabled={loading || pdfLoading} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60">
+                                {pdfLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Membuat PDF…</> : <><FileText className="h-4 w-4" /> Download PDF</>}
                             </button>
                         </div>
                     </div>

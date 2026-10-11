@@ -193,6 +193,9 @@ class LaporanController extends Controller
         $unitId = $this->resolveEffectiveUnitId($validated['unit_sekolah_id'] ?? null);
 
         set_time_limit(300);
+        // DomPDF boros memori pada tabel ribuan baris; worker OOM → koneksi
+        // diputus di tengah render (error "Koneksi terputus" di FE).
+        ini_set('memory_limit', '512M');
 
         $export = match ($type) {
             'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
@@ -203,14 +206,31 @@ class LaporanController extends Controller
             'rekap_kehadiran_harian' => new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
         };
 
-        $rows = $export->collection()->map(fn ($item) => $export->map($item))->all();
-        $headings = $export->headings();
+        try {
+            // Hitung dulu, map belakangan — hindari build array besar sebelum
+            // guard. Cap 2000: di atas itu DomPDF rawan OOM/timeout.
+            $total = $export->collection()->count();
 
-        if (count($rows) > 5000) {
+            if ($total > 2000) {
+                return response()->json([
+                    'message' => 'Data terlalu banyak untuk PDF ('.$total.' baris, maksimal 2000). Gunakan filter yang lebih spesifik atau export ke Excel.',
+                ], 422);
+            }
+
+            $rows = $export->collection()->map(fn ($item) => $export->map($item))->all();
+        } catch (\Throwable $e) {
+            \Log::error('PDF laporan gagal (siapkan data)', [
+                'type' => $type,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile().':'.$e->getLine(),
+            ]);
+
             return response()->json([
-                'message' => 'Data terlalu banyak untuk PDF ('.count($rows).' baris). Gunakan filter yang lebih spesifik atau export ke Excel.',
-            ], 422);
+                'message' => 'Gagal menyiapkan data PDF: '.substr($e->getMessage(), 0, 300),
+            ], 500);
         }
+
+        $headings = $export->headings();
 
         // Kop surat: unit terpilih (atau auto-resolved dari scope user) → data unit itu;
         // semua unit (superadmin) → unit induk "Yayasan"; fallback terakhir → config env.
