@@ -15,7 +15,6 @@ import {
     DoorOpen,
     Lock,
     Send,
-    Users,
 } from 'lucide-react';
 
 const getPos = () =>
@@ -211,7 +210,7 @@ export default function Piket({ piket, guruUnit = [], slotKosong = [], mapelUnit
                                                 <option value="">Pilih dari jadwal hari ini</option>
                                                 {slotKosong.map((s) => (
                                                     <option key={s.jadwal_id} value={s.jadwal_id}>
-                                                        {s.kelas || 'Tanpa kelas'}{s.mapel ? ` — ${s.mapel}` : ''} ({s.guru_nama}, {s.jam})
+                                                        {s.kelas || 'Tanpa kelas'}{s.mapel ? `, ${s.mapel}` : ''} ({s.guru_nama}, {s.jam})
                                                     </option>
                                                 ))}
                                                 <option value="manual">Lainnya / input manual</option>
@@ -220,11 +219,11 @@ export default function Piket({ piket, guruUnit = [], slotKosong = [], mapelUnit
                                         {kkSlot && (
                                             <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
                                                 <span className="font-bold">{kkSlot.kelas || 'Tanpa kelas'}</span>
-                                                {kkSlot.mapel ? ` — ${kkSlot.mapel}` : ''} ({kkSlot.guru_nama})
+                                                {kkSlot.mapel ? `, ${kkSlot.mapel}` : ''} ({kkSlot.guru_nama})
                                             </div>
                                         )}
                                         {kkManual && (
-                                            <div className="grid grid-cols-3 gap-2">
+                                            <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-3">
                                                 <div>
                                                     <label htmlFor="kk-kelas" className={labelCls}>Kelas</label>
                                                     <input id="kk-kelas" value={kkForm.kelas} onChange={(e) => setKkForm({ ...kkForm, kelas: e.target.value })} placeholder="cth. VII-A" className={inputCls} maxLength={100} />
@@ -284,7 +283,7 @@ export default function Piket({ piket, guruUnit = [], slotKosong = [], mapelUnit
                                     <ul className="mt-2 space-y-1.5">
                                         {(items.kelas_kosong.entries ?? []).map((e, i) => (
                                             <li key={i} className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                                                <span className="font-bold">{e.kelas}</span>{e.mapel ? ` — ${e.mapel}` : ''} ({e.guru_nama})
+                                                <span className="font-bold">{e.kelas}</span>{e.mapel ? `, ${e.mapel}` : ''} ({e.guru_nama})
                                                 {e.ada_amanat ? `: amanat ${e.jenis_amanat === 'tugas' ? 'tugas' : e.jenis_amanat === 'pelajari_halaman' ? 'pelajari halaman' : 'lainnya'}${e.tersampaikan ? ', tersampaikan' : ', belum tersampaikan'}` : ': tanpa amanat'}
                                                 {e.validasi === 'perlu_cek' && <Badge tone="amber" className="ml-1.5">Perlu cek</Badge>}
                                             </li>
@@ -348,7 +347,7 @@ export default function Piket({ piket, guruUnit = [], slotKosong = [], mapelUnit
                         <button type="button" disabled={!soreMulai || sending || doneCount < wajib.length} onClick={submit} className="min-h-14 w-full rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-50">
                             {sending ? 'Mengirim...' : doneCount < wajib.length ? `Lengkapi dulu (${doneCount}/${wajib.length})` : 'Kirim laporan piket'}
                         </button>
-                        {!soreMulai && <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Users className="h-3.5 w-3.5" /> Pengiriman dibuka {windows.sore[0]}.</p>}
+                        {!soreMulai && <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Pengiriman dibuka {windows.sore[0]}.</p>}
                     </section>
                 </div>
             )}
