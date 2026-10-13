@@ -52,7 +52,7 @@ function SeksiHead({ icon: Icon, title, win, state }) {
     );
 }
 
-export default function Piket({ piket, guruUnit = [], kelasHariIni = [] }) {
+export default function Piket({ piket, guruUnit = [], slotKosong = [], mapelUnit = [] }) {
     const { auth, flash = {}, errors = {} } = usePage().props;
     const now = useNowEveryMinute();
     const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -60,7 +60,9 @@ export default function Piket({ piket, guruUnit = [], kelasHariIni = [] }) {
     const [locErr, setLocErr] = useState(null);
     const [terlambat, setTerlambat] = useState(0);
     const [absenForm, setAbsenForm] = useState({ nama_guru: '', keterangan_absen: '' });
-    const [kkForm, setKkForm] = useState({ kelas: '', guru_pegawai_id: '', ada_amanat: false, jenis_amanat: 'tugas', detail_amanat: '', tersampaikan: false });
+    const [kkForm, setKkForm] = useState({ slot_jadwal_id: '', kelas: '', guru_pegawai_id: '', mapel_id: '', ada_amanat: false, jenis_amanat: 'tugas', detail_amanat: '', tersampaikan: false });
+    const kkSlot = slotKosong.find((s) => String(s.jadwal_id) === String(kkForm.slot_jadwal_id));
+    const kkManual = kkForm.slot_jadwal_id === 'manual' || slotKosong.length === 0;
     const [insidenForm, setInsidenForm] = useState({ jenis_insiden: '', tindakan: '' });
 
     if (!piket) {
@@ -203,22 +205,46 @@ export default function Piket({ piket, guruUnit = [], kelasHariIni = [] }) {
                                 <p className="text-sm font-bold text-slate-800">Isi kelas kosong</p>
                                 {!done('kelas_kosong') && kbmMulai && (
                                     <div className="mt-2 space-y-2">
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label htmlFor="kk-kelas" className={labelCls}>Kelas</label>
-                                                <input id="kk-kelas" list="kelas-list" value={kkForm.kelas} onChange={(e) => setKkForm({ ...kkForm, kelas: e.target.value })} placeholder="cth. VII-A" className={inputCls} maxLength={100} />
-                                                <datalist id="kelas-list">
-                                                    {kelasHariIni.map((k) => <option key={k} value={k} />)}
-                                                </datalist>
-                                            </div>
-                                            <div>
-                                                <label htmlFor="kk-guru" className={labelCls}>Guru absen</label>
-                                                <select id="kk-guru" value={kkForm.guru_pegawai_id} onChange={(e) => setKkForm({ ...kkForm, guru_pegawai_id: e.target.value })} className={inputCls}>
-                                                    <option value="">Pilih guru</option>
-                                                    {guruUnit.map((g) => <option key={g.id} value={g.id}>{g.nama_lengkap}</option>)}
-                                                </select>
-                                            </div>
+                                        <div>
+                                            <label htmlFor="kk-slot" className={labelCls}>Kelas kosong</label>
+                                            <select id="kk-slot" value={kkForm.slot_jadwal_id} onChange={(e) => setKkForm({ ...kkForm, slot_jadwal_id: e.target.value })} className={inputCls}>
+                                                <option value="">Pilih dari jadwal hari ini</option>
+                                                {slotKosong.map((s) => (
+                                                    <option key={s.jadwal_id} value={s.jadwal_id}>
+                                                        {s.kelas || 'Tanpa kelas'}{s.mapel ? ` — ${s.mapel}` : ''} ({s.guru_nama}, {s.jam})
+                                                    </option>
+                                                ))}
+                                                <option value="manual">Lainnya / input manual</option>
+                                            </select>
                                         </div>
+                                        {kkSlot && (
+                                            <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                                <span className="font-bold">{kkSlot.kelas || 'Tanpa kelas'}</span>
+                                                {kkSlot.mapel ? ` — ${kkSlot.mapel}` : ''} ({kkSlot.guru_nama})
+                                            </div>
+                                        )}
+                                        {kkManual && (
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div>
+                                                    <label htmlFor="kk-kelas" className={labelCls}>Kelas</label>
+                                                    <input id="kk-kelas" value={kkForm.kelas} onChange={(e) => setKkForm({ ...kkForm, kelas: e.target.value })} placeholder="cth. VII-A" className={inputCls} maxLength={100} />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="kk-mapel" className={labelCls}>Mapel</label>
+                                                    <select id="kk-mapel" value={kkForm.mapel_id} onChange={(e) => setKkForm({ ...kkForm, mapel_id: e.target.value })} className={inputCls}>
+                                                        <option value="">Pilih</option>
+                                                        {mapelUnit.map((m) => <option key={m.id} value={m.id}>{m.nama}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="kk-guru" className={labelCls}>Guru absen</label>
+                                                    <select id="kk-guru" value={kkForm.guru_pegawai_id} onChange={(e) => setKkForm({ ...kkForm, guru_pegawai_id: e.target.value })} className={inputCls}>
+                                                        <option value="">Pilih</option>
+                                                        {guruUnit.map((g) => <option key={g.id} value={g.id}>{g.nama_lengkap}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
                                         <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
                                             <input type="checkbox" checked={kkForm.ada_amanat} onChange={(e) => setKkForm({ ...kkForm, ada_amanat: e.target.checked })} className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary/25" />
                                             Ada amanat dari guru
@@ -244,7 +270,7 @@ export default function Piket({ piket, guruUnit = [], kelasHariIni = [] }) {
                                             </div>
                                         )}
                                         <div className="flex gap-2">
-                                            <button type="button" disabled={sending} onClick={() => kirim({ kode: 'kelas_kosong', mode: 'tambah', ...kkForm })} className="min-h-12 flex-1 rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
+                                            <button type="button" disabled={sending || (!kkSlot && !(kkForm.kelas && kkForm.guru_pegawai_id))} onClick={() => { const { slot_jadwal_id: _drop, ...rest } = kkForm; kirim({ kode: 'kelas_kosong', mode: 'tambah', ...rest, ...(kkSlot ? { slot_jadwal_id: kkSlot.jadwal_id } : {}) }); }} className="min-h-12 flex-1 rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
                                                 {sending ? '...' : 'Catat kelas'}
                                             </button>
                                             <button type="button" disabled={sending} onClick={() => kirim({ kode: 'kelas_kosong', mode: 'nihil' })} className="min-h-12 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95 disabled:opacity-50">
@@ -258,7 +284,7 @@ export default function Piket({ piket, guruUnit = [], kelasHariIni = [] }) {
                                     <ul className="mt-2 space-y-1.5">
                                         {(items.kelas_kosong.entries ?? []).map((e, i) => (
                                             <li key={i} className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                                                <span className="font-bold">{e.kelas}</span> ({e.guru_nama})
+                                                <span className="font-bold">{e.kelas}</span>{e.mapel ? ` — ${e.mapel}` : ''} ({e.guru_nama})
                                                 {e.ada_amanat ? `: amanat ${e.jenis_amanat === 'tugas' ? 'tugas' : e.jenis_amanat === 'pelajari_halaman' ? 'pelajari halaman' : 'lainnya'}${e.tersampaikan ? ', tersampaikan' : ', belum tersampaikan'}` : ': tanpa amanat'}
                                                 {e.validasi === 'perlu_cek' && <Badge tone="amber" className="ml-1.5">Perlu cek</Badge>}
                                             </li>

@@ -325,7 +325,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                         <ul className="mt-1.5 space-y-1.5">
                                                             {review.map((e) => (
                                                                 <li key={e.idx} className="rounded-lg bg-white px-2.5 py-2 text-[11px] text-slate-700 ring-1 ring-slate-200">
-                                                                    <p><span className="font-bold">{e.kelas}</span> ({e.guru_nama})</p>
+                                                                    <p><span className="font-bold">{e.kelas}</span>{e.mapel ? ` — ${e.mapel}` : ''} ({e.guru_nama})</p>
                                                                     {e.ada_amanat && <p className="mt-0.5">Amanat: {e.detail_amanat}{e.tersampaikan ? ' (tersampaikan)' : ' (belum tersampaikan)'}</p>}
                                                                     <p className="mt-0.5 text-slate-500">Cross-check: {e.validasi_catatan}</p>
                                                                     <div className="mt-1.5 flex gap-1.5">

@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\LaporanPiket;
+use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\PegawaiMapel;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
@@ -265,6 +267,106 @@ class LaporanPiketTest extends TestCase
         $this->assertSame('cocok', $entries[1]['validasi']);
         $this->assertTrue((bool) $entries[1]['ada_amanat']);
         $this->assertTrue((bool) $entries[1]['tersampaikan']);
+    }
+
+    private function makeMengajarSlot(Pegawai $guru, string $kelas = 'VII-A', string $mapel = 'Matematika'): Jadwal
+    {
+        $mapelRow = MataPelajaran::create(['nama' => $mapel, 'unit_sekolah_id' => $this->unit->id]);
+        $pm = PegawaiMapel::create([
+            'pegawai_id' => $guru->id,
+            'mata_pelajaran_id' => $mapelRow->id,
+            'unit_sekolah_id' => $this->unit->id,
+        ]);
+
+        return Jadwal::create([
+            'pegawai_id' => $guru->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'pegawai_mapel_id' => $pm->id,
+            'kelas_label' => $kelas,
+            'hari' => 'Senin',
+            'jam_mulai' => '08:00:00',
+            'jam_selesai' => '08:45:00',
+            'jenis_jadwal' => 'mengajar',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+    }
+
+    public function test_entry_lewat_slot_isi_dari_data(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $guru = $this->makePegawai('Guru Absen');
+        $slot = $this->makeMengajarSlot($guru);
+
+        Carbon::setTestNow('2026-10-12 10:00:00');
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                // Nilai client sengaja salah — server harus pakai data slot.
+                ['kode' => 'kelas_kosong', 'mode' => 'tambah', 'slot_jadwal_id' => $slot->id, 'kelas' => 'SALAH', 'ada_amanat' => false],
+                $this->geo()
+            ));
+        $res->assertRedirect();
+        Carbon::setTestNow();
+
+        $entry = LaporanPiket::where('pegawai_id', $pegawai->id)->first()->item('kelas_kosong')['entries'][0];
+        $this->assertSame('VII-A', $entry['kelas']);
+        $this->assertSame('Matematika', $entry['mapel']);
+        $this->assertSame('Guru Absen', $entry['guru_nama']);
+        $this->assertSame('slot', $entry['sumber']);
+        $this->assertSame($slot->id, $entry['slot_jadwal_id']);
+    }
+
+    public function test_slot_unit_lain_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $unitLain = UnitSekolah::create([
+            'nama' => 'Unit Lain', 'singkatan' => 'UL',
+            'latitude' => -6.3, 'longitude' => 106.9, 'radius_meter' => 100,
+        ]);
+        $guruLain = $this->makePegawai('Guru Lain');
+        $guruLain->units()->detach();
+        $jabatan = Jabatan::create(['nama' => 'Guru UL']);
+        $guruLain->units()->attach($unitLain->id, ['jabatan_id' => $jabatan->id, 'is_primary' => true]);
+        $mapelRow = MataPelajaran::create(['nama' => 'IPA', 'unit_sekolah_id' => $unitLain->id]);
+        $pm = PegawaiMapel::create(['pegawai_id' => $guruLain->id, 'mata_pelajaran_id' => $mapelRow->id, 'unit_sekolah_id' => $unitLain->id]);
+        $slotLain = Jadwal::create([
+            'pegawai_id' => $guruLain->id, 'unit_sekolah_id' => $unitLain->id,
+            'pegawai_mapel_id' => $pm->id, 'kelas_label' => 'VIII-B',
+            'hari' => 'Senin', 'jam_mulai' => '08:00:00', 'jam_selesai' => '08:45:00',
+            'jenis_jadwal' => 'mengajar', 'tahun_ajaran' => '2026/2027', 'semester' => 1,
+        ]);
+
+        Carbon::setTestNow('2026-10-12 10:00:00');
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'kelas_kosong', 'mode' => 'tambah', 'slot_jadwal_id' => $slotLain->id, 'ada_amanat' => false],
+                $this->geo()
+            ));
+        $res->assertStatus(422);
+        Carbon::setTestNow();
+    }
+
+    public function test_entry_manual_dengan_mapel_unit(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $guru = $this->makePegawai('Guru Absen');
+        $mapelRow = MataPelajaran::create(['nama' => 'Bahasa Inggris', 'unit_sekolah_id' => $this->unit->id]);
+
+        Carbon::setTestNow('2026-10-12 10:00:00');
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'kelas_kosong', 'mode' => 'tambah', 'kelas' => 'X-2', 'guru_pegawai_id' => $guru->id, 'mapel_id' => $mapelRow->id, 'ada_amanat' => false],
+                $this->geo()
+            ))->assertRedirect();
+        Carbon::setTestNow();
+
+        $entry = LaporanPiket::where('pegawai_id', $pegawai->id)->first()->item('kelas_kosong')['entries'][0];
+        $this->assertSame('X-2', $entry['kelas']);
+        $this->assertSame('Bahasa Inggris', $entry['mapel']);
+        $this->assertSame('manual', $entry['sumber']);
     }
 
     public function test_laporan_milik_sendiri_tidak_bocor(): void

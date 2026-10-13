@@ -8,6 +8,7 @@ use App\Models\Announcement;
 use App\Models\HariLibur;
 use App\Models\Jadwal;
 use App\Models\LaporanPiket;
+use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
@@ -1670,7 +1671,8 @@ class MobileController extends Controller
                 'pegawai' => $pegawai,
                 'piket' => null,
                 'guruUnit' => [],
-                'kelasHariIni' => [],
+                'slotKosong' => [],
+                'mapelUnit' => [],
             ]);
         }
 
@@ -1686,12 +1688,32 @@ class MobileController extends Controller
             ->orderBy('nama_lengkap')
             ->get(['id', 'nama_lengkap']);
 
-        $kelasHariIni = Jadwal::where('unit_sekolah_id', $unitId)
+        // Slot mengajar yang kosong hari ini di unit ini (belum ada presensi)
+        // — sumber dropdown "pilih kelas kosong" (kelas + mapel + guru dari data).
+        $presensiJadwalIds = Presensi::where('tanggal', $today)
+            ->whereNotNull('jadwal_id')
+            ->pluck('jadwal_id')
+            ->all();
+        $slotKosong = Jadwal::with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama'])
+            ->where('unit_sekolah_id', $unitId)
             ->where('hari', $hariIniIndo)
             ->where('jenis_jadwal', 'mengajar')
-            ->whereNotNull('kelas_label')
-            ->distinct()
-            ->pluck('kelas_label');
+            ->whereNotIn('id', $presensiJadwalIds)
+            ->orderBy('jam_mulai')
+            ->get()
+            ->map(fn ($j) => [
+                'jadwal_id' => $j->id,
+                'kelas' => $j->kelas_label,
+                'mapel' => $j->pegawaiMapel?->mataPelajaran?->nama,
+                'guru_pegawai_id' => $j->pegawai_id,
+                'guru_nama' => $j->pegawai?->nama_lengkap,
+                'jam' => substr((string) $j->jam_mulai, 0, 5).'-'.substr((string) $j->jam_selesai, 0, 5),
+            ])
+            ->values();
+
+        $mapelUnit = MataPelajaran::where('unit_sekolah_id', $unitId)
+            ->orderBy('nama')
+            ->get(['id', 'nama']);
 
         return inertia('Mobile/Piket', [
             'pegawai' => $pegawai,
@@ -1709,7 +1731,8 @@ class MobileController extends Controller
                 'label' => LaporanPiket::ITEM_LABEL,
             ],
             'guruUnit' => $guruUnit,
-            'kelasHariIni' => $kelasHariIni,
+            'slotKosong' => $slotKosong,
+            'mapelUnit' => $mapelUnit,
         ]);
     }
 
@@ -1734,6 +1757,8 @@ class MobileController extends Controller
             'keterangan_absen' => 'nullable|string|max:255',
             'guru_pegawai_id' => 'nullable|integer|min:1|exists:pegawai,id',
             'kelas' => 'nullable|string|max:100',
+            'slot_jadwal_id' => 'nullable|integer|min:1|exists:jadwal,id',
+            'mapel_id' => 'nullable|integer|min:1|exists:mata_pelajaran,id',
             'ada_amanat' => 'nullable|boolean',
             'jenis_amanat' => 'nullable|in:tugas,pelajari_halaman,lainnya',
             'detail_amanat' => 'nullable|string|max:1000',
@@ -1807,7 +1832,7 @@ class MobileController extends Controller
                 ],
                 LaporanPiket::ITEM_BUKU => $items[$kode] = $stamp,
                 LaporanPiket::ITEM_CEK_ABSEN => $items[$kode] = $this->applyCekAbsen($items[$kode] ?? null, $mode, $request, $stamp),
-                LaporanPiket::ITEM_KELAS_KOSONG => $items[$kode] = $this->applyKelasKosong($items[$kode] ?? null, $mode, $request, $stamp, $today),
+                LaporanPiket::ITEM_KELAS_KOSONG => $items[$kode] = $this->applyKelasKosong($items[$kode] ?? null, $mode, $request, $stamp, $today, $slot->unit_sekolah_id),
                 LaporanPiket::ITEM_INSIDEN => $items[$kode] = $this->applyInsiden($items[$kode] ?? null, $mode, $request, $stamp),
             };
 
@@ -1945,8 +1970,10 @@ class MobileController extends Controller
             }
         }
         if ($kode === LaporanPiket::ITEM_KELAS_KOSONG) {
-            if (! $request->filled('guru_pegawai_id') || ! $request->filled('kelas')) {
-                throw ValidationException::withMessages(['kelas' => 'Kelas dan guru berhalangan wajib diisi.']);
+            if ($request->filled('slot_jadwal_id')) {
+                // Jalur slot: cukup slot + amanat (kelas/mapel/guru dari DB).
+            } elseif (! $request->filled('guru_pegawai_id') || ! $request->filled('kelas')) {
+                throw ValidationException::withMessages(['kelas' => 'Pilih slot kosong, atau isi kelas dan guru manual.']);
             }
             if ($request->boolean('ada_amanat') && (! $request->filled('jenis_amanat') || ! $request->filled('detail_amanat'))) {
                 throw ValidationException::withMessages(['detail_amanat' => 'Jenis dan isi amanat wajib diisi.']);
@@ -1978,7 +2005,7 @@ class MobileController extends Controller
         return $item + $stamp;
     }
 
-    private function applyKelasKosong(?array $item, string $mode, Request $request, array $stamp, string $today): array
+    private function applyKelasKosong(?array $item, string $mode, Request $request, array $stamp, string $today, ?int $unitId): array
     {
         $item ??= ['entries' => []];
         if ($mode === 'nihil') {
@@ -1990,12 +2017,48 @@ class MobileController extends Controller
             return $item + $stamp;
         }
 
-        $guru = Pegawai::select('id', 'nama_lengkap')->find($request->guru_pegawai_id);
-        $cek = $this->validasiKehadiranGuru((int) $request->guru_pegawai_id, $today);
+        // Jalur slot: kelas/mapel/guru diambil dari jadwal di DB (client tak dipercaya).
+        // Jalur manual: dari input + mapel divalidasi milik unit (atau global).
+        if ($request->filled('slot_jadwal_id')) {
+            $slot = Jadwal::with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama,unit_sekolah_id'])
+                ->whereKey($request->slot_jadwal_id)
+                ->where('jenis_jadwal', 'mengajar')
+                ->where('hari', $this->hariIniIndo())
+                ->first();
+            if (! $slot || ($unitId && (int) $slot->unit_sekolah_id !== (int) $unitId)) {
+                throw ValidationException::withMessages(['kelas' => 'Slot kosong tidak valid.']);
+            }
+            $kelas = (string) $slot->kelas_label;
+            $mapel = $slot->pegawaiMapel?->mataPelajaran?->nama;
+            $guruId = (int) $slot->pegawai_id;
+            $guruNama = $slot->pegawai?->nama_lengkap ?? '';
+            $sumber = 'slot';
+            $slotId = $slot->id;
+        } else {
+            $mapel = null;
+            if ($request->filled('mapel_id')) {
+                $mapelRow = MataPelajaran::select('id', 'nama', 'unit_sekolah_id')->find($request->mapel_id);
+                if (! $mapelRow || ($mapelRow->unit_sekolah_id && $unitId && (int) $mapelRow->unit_sekolah_id !== (int) $unitId)) {
+                    throw ValidationException::withMessages(['mapel_id' => 'Mata pelajaran tidak valid untuk unit ini.']);
+                }
+                $mapel = $mapelRow->nama;
+            }
+            $guru = Pegawai::select('id', 'nama_lengkap')->find($request->guru_pegawai_id);
+            $kelas = trim((string) $request->kelas);
+            $guruId = (int) $request->guru_pegawai_id;
+            $guruNama = $guru?->nama_lengkap ?? '';
+            $sumber = 'manual';
+            $slotId = null;
+        }
+
+        $cek = $this->validasiKehadiranGuru($guruId, $today);
         $item['entries'][] = [
-            'kelas' => trim((string) $request->kelas),
-            'guru_pegawai_id' => (int) $request->guru_pegawai_id,
-            'guru_nama' => $guru?->nama_lengkap ?? '',
+            'kelas' => $kelas,
+            'mapel' => $mapel,
+            'guru_pegawai_id' => $guruId,
+            'guru_nama' => $guruNama,
+            'sumber' => $sumber,
+            'slot_jadwal_id' => $slotId,
             'ada_amanat' => $request->boolean('ada_amanat'),
             'jenis_amanat' => $request->input('jenis_amanat'),
             'detail_amanat' => $request->input('detail_amanat'),
