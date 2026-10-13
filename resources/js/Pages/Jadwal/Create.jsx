@@ -22,14 +22,31 @@ export default function Create({ auth, pegawais, units, mapel, lokalis }) {
     const selectedUnit = React.useMemo(() => units.find(u => u.id == data.unit_sekolah_id), [data.unit_sekolah_id, units]);
     const durasiJp = selectedUnit?.durasi_jp || 45;
 
+    const filteredPegawais = React.useMemo(() => {
+        if (!data.unit_sekolah_id) return [];
+        return (pegawais || []).filter(p => (p.units || []).some(u => u.id == data.unit_sekolah_id));
+    }, [data.unit_sekolah_id, pegawais]);
+
     const filteredLokalis = React.useMemo(() => {
         if (!data.unit_sekolah_id) return [];
         return (lokalis || []).filter(l => l.unit_sekolah_id == data.unit_sekolah_id);
     }, [data.unit_sekolah_id, lokalis]);
 
+    const prevUnit = React.useRef(data.unit_sekolah_id);
     React.useEffect(() => {
         setData('unit_lokasi_id', '');
+        if (prevUnit.current !== data.unit_sekolah_id) {
+            prevUnit.current = data.unit_sekolah_id;
+            setData('pegawai_id', '');
+        }
     }, [data.unit_sekolah_id]);
+
+    // Prefill jam kantor unit untuk jadwal piket (hanya bila jam masih kosong).
+    React.useEffect(() => {
+        if (data.jenis_jadwal !== 'piket' || !selectedUnit || data.jam_mulai) return;
+        setData('jam_mulai', String(selectedUnit.jam_masuk_kantor || '07:30').slice(0, 5));
+        setData('jam_selesai', String(selectedUnit.jam_pulang_kantor || '15:00').slice(0, 5));
+    }, [data.jenis_jadwal, data.unit_sekolah_id]);
 
     React.useEffect(() => {
         if (data.jenis_jadwal !== 'mengajar' || !data.unit_sekolah_id || !selectedUnit?.nama) { setApiKelas([]); return; }
@@ -40,6 +57,7 @@ export default function Create({ auth, pegawais, units, mapel, lokalis }) {
     }, [data.unit_sekolah_id, data.jenis_jadwal]);
 
     React.useEffect(() => {
+        if (data.jenis_jadwal === 'piket') return;
         if (!data.jam_mulai || !jumlahJp) return;
         const [h, m] = data.jam_mulai.split(':').map(Number);
         const totalMenit = h * 60 + m + jumlahJp * durasiJp;
@@ -93,16 +111,6 @@ export default function Create({ auth, pegawais, units, mapel, lokalis }) {
                                 <div>
                                     <h3 className="section-title text-text-primary border-b border-border pb-2 mb-4">Informasi Pegawai & Unit</h3>
                                     <div className="form-grid">
-                                        <div className="md:col-span-2">
-                                            <label className="form-label">Pegawai <span className="text-red-500">*</span></label>
-                                            <select value={data.pegawai_id} onChange={e => setData('pegawai_id', e.target.value)} className={`select-field ${errors.pegawai_id ? 'input-error' : ''}`}>
-                                                <option value="">Pilih Pegawai</option>
-                                                {pegawais.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.nama_lengkap}</option>
-                                                ))}
-                                            </select>
-                                            {errors.pegawai_id && <p className="form-error">{errors.pegawai_id}</p>}
-                                        </div>
                                         <div>
                                             <label className="form-label">Unit Sekolah <span className="text-red-500">*</span></label>
                                             <select value={data.unit_sekolah_id} onChange={e => setData('unit_sekolah_id', e.target.value)} className="select-field">
@@ -112,6 +120,17 @@ export default function Create({ auth, pegawais, units, mapel, lokalis }) {
                                                 ))}
                                             </select>
                                             {errors.unit_sekolah_id && <p className="form-error">{errors.unit_sekolah_id}</p>}
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="form-label">Pegawai <span className="text-red-500">*</span></label>
+                                            <select value={data.pegawai_id} onChange={e => setData('pegawai_id', e.target.value)} disabled={!data.unit_sekolah_id} className={`select-field ${errors.pegawai_id ? 'input-error' : ''}`}>
+                                                <option value="">{data.unit_sekolah_id ? 'Pilih Pegawai' : 'Pilih unit dulu'}</option>
+                                                {filteredPegawais.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.nama_lengkap}</option>
+                                                ))}
+                                            </select>
+                                            {!data.unit_sekolah_id && <p className="form-hint">Pilih unit dulu untuk melihat pegawai terdaftar.</p>}
+                                            {errors.pegawai_id && <p className="form-error">{errors.pegawai_id}</p>}
                                         </div>
                                         {filteredLokalis.length > 0 && (
                                             <div>
@@ -199,18 +218,20 @@ export default function Create({ auth, pegawais, units, mapel, lokalis }) {
                                             <input type="time" value={data.jam_mulai} onChange={e => setData('jam_mulai', e.target.value)} className="input-field" />
                                             {errors.jam_mulai && <p className="form-error">{errors.jam_mulai}</p>}
                                         </div>
-                                        <div>
-                                            <label className="form-label">Jumlah JP <span className="text-red-500">*</span></label>
-                                            <select value={jumlahJp} onChange={e => setJumlahJp(Number(e.target.value))} className="select-field">
-                                                {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
-                                                    <option key={n} value={n}>{n} JP ({n * durasiJp} menit)</option>
-                                                ))}
-                                            </select>
-                                        </div>
+                                        {data.jenis_jadwal !== 'piket' && (
+                                            <div>
+                                                <label className="form-label">Jumlah JP <span className="text-red-500">*</span></label>
+                                                <select value={jumlahJp} onChange={e => setJumlahJp(Number(e.target.value))} className="select-field">
+                                                    {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
+                                                        <option key={n} value={n}>{n} JP ({n * durasiJp} menit)</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
                                         <div>
                                             <label className="form-label">Jam Selesai</label>
                                             <input type="time" value={data.jam_selesai} onChange={e => setData('jam_selesai', e.target.value)} className="input-field" />
-                                            <p className="form-hint">Otomatis dari JP & Durasi JP unit. Manual jika perlu override.</p>
+                                            <p className="form-hint">{data.jenis_jadwal === 'piket' ? 'Ikut jam kantor unit, bisa diubah manual.' : 'Otomatis dari JP & Durasi JP unit. Manual jika perlu override.'}</p>
                                             {errors.jam_selesai && <p className="form-error">{errors.jam_selesai}</p>}
                                         </div>
                                         

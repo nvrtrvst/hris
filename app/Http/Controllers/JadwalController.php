@@ -189,7 +189,8 @@ class JadwalController extends Controller
         }
 
         $units = UnitSekolah::query()->select(['id', 'nama', 'singkatan', 'durasi_jp', 'jam_masuk_kantor', 'jam_pulang_kantor']);
-        $pegawais = Pegawai::query()->where('status_aktif', 'aktif')->select(['id', 'nama_lengkap']);
+        // Sertakan unit tiap pegawai agar FE bisa filter dropdown per unit terpilih.
+        $pegawais = Pegawai::query()->where('status_aktif', 'aktif')->select(['id', 'nama_lengkap'])->with('units:id');
 
         if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $units->where('id', $user->unit_sekolah_id);
@@ -241,10 +242,10 @@ class JadwalController extends Controller
             }
         }
 
-        // Security: user yang ter-scope unit tidak boleh membuat jadwal untuk pegawai unit lain.
-        if ($user->unit_sekolah_id && ! $user->can('view_all_units')
-            && ! $this->pegawaiBelongsToUnit($validated['pegawai_id'], $validated['unit_sekolah_id'])) {
-            return back()->withErrors(['pegawai_id' => 'Pegawai tidak terdaftar di unit Anda.'])->withInput();
+        // Security: pegawai harus terdaftar di unit jadwal (berlaku semua user,
+        // termasuk superadmin — cegah jadwal silang unit).
+        if (! $this->pegawaiBelongsToUnit($validated['pegawai_id'], $validated['unit_sekolah_id'])) {
+            return back()->withErrors(['pegawai_id' => 'Pegawai tidak terdaftar di unit ini.'])->withInput();
         }
 
         $unit = UnitSekolah::find($validated['unit_sekolah_id']);
@@ -313,7 +314,7 @@ class JadwalController extends Controller
         }
 
         $units = UnitSekolah::query()->select(['id', 'nama', 'singkatan', 'durasi_jp', 'jam_masuk_kantor', 'jam_pulang_kantor']);
-        $pegawais = Pegawai::query()->where('status_aktif', 'aktif')->select(['id', 'nama_lengkap']);
+        $pegawais = Pegawai::query()->where('status_aktif', 'aktif')->select(['id', 'nama_lengkap'])->with('units:id');
 
         if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
             $units->where('id', $user->unit_sekolah_id);
@@ -367,10 +368,9 @@ class JadwalController extends Controller
             }
         }
 
-        // Security: user yang ter-scope unit tidak boleh edit jadwal ke pegawai unit lain.
-        if ($user->unit_sekolah_id && ! $user->can('view_all_units')
-            && ! $this->pegawaiBelongsToUnit($validated['pegawai_id'], $validated['unit_sekolah_id'])) {
-            return back()->withErrors(['pegawai_id' => 'Pegawai tidak terdaftar di unit Anda.'])->withInput();
+        // Security: sama dengan store — berlaku semua user.
+        if (! $this->pegawaiBelongsToUnit($validated['pegawai_id'], $validated['unit_sekolah_id'])) {
+            return back()->withErrors(['pegawai_id' => 'Pegawai tidak terdaftar di unit ini.'])->withInput();
         }
 
         $unit = UnitSekolah::find($validated['unit_sekolah_id']);

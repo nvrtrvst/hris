@@ -29,6 +29,20 @@ export default function Edit({ auth, jadwal, pegawais, units, mapel, lokalis }) 
     const selectedUnit = React.useMemo(() => units.find(u => u.id == data.unit_sekolah_id), [data.unit_sekolah_id, units]);
     const durasiJp = selectedUnit?.durasi_jp || 45;
 
+    const filteredPegawais = React.useMemo(() => {
+        if (!data.unit_sekolah_id) return [];
+        return (pegawais || []).filter(p => (p.units || []).some(u => u.id == data.unit_sekolah_id));
+    }, [data.unit_sekolah_id, pegawais]);
+    const currentPegawai = (pegawais || []).find(p => p.id == data.pegawai_id);
+
+    const prevUnit = React.useRef(data.unit_sekolah_id);
+    React.useEffect(() => {
+        if (prevUnit.current !== data.unit_sekolah_id) {
+            prevUnit.current = data.unit_sekolah_id;
+            setData('pegawai_id', '');
+        }
+    }, [data.unit_sekolah_id]);
+
     const filteredLokalis = React.useMemo(() => {
         if (!data.unit_sekolah_id) return [];
         return (lokalis || []).filter(l => l.unit_sekolah_id == data.unit_sekolah_id);
@@ -96,16 +110,6 @@ export default function Edit({ auth, jadwal, pegawais, units, mapel, lokalis }) 
                                 <div>
                                     <h3 className="section-title text-text-primary border-b border-border pb-2 mb-4">Informasi Pegawai & Unit</h3>
                                     <div className="form-grid">
-                                        <div className="md:col-span-2">
-                                            <label className="form-label">Pegawai <span className="text-red-500">*</span></label>
-                                            <select value={data.pegawai_id} onChange={e => setData('pegawai_id', e.target.value)} className={`select-field ${errors.pegawai_id ? 'input-error' : ''}`}>
-                                                <option value="">Pilih Pegawai</option>
-                                                {pegawais.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.nama_lengkap}</option>
-                                                ))}
-                                            </select>
-                                            {errors.pegawai_id && <p className="form-error">{errors.pegawai_id}</p>}
-                                        </div>
                                         <div>
                                             <label className="form-label">Unit Sekolah <span className="text-red-500">*</span></label>
                                             <select value={data.unit_sekolah_id} onChange={e => setData('unit_sekolah_id', e.target.value)} className="select-field">
@@ -115,6 +119,20 @@ export default function Edit({ auth, jadwal, pegawais, units, mapel, lokalis }) 
                                                 ))}
                                             </select>
                                             {errors.unit_sekolah_id && <p className="form-error">{errors.unit_sekolah_id}</p>}
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="form-label">Pegawai <span className="text-red-500">*</span></label>
+                                            <select value={data.pegawai_id} onChange={e => setData('pegawai_id', e.target.value)} disabled={!data.unit_sekolah_id} className={`select-field ${errors.pegawai_id ? 'input-error' : ''}`}>
+                                                <option value="">{data.unit_sekolah_id ? 'Pilih Pegawai' : 'Pilih unit dulu'}</option>
+                                                {filteredPegawais.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.nama_lengkap}</option>
+                                                ))}
+                                                {currentPegawai && !filteredPegawais.some(p => p.id == currentPegawai.id) && (
+                                                    <option key={currentPegawai.id} value={currentPegawai.id}>{currentPegawai.nama_lengkap}</option>
+                                                )}
+                                            </select>
+                                            {!data.unit_sekolah_id && <p className="form-hint">Pilih unit dulu untuk melihat pegawai terdaftar.</p>}
+                                            {errors.pegawai_id && <p className="form-error">{errors.pegawai_id}</p>}
                                         </div>
                                         {filteredLokalis.length > 0 && (
                                             <div>
