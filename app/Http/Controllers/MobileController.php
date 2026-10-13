@@ -7,6 +7,7 @@ use App\Jobs\ProcessPresensiFoto;
 use App\Models\Announcement;
 use App\Models\HariLibur;
 use App\Models\Jadwal;
+use App\Models\LaporanPiket;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
@@ -1642,5 +1643,425 @@ class MobileController extends Controller
         }
 
         return $chain;
+    }
+
+    // ── Laporan Piket Harian ──────────────────────────────────────────
+
+    /**
+     * Halaman checklist piket hari ini (mobile). prop `piket` null bila
+     * pegawai tidak punya jadwal jenis=piket hari ini (empty state).
+     */
+    public function piket()
+    {
+        $pegawai = $this->getPegawai();
+        $pegawai->load('units');
+        $hariIniIndo = $this->hariIniIndo();
+        $today = Carbon::today()->toDateString();
+
+        $piketJadwals = Jadwal::with(['unitSekolah', 'unitLokasi'])
+            ->where('pegawai_id', $pegawai->id)
+            ->where('hari', $hariIniIndo)
+            ->where('jenis_jadwal', 'piket')
+            ->orderBy('jam_mulai')
+            ->get();
+
+        if ($piketJadwals->isEmpty()) {
+            return inertia('Mobile/Piket', [
+                'pegawai' => $pegawai,
+                'piket' => null,
+                'guruUnit' => [],
+                'kelasHariIni' => [],
+            ]);
+        }
+
+        $slot = $piketJadwals->first();
+        $unitId = $slot->unit_sekolah_id;
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
+            ->where('tanggal', $today)
+            ->first();
+
+        $guruUnit = Pegawai::where('status_aktif', 'aktif')
+            ->where('id', '!=', $pegawai->id)
+            ->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitId))
+            ->orderBy('nama_lengkap')
+            ->get(['id', 'nama_lengkap']);
+
+        $kelasHariIni = Jadwal::where('unit_sekolah_id', $unitId)
+            ->where('hari', $hariIniIndo)
+            ->where('jenis_jadwal', 'mengajar')
+            ->whereNotNull('kelas_label')
+            ->distinct()
+            ->pluck('kelas_label');
+
+        return inertia('Mobile/Piket', [
+            'pegawai' => $pegawai,
+            'piket' => [
+                'tanggal' => $today,
+                'slot' => [
+                    'id' => $slot->id,
+                    'jam_mulai' => substr((string) $slot->jam_mulai, 0, 5),
+                    'jam_selesai' => substr((string) $slot->jam_selesai, 0, 5),
+                    'unit' => $slot->unitSekolah?->nama,
+                ],
+                'windows' => $this->piketWindows($slot),
+                'laporan' => $laporan,
+                'wajib' => LaporanPiket::ITEM_WAJIB,
+                'label' => LaporanPiket::ITEM_LABEL,
+            ],
+            'guruUnit' => $guruUnit,
+            'kelasHariIni' => $kelasHariIni,
+        ]);
+    }
+
+    /**
+     * Catat satu item checklist piket. Tiap centang wajib geofence dalam
+     * radius unit + timestamp server (anti centang dari rumah / borongan
+     * tanpa hadir). Response back() untuk Inertia (pakai router.post).
+     */
+    public function storePiketItem(Request $request)
+    {
+        $pegawai = $this->getPegawai();
+        $this->assertTidakSedangIzin($pegawai);
+
+        $request->validate([
+            'kode' => 'required|in:gerbang,cek_absen,kelas_kosong,buku,insiden',
+            'mode' => 'nullable|in:centang,tambah,nihil',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'accuracy' => 'required|numeric|min:0',
+            'terlambat_count' => 'nullable|integer|min:0|max:1000',
+            'nama_guru' => 'nullable|string|max:100',
+            'keterangan_absen' => 'nullable|string|max:255',
+            'guru_pegawai_id' => 'nullable|integer|min:1|exists:pegawai,id',
+            'kelas' => 'nullable|string|max:100',
+            'ada_amanat' => 'nullable|boolean',
+            'jenis_amanat' => 'nullable|in:tugas,pelajari_halaman,lainnya',
+            'detail_amanat' => 'nullable|string|max:1000',
+            'tersampaikan' => 'nullable|boolean',
+            'jenis_insiden' => 'nullable|string|max:100',
+            'tindakan' => 'nullable|string|max:1000',
+        ]);
+
+        $hariIniIndo = $this->hariIniIndo();
+        $today = Carbon::today()->toDateString();
+        $now = Carbon::now()->format('H:i');
+        $slot = $this->resolvePiketSlot($pegawai, $hariIniIndo);
+        $windows = $this->piketWindows($slot);
+        $kode = $request->kode;
+        $mode = $request->input('mode', 'centang');
+
+        // Jendela seksi: pagi terkunci jamnya; cek_absen-tambah boleh kapan
+        // saja sampai submit (konfirmasi sore); item KBM boleh sejak seksi
+        // KBM sampai laporan dikirim.
+        $seksi = LaporanPiket::ITEM_SEKSI[$kode];
+        $boleh = match (true) {
+            $kode === LaporanPiket::ITEM_CEK_ABSEN && $mode === 'tambah' => true,
+            $seksi === LaporanPiket::SEKSI_PAGI => $now >= $windows['pagi'][0] && $now <= $windows['pagi'][1],
+            default => $now >= $windows['kbm'][0],
+        };
+        if (! $boleh) {
+            throw ValidationException::withMessages(['kode' => 'Seksi '.$seksi.' belum dibuka atau sudah lewat.']);
+        }
+
+        if ($mode === 'tambah') {
+            $this->validateTambahPayload($request, $kode);
+        }
+
+        $geo = $this->checkPiketGeofence(
+            $slot,
+            (float) $request->latitude,
+            (float) $request->longitude,
+            (float) $request->accuracy
+        );
+
+        DB::transaction(function () use ($pegawai, $slot, $today, $kode, $mode, $request, $geo) {
+            $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
+                ->where('tanggal', $today)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $laporan) {
+                $laporan = new LaporanPiket([
+                    'pegawai_id' => $pegawai->id,
+                    'jadwal_id' => $slot->id,
+                    'unit_sekolah_id' => $slot->unit_sekolah_id,
+                    'tanggal' => $today,
+                    'status' => LaporanPiket::STATUS_DRAFT,
+                ]);
+            }
+            if ($laporan->status === LaporanPiket::STATUS_SUBMITTED) {
+                throw ValidationException::withMessages(['laporan' => 'Laporan sudah dikirim.']);
+            }
+
+            $items = $laporan->items ?? [];
+            $stamp = [
+                'done_at' => Carbon::now()->format('H:i:s'),
+                'lat' => (float) $request->latitude,
+                'lng' => (float) $request->longitude,
+                'jarak' => $geo['distance'],
+            ];
+
+            match ($kode) {
+                LaporanPiket::ITEM_GERBANG => $items[$kode] = $stamp + [
+                    'terlambat_count' => (int) $request->input('terlambat_count', 0),
+                ],
+                LaporanPiket::ITEM_BUKU => $items[$kode] = $stamp,
+                LaporanPiket::ITEM_CEK_ABSEN => $items[$kode] = $this->applyCekAbsen($items[$kode] ?? null, $mode, $request, $stamp),
+                LaporanPiket::ITEM_KELAS_KOSONG => $items[$kode] = $this->applyKelasKosong($items[$kode] ?? null, $mode, $request, $stamp, $today),
+                LaporanPiket::ITEM_INSIDEN => $items[$kode] = $this->applyInsiden($items[$kode] ?? null, $mode, $request, $stamp),
+            };
+
+            $laporan->items = $items;
+            $laporan->save();
+        });
+
+        return back()->with('message', 'Tercatat.');
+    }
+
+    /**
+     * Kirim laporan piket. Dibuka sejak seksi sore. Semua item wajib harus
+     * selesai. Setelah submitted: read-only.
+     */
+    public function submitPiket(Request $request)
+    {
+        $pegawai = $this->getPegawai();
+        $this->assertTidakSedangIzin($pegawai);
+
+        $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
+        $windows = $this->piketWindows($slot);
+        $now = Carbon::now()->format('H:i');
+
+        if ($now < $windows['sore'][0]) {
+            throw ValidationException::withMessages([
+                'laporan' => 'Pengiriman dibuka pukul '.substr($windows['sore'][0], 0, 5).'.',
+            ]);
+        }
+
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
+            ->where('tanggal', Carbon::today()->toDateString())
+            ->lockForUpdate()
+            ->first();
+
+        if (! $laporan) {
+            throw ValidationException::withMessages(['laporan' => 'Belum ada item yang dicatat.']);
+        }
+        if ($laporan->status === LaporanPiket::STATUS_SUBMITTED) {
+            throw ValidationException::withMessages(['laporan' => 'Laporan sudah dikirim.']);
+        }
+        if (! $laporan->isLengkap()) {
+            $kurang = array_map(fn ($k) => LaporanPiket::ITEM_LABEL[$k], $laporan->kurangItems());
+            throw ValidationException::withMessages(['laporan' => 'Belum lengkap: '.implode(', ', $kurang).'.']);
+        }
+
+        $laporan->status = LaporanPiket::STATUS_SUBMITTED;
+        $laporan->submitted_at = Carbon::now();
+        $laporan->save();
+
+        return back()->with('message', 'Laporan piket terkirim.');
+    }
+
+    private function hariIniIndo(): string
+    {
+        $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
+
+        return $hariMap[Carbon::now()->format('l')];
+    }
+
+    private function resolvePiketSlot(Pegawai $pegawai, string $hariIniIndo): Jadwal
+    {
+        $slot = Jadwal::with(['unitSekolah', 'unitLokasi'])
+            ->where('pegawai_id', $pegawai->id)
+            ->where('hari', $hariIniIndo)
+            ->where('jenis_jadwal', 'piket')
+            ->orderBy('jam_mulai')
+            ->first();
+
+        abort_unless($slot, 422, 'Tidak ada jadwal piket hari ini.');
+
+        return $slot;
+    }
+
+    /**
+     * Bagi slot piket jadi 3 seksi proporsional (pagi/kbm/sore).
+     * Fallback: jam kantor unit, lalu 07:00-15:00.
+     */
+    private function piketWindows(Jadwal $slot): array
+    {
+        $mulai = substr((string) ($slot->jam_mulai ?: ''), 0, 5);
+        $selesai = substr((string) ($slot->jam_selesai ?: ''), 0, 5);
+        if (! $mulai || ! $selesai || $selesai <= $mulai) {
+            $unit = $slot->unitSekolah;
+            $mulai = substr((string) ($unit?->jam_masuk_kantor ?: '07:00'), 0, 5);
+            $selesai = substr((string) ($unit?->jam_pulang_kantor ?: '15:00'), 0, 5);
+        }
+        if (! $mulai || ! $selesai || $selesai <= $mulai) {
+            $mulai = '07:00';
+            $selesai = '15:00';
+        }
+
+        $awal = $this->toMinutes($mulai.':00');
+        $total = $this->toMinutes($selesai.':00') - $awal;
+        $fmt = fn (int $m): string => sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
+        $p1 = $awal + (int) ($total / 3);
+        $p2 = $awal + (int) ($total * 2 / 3);
+
+        return ['pagi' => [$mulai, $fmt($p1)], 'kbm' => [$fmt($p1), $fmt($p2)], 'sore' => [$fmt($p2), $selesai]];
+    }
+
+    /**
+     * Geofence piket: lokasi slot (unitLokasi bila ada) else unit sekolah.
+     * Aturan sama dengan absen: tolak di luar radius + akurasi nol.
+     */
+    private function checkPiketGeofence(Jadwal $slot, float $lat, float $lng, float $accuracy): array
+    {
+        $fallback = $slot->unitSekolah ?? $slot->unitLokasi;
+        abort_unless($fallback, 422, 'Unit piket tidak tersedia.');
+        $locations = $slot->unitLokasi ? collect([$slot->unitLokasi]) : collect();
+
+        $result = $this->checkMultiLocationGeofence($lat, $lng, $locations, $fallback);
+        if (! $result['inside']) {
+            $radius = $result['matchedUnit']?->radius_meter ?? $fallback->radius_meter;
+            throw ValidationException::withMessages([
+                'geofence' => sprintf(PresensiMessages::GEOFENCE_OUTSIDE, $result['distance'], $radius),
+            ]);
+        }
+        if ($accuracy <= 0) {
+            throw ValidationException::withMessages(['geofence' => PresensiMessages::GEOFENCE_ACCURACY_ZERO]);
+        }
+        if ($accuracy > $fallback->radius_meter) {
+            throw ValidationException::withMessages([
+                'geofence' => sprintf(PresensiMessages::GEOFENCE_ACCURACY_POOR, $accuracy, $fallback->radius_meter),
+            ]);
+        }
+
+        return $result;
+    }
+
+    private function validateTambahPayload(Request $request, string $kode): void
+    {
+        if ($kode === LaporanPiket::ITEM_CEK_ABSEN) {
+            if (! $request->filled('nama_guru') || ! $request->filled('keterangan_absen')) {
+                throw ValidationException::withMessages(['nama_guru' => 'Nama guru dan keterangan wajib diisi.']);
+            }
+        }
+        if ($kode === LaporanPiket::ITEM_KELAS_KOSONG) {
+            if (! $request->filled('guru_pegawai_id') || ! $request->filled('kelas')) {
+                throw ValidationException::withMessages(['kelas' => 'Kelas dan guru berhalangan wajib diisi.']);
+            }
+            if ($request->boolean('ada_amanat') && (! $request->filled('jenis_amanat') || ! $request->filled('detail_amanat'))) {
+                throw ValidationException::withMessages(['detail_amanat' => 'Jenis dan isi amanat wajib diisi.']);
+            }
+        }
+        if ($kode === LaporanPiket::ITEM_INSIDEN) {
+            if (! $request->filled('jenis_insiden') || ! $request->filled('tindakan')) {
+                throw ValidationException::withMessages(['tindakan' => 'Jenis insiden dan tindakan wajib diisi.']);
+            }
+        }
+    }
+
+    private function applyCekAbsen(?array $item, string $mode, Request $request, array $stamp): array
+    {
+        $item ??= ['entries' => []];
+        if ($mode === 'tambah') {
+            $item['entries'][] = [
+                'nama_guru' => trim((string) $request->nama_guru),
+                'keterangan' => trim((string) $request->keterangan_absen),
+                'created_at' => $stamp['done_at'],
+                'lat' => $stamp['lat'],
+                'lng' => $stamp['lng'],
+                'jarak' => $stamp['jarak'],
+            ];
+
+            return $item;
+        }
+
+        return $item + $stamp;
+    }
+
+    private function applyKelasKosong(?array $item, string $mode, Request $request, array $stamp, string $today): array
+    {
+        $item ??= ['entries' => []];
+        if ($mode === 'nihil') {
+            if (! empty($item['entries'])) {
+                throw ValidationException::withMessages(['kelas' => 'Sudah ada entry kelas kosong, tidak bisa tandai nihil.']);
+            }
+            $item['nihil'] = true;
+
+            return $item + $stamp;
+        }
+
+        $guru = Pegawai::select('id', 'nama_lengkap')->find($request->guru_pegawai_id);
+        $cek = $this->validasiKehadiranGuru((int) $request->guru_pegawai_id, $today);
+        $item['entries'][] = [
+            'kelas' => trim((string) $request->kelas),
+            'guru_pegawai_id' => (int) $request->guru_pegawai_id,
+            'guru_nama' => $guru?->nama_lengkap ?? '',
+            'ada_amanat' => $request->boolean('ada_amanat'),
+            'jenis_amanat' => $request->input('jenis_amanat'),
+            'detail_amanat' => $request->input('detail_amanat'),
+            'tersampaikan' => $request->boolean('tersampaikan'),
+            'created_at' => $stamp['done_at'],
+            'lat' => $stamp['lat'],
+            'lng' => $stamp['lng'],
+            'jarak' => $stamp['jarak'],
+            'validasi' => $cek['cocok'] ? 'cocok' : 'perlu_cek',
+            'validasi_catatan' => $cek['catatan'],
+        ];
+        unset($item['nihil']);
+
+        return $item + $stamp;
+    }
+
+    private function applyInsiden(?array $item, string $mode, Request $request, array $stamp): array
+    {
+        $item ??= ['entries' => []];
+        if ($mode === 'nihil') {
+            if (! empty($item['entries'])) {
+                throw ValidationException::withMessages(['insiden' => 'Sudah ada entry insiden, tidak bisa tandai nihil.']);
+            }
+            $item['nihil'] = true;
+
+            return $item + $stamp;
+        }
+
+        $item['entries'][] = [
+            'jenis' => trim((string) $request->jenis_insiden),
+            'tindakan' => trim((string) $request->tindakan),
+            'created_at' => $stamp['done_at'],
+            'lat' => $stamp['lat'],
+            'lng' => $stamp['lng'],
+            'jarak' => $stamp['jarak'],
+        ];
+        unset($item['nihil']);
+
+        return $item + $stamp;
+    }
+
+    /**
+     * Cross-check entry kelas kosong: guru benar absen bila ada izin
+     * disetujui mencakup tanggal itu, atau tidak ada presensi masuk.
+     * Guru yang tercatat hadir = perlu_cek (flag untuk admin).
+     */
+    private function validasiKehadiranGuru(int $guruPegawaiId, string $tanggal): array
+    {
+        $izin = PengajuanIzin::where('pegawai_id', $guruPegawaiId)
+            ->where('status', 'disetujui')
+            ->whereDate('tanggal_mulai', '<=', $tanggal)
+            ->whereDate('tanggal_selesai', '>=', $tanggal)
+            ->first();
+        if ($izin) {
+            return ['cocok' => true, 'catatan' => 'Izin disetujui: '.$izin->jenis_izin];
+        }
+
+        $hadir = Presensi::where('pegawai_id', $guruPegawaiId)
+            ->where('tanggal', $tanggal)
+            ->whereNotNull('jam_masuk')
+            ->whereIn('status', ['hadir', 'telat'])
+            ->exists();
+        if ($hadir) {
+            return ['cocok' => false, 'catatan' => 'Guru tercatat hadir'];
+        }
+
+        return ['cocok' => true, 'catatan' => 'Tidak ada presensi masuk'];
     }
 }

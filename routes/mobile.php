@@ -86,6 +86,13 @@ Route::middleware('auth:web_mobile')->group(function () {
     Route::post('/slide-jadwal', [MobileController::class, 'slideJadwal'])
         ->middleware('throttle:30,1')->name('presensi.absen.slide');
 
+    // Laporan Piket Harian — hanya untuk yang terjadwal piket hari ini
+    Route::get('/piket', [MobileController::class, 'piket'])->name('presensi.piket.index');
+    Route::post('/piket/item', [MobileController::class, 'storePiketItem'])
+        ->middleware('throttle:60,1')->name('presensi.piket.item');
+    Route::post('/piket/submit', [MobileController::class, 'submitPiket'])
+        ->middleware('throttle:10,1')->name('presensi.piket.submit');
+
     Route::post('/tugas-luar/{presensi}/bukti', [PresensiController::class, 'storeBuktiTugasLuar'])
         ->middleware('throttle:10,1')->name('presensi.tugas-luar.bukti');
 

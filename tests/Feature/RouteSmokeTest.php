@@ -7,6 +7,7 @@ use App\Models\HariLibur;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
+use App\Models\LaporanPiket;
 use App\Models\MataPelajaran;
 use App\Models\PayrollReferenceType;
 use App\Models\PayrollReferenceValue;
@@ -166,6 +167,7 @@ class RouteSmokeTest extends TestCase
         'presensi.koreksi.index' => 'Mobile/Koreksi/Index',
         'presensi.koreksi.create' => 'Mobile/Koreksi/Create',
         'presensi.absen' => 'Mobile/Absen',
+        'presensi.piket.index' => 'Mobile/Piket',
         'presensi.profile.edit' => 'Mobile/Profile',
         // presensi.lengkapi-data → Mobile/LengkapiData karena test berjalan di
         // prefix /mobile (is('mobile*') true); di produksi (domain mobile tanpa
@@ -201,6 +203,9 @@ class RouteSmokeTest extends TestCase
             'kontrakBerakhir' => false,
             'jadwalHariIni' => true,
             'presensiHariIni' => true,
+            'kelasKosongMengajar' => false,
+            'kelasKosongPiket' => false,
+            'piketHariIni' => false,
         ],
         'dashboard.perbandingan-unit' => ['units' => true, 'filter' => true],
         'profile.edit' => ['mustVerifyEmail' => false, 'status' => false],
@@ -292,6 +297,12 @@ class RouteSmokeTest extends TestCase
             'presensiHariIni' => true,
             'officeAttendance' => false, // boolean
             'attestation_token' => false, // string token
+        ],
+        'presensi.piket.index' => [
+            'pegawai' => true,
+            'piket' => false,
+            'guruUnit' => false,
+            'kelasHariIni' => false,
         ],
         'presensi.profile.edit' => ['mustVerifyEmail' => false, 'status' => false],
         'presensi.lengkapi-data' => ['pegawai' => true],
@@ -838,6 +849,13 @@ class RouteSmokeTest extends TestCase
             'tanggal' => now()->format('Y-m-d'),
             'tujuan' => 'Smoke Tugas Luar Hapus',
             'keterangan' => 'smoke',
+        ]);
+        $this->laporanPiket = LaporanPiket::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => now()->format('Y-m-d'),
+            'items' => [],
+            'status' => 'draft',
         ]);
         $this->reminder = Reminder::create([
             'title' => 'Smoke Reminder',
@@ -1624,6 +1642,7 @@ class RouteSmokeTest extends TestCase
             },
             'hari_libur' => $routeName === 'hari-libur.destroy' ? $this->disposableHariLibur->id : $this->hariLibur->id,
             'tugas_luar' => $routeName === 'tugas-luar.destroy' ? $this->disposableTugasLuar->id : $this->tugasLuar->id,
+            'laporan' => $this->laporanPiket->id,
             'reminder' => in_array($routeName, ['reminders.destroy', 'reminders.send'], true) ? $this->disposableReminder->id : $this->reminder->id,
             'lokasi' => $this->lokasi->id,
             'koreksi' => $this->koreksi->id,

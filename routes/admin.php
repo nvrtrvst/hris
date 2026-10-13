@@ -171,6 +171,9 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::post('presensi/{presensi}/reject-tugas-luar', [PresensiController::class, 'rejectTugasLuar'])
         ->middleware('throttle:60,1')
         ->name('presensi.rejectTugasLuar');
+    Route::post('laporan-piket/{laporan}/validasi', [DashboardController::class, 'validasiPiketEntry'])
+        ->middleware('throttle:60,1')
+        ->name('laporan-piket.validasi');
     Route::get('presensi/{presensi}/audit', [PresensiController::class, 'audit'])
         ->name('presensi.audit');
     Route::get('presensi/{presensi}/review', [PresensiController::class, 'reviewDetail'])

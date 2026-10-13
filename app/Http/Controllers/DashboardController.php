@@ -8,6 +8,7 @@ use App\Models\Announcement;
 use App\Models\HariLibur;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
+use App\Models\LaporanPiket;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Penggajian;
@@ -18,6 +19,8 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class DashboardController extends Controller
 {
@@ -245,6 +248,9 @@ class DashboardController extends Controller
             'kontrakBerakhir' => $cached['kontrakBerakhir'],
             'jadwalHariIni' => $live['jadwalHariIni'],
             'presensiHariIni' => $live['presensiHariIni'],
+            'kelasKosongMengajar' => $live['kelasKosongMengajar'],
+            'kelasKosongPiket' => $live['kelasKosongPiket'],
+            'piketHariIni' => $live['piketHariIni'],
             'pengumuman' => $pengumuman,
         ]);
     }
@@ -504,6 +510,24 @@ class DashboardController extends Controller
             ->when($scopedUnit && $bawahanIds === null, fn ($q) => $q->where('unit_sekolah_id', $scopedUnit))
             ->orderBy('jam_mulai')->get()->toArray();
 
+        // Laporan piket hari ini per petugas (badge kelengkapan + flag perlu_cek).
+        $laporanMap = LaporanPiket::where('tanggal', $today->toDateString())
+            ->whereIn('pegawai_id', collect($piketHariIni)->pluck('pegawai.id')->filter()->unique()->all())
+            ->get()
+            ->keyBy('pegawai_id');
+        foreach ($piketHariIni as &$jp) {
+            $lap = $laporanMap->get($jp['pegawai']['id'] ?? 0);
+            $jp['laporan'] = $lap ? [
+                'id' => $lap->id,
+                'status' => $lap->status,
+                'done' => $lap->doneCount(),
+                'total' => count(LaporanPiket::ITEM_WAJIB),
+                'perlu_cek' => $lap->perluCekCount(),
+                'items' => $lap->items ?? [],
+            ] : null;
+        }
+        unset($jp);
+
         return [
             'pegawaiDijadwalkan' => $pegawaiDijadwalkan,
             'pegawaiTotal' => $pegawaiTotal,
@@ -540,5 +564,46 @@ class DashboardController extends Controller
         }
 
         return max(0, $count - $exclude);
+    }
+
+    /**
+     * Verifikasi admin atas satu entry kelas_kosong laporan piket
+     * (hasil cross-check otomatis: cocok vs perlu_cek).
+     */
+    public function validasiPiketEntry(Request $request, LaporanPiket $laporan)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('view_presensi')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'entry_index' => 'required|integer|min:0',
+            'aksi' => 'required|in:setujui,tolak',
+        ]);
+
+        DB::transaction(function () use ($laporan, $validated, $user) {
+            $laporan = LaporanPiket::with('pegawai')->lockForUpdate()->findOrFail($laporan->id);
+
+            if ($user->unit_sekolah_id && ! $user->can('view_all_units')
+                && ! $laporan->pegawai->belongsToUnit($user->unit_sekolah_id)) {
+                abort(403, 'Akses ditolak.');
+            }
+
+            $items = $laporan->items ?? [];
+            $entries = $items[LaporanPiket::ITEM_KELAS_KOSONG]['entries'] ?? [];
+            if (! isset($entries[$validated['entry_index']])) {
+                throw ValidationException::withMessages(['entry_index' => 'Entry tidak ditemukan.']);
+            }
+
+            $entries[$validated['entry_index']]['verified'] = $validated['aksi'];
+            $entries[$validated['entry_index']]['verified_by'] = $user->id;
+            $entries[$validated['entry_index']]['verified_at'] = Carbon::now()->format('Y-m-d H:i:s');
+            $items[LaporanPiket::ITEM_KELAS_KOSONG]['entries'] = $entries;
+            $laporan->items = $items;
+            $laporan->save();
+        });
+
+        return back()->with('message', $validated['aksi'] === 'setujui' ? 'Entry disetujui.' : 'Entry ditolak.');
     }
 }

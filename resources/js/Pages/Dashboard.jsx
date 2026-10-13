@@ -85,6 +85,7 @@ export default function Dashboard(props) {
 
 function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadwalHariIni, presensiHariIni, pengumuman = [], units = [], selectedUnitId = null, selectedUnitNama = null, kelasKosongMengajar = [], kelasKosongPiket = [], piketHariIni = [] }) {
     const [detailPresensi, setDetailPresensi] = useState(null);
+    const [detailPiket, setDetailPiket] = useState(null);
 
     // Live polling: refresh data kehadiran/jadwal/presensi tiap 60 detik (partial reload
     // Inertia — hanya prop yang di-`only` dikirim ulang). Berhenti saat tab tidak aktif.
@@ -288,9 +289,59 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                     {piketHariIni?.length > 0 && kelasKosongPiket?.length === 0 && (
                         <div className="card border-emerald-200 bg-emerald-50 p-4">
                             <h4 className="flex items-center gap-2 text-sm font-bold text-emerald-800">
-                                <CheckCircle2 className="h-4 w-4" /> Piket Hari Ini — {piketHariIni.length} petugas terjadwal
+                                <CheckCircle2 className="h-4 w-4" /> Piket Hari Ini: {piketHariIni.length} petugas terjadwal
                             </h4>
-                            <p className="mt-1 text-xs text-emerald-700">{piketHariIni.map((j) => j.pegawai?.nama_lengkap).join(', ')}</p>
+                            <ul className="mt-2 space-y-2">
+                                {piketHariIni.map((j) => {
+                                    const lap = j.laporan;
+                                    const review = (lap?.items?.kelas_kosong?.entries ?? []).map((e, idx) => ({ ...e, idx })).filter((e) => !e.verified_at);
+                                    const open = detailPiket === (lap?.id ?? `jadwal-${j.id}`);
+                                    return (
+                                        <li key={j.id} className="rounded-xl bg-white/70 px-3 py-2">
+                                            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                                                <span className="font-semibold text-emerald-900">
+                                                    {j.pegawai?.nama_lengkap}
+                                                    <span className="font-normal text-emerald-700"> ({j.jam_mulai?.substring(0, 5)}-{j.jam_selesai?.substring(0, 5)})</span>
+                                                </span>
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    {!lap && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">Belum isi</span>}
+                                                    {lap && lap.status === 'submitted' && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Terkirim</span>}
+                                                    {lap && lap.status !== 'submitted' && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">{lap.done}/{lap.total}</span>}
+                                                    {lap && lap.perlu_cek > 0 && <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">Perlu cek {lap.perlu_cek}</span>}
+                                                </span>
+                                            </div>
+                                            {review.length > 0 && (
+                                                <div className="mt-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDetailPiket(open ? null : (lap?.id ?? `jadwal-${j.id}`))}
+                                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailPiket(open ? null : (lap?.id ?? `jadwal-${j.id}`)); } }}
+                                                        aria-expanded={open}
+                                                        className="text-[11px] font-bold text-emerald-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                                                    >
+                                                        {open ? 'Sembunyikan' : `Tinjau ${review.length} entry`}
+                                                    </button>
+                                                    {open && (
+                                                        <ul className="mt-1.5 space-y-1.5">
+                                                            {review.map((e) => (
+                                                                <li key={e.idx} className="rounded-lg bg-white px-2.5 py-2 text-[11px] text-slate-700 ring-1 ring-slate-200">
+                                                                    <p><span className="font-bold">{e.kelas}</span> ({e.guru_nama})</p>
+                                                                    {e.ada_amanat && <p className="mt-0.5">Amanat: {e.detail_amanat}{e.tersampaikan ? ' (tersampaikan)' : ' (belum tersampaikan)'}</p>}
+                                                                    <p className="mt-0.5 text-slate-500">Cross-check: {e.validasi_catatan}</p>
+                                                                    <div className="mt-1.5 flex gap-1.5">
+                                                                        <button type="button" onClick={() => router.post(route('laporan-piket.validasi', lap.id), { entry_index: e.idx, aksi: 'setujui' }, { preserveScroll: true })} className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40">Setujui</button>
+                                                                        <button type="button" onClick={() => router.post(route('laporan-piket.validasi', lap.id), { entry_index: e.idx, aksi: 'tolak' }, { preserveScroll: true })} className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-bold text-rose-700 ring-1 ring-rose-200 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40">Tolak</button>
+                                                                    </div>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
                         </div>
                     )}
 

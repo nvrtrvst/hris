@@ -1,0 +1,325 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Jabatan;
+use App\Models\Jadwal;
+use App\Models\LaporanPiket;
+use App\Models\Pegawai;
+use App\Models\PengajuanIzin;
+use App\Models\Presensi;
+use App\Models\UnitSekolah;
+use App\Models\User;
+use Carbon\Carbon;
+use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class LaporanPiketTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private UnitSekolah $unit;
+
+    private User $admin;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(RolePermissionSeeder::class);
+
+        $this->unit = UnitSekolah::create([
+            'nama' => 'SMP Test',
+            'singkatan' => 'SMP',
+            'latitude' => -6.2,
+            'longitude' => 106.8,
+            'radius_meter' => 100,
+            'durasi_jp' => 45,
+            'toleransi_menit' => 0,
+            'toleransi_slide_menit' => 15,
+        ]);
+
+        $this->admin = User::factory()->create(['role' => 'superadmin']);
+        $this->admin->assignRole('superadmin');
+    }
+
+    private function makePegawai(string $nama = 'Guru Piket'): Pegawai
+    {
+        $jabatan = Jabatan::create(['nama' => 'Guru '.$nama]);
+        $user = User::factory()->create();
+        $pegawai = Pegawai::create([
+            'user_id' => $user->id,
+            'nik' => '1234567890'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT),
+            'nama_lengkap' => $nama,
+            'tempat_lahir' => 'Jakarta',
+            'tanggal_lahir' => '1990-01-01',
+            'jenis_kelamin' => 'L',
+            'agama' => 'Islam',
+            'status_pernikahan' => 'kawin',
+            'jumlah_tanggungan' => 2,
+            'alamat' => 'Jl. Test No. 1',
+            'no_hp' => '081234567890',
+            'status_kepegawaian' => 'guru_tidak_tetap',
+            'tmt_mengajar' => '2020-01-01',
+            'status_aktif' => 'aktif',
+            'pendidikan_terakhir' => 'S1',
+            'wajib_kantor' => false,
+        ]);
+
+        $pegawai->units()->attach($this->unit->id, ['jabatan_id' => $jabatan->id, 'is_primary' => true]);
+
+        return $pegawai;
+    }
+
+    private function makePiketJadwal(Pegawai $pegawai): Jadwal
+    {
+        return Jadwal::create([
+            'pegawai_id' => $pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'hari' => 'Senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '15:00:00',
+            'jenis_jadwal' => 'piket',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+    }
+
+    private function geo(): array
+    {
+        return ['latitude' => -6.2, 'longitude' => 106.8, 'accuracy' => 15];
+    }
+
+    public function test_halaman_piket_kosong_tanpa_jadwal(): void
+    {
+        $pegawai = $this->makePegawai();
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->get(route('presensi.piket.index'))
+            ->assertOk();
+    }
+
+    public function test_item_gerbang_dalam_radius_diterima(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        Carbon::setTestNow('2026-10-12 08:00:00'); // Senin, seksi pagi
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'gerbang', 'mode' => 'centang', 'terlambat_count' => 3],
+                $this->geo()
+            ));
+
+        $res->assertRedirect();
+        Carbon::setTestNow();
+
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)->first();
+        $this->assertNotNull($laporan);
+        $this->assertSame('draft', $laporan->status);
+        $this->assertTrue($laporan->isItemDone('gerbang'));
+        $this->assertSame(3, $laporan->item('gerbang')['terlambat_count']);
+    }
+
+    public function test_item_di_luar_radius_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        Carbon::setTestNow('2026-10-12 08:00:00');
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), [
+                'kode' => 'gerbang', 'mode' => 'centang',
+                'latitude' => 0, 'longitude' => 0, 'accuracy' => 15,
+            ]);
+
+        $res->assertStatus(422);
+        Carbon::setTestNow();
+        $this->assertDatabaseCount('laporan_piket', 0);
+    }
+
+    public function test_item_di_luar_jendela_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        Carbon::setTestNow('2026-10-12 06:00:00'); // sebelum slot
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'gerbang', 'mode' => 'centang'],
+                $this->geo()
+            ));
+
+        $res->assertStatus(422);
+        Carbon::setTestNow();
+        $this->assertDatabaseCount('laporan_piket', 0);
+    }
+
+    public function test_alur_lengkap_sampai_submit(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $post = fn (string $now, array $payload) => $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge($payload, $this->geo()));
+
+        Carbon::setTestNow('2026-10-12 08:00:00');
+        $post('', ['kode' => 'gerbang', 'mode' => 'centang', 'terlambat_count' => 1])->assertRedirect();
+        $post('cek_awal', ['kode' => 'cek_absen', 'mode' => 'centang'])->assertRedirect();
+
+        Carbon::setTestNow('2026-10-12 10:00:00'); // seksi KBM
+        $post('kelas', ['kode' => 'kelas_kosong', 'mode' => 'nihil'])->assertRedirect();
+        $post('buku', ['kode' => 'buku', 'mode' => 'centang'])->assertRedirect();
+        $post('insiden', ['kode' => 'insiden', 'mode' => 'nihil'])->assertRedirect();
+
+        Carbon::setTestNow('2026-10-12 14:00:00'); // seksi sore
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.submit'))
+            ->assertRedirect();
+        Carbon::setTestNow();
+
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)->first();
+        $this->assertSame('submitted', $laporan->status);
+        $this->assertNotNull($laporan->submitted_at);
+        $this->assertTrue($laporan->isLengkap());
+    }
+
+    public function test_submit_tak_lengkap_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+
+        Carbon::setTestNow('2026-10-12 14:00:00');
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.submit'));
+
+        $res->assertStatus(422);
+        Carbon::setTestNow();
+    }
+
+    public function test_tambah_guru_absen_sore_diterima(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+
+        Carbon::setTestNow('2026-10-12 08:00:00');
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'cek_absen', 'mode' => 'centang'],
+                $this->geo()
+            ))->assertRedirect();
+
+        Carbon::setTestNow('2026-10-12 14:30:00'); // konfirmasi sore
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'cek_absen', 'mode' => 'tambah', 'nama_guru' => 'Budi', 'keterangan_absen' => 'Sakit, konfirmasi WA sore'],
+                $this->geo()
+            ))->assertRedirect();
+        Carbon::setTestNow();
+
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)->first();
+        $entries = $laporan->item('cek_absen')['entries'] ?? [];
+        $this->assertCount(1, $entries);
+        $this->assertSame('Budi', $entries[0]['nama_guru']);
+    }
+
+    public function test_validasi_silang_guru_hadir_jadi_perlu_cek(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $guruHadir = $this->makePegawai('Guru Hadir');
+        $guruIzin = $this->makePegawai('Guru Izin');
+
+        Carbon::setTestNow('2026-10-12 10:00:00');
+
+        // status di-$guarded: set via assignment langsung, bukan create().
+        $presensiHadir = Presensi::create([
+            'pegawai_id' => $guruHadir->id,
+            'tipe_presensi' => 'kantor',
+            'tanggal' => '2026-10-12',
+            'jam_masuk' => '07:00:00',
+            'unit_sekolah_id' => $this->unit->id,
+        ]);
+        $presensiHadir->status = 'hadir';
+        $presensiHadir->save();
+        PengajuanIzin::create([
+            'pegawai_id' => $guruIzin->id,
+            'jenis_izin' => 'sakit',
+            'tanggal_mulai' => '2026-10-12',
+            'tanggal_selesai' => '2026-10-12',
+            'alasan' => 'Demam dan flu berat',
+            'status' => 'disetujui',
+        ]);
+
+        $post = fn (array $payload) => $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge($payload, $this->geo()));
+
+        $post(['kode' => 'kelas_kosong', 'mode' => 'tambah', 'kelas' => 'VII-A', 'guru_pegawai_id' => $guruHadir->id, 'ada_amanat' => false])
+            ->assertRedirect();
+        $post(['kode' => 'kelas_kosong', 'mode' => 'tambah', 'kelas' => 'VII-B', 'guru_pegawai_id' => $guruIzin->id, 'ada_amanat' => true, 'jenis_amanat' => 'tugas', 'detail_amanat' => 'Kerjakan LKS hal 12', 'tersampaikan' => true])
+            ->assertRedirect();
+        Carbon::setTestNow();
+
+        $entries = LaporanPiket::where('pegawai_id', $pegawai->id)->first()->item('kelas_kosong')['entries'];
+        $this->assertSame('perlu_cek', $entries[0]['validasi']);
+        $this->assertSame('cocok', $entries[1]['validasi']);
+        $this->assertTrue((bool) $entries[1]['ada_amanat']);
+        $this->assertTrue((bool) $entries[1]['tersampaikan']);
+    }
+
+    public function test_laporan_milik_sendiri_tidak_bocor(): void
+    {
+        $a = $this->makePegawai('Guru A');
+        $b = $this->makePegawai('Guru B');
+        $this->makePiketJadwal($a);
+        $this->makePiketJadwal($b);
+
+        Carbon::setTestNow('2026-10-12 08:00:00');
+        $this->actingAs($a->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'gerbang', 'mode' => 'centang'],
+                $this->geo()
+            ))->assertRedirect();
+        Carbon::setTestNow();
+
+        $this->assertDatabaseHas('laporan_piket', ['pegawai_id' => $a->id]);
+        $this->assertDatabaseMissing('laporan_piket', ['pegawai_id' => $b->id]);
+    }
+
+    public function test_admin_validasi_entry_dan_scope_unit(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $guru = $this->makePegawai('Guru Absen');
+
+        Carbon::setTestNow('2026-10-12 10:00:00');
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'kelas_kosong', 'mode' => 'tambah', 'kelas' => 'VII-A', 'guru_pegawai_id' => $guru->id, 'ada_amanat' => false],
+                $this->geo()
+            ))->assertRedirect();
+        Carbon::setTestNow();
+
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)->first();
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('laporan-piket.validasi', $laporan->id), ['entry_index' => 0, 'aksi' => 'setujui'])
+            ->assertSessionHas('message');
+
+        $entry = $laporan->fresh()->item('kelas_kosong')['entries'][0];
+        $this->assertSame('setujui', $entry['verified']);
+        $this->assertSame($this->admin->id, $entry['verified_by']);
+
+        // Admin unit lain ditolak
+        $unit2 = UnitSekolah::create([
+            'nama' => 'SD Lain', 'singkatan' => 'SDL',
+            'latitude' => -6.3, 'longitude' => 106.9, 'radius_meter' => 100,
+        ]);
+        $adminLain = User::factory()->create(['role' => 'admin_unit', 'unit_sekolah_id' => $unit2->id]);
+        $adminLain->assignRole('admin_unit');
+
+        $this->actingAs($adminLain, 'web_admin')
+            ->post(route('laporan-piket.validasi', $laporan->id), ['entry_index' => 0, 'aksi' => 'tolak'])
+            ->assertForbidden();
+    }
+}
