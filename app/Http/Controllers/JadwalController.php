@@ -270,7 +270,7 @@ class JadwalController extends Controller
                     ->with('unitSekolah:id,nama')
                     ->first();
 
-                if ($conflict) {
+                if ($conflict && $this->bentrokDilarang($validated['jenis_jadwal'], $conflict->jenis_jadwal)) {
                     return back()->withErrors([
                         'conflict' => "Terdeteksi bentrok jadwal! Pegawai ini sudah memiliki jadwal {$conflict->jenis_jadwal} di unit {$conflict->unitSekolah->nama} pada hari {$hari} pukul ".substr($conflict->jam_mulai, 0, 5).' - '.substr($conflict->jam_selesai, 0, 5),
                     ])->withInput();
@@ -393,7 +393,7 @@ class JadwalController extends Controller
                 ->with('unitSekolah:id,nama')
                 ->first();
 
-            if ($conflict) {
+            if ($conflict && $this->bentrokDilarang($validated['jenis_jadwal'], $conflict->jenis_jadwal)) {
                 return back()->withErrors([
                     'conflict' => "Terdeteksi bentrok jadwal! Pegawai ini sudah memiliki jadwal {$conflict->jenis_jadwal} di unit {$conflict->unitSekolah->nama} pada pukul ".substr($conflict->jam_mulai, 0, 5).' - '.substr($conflict->jam_selesai, 0, 5),
                 ])->withInput();
@@ -1032,6 +1032,19 @@ class JadwalController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    /**
+     * Pasangan jenis jadwal yang overlap-nya DILARANG. Piket = tugas jaga
+     * yang berjalan berdampingan dengan mengajar, jadi pasangan
+     * (piket, mengajar) boleh overlap. Pasangan lain tetap bentrok.
+     */
+    private function bentrokDilarang(string $jenisA, string $jenisB): bool
+    {
+        $pasangan = [$jenisA, $jenisB];
+        sort($pasangan);
+
+        return $pasangan !== ['mengajar', 'piket'];
     }
 
     private function pegawaiBelongsToUnit(int $pegawaiId, int $unitId): bool

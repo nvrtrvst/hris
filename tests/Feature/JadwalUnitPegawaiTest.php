@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Jabatan;
+use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\UnitSekolah;
 use App\Models\User;
@@ -126,6 +127,82 @@ class JadwalUnitPegawaiTest extends TestCase
             ->post('/jadwal', $this->piketPayload($pegawaiA, $unitA));
 
         $response->assertRedirect(route('jadwal.index'));
+        $this->assertDatabaseCount('jadwal', 1);
+    }
+
+    private function mengajarPayload(Pegawai $pegawai, UnitSekolah $unit, int $mapelId): array
+    {
+        return [
+            'pegawai_id' => $pegawai->id,
+            'unit_sekolah_id' => $unit->id,
+            'mata_pelajaran_id' => $mapelId,
+            'kelas_label' => '7 - A',
+            'hari' => ['Selasa'],
+            'jam_mulai' => '10:00',
+            'jam_selesai' => '10:45',
+            'jenis_jadwal' => 'mengajar',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => '1',
+        ];
+    }
+
+    public function test_piket_boleh_overlap_mengajar(): void
+    {
+        $unit = $this->makeUnit('SD Test', 'SDT');
+        $pegawai = $this->makePegawai($unit, 'Guru A');
+        $mapel = MataPelajaran::create(['nama' => 'Matematika']);
+        $admin = $this->makeSuperadmin();
+
+        $this->actingAs($admin, 'web_admin')
+            ->post('/jadwal', $this->mengajarPayload($pegawai, $unit, $mapel->id))
+            ->assertRedirect(route('jadwal.index'));
+
+        $payload = $this->piketPayload($pegawai, $unit);
+        $payload['hari'] = ['Selasa'];
+        $this->actingAs($admin, 'web_admin')
+            ->post('/jadwal', $payload)
+            ->assertRedirect(route('jadwal.index'));
+
+        $this->assertDatabaseCount('jadwal', 2);
+    }
+
+    public function test_mengajar_boleh_overlap_piket(): void
+    {
+        $unit = $this->makeUnit('SD Test', 'SDT');
+        $pegawai = $this->makePegawai($unit, 'Guru A');
+        $mapel = MataPelajaran::create(['nama' => 'Matematika']);
+        $admin = $this->makeSuperadmin();
+
+        $payload = $this->piketPayload($pegawai, $unit);
+        $payload['hari'] = ['Selasa'];
+        $this->actingAs($admin, 'web_admin')
+            ->post('/jadwal', $payload)
+            ->assertRedirect(route('jadwal.index'));
+
+        $this->actingAs($admin, 'web_admin')
+            ->post('/jadwal', $this->mengajarPayload($pegawai, $unit, $mapel->id))
+            ->assertRedirect(route('jadwal.index'));
+
+        $this->assertDatabaseCount('jadwal', 2);
+    }
+
+    public function test_piket_overlap_piket_tetap_ditolak(): void
+    {
+        $unit = $this->makeUnit('SD Test', 'SDT');
+        $pegawai = $this->makePegawai($unit, 'Guru A');
+        $admin = $this->makeSuperadmin();
+
+        $payload = $this->piketPayload($pegawai, $unit);
+        $payload['hari'] = ['Selasa'];
+        $this->actingAs($admin, 'web_admin')
+            ->post('/jadwal', $payload)
+            ->assertRedirect(route('jadwal.index'));
+
+        $this->actingAs($admin, 'web_admin')
+            ->from('/jadwal/create')
+            ->post('/jadwal', $payload)
+            ->assertSessionHasErrors('conflict');
+
         $this->assertDatabaseCount('jadwal', 1);
     }
 
