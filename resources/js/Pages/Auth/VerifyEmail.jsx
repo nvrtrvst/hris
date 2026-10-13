@@ -14,15 +14,7 @@ export default function VerifyEmail({ status }) {
         <AuthShell
             title="Verifikasi Email"
             portal="Portal Admin"
-            eyebrow="Aktivasi akun"
-            heading={
-                <>
-                    Verifikasi{' '}
-                    <span className="bg-gradient-to-r from-emerald-100 to-emerald-300 bg-clip-text text-transparent">
-                        email Anda.
-                    </span>
-                </>
-            }
+            heading="Verifikasi email Anda."
             description="Sebelum memulai, silakan verifikasi alamat email Anda dengan mengklik tautan yang telah kami kirimkan."
             heroContent={
                 <ul className="space-y-5">
@@ -32,7 +24,7 @@ export default function VerifyEmail({ status }) {
                         </div>
                         <div>
                             <p className="text-sm font-bold text-white">Tautan dikirim ke email</p>
-                            <p className="mt-0.5 text-xs leading-relaxed text-emerald-50/70">Cek inbox — atau folder spam — dalam beberapa menit.</p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-emerald-50/70">Cek inbox atau folder spam dalam beberapa menit.</p>
                         </div>
                     </li>
                     <li className="flex items-start gap-3.5">

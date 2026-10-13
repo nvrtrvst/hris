@@ -12,7 +12,7 @@ const STEPS = [
     {
         icon: Inbox,
         title: 'Buka tautan di inbox',
-        desc: 'Cek inbox — atau folder spam — dalam beberapa menit.',
+        desc: 'Cek inbox atau folder spam dalam beberapa menit.',
     },
     {
         icon: KeyRound,
@@ -35,15 +35,7 @@ export default function ForgotPassword({ status }) {
         <AuthShell
             title="Lupa Kata Sandi"
             portal="Portal Pegawai"
-            eyebrow="Pemulihan akun"
-            heading={
-                <>
-                    Lupa kata sandi?{' '}
-                    <span className="bg-gradient-to-r from-emerald-100 to-emerald-300 bg-clip-text text-transparent">
-                        Tenang, kami bantu.
-                    </span>
-                </>
-            }
+            heading="Lupa kata sandi? Tenang, kami bantu."
             description="Cukup masukkan email terdaftar, dan tautan reset akan sampai ke inbox Anda dalam beberapa saat."
             heroContent={
                 <ol className="space-y-5">

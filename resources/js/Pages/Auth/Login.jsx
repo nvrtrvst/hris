@@ -30,15 +30,7 @@ export default function Login({ status, canResetPassword, lembaga }) {
             title="Masuk"
             portal="Portal Admin"
             lembaga={lembaga}
-            eyebrow="Selamat datang kembali"
-            heading={
-                <>
-                    Kelola SDM{' '}
-                    <span className="bg-gradient-to-r from-emerald-100 to-emerald-300 bg-clip-text text-transparent">
-                        terpusat &amp; terstruktur.
-                    </span>
-                </>
-            }
+            heading="Kelola SDM terpusat & terstruktur."
             description="Presensi geofencing, penjadwalan, payroll dinamis, dan self-service untuk seluruh unit Yayasan."
             heroContent={
                 <ul className="space-y-5">
@@ -102,7 +94,7 @@ export default function Login({ status, canResetPassword, lembaga }) {
                     autoCapitalize="none"
                     spellCheck="false"
                     autoFocus
-                    placeholder="admin@yayasan.sch.id"
+                    placeholder="nama@email.com"
                     required
                     value={data.email}
                     error={errors.email}

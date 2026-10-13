@@ -21,15 +21,7 @@ export default function ConfirmPassword() {
         <AuthShell
             title="Konfirmasi Kata Sandi"
             portal="Portal Admin"
-            eyebrow="Area aman"
-            heading={
-                <>
-                    Konfirmasi{' '}
-                    <span className="bg-gradient-to-r from-emerald-100 to-emerald-300 bg-clip-text text-transparent">
-                        kata sandi.
-                    </span>
-                </>
-            }
+            heading="Konfirmasi kata sandi."
             description="Ini adalah area aman dari aplikasi. Harap konfirmasi kata sandi Anda sebelum melanjutkan."
             heroContent={
                 <ul className="space-y-5">

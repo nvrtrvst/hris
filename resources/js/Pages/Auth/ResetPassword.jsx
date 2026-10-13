@@ -37,15 +37,7 @@ export default function ResetPassword({ token, email }) {
         <AuthShell
             title="Buat Kata Sandi Baru"
             portal="Portal Admin"
-            eyebrow="Pemulihan akun"
-            heading={
-                <>
-                    Buat kata sandi{' '}
-                    <span className="bg-gradient-to-r from-emerald-100 to-emerald-300 bg-clip-text text-transparent">
-                        baru.
-                    </span>
-                </>
-            }
+            heading="Buat kata sandi baru."
             description="Silakan masukkan kata sandi baru Anda. Pastikan kuat dan mudah Anda ingat."
             heroContent={
                 <ul className="space-y-5">

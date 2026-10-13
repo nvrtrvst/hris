@@ -37,15 +37,7 @@ export default function Register() {
         <AuthShell
             title="Daftar Akun"
             portal="Portal Admin"
-            eyebrow="Selamat datang"
-            heading={
-                <>
-                    Daftar akun{' '}
-                    <span className="bg-gradient-to-r from-emerald-100 to-emerald-300 bg-clip-text text-transparent">
-                        baru.
-                    </span>
-                </>
-            }
+            heading="Daftar akun baru."
             description="Isi data di bawah untuk membuat akun akses portal admin."
             heroContent={
                 <ul className="space-y-5">
