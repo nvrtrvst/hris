@@ -4,7 +4,7 @@ import { id } from 'date-fns/locale';
 import { checkGeofence } from '@/Utils/geo';
 import { fmtDetik, batasHadir } from '@/Utils/waktuPresensi';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '@/Constants/AppConstants';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Toggle } from '@/Components/MobileUI';
 import TetapPresensi from '@/Pages/Mobile/Partials/TetapPresensi';
@@ -12,7 +12,7 @@ import BuktiKegiatan from '@/Pages/Mobile/Partials/BuktiKegiatan';
 import { useCamera } from '@/Hooks/useCamera';
 import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
-import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck } from 'lucide-react';
+import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, ClipboardCheck, Lock } from 'lucide-react';
 
 export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false, izinHariIni = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -489,6 +489,26 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                         ))}
                     </div>
                 </section>
+            )}
+
+            {!isLembur && !isTugasLuar && (jadwals || []).some((j) => j.jenis_jadwal === 'piket') && (presensiHariIni || []).some((p) => p.jam_masuk) && (
+                <Link href={route('presensi.piket.index')} className="mb-4 flex min-h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
+                    <span>
+                        <span className="block text-sm font-bold text-slate-900">Laporan Piket</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">Isi checklist tugas piket hari ini</span>
+                    </span>
+                    <ClipboardCheck className="h-5 w-5 text-primary" />
+                </Link>
+            )}
+
+            {!isLembur && !isTugasLuar && (jadwals || []).some((j) => j.jenis_jadwal === 'piket') && !(presensiHariIni || []).some((p) => p.jam_masuk) && (
+                <div className="mb-4 flex min-h-14 items-center justify-between rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3" role="note" aria-label="Laporan piket terkunci">
+                    <span>
+                        <span className="block text-sm font-bold text-slate-700">Laporan Piket terkunci</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">Selesaikan presensi masuk dulu untuk membuka</span>
+                    </span>
+                    <Lock className="h-5 w-5 text-slate-400" />
+                </div>
             )}
 
             {!isLembur && !isTugasLuar && officeAttendance && (
