@@ -51,7 +51,7 @@ function SeksiHead({ icon: Icon, title, win, state }) {
     );
 }
 
-export default function Piket({ piket, guruUnit = [], slotKosong = [], mapelUnit = [] }) {
+export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKosong = [], mapelUnit = [] }) {
     const { auth, flash = {}, errors = {} } = usePage().props;
     const now = useNowEveryMinute();
     const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -65,6 +65,25 @@ export default function Piket({ piket, guruUnit = [], slotKosong = [], mapelUnit
     const [insidenForm, setInsidenForm] = useState({ jenis_insiden: '', tindakan: '' });
 
     if (!piket) {
+        if (butuhMasuk) {
+            return (
+                <MobileLayout user={auth.user}>
+                    <Head title="Piket" />
+                    <Card>
+                        <div className="flex items-start gap-3">
+                            <Lock className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                            <div>
+                                <p className="text-sm font-bold text-slate-800">Lakukan presensi masuk dulu.</p>
+                                <p className="mt-0.5 text-xs text-slate-500">Checklist piket terbuka setelah presensi masuk hari ini tercatat.</p>
+                            </div>
+                        </div>
+                        <Link href={route('presensi.absen')} className="mt-4 flex min-h-12 items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white transition-transform active:scale-[0.99]">
+                            Buka presensi
+                        </Link>
+                    </Card>
+                </MobileLayout>
+            );
+        }
         return (
             <MobileLayout user={auth.user}>
                 <Head title="Piket" />

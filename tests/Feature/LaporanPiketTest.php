@@ -15,6 +15,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class LaporanPiketTest extends TestCase
@@ -93,6 +94,20 @@ class LaporanPiketTest extends TestCase
         return ['latitude' => -6.2, 'longitude' => 106.8, 'accuracy' => 15];
     }
 
+    private function masukkan(Pegawai $pegawai, string $tanggal = '2026-10-12'): void
+    {
+        // status di-$guarded: set via assignment langsung, bukan create().
+        $p = Presensi::create([
+            'pegawai_id' => $pegawai->id,
+            'tipe_presensi' => 'kantor',
+            'tanggal' => $tanggal,
+            'jam_masuk' => '07:00:00',
+            'unit_sekolah_id' => $this->unit->id,
+        ]);
+        $p->status = 'hadir';
+        $p->save();
+    }
+
     public function test_halaman_piket_kosong_tanpa_jadwal(): void
     {
         $pegawai = $this->makePegawai();
@@ -102,10 +117,44 @@ class LaporanPiketTest extends TestCase
             ->assertOk();
     }
 
+    public function test_halaman_terkunci_tanpa_masuk(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        Carbon::setTestNow('2026-10-12 10:00:00');
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->get(route('presensi.piket.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('butuhMasuk', true)
+                ->where('piket', null)
+            );
+        Carbon::setTestNow();
+    }
+
+    public function test_item_ditolak_tanpa_masuk(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        Carbon::setTestNow('2026-10-12 08:00:00');
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'gerbang', 'mode' => 'centang'],
+                $this->geo()
+            ));
+
+        $res->assertStatus(422)->assertJsonValidationErrors('presensi');
+        Carbon::setTestNow();
+        $this->assertDatabaseCount('laporan_piket', 0);
+    }
+
     public function test_item_gerbang_dalam_radius_diterima(): void
     {
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
         Carbon::setTestNow('2026-10-12 08:00:00'); // Senin, seksi pagi
 
         $res = $this->actingAs($pegawai->user, 'web_mobile')
@@ -128,6 +177,7 @@ class LaporanPiketTest extends TestCase
     {
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
         Carbon::setTestNow('2026-10-12 08:00:00');
 
         $res = $this->actingAs($pegawai->user, 'web_mobile')
@@ -145,6 +195,7 @@ class LaporanPiketTest extends TestCase
     {
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
         Carbon::setTestNow('2026-10-12 06:00:00'); // sebelum slot
 
         $res = $this->actingAs($pegawai->user, 'web_mobile')
@@ -162,6 +213,7 @@ class LaporanPiketTest extends TestCase
     {
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
         $post = fn (string $now, array $payload) => $this->actingAs($pegawai->user, 'web_mobile')
             ->postJson(route('presensi.piket.item'), array_merge($payload, $this->geo()));
 
@@ -190,6 +242,7 @@ class LaporanPiketTest extends TestCase
     {
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
 
         Carbon::setTestNow('2026-10-12 14:00:00');
         $res = $this->actingAs($pegawai->user, 'web_mobile')
@@ -203,6 +256,7 @@ class LaporanPiketTest extends TestCase
     {
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
 
         Carbon::setTestNow('2026-10-12 08:00:00');
         $this->actingAs($pegawai->user, 'web_mobile')
@@ -229,6 +283,7 @@ class LaporanPiketTest extends TestCase
     {
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
         $guruHadir = $this->makePegawai('Guru Hadir');
         $guruIzin = $this->makePegawai('Guru Izin');
 
@@ -296,6 +351,7 @@ class LaporanPiketTest extends TestCase
     {
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
         $guru = $this->makePegawai('Guru Absen');
         $slot = $this->makeMengajarSlot($guru);
 
@@ -321,6 +377,7 @@ class LaporanPiketTest extends TestCase
     {
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
         $unitLain = UnitSekolah::create([
             'nama' => 'Unit Lain', 'singkatan' => 'UL',
             'latitude' => -6.3, 'longitude' => 106.9, 'radius_meter' => 100,
@@ -352,6 +409,7 @@ class LaporanPiketTest extends TestCase
     {
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
         $guru = $this->makePegawai('Guru Absen');
         $mapelRow = MataPelajaran::create(['nama' => 'Bahasa Inggris', 'unit_sekolah_id' => $this->unit->id]);
 
@@ -374,6 +432,7 @@ class LaporanPiketTest extends TestCase
         $a = $this->makePegawai('Guru A');
         $b = $this->makePegawai('Guru B');
         $this->makePiketJadwal($a);
+        $this->masukkan($a);
         $this->makePiketJadwal($b);
 
         Carbon::setTestNow('2026-10-12 08:00:00');
@@ -392,6 +451,7 @@ class LaporanPiketTest extends TestCase
     {
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
         $guru = $this->makePegawai('Guru Absen');
 
         Carbon::setTestNow('2026-10-12 10:00:00');

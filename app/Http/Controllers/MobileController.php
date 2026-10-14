@@ -1666,14 +1666,22 @@ class MobileController extends Controller
             ->orderBy('jam_mulai')
             ->get();
 
+        $sudahMasuk = $this->sudahMasukHariIni($pegawai->id, $today);
+        $baseProps = [
+            'pegawai' => $pegawai,
+            'sudahMasuk' => $sudahMasuk,
+            'guruUnit' => [],
+            'slotKosong' => [],
+            'mapelUnit' => [],
+        ];
+
         if ($piketJadwals->isEmpty()) {
-            return inertia('Mobile/Piket', [
-                'pegawai' => $pegawai,
-                'piket' => null,
-                'guruUnit' => [],
-                'slotKosong' => [],
-                'mapelUnit' => [],
-            ]);
+            return inertia('Mobile/Piket', $baseProps + ['piket' => null, 'butuhMasuk' => false]);
+        }
+
+        // Checklist terkunci sampai presensi masuk harian tercatat.
+        if (! $sudahMasuk) {
+            return inertia('Mobile/Piket', $baseProps + ['piket' => null, 'butuhMasuk' => true]);
         }
 
         $slot = $piketJadwals->first();
@@ -1717,6 +1725,8 @@ class MobileController extends Controller
 
         return inertia('Mobile/Piket', [
             'pegawai' => $pegawai,
+            'sudahMasuk' => $sudahMasuk,
+            'butuhMasuk' => false,
             'piket' => [
                 'tanggal' => $today,
                 'slot' => [
@@ -1745,6 +1755,7 @@ class MobileController extends Controller
     {
         $pegawai = $this->getPegawai();
         $this->assertTidakSedangIzin($pegawai);
+        $this->assertSudahMasuk($pegawai->id);
 
         $request->validate([
             'kode' => 'required|in:gerbang,cek_absen,kelas_kosong,buku,insiden',
@@ -1851,6 +1862,7 @@ class MobileController extends Controller
     {
         $pegawai = $this->getPegawai();
         $this->assertTidakSedangIzin($pegawai);
+        $this->assertSudahMasuk($pegawai->id);
 
         $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
         $windows = $this->piketWindows($slot);
@@ -1883,6 +1895,27 @@ class MobileController extends Controller
         $laporan->save();
 
         return back()->with('message', 'Laporan piket terkirim.');
+    }
+
+    /**
+     * Syarat buka checklist piket: sudah ada presensi masuk hari ini
+     * (tipe apa pun). Cegah isi checklist tanpa hadir.
+     */
+    private function sudahMasukHariIni(int $pegawaiId, ?string $tanggal = null): bool
+    {
+        return Presensi::where('pegawai_id', $pegawaiId)
+            ->where('tanggal', $tanggal ?? Carbon::today()->toDateString())
+            ->whereNotNull('jam_masuk')
+            ->exists();
+    }
+
+    private function assertSudahMasuk(int $pegawaiId): void
+    {
+        if (! $this->sudahMasukHariIni($pegawaiId)) {
+            throw ValidationException::withMessages([
+                'presensi' => 'Lakukan presensi masuk terlebih dahulu.',
+            ]);
+        }
     }
 
     private function hariIniIndo(): string

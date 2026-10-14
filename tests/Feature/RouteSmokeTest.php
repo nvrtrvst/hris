@@ -301,6 +301,8 @@ class RouteSmokeTest extends TestCase
         'presensi.piket.index' => [
             'pegawai' => true,
             'piket' => false,
+            'sudahMasuk' => false,
+            'butuhMasuk' => false,
             'guruUnit' => false,
             'slotKosong' => false,
             'mapelUnit' => false,

@@ -239,13 +239,22 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                 )}
             </section>
 
-            {jadwals.some((j) => j.jenis_jadwal === 'piket') && (
+            {jadwals.some((j) => j.jenis_jadwal === 'piket') && todayRecords.some((r) => r.jam_masuk) && (
                 <Link href={route('presensi.piket.index')} className="mt-5 flex min-h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
                     <span>
                         <span className="block text-sm font-bold text-slate-900">Laporan Piket</span>
                         <span className="mt-0.5 block text-xs text-slate-500">Isi checklist tugas piket hari ini</span>
                     </span>
                     <ClipboardCheck className="h-5 w-5 text-primary" />
+                </Link>
+            )}
+            {jadwals.some((j) => j.jenis_jadwal === 'piket') && !todayRecords.some((r) => r.jam_masuk) && (
+                <Link href={route('presensi.absen')} className="mt-5 flex min-h-14 items-center justify-between rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-left transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
+                    <span>
+                        <span className="block text-sm font-bold text-slate-700">Laporan Piket terkunci</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">Lakukan presensi masuk dulu untuk membuka</span>
+                    </span>
+                    <Lock className="h-5 w-5 text-slate-400" />
                 </Link>
             )}
 
