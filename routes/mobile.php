@@ -88,6 +88,7 @@ Route::middleware('auth:web_mobile')->group(function () {
 
     // Laporan Piket Harian — hanya untuk yang terjadwal piket hari ini
     Route::get('/piket', [MobileController::class, 'piket'])->name('presensi.piket.index');
+    Route::get('/piket/riwayat', [MobileController::class, 'piketRiwayat'])->name('presensi.piket.riwayat');
     Route::post('/piket/item', [MobileController::class, 'storePiketItem'])
         ->middleware('throttle:60,1')->name('presensi.piket.item');
     Route::post('/piket/submit', [MobileController::class, 'submitPiket'])

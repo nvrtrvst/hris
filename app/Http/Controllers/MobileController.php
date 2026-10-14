@@ -1662,6 +1662,34 @@ class MobileController extends Controller
     // ── Laporan Piket Harian ──────────────────────────────────────────
 
     /**
+     * Riwayat laporan piket milik sendiri (read-only, 30 hari terakhir).
+     */
+    public function piketRiwayat()
+    {
+        $pegawai = $this->getPegawai();
+
+        $riwayat = LaporanPiket::where('pegawai_id', $pegawai->id)
+            ->orderBy('tanggal', 'desc')
+            ->limit(30)
+            ->get()
+            ->map(fn (LaporanPiket $lap) => [
+                'id' => $lap->id,
+                'tanggal' => $lap->tanggal->format('Y-m-d'),
+                'status' => $lap->status,
+                'done' => $lap->doneCount(),
+                'total' => count(LaporanPiket::ITEM_WAJIB),
+                'perlu_cek' => $lap->perluCekCount(),
+                'submitted_at' => $lap->submitted_at?->format('Y-m-d H:i'),
+                'items' => $lap->items ?? [],
+            ]);
+
+        return inertia('Mobile/PiketRiwayat', [
+            'riwayat' => $riwayat,
+            'label' => LaporanPiket::ITEM_LABEL,
+        ]);
+    }
+
+    /**
      * Halaman checklist piket hari ini (mobile). prop `piket` null bila
      * pegawai tidak punya jadwal jenis=piket hari ini (empty state).
      */

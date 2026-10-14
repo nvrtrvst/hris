@@ -11,7 +11,9 @@ use App\Exports\LaporanRekapKehadiranHarianExport;
 use App\Exports\LaporanRekapMengajarExport;
 use App\Http\Requests\KcdReportRequest;
 use App\Http\Requests\LaporanGenerateRequest;
+use App\Models\Jadwal;
 use App\Models\LaporanKcdCetak;
+use App\Models\LaporanPiket;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
@@ -477,5 +479,115 @@ class LaporanController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Halaman Laporan Piket: semua laporan per periode + daftar petugas
+     * piket yang belum melapor (jadwal ada, laporan tidak ada).
+     */
+    public function laporanPiket(Request $request)
+    {
+        $user = $request->user();
+        if (! $user || ! $user->can('view_presensi')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'status' => 'nullable|in:semua,draft,submitted,perlu_cek,belum',
+        ]);
+
+        $end = isset($validated['end_date']) ? Carbon::parse($validated['end_date']) : Carbon::today();
+        $start = isset($validated['start_date']) ? Carbon::parse($validated['start_date']) : $end->copy()->subDays(6);
+        if ($start->diffInDays($end) > 31) {
+            $start = $end->copy()->subDays(31);
+        }
+        $status = $validated['status'] ?? 'semua';
+
+        // Unit: request untuk superadmin, unit sendiri untuk admin unit.
+        $unitId = $validated['unit_sekolah_id'] ?? null;
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $unitId = $user->unit_sekolah_id;
+        }
+        $units = $user->can('view_all_units')
+            ? UnitSekolah::orderBy('nama')->get(['id', 'nama', 'singkatan'])
+            : UnitSekolah::where('id', $unitId)->get(['id', 'nama', 'singkatan']);
+
+        $laporan = LaporanPiket::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama'])
+            ->whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
+            ->when($unitId, fn ($q) => $q->where('unit_sekolah_id', $unitId))
+            ->orderBy('tanggal', 'desc')
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(fn (LaporanPiket $lap) => [
+                'id' => $lap->id,
+                'tanggal' => $lap->tanggal->format('Y-m-d'),
+                'pegawai' => $lap->pegawai?->only(['id', 'nama_lengkap']),
+                'unit' => $lap->unitSekolah?->nama,
+                'status' => $lap->status,
+                'done' => $lap->doneCount(),
+                'total' => count(LaporanPiket::ITEM_WAJIB),
+                'perlu_cek' => $lap->perluCekCount(),
+                'submitted_at' => $lap->submitted_at?->format('Y-m-d H:i'),
+                'items' => $lap->items ?? [],
+            ]);
+
+        if ($status === 'draft' || $status === 'submitted') {
+            $laporan = $laporan->where('status', $status)->values();
+        } elseif ($status === 'perlu_cek') {
+            $laporan = $laporan->where('perlu_cek', '>', 0)->values();
+        }
+
+        // Belum melapor: jadwal piket per tanggal minus yang sudah ada laporan.
+        $belum = collect();
+        if ($status === 'semua' || $status === 'belum') {
+            $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
+            $sudah = LaporanPiket::whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
+                ->when($unitId, fn ($q) => $q->where('unit_sekolah_id', $unitId))
+                ->get(['pegawai_id', 'tanggal'])
+                ->map(fn ($r) => $r->pegawai_id.'|'.$r->tanggal->format('Y-m-d'))
+                ->all();
+            $sudah = array_flip($sudah);
+
+            $cursor = $start->copy();
+            while ($cursor->lte($end)) {
+                $jadwals = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama'])
+                    ->where('hari', $hariMap[$cursor->format('l')])
+                    ->where('jenis_jadwal', 'piket')
+                    ->when($unitId, fn ($q) => $q->where('unit_sekolah_id', $unitId))
+                    ->orderBy('jam_mulai')
+                    ->get();
+                foreach ($jadwals as $j) {
+                    if (! isset($sudah[$j->pegawai_id.'|'.$cursor->toDateString()])) {
+                        $belum->push([
+                            'tanggal' => $cursor->toDateString(),
+                            'pegawai' => $j->pegawai?->only(['id', 'nama_lengkap']),
+                            'unit' => $j->unitSekolah?->nama,
+                            'jam' => substr((string) $j->jam_mulai, 0, 5).'-'.substr((string) $j->jam_selesai, 0, 5),
+                        ]);
+                    }
+                }
+                $cursor->addDay();
+            }
+        }
+
+        if ($status === 'belum') {
+            $laporan = collect();
+        }
+
+        return Inertia::render('Laporan/Piket', [
+            'filters' => [
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'unit_sekolah_id' => $unitId,
+                'status' => $status,
+            ],
+            'units' => $units,
+            'laporan' => $laporan->values(),
+            'belum' => $belum->values(),
+            'label' => LaporanPiket::ITEM_LABEL,
+        ]);
     }
 }

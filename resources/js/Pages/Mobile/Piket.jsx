@@ -134,11 +134,18 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                 <Link href={route('presensi.dashboard')} className="mb-2 inline-flex items-center text-sm font-semibold text-primary transition-colors active:scale-95">
                     <ArrowLeft className="mr-1 h-4 w-4" /> Beranda
                 </Link>
-                <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Piket Hari Ini</h1>
-                <p className="mt-0.5 text-sm text-slate-500">
-                    {format(new Date(), 'EEEE, d MMMM yyyy', { locale: id })} ({slot.jam_mulai}-{slot.jam_selesai})
-                    {slot.unit ? ` ${slot.unit}` : ''}
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                    <div>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Piket Hari Ini</h1>
+                        <p className="mt-0.5 text-sm text-slate-500">
+                            {format(new Date(), 'EEEE, d MMMM yyyy', { locale: id })} ({slot.jam_mulai}-{slot.jam_selesai})
+                            {slot.unit ? ` ${slot.unit}` : ''}
+                        </p>
+                    </div>
+                    <Link href={route('presensi.piket.riwayat')} className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-bold text-primary ring-1 ring-slate-200 transition-transform active:scale-95">
+                        Riwayat
+                    </Link>
+                </div>
             </div>
 
             {flash.message && <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}

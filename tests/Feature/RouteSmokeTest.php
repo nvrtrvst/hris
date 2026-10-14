@@ -152,6 +152,7 @@ class RouteSmokeTest extends TestCase
         'laporan.kcd' => 'Laporan/Kcd',
         'laporan.rekap-detail' => 'Laporan/RekapDetail',
         'laporan.rekap-mengajar-detail' => 'Laporan/RekapMengajarDetail',
+        'laporan.piket' => 'Laporan/Piket',
 
         // ── Mobile (web_mobile) ──
         'presensi.dashboard' => 'Mobile/Dashboard',
@@ -168,6 +169,7 @@ class RouteSmokeTest extends TestCase
         'presensi.koreksi.create' => 'Mobile/Koreksi/Create',
         'presensi.absen' => 'Mobile/Absen',
         'presensi.piket.index' => 'Mobile/Piket',
+        'presensi.piket.riwayat' => 'Mobile/PiketRiwayat',
         'presensi.profile.edit' => 'Mobile/Profile',
         // presensi.lengkapi-data → Mobile/LengkapiData karena test berjalan di
         // prefix /mobile (is('mobile*') true); di produksi (domain mobile tanpa
@@ -263,6 +265,7 @@ class RouteSmokeTest extends TestCase
         'unit-sekolah.edit' => ['unit' => true],
         'pengajuan-izin.index' => ['pengajuans' => true, 'filters' => false, 'stats' => true],
         'laporan.index' => ['units' => true],
+        'laporan.piket' => ['filters' => true, 'units' => true, 'laporan' => false, 'belum' => false, 'label' => true],
         'users.index' => ['users' => true, 'filters' => false, 'stats' => true],
         'users.create' => ['allRoles' => true, 'unitSekolah' => true],
         'users.edit' => ['userData' => true, 'allPermissions' => true, 'allRoles' => true],
@@ -291,6 +294,7 @@ class RouteSmokeTest extends TestCase
         'presensi.notifikasi.index' => ['notifications' => true, 'filters' => false],
         'presensi.izin.index' => ['pengajuan' => true],
         'presensi.izin.create' => ['pegawai' => true],
+        'presensi.piket.riwayat' => ['riwayat' => false, 'label' => true],
         'presensi.absen' => [
             'pegawai' => true,
             'jadwals' => true,

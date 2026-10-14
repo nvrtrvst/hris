@@ -593,6 +593,92 @@ class LaporanPiketTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_admin_lihat_laporan_dan_belum_melapor(): void
+    {
+        $pegawai = $this->makePegawai('Guru Lapor');
+        $jadwal = $this->makePiketJadwal($pegawai);
+        $laporan = LaporanPiket::create([
+            'pegawai_id' => $pegawai->id,
+            'jadwal_id' => $jadwal->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-10-12',
+            'items' => ['gerbang' => ['done_at' => '07:05:00', 'terlambat_count' => 2]],
+            'status' => 'draft',
+        ]);
+
+        // Petugas kedua: ada jadwal, tanpa laporan.
+        $pegawai2 = $this->makePegawai('Guru Malas');
+        $this->makePiketJadwal($pegawai2);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->get('/laporan/piket?start_date=2026-10-12&end_date=2026-10-12')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Laporan/Piket')
+                ->has('laporan', 1)
+                ->where('laporan.0.id', $laporan->id)
+                ->where('laporan.0.done', 1)
+                ->has('belum', 1)
+                ->where('belum.0.pegawai.nama_lengkap', 'Guru Malas')
+            );
+    }
+
+    public function test_admin_tanpa_izin_ditolak_dan_scope_unit(): void
+    {
+        $pegawai = $this->makePegawai('Guru Lapor');
+        $this->makePiketJadwal($pegawai);
+        LaporanPiket::create([
+            'pegawai_id' => $pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-10-12',
+            'status' => 'draft',
+        ]);
+
+        // Pegawai biasa tanpa view_presensi.
+        $this->actingAs($pegawai->user, 'web_admin')
+            ->get('/laporan/piket')
+            ->assertForbidden();
+
+        // Admin unit lain tidak melihat unit ini.
+        $unit2 = UnitSekolah::create([
+            'nama' => 'SD Lain', 'singkatan' => 'SDL',
+            'latitude' => -6.3, 'longitude' => 106.9, 'radius_meter' => 100,
+        ]);
+        $adminLain = User::factory()->create(['role' => 'admin_unit', 'unit_sekolah_id' => $unit2->id]);
+        $adminLain->assignRole('admin_unit');
+
+        $this->actingAs($adminLain, 'web_admin')
+            ->get('/laporan/piket?start_date=2026-10-12&end_date=2026-10-12')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('laporan', 0)
+                ->has('belum', 0)
+            );
+    }
+
+    public function test_riwayat_mobile_hanya_milik_sendiri(): void
+    {
+        $a = $this->makePegawai('Guru A');
+        $b = $this->makePegawai('Guru B');
+        foreach ([$a, $b] as $pg) {
+            LaporanPiket::create([
+                'pegawai_id' => $pg->id,
+                'unit_sekolah_id' => $this->unit->id,
+                'tanggal' => '2026-10-12',
+                'status' => 'submitted',
+            ]);
+        }
+
+        $this->actingAs($a->user, 'web_mobile')
+            ->get(route('presensi.piket.riwayat'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/PiketRiwayat')
+                ->has('riwayat', 1)
+                ->where('riwayat.0.status', 'submitted')
+            );
+    }
+
     public function test_laporan_milik_sendiri_tidak_bocor(): void
     {
         $a = $this->makePegawai('Guru A');
