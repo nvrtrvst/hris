@@ -93,7 +93,7 @@ class LaporanIzinCutiTest extends TestCase
             ->assertOk();
 
         $this->assertNotEmpty($res->json('data'));
-        $statuses = collect($res->json('data'))->map(fn ($r) => $r[8])->all();
+        $statuses = collect($res->json('data'))->map(fn ($r) => $r[9])->all();
         $this->assertContains('Sakit', $statuses);
         $this->assertContains('Cuti', $statuses);
     }
@@ -132,12 +132,12 @@ class LaporanIzinCutiTest extends TestCase
             ]))
             ->assertOk();
 
-        $statuses = collect($res->json('data'))->map(fn ($r) => $r[10])->all();
+        $statuses = collect($res->json('data'))->map(fn ($r) => $r[11])->all();
         $this->assertContains('Izin', $statuses, 'Row izin tidak muncul di laporan tanpa filter');
 
         // Laporan tipe kantor: row izin juga harus tampil (tipe 'kantor' kini
         // di-set eksplisit oleh generatePresensi). Kolom mapel/kelas hilang
-        // saat filter kantor → Status di index 8.
+        // saat filter kantor → Status di index 9 (setelah kolom Jenis Jadwal).
         $res = $this->actingAs($this->superadmin, 'web_admin')
             ->getJson('/laporan/preview?'.http_build_query([
                 'type' => 'presensi',
@@ -148,7 +148,7 @@ class LaporanIzinCutiTest extends TestCase
             ->assertOk();
 
         $this->assertNotEmpty($res->json('data'));
-        $statuses = collect($res->json('data'))->map(fn ($r) => $r[8])->all();
+        $statuses = collect($res->json('data'))->map(fn ($r) => $r[9])->all();
         $this->assertContains('Izin', $statuses, 'Row izin tidak muncul di laporan filter kantor');
     }
 }

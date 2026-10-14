@@ -59,7 +59,7 @@ class LaporanController extends Controller
         $status = $validated['status_filter'] ?? null;
         $export = null;
         if ($validated['type'] === 'presensi') {
-            $export = new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $tipe, $search, $status);
+            $export = new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $tipe, $search, $status, $validated['jadwal_filter'] ?? null);
         } elseif ($validated['type'] === 'penggajian') {
             $export = new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search);
         } elseif ($validated['type'] === 'lemburan') {
@@ -122,7 +122,7 @@ class LaporanController extends Controller
         $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
+            new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null, $validated['jadwal_filter'] ?? null),
             'Laporan_Presensi_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }

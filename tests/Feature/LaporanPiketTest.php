@@ -94,6 +94,18 @@ class LaporanPiketTest extends TestCase
         return ['latitude' => -6.2, 'longitude' => 106.8, 'accuracy' => 15];
     }
 
+    private function fotoBase64(): string
+    {
+        $img = imagecreatetruecolor(320, 240);
+        imagefill($img, 0, 0, imagecolorallocate($img, 255, 255, 255));
+        ob_start();
+        imagepng($img);
+        $png = ob_get_clean();
+        imagedestroy($img);
+
+        return 'data:image/png;base64,'.base64_encode($png);
+    }
+
     private function masukkan(Pegawai $pegawai, string $tanggal = '2026-10-12'): void
     {
         // status di-$guarded: set via assignment langsung, bukan create().
@@ -115,6 +127,89 @@ class LaporanPiketTest extends TestCase
         $this->actingAs($pegawai->user, 'web_mobile')
             ->get(route('presensi.piket.index'))
             ->assertOk();
+    }
+
+    public function test_piket_only_bisa_masuk_kantor(): void
+    {
+        $pegawai = $this->makePegawai();
+        $pegawai->wajib_kantor = true;
+        $pegawai->save();
+        $this->makePiketJadwal($pegawai);
+        Carbon::setTestNow('2026-10-12 07:00:00'); // Senin pagi
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->get(route('presensi.absen'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('officeAttendance', true));
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.store'), array_merge(
+                ['tipe' => 'masuk', 'foto' => $this->fotoBase64()],
+                $this->geo()
+            ));
+        $res->assertOk()->assertJson(['success' => true]);
+        Carbon::setTestNow();
+
+        $this->assertDatabaseHas('presensi', [
+            'pegawai_id' => $pegawai->id,
+            'tipe_presensi' => 'kantor',
+        ]);
+    }
+
+    public function test_slide_piket_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        // Gate slide khusus tetap: status via relasi kode (bukan find PK).
+        $pegawai->status_kepegawaian = 'guru_tetap_yayasan';
+        $pegawai->save();
+        $slot = $this->makePiketJadwal($pegawai);
+        Carbon::setTestNow('2026-10-12 08:00:00');
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.slide'), array_merge(
+                ['jadwal_id' => $slot->id, 'tipe' => 'masuk'],
+                $this->geo()
+            ));
+
+        $res->assertStatus(422);
+        $this->assertStringContainsString('Piket tidak perlu slide', $res->json('message'));
+        Carbon::setTestNow();
+    }
+
+    public function test_store_absen_piket_jadwal_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        Carbon::setTestNow('2026-10-12 08:00:00');
+
+        // Wajib kantor agar sampai cabang jadwal (bukan error pilih-jadwal).
+        $pegawai->wajib_kantor = true;
+        $pegawai->save();
+        $slot = Jadwal::where('pegawai_id', $pegawai->id)->where('jenis_jadwal', 'piket')->first();
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.store'), array_merge(
+                ['tipe' => 'masuk', 'jadwal_id' => $slot->id, 'foto' => $this->fotoBase64()],
+                $this->geo()
+            ));
+
+        $res->assertStatus(422)->assertJsonValidationErrors('jadwal_id');
+        Carbon::setTestNow();
+    }
+
+    public function test_finalize_alpa_lewati_slot_piket(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        // Bypass hook saving (paksa wajib false apa adanya).
+        Pegawai::whereKey($pegawai->id)->update(['wajib_kantor' => false]);
+
+        $this->artisan('presensi:finalize-alpa', ['--date' => '2026-10-12'])
+            ->assertSuccessful();
+
+        // Tak ada baris auto untuk slot piket; pegawai non-wajib-kantor tanpa
+        // jadwal non-piket juga tak dapat baris kantor.
+        $this->assertDatabaseCount('presensi', 0);
     }
 
     public function test_halaman_terkunci_tanpa_masuk(): void

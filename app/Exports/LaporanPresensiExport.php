@@ -33,7 +33,9 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
     protected $status;
 
-    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $tipe = null, $search = null, $status = null)
+    protected $jadwalJenis;
+
+    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $tipe = null, $search = null, $status = null, $jadwalJenis = null)
     {
         $this->start_date = $start_date;
         $this->end_date = $end_date;
@@ -42,6 +44,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
         $this->tipe = $tipe;
         $this->search = $search;
         $this->status = $status;
+        $this->jadwalJenis = $jadwalJenis;
     }
 
     public function collection()
@@ -56,6 +59,11 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
         $this->applyJenisFilter($query);
         $this->applyTipeFilter($query);
+
+        if ($this->jadwalJenis !== null && $this->jadwalJenis !== '') {
+            $jenisJadwal = $this->jadwalJenis;
+            $query->whereHas('jadwal', fn ($q) => $q->where('jenis_jadwal', $jenisJadwal));
+        }
 
         if ($this->status !== null && $this->status !== '') {
             $query->where('status', $this->status);
@@ -168,6 +176,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
             $pegawai?->nuptk ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $tipeLabel,
+            $presensi->jadwal?->jenis_jadwal ? ucfirst(str_replace('_', ' ', $presensi->jadwal->jenis_jadwal)) : '-',
         ];
 
         // Kolom Mapel/Kelas hanya relevan untuk presensi mengajar —
@@ -200,6 +209,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
             'NIP',
             'Jenis',
             'Tipe Presensi',
+            'Jenis Jadwal',
         ];
 
         if ($this->tipe !== 'kantor') {
@@ -223,7 +233,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
     public function registerEvents(): array
     {
-        // Kolom terakhir menyesuaikan jumlah headings (kantor = 10, lainnya = 12).
+        // Kolom terakhir menyesuaikan jumlah headings (kantor = 11, lainnya = 13).
         $lastCol = chr(ord('A') + count($this->headings()) - 1);
 
         return [

@@ -103,7 +103,7 @@ class LaporanPresensiKantorAlpaTest extends TestCase
         $data = $res->json('data');
         $this->assertCount(1, $data, '2 baris alpa ber-jadwal harus terdedup jadi 1 baris harian');
         $this->assertSame('Kantor', $data[0][4], 'Alpa di mode kantor harus berlabel Kantor');
-        $this->assertSame('Alpa', $data[0][8]);
+        $this->assertSame('Alpa', $data[0][9]);
         $this->assertSame(1, $res->json('total'));
     }
 

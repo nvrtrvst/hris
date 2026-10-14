@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { Link } from '@inertiajs/react';
 import { checkGeofence } from '@/Utils/geo';
 import { menitKeJam } from '@/Utils/waktuPresensi';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '@/Constants/AppConstants';
@@ -8,7 +9,7 @@ import { useCamera } from '@/Hooks/useCamera';
 import BuktiKegiatan from '@/Pages/Mobile/Partials/BuktiKegiatan';
 import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
-import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, Clock } from 'lucide-react';
+import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, Clock, ClipboardCheck, Lock } from 'lucide-react';
 
 const FOTO_PAGI = 'foto_pagi';
 const SLIDE_JADWAL = 'slide_jadwal';
@@ -110,8 +111,14 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const primaryUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0] ?? null;
     const jamSore = primaryUnit?.jam_pulang_kantor ? toMin(primaryUnit.jam_pulang_kantor) : 960;
 
+    // Piket bukan sesi mengajar: keluar dari agenda slide, tugasnya lewat
+    // checklist Laporan Piket (sudah presensi masuk + GPS per centang).
+    const slideJadwals = useMemo(() => (jadwals || []).filter((j) => j.jenis_jadwal !== 'piket'), [jadwals]);
+    const piketJadwals = useMemo(() => (jadwals || []).filter((j) => j.jenis_jadwal === 'piket'), [jadwals]);
+    const sudahMasuk = useMemo(() => (presensiHariIni || []).some((p) => p.jam_masuk), [presensiHariIni]);
+
     // Kelompokkan jadwal berurutan dengan mapel sama (gap ≤ 60 menit).
-    const groupedJadwals = useMemo(() => groupConsecutiveJadwals(jadwals), [jadwals]);
+    const groupedJadwals = useMemo(() => groupConsecutiveJadwals(slideJadwals), [slideJadwals]);
 
     // Helper: semua jadwal dalam grup sudah di-slide (jam_masuk tercatat).
     const isGroupSlid = useCallback((g) => g.allIds.every((id) => slidIds.has(id)), [slidIds]);
@@ -162,10 +169,10 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         // Foto sore hanya setelah semua jadwal selesai DAN lewat jam pulang kantor.
         if (semuaBeres && jamSekarang >= jamSore) return FOTO_SORE;
         // Tanpa jadwal sama sekali: foto sore tetap tersedia setelah jam sore tiba.
-        if (jadwals.length === 0 && jamSekarang >= jamSore) return FOTO_SORE;
+        if (slideJadwals.length === 0 && jamSekarang >= jamSore) return FOTO_SORE;
 
         return SLIDE_JADWAL;
-    }, [allRecordsComplete, pagiRecord, semuaBeres, jadwals.length, jamSekarang]);
+    }, [allRecordsComplete, pagiRecord, semuaBeres, slideJadwals.length, jamSekarang]);
 
     const tugasLuarOpen = useMemo(() => presensiHariIni.some((p) => p.is_tugas_luar && p.jam_masuk && !p.jam_keluar), [presensiHariIni]);
     const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_luar && p.jam_masuk), [presensiHariIni]);
@@ -578,7 +585,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             )}
 
             {/* Jadwal section - always visible (hanya yg sudah waktunya) */}
-            {jadwals.length > 0 && (
+            {slideJadwals.length > 0 && (
                 <section aria-labelledby="jadwal-heading" className="mb-4">
                     <div className="mb-2 flex items-center justify-between">
                         <h2 id="jadwal-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Agenda Mengajar</h2>
@@ -856,11 +863,32 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 </>
             )}
 
-            {activeGroups.length === 0 && jadwals.length > 0 && phase !== SELESAI && (
+            {activeGroups.length === 0 && slideJadwals.length > 0 && phase !== SELESAI && (
                 <Empty icon={Clock} title="Tidak ada jadwal yang bisa di-slide" subtitle={semuaBeres ? 'Semua jadwal sudah berakhir — lanjut ke foto sore.' : 'Jadwal aktif akan muncul setelah jam mengajar tiba.'} />
             )}
-            {jadwals.length === 0 && phase !== SELESAI && (
-                <Empty icon={Clock} title="Tidak ada jadwal hari ini" subtitle="Jika tidak ada jadwal, lanjut ke foto sore." />
+            {slideJadwals.length === 0 && phase !== SELESAI && (
+                <Empty icon={Clock} title="Tidak ada jadwal mengajar hari ini" subtitle={piketJadwals.length > 0 ? 'Lanjut ke foto sore. Tugas piket lewat checklist di bawah.' : 'Jika tidak ada jadwal, lanjut ke foto sore.'} />
+            )}
+
+            {piketJadwals.length > 0 && sudahMasuk && (
+                <Link href={route('presensi.piket.index')} className="mb-4 flex min-h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
+                    <span>
+                        <span className="block text-sm font-bold text-slate-900">Laporan Piket{piketJadwals.length > 1 ? ` (${piketJadwals.length} slot)` : ''}</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">
+                            {piketJadwals.map((j) => `${String(j.jam_mulai || '').substring(0, 5)}-${String(j.jam_selesai || '').substring(0, 5)}`).join(', ')} · isi checklist tugas piket
+                        </span>
+                    </span>
+                    <ClipboardCheck className="h-5 w-5 shrink-0 text-primary" />
+                </Link>
+            )}
+            {piketJadwals.length > 0 && !sudahMasuk && (
+                <div className="mb-4 flex min-h-14 items-center justify-between rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3" role="note" aria-label="Laporan piket terkunci">
+                    <span>
+                        <span className="block text-sm font-bold text-slate-700">Laporan Piket terkunci</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">Selesaikan presensi masuk dulu untuk membuka</span>
+                    </span>
+                    <Lock className="h-5 w-5 shrink-0 text-slate-400" />
+                </div>
             )}
 
             {phase === SELESAI && (

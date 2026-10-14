@@ -40,6 +40,7 @@ class LaporanGenerateRequest extends FormRequest
             'jenis_filter' => 'nullable|in:pendidik,kependidikan',
             'tipe_filter' => 'nullable|in:kantor,mengajar',
             'status_filter' => 'nullable|in:hadir,telat,sakit,izin,cuti,alpa',
+            'jadwal_filter' => 'nullable|in:mengajar,piket,ekskul,shift_satpam,shift_kebersihan,lainnya',
             'search' => 'nullable|string|max:100',
         ];
     }
@@ -58,6 +59,7 @@ class LaporanGenerateRequest extends FormRequest
             'jenis_filter.in' => 'Jenis pegawai harus salah satu dari: pendidik, kependidikan',
             'tipe_filter.in' => 'Tipe presensi harus salah satu dari: kantor, mengajar',
             'status_filter.in' => 'Status harus salah satu dari: hadir, telat, sakit, izin, cuti, alpa',
+            'jadwal_filter.in' => 'Jenis jadwal harus salah satu dari: mengajar, piket, ekskul, shift_satpam, shift_kebersihan, lainnya',
             'search.max' => 'Kata kunci pencarian maksimal 100 karakter',
         ];
     }

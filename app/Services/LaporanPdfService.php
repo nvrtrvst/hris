@@ -39,7 +39,7 @@ class LaporanPdfService
         ini_set('memory_limit', '1G');
 
         $export = match ($type) {
-            'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
+            'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null, $validated['jadwal_filter'] ?? null),
             'penggajian' => new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
             'lemburan' => new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
             'rekap_mengajar' => new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),

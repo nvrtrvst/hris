@@ -37,6 +37,8 @@ class PresensiMessages
 
     public const BELUM_ABSEN_MASUK = 'Anda belum absen masuk.';
 
+    public const PIKET_TANPA_SLIDE = 'Piket tidak perlu slide. Lakukan presensi kantor, lalu isi checklist Laporan Piket.';
+
     // Ukuran foto (satu sumber kebenaran agar request & service konsisten)
     // Batas binary (decoded) — dipakai ImageUploadService & job foto.
     public const MAX_FOTO_BYTES = 5 * 1024 * 1024;

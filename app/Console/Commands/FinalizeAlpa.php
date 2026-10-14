@@ -83,7 +83,9 @@ class FinalizeAlpa extends Command
                     continue;
                 }
 
-                $jadwalsHari = $pegawai->jadwals->filter(fn ($j) => $j->hari === $hariTarget);
+                // Slot piket bukan sesi presensi: lewati (akuntabilitas via
+                // laporan piket). Piket-only ikut logika kantor di bawah.
+                $jadwalsHari = $pegawai->jadwals->filter(fn ($j) => $j->hari === $hariTarget && $j->jenis_jadwal !== 'piket');
 
                 // Per-jadwal alpa-mengajar: jalan untuk SEMUA pegawai yang punya jadwal hari itu,
                 // baik sudah hadir sebagian maupun tidak hadir sama sekali.

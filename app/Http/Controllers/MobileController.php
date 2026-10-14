@@ -474,8 +474,15 @@ class MobileController extends Controller
 
         $izinHariIni = $this->izinHariIniUntuk($pegawai);
 
-        // Kantor: Minggu selalu off, Sabtu off jika unit tidak support
-        $kantorAktif = $pegawai->wajib_kantor && ($jadwalHariIni->isEmpty());
+        // Kantor: Minggu selalu off, Sabtu off jika unit tidak support.
+        // Slot piket bukan sesi presensi — pegawai yang hari ini hanya piket
+        // boleh absen masuk kantor (pintu check-in duty piket).
+        $adaNonPiket = $jadwalHariIni->contains(function ($j) {
+            $jenis = is_array($j) ? ($j['jenis_jadwal'] ?? null) : ($j->jenis_jadwal ?? null);
+
+            return $jenis !== 'piket';
+        });
+        $kantorAktif = $pegawai->wajib_kantor && ! $adaNonPiket;
         if ($hariIniIndo === 'Minggu') {
             $kantorAktif = false;
         } elseif ($hariIniIndo === 'Sabtu') {
@@ -584,6 +591,9 @@ class MobileController extends Controller
             if (! $jadwal) {
                 throw ValidationException::withMessages(['jadwal_id' => PresensiMessages::PEMILIH_JADWAL_DULU]);
             }
+            if ($jadwal->jenis_jadwal === 'piket') {
+                throw ValidationException::withMessages(['jadwal_id' => PresensiMessages::PIKET_TANPA_SLIDE]);
+            }
             $geo = $this->resolveGeofenceLocation($pegawai);
             if (! $geo['unit']) {
                 $message = PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT;
@@ -615,7 +625,7 @@ class MobileController extends Controller
             $unitSekolah = $geo['unitSekolah'];
             $assignedLocations = $geo['locations'];
             $jadwal = null;
-        } elseif ($pegawai->wajib_kantor && ! Jadwal::where('pegawai_id', $pegawai->id)->where('hari', $hariIni)->exists()) {
+        } elseif ($pegawai->wajib_kantor && ! Jadwal::where('pegawai_id', $pegawai->id)->where('hari', $hariIni)->where('jenis_jadwal', '!=', 'piket')->exists()) {
             $geo = $this->resolveGeofenceLocation($pegawai);
             if (! $geo['unit']) {
                 $message = PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT;
@@ -1353,6 +1363,9 @@ class MobileController extends Controller
 
         abort_unless($jadwal, 422, 'Jadwal tidak ditemukan.');
         abort_unless($jadwal->unitSekolah, 422, 'Unit jadwal tidak tersedia.');
+        if ($jadwal->jenis_jadwal === 'piket') {
+            return response()->json(['success' => false, 'message' => PresensiMessages::PIKET_TANPA_SLIDE, 'errors' => ['jadwal_id' => PresensiMessages::PIKET_TANPA_SLIDE]], 422);
+        }
 
         $lokasiUnit = $jadwal->unitLokasi ?? $jadwal->unitSekolah;
 

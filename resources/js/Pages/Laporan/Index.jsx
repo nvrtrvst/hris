@@ -119,6 +119,7 @@ export default function LaporanIndex({ auth, units }) {
         jenis_filter: '',
         tipe_filter: '',
         status_filter: '',
+        jadwal_filter: '',
         search: ''
     });
 
@@ -142,6 +143,7 @@ export default function LaporanIndex({ auth, units }) {
                     jenis_filter: filter.jenis_filter,
                     tipe_filter: filter.tipe_filter,
                     status_filter: filter.status_filter,
+                    jadwal_filter: filter.jadwal_filter,
                     search: filter.search
                 }
             });
@@ -192,6 +194,9 @@ export default function LaporanIndex({ auth, units }) {
         }
         if (filter.status_filter) {
             params.append('status_filter', filter.status_filter);
+        }
+        if (filter.jadwal_filter) {
+            params.append('jadwal_filter', filter.jadwal_filter);
         }
         if (filter.search) {
             params.append('search', filter.search);
@@ -264,6 +269,9 @@ export default function LaporanIndex({ auth, units }) {
             }
             if (filter.status_filter) {
                 params.append('status_filter', filter.status_filter);
+            }
+            if (filter.jadwal_filter) {
+                params.append('jadwal_filter', filter.jadwal_filter);
             }
             if (filter.search) {
                 params.append('search', filter.search);
@@ -450,6 +458,27 @@ export default function LaporanIndex({ auth, units }) {
                                             <option value="">Semua (Kantor + Mengajar)</option>
                                             <option value="kantor">Kantor (Harian)</option>
                                             <option value="mengajar">Mengajar (per JP)</option>
+                                        </select>
+                                    </div>
+                                </Field>
+                            )}
+                            {filter.report_type === 'presensi' && (
+                                <Field label="Jenis Jadwal (Opsional)">
+                                    <div className="relative">
+                                        <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                        <select
+                                            id={fieldId('Jenis Jadwal (Opsional)')}
+                                            className="select-field pl-9"
+                                            value={filter.jadwal_filter}
+                                            onChange={(e) => setFilter({ ...filter, jadwal_filter: e.target.value })}
+                                        >
+                                            <option value="">-- Semua Jenis --</option>
+                                            <option value="mengajar">Mengajar</option>
+                                            <option value="piket">Piket</option>
+                                            <option value="ekskul">Ekstrakurikuler</option>
+                                            <option value="shift_satpam">Shift Satpam</option>
+                                            <option value="shift_kebersihan">Shift Kebersihan</option>
+                                            <option value="lainnya">Lainnya</option>
                                         </select>
                                     </div>
                                 </Field>

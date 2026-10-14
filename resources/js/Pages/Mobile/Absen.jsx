@@ -60,8 +60,12 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         clearGeolocation,
     } = useGeolocation();
 
+    // Piket bukan sesi presensi: keluar dari selector/agenda, tugasnya lewat
+    // checklist Laporan Piket. Daftar mentah tetap dipakai deteksi slot piket.
+    const jadwalsPresensi = useMemo(() => (jadwals || []).filter((j) => j.jenis_jadwal !== 'piket'), [jadwals]);
+
     // Geofence target: semua assigned lokasi pegawai (sinkron dengan backend resolveGeofenceLocation).
-    const selectedJadwal = jadwals.find((j) => j.id === jadwalId);
+    const selectedJadwal = jadwalsPresensi.find((j) => j.id === jadwalId);
     const geofenceLocations = useMemo(() => {
         const locs = [];
         if (pegawai?.use_primary_location) {
@@ -92,8 +96,8 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
 
     // Kamera hanya muncul jika mode aktif belum lengkap
     // Setelah redirect: cek semua record hari ini — kalau SEMUA sudah lengkap, kamera off
-    const allJadwalDone = (jadwals.length > 0)
-        ? jadwals.every((j) => {
+    const allJadwalDone = (jadwalsPresensi.length > 0)
+        ? jadwalsPresensi.every((j) => {
             const rec = (presensiHariIni || []).find((p) => p.jadwal_id === j.id);
             return rec?.jam_masuk && rec?.jam_keluar;
         })
@@ -240,7 +244,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             setError('Silakan ambil foto presensi terlebih dahulu.');
             return;
         }
-        if (!isLembur && !isTugasLuar && !officeAttendance && jadwals.length > 0 && !jadwalId) {
+        if (!isLembur && !isTugasLuar && !officeAttendance && jadwalsPresensi.length > 0 && !jadwalId) {
             setError('Silakan pilih jadwal presensi Anda.');
             return;
         }
@@ -461,14 +465,14 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </div>
             </div>
 
-            {!isLembur && !isTugasLuar && jadwals.length > 0 && (
+            {!isLembur && !isTugasLuar && jadwalsPresensi.length > 0 && (
                 <section className="mb-4" aria-labelledby="jadwal-heading">
                     <div className="mb-2 flex items-center justify-between">
                         <h2 id="jadwal-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Jadwal hari ini</h2>
-                        <span className="text-xs text-slate-500">{jadwals.length} jadwal</span>
+                        <span className="text-xs text-slate-500">{jadwalsPresensi.length} jadwal</span>
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-1">
-                        {jadwals.map((j) => (
+                        {jadwalsPresensi.map((j) => (
                             <button
                                 key={j.id}
                                 type="button"
