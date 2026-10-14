@@ -522,6 +522,77 @@ class LaporanPiketTest extends TestCase
         $this->assertSame('manual', $entry['sumber']);
     }
 
+    public function test_slot_termasuk_walau_ada_alpa_otomatis(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
+        $guru = $this->makePegawai('Guru Absen');
+        $slot = $this->makeMengajarSlot($guru);
+        // Baris alpa-otomatis (tanpa jam_masuk) bukan bukti terisi.
+        Presensi::create([
+            'pegawai_id' => $guru->id,
+            'jadwal_id' => $slot->id,
+            'tipe_presensi' => 'mengajar',
+            'tanggal' => '2026-10-12',
+            'unit_sekolah_id' => $this->unit->id,
+        ]);
+        Carbon::setTestNow('2026-10-12 10:00:00');
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->get(route('presensi.piket.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('slotKosong', 1)
+                ->where('slotKosong.0.jadwal_id', $slot->id)
+            );
+        Carbon::setTestNow();
+    }
+
+    public function test_slot_hilang_setelah_masuk_beneran(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
+        $guru = $this->makePegawai('Guru Absen');
+        $slot = $this->makeMengajarSlot($guru);
+        $p = Presensi::create([
+            'pegawai_id' => $guru->id,
+            'jadwal_id' => $slot->id,
+            'tipe_presensi' => 'mengajar',
+            'tanggal' => '2026-10-12',
+            'jam_masuk' => '08:00:00',
+            'unit_sekolah_id' => $this->unit->id,
+        ]);
+        $p->status = 'hadir';
+        $p->save();
+        Carbon::setTestNow('2026-10-12 10:00:00');
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->get(route('presensi.piket.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('slotKosong', 0));
+        Carbon::setTestNow();
+    }
+
+    public function test_mapel_global_termasuk_di_unit(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
+        $global = MataPelajaran::create(['nama' => 'Mapel Global']);
+        Carbon::setTestNow('2026-10-12 10:00:00');
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->get(route('presensi.piket.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('mapelUnit.0.nama', 'Mapel Global')
+                ->where('mapelUnit.0.id', $global->id)
+            );
+        Carbon::setTestNow();
+    }
+
     public function test_laporan_milik_sendiri_tidak_bocor(): void
     {
         $a = $this->makePegawai('Guru A');

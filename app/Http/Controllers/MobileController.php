@@ -1709,10 +1709,13 @@ class MobileController extends Controller
             ->orderBy('nama_lengkap')
             ->get(['id', 'nama_lengkap']);
 
-        // Slot mengajar yang kosong hari ini di unit ini (belum ada presensi)
-        // — sumber dropdown "pilih kelas kosong" (kelas + mapel + guru dari data).
+        // Slot mengajar yang kosong hari ini di unit ini — sumber dropdown
+        // "pilih kelas kosong" (kelas + mapel + guru dari data). Hanya slot
+        // yang benar terisi (jam_masuk tercatat) yang disingkirkan; baris
+        // alpa-otomatis / izin (tanpa jam_masuk) tetap dihitung kosong.
         $presensiJadwalIds = Presensi::where('tanggal', $today)
             ->whereNotNull('jadwal_id')
+            ->whereNotNull('jam_masuk')
             ->pluck('jadwal_id')
             ->all();
         $slotKosong = Jadwal::with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama'])
@@ -1732,7 +1735,11 @@ class MobileController extends Controller
             ])
             ->values();
 
-        $mapelUnit = MataPelajaran::where('unit_sekolah_id', $unitId)
+        // Mapel unit + mapel global (unit null) — unit kecil tanpa mapel
+        // sendiri tetap punya pilihan.
+        $mapelUnit = MataPelajaran::where(function ($q) use ($unitId) {
+            $q->whereNull('unit_sekolah_id')->orWhere('unit_sekolah_id', $unitId);
+        })
             ->orderBy('nama')
             ->get(['id', 'nama']);
 

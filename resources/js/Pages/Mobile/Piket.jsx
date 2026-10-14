@@ -227,6 +227,7 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                                             <label htmlFor="kk-slot" className={labelCls}>Kelas kosong</label>
                                             <select id="kk-slot" value={kkForm.slot_jadwal_id} onChange={(e) => setKkForm({ ...kkForm, slot_jadwal_id: e.target.value })} className={inputCls}>
                                                 <option value="">Pilih dari jadwal hari ini</option>
+                                                {slotKosong.length === 0 && <option value="" disabled>Tidak ada slot kosong — pakai input manual</option>}
                                                 {slotKosong.map((s) => (
                                                     <option key={s.jadwal_id} value={s.jadwal_id}>
                                                         {s.kelas || 'Tanpa kelas'}{s.mapel ? `, ${s.mapel}` : ''} ({s.guru_nama}, {s.jam})
@@ -251,6 +252,7 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                                                     <label htmlFor="kk-mapel" className={labelCls}>Mapel</label>
                                                     <select id="kk-mapel" value={kkForm.mapel_id} onChange={(e) => setKkForm({ ...kkForm, mapel_id: e.target.value })} className={inputCls}>
                                                         <option value="">Pilih</option>
+                                                        {mapelUnit.length === 0 && <option value="" disabled>Belum ada data mapel</option>}
                                                         {mapelUnit.map((m) => <option key={m.id} value={m.id}>{m.nama}</option>)}
                                                     </select>
                                                 </div>
@@ -258,6 +260,7 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                                                     <label htmlFor="kk-guru" className={labelCls}>Guru absen</label>
                                                     <select id="kk-guru" value={kkForm.guru_pegawai_id} onChange={(e) => setKkForm({ ...kkForm, guru_pegawai_id: e.target.value })} className={inputCls}>
                                                         <option value="">Pilih</option>
+                                                        {guruUnit.length === 0 && <option value="" disabled>Belum ada guru lain di unit ini</option>}
                                                         {guruUnit.map((g) => <option key={g.id} value={g.id}>{g.nama_lengkap}</option>)}
                                                     </select>
                                                 </div>
