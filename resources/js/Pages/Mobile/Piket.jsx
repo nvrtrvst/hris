@@ -30,7 +30,7 @@ const getPos = () =>
         );
     });
 
-const inputCls = 'block w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500';
+const inputCls = 'block w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-base focus:border-emerald-500 focus:ring-emerald-500';
 const labelCls = 'mb-1 block text-sm font-semibold text-slate-700';
 
 function SeksiHead({ icon: Icon, title, win, state }) {
