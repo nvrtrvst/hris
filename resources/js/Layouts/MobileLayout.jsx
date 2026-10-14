@@ -152,7 +152,7 @@ export default function MobileLayout({ user, header, children }) {
                 {children}
             </main>
 
-            <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md" aria-label="Navigasi utama">
+            <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]" aria-label="Navigasi utama">
                 <div className="flex h-16 items-stretch justify-between px-1">
                     {navItems.map((item) => {
                         const active = item.match(url);
