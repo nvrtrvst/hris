@@ -476,13 +476,16 @@ class MobileController extends Controller
 
         // Kantor: Minggu selalu off, Sabtu off jika unit tidak support.
         // Slot piket bukan sesi presensi — pegawai yang hari ini hanya piket
-        // boleh absen masuk kantor (pintu check-in duty piket).
+        // boleh absen masuk kantor (pintu check-in duty piket), tanpa syarat
+        // wajib_kantor (duty = hari kerja terjadwal).
+        $adaJadwal = $jadwalHariIni->isNotEmpty();
         $adaNonPiket = $jadwalHariIni->contains(function ($j) {
             $jenis = is_array($j) ? ($j['jenis_jadwal'] ?? null) : ($j->jenis_jadwal ?? null);
 
             return $jenis !== 'piket';
         });
-        $kantorAktif = $pegawai->wajib_kantor && ! $adaNonPiket;
+        $piketSaja = $adaJadwal && ! $adaNonPiket;
+        $kantorAktif = ($pegawai->wajib_kantor && ! $adaJadwal) || $piketSaja;
         if ($hariIniIndo === 'Minggu') {
             $kantorAktif = false;
         } elseif ($hariIniIndo === 'Sabtu') {
@@ -625,7 +628,7 @@ class MobileController extends Controller
             $unitSekolah = $geo['unitSekolah'];
             $assignedLocations = $geo['locations'];
             $jadwal = null;
-        } elseif ($pegawai->wajib_kantor && ! Jadwal::where('pegawai_id', $pegawai->id)->where('hari', $hariIni)->where('jenis_jadwal', '!=', 'piket')->exists()) {
+        } elseif ($this->bolehMasukKantor($pegawai, $hariIni)) {
             $geo = $this->resolveGeofenceLocation($pegawai);
             if (! $geo['unit']) {
                 $message = PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT;
@@ -1964,6 +1967,26 @@ class MobileController extends Controller
                 'presensi' => 'Lakukan presensi masuk terlebih dahulu.',
             ]);
         }
+    }
+
+    /**
+     * Boleh absen masuk kantor: wajib_kantor tanpa jadwal hari ini, ATAU
+     * hari ini hanya ada slot piket (pintu check-in duty, tanpa syarat wajib).
+     */
+    private function bolehMasukKantor(Pegawai $pegawai, string $hariIni): bool
+    {
+        $adaJadwal = Jadwal::where('pegawai_id', $pegawai->id)->where('hari', $hariIni)->exists();
+        if ($pegawai->wajib_kantor && ! $adaJadwal) {
+            return true;
+        }
+        if (! $adaJadwal) {
+            return false;
+        }
+
+        return ! Jadwal::where('pegawai_id', $pegawai->id)
+            ->where('hari', $hariIni)
+            ->where('jenis_jadwal', '!=', 'piket')
+            ->exists();
     }
 
     private function hariIniIndo(): string

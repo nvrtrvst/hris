@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Jabatan;
+use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -204,6 +206,53 @@ class JadwalUnitPegawaiTest extends TestCase
             ->assertSessionHasErrors('conflict');
 
         $this->assertDatabaseCount('jadwal', 1);
+    }
+
+    public function test_hapus_jadwal_cap_riwayat_yatim(): void
+    {
+        $admin = $this->makeSuperadmin();
+        $unit = $this->makeUnit('SD Test', 'SDT');
+        $pegawai = $this->makePegawai($unit, 'Guru A');
+        $jadwal = Jadwal::create([
+            'pegawai_id' => $pegawai->id,
+            'unit_sekolah_id' => $unit->id,
+            'hari' => 'Senin',
+            'jam_mulai' => '10:00:00',
+            'jam_selesai' => '10:45:00',
+            'jenis_jadwal' => 'mengajar',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+        $auto = Presensi::create([
+            'pegawai_id' => $pegawai->id,
+            'jadwal_id' => $jadwal->id,
+            'unit_sekolah_id' => $unit->id,
+            'tipe_presensi' => 'mengajar',
+            'tanggal' => '2026-10-12',
+            'status' => 'alpa',
+            'keterangan' => 'Tidak hadir (otomatis)',
+        ]);
+        $real = Presensi::create([
+            'pegawai_id' => $pegawai->id,
+            'jadwal_id' => $jadwal->id,
+            'unit_sekolah_id' => $unit->id,
+            'tipe_presensi' => 'mengajar',
+            'tanggal' => '2026-10-05',
+            'jam_masuk' => '10:01:00',
+            'status' => 'hadir',
+        ]);
+
+        $this->actingAs($admin, 'web_admin')
+            ->delete(route('jadwal.destroy', $jadwal->id))
+            ->assertRedirect(route('jadwal.index'));
+
+        $this->assertDatabaseMissing('jadwal', ['id' => $jadwal->id]);
+        // Baris yatim tetap ada (nullOnDelete), auto dicap, real tak disentuh.
+        $this->assertSame(null, $auto->fresh()->jadwal_id);
+        $this->assertStringContainsString('[Jadwal dihapus: mengajar 10:00-10:45]', $auto->fresh()->keterangan);
+        $this->assertStringContainsString('Tidak hadir (otomatis)', $auto->fresh()->keterangan);
+        $this->assertSame(null, $real->fresh()->jadwal_id);
+        $this->assertSame(null, $real->fresh()->keterangan);
     }
 
     public function test_prop_create_memuat_unit_pegawai(): void

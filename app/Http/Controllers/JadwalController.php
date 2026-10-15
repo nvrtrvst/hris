@@ -998,6 +998,24 @@ class JadwalController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
+        // Riwayat tetap lengkap: baris presensi auto (tanpa jam_masuk) yang
+        // kehilangan induknya dicap asal jadwalnya sebelum FK nullOnDelete.
+        // Baris berisi jam_masuk sudah lengkap (waktu tercatat) — tak disentuh.
+        $cap = sprintf(
+            '[Jadwal dihapus: %s %s-%s]',
+            $jadwal->jenis_jadwal,
+            substr((string) $jadwal->jam_mulai, 0, 5),
+            substr((string) $jadwal->jam_selesai, 0, 5)
+        );
+        $orphans = Presensi::where('jadwal_id', $jadwal->id)->whereNull('jam_masuk')->get(['id', 'keterangan']);
+        foreach ($orphans as $row) {
+            if ($row->keterangan && str_contains($row->keterangan, '[Jadwal dihapus:')) {
+                continue;
+            }
+            $row->keterangan = trim(($row->keterangan ? $row->keterangan.' ' : '').$cap);
+            $row->save();
+        }
+
         $jadwal->delete();
         $this->clearJadwalCache($jadwal->pegawai_id);
 

@@ -120,7 +120,8 @@ class Pegawai extends Model
             // Guru tidak tetap / guru pemula → tidak wajib kantor; lainnya → wajib.
             $kode = $pegawai->getAttributes()['status_kepegawaian'] ?? $pegawai->status_kepegawaian;
             if ($kode) {
-                $ref = StatusKepegawaian::find($kode);
+                // find() pakai PK id — kode harus dicari via kolom kode.
+                $ref = StatusKepegawaian::where('kode', $kode)->first();
                 $pegawai->wajib_kantor = ! ($ref && $ref->is_guru && ! $ref->is_tetap);
             }
 
