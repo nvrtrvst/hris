@@ -47,6 +47,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         alasan_penolakan: '',
         catatan_approval: '',
         dihitung_hadir_kcd: false,
+        dihitung_setengah: false,
     });
 
     const openModal = (item, type) => {
@@ -54,6 +55,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         setModalType(type);
         reset();
         setData('catatan_approval', '');
+        setData('dihitung_setengah', !!item.dihitung_setengah);
     };
 
     const closeModal = () => {
@@ -61,6 +63,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         setTimeout(() => setModalType(null), 300);
         reset();
         setData('catatan_approval', '');
+        setData('dihitung_setengah', false);
     };
 
     const submitAction = (e) => {
@@ -663,6 +666,17 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                             />
                                             <span className="text-sm text-text-secondary">
                                                 Dihitung hadir untuk Laporan KCD <span className="text-text-muted">(izin/sakit ditampilkan sebagai HADIR berdasarkan jam kantor)</span>
+                                            </span>
+                                        </label>
+                                        <label className="mt-2 flex items-start gap-2.5 rounded-card border border-border bg-surface p-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={data.dihitung_setengah}
+                                                onChange={e => setData('dihitung_setengah', e.target.checked)}
+                                                className="mt-0.5 h-4 w-4 accent-[#0F3D3E]"
+                                            />
+                                            <span className="text-sm text-text-secondary">
+                                                Ada tugas, hitung ½ hari <span className="text-text-muted">(izin disertai tugas dinas: kehadiran 0,5/hari untuk payroll)</span>
                                             </span>
                                         </label>
                                     </>

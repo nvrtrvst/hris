@@ -45,12 +45,14 @@ class PresensiAggregator
             $periodeEnd->format('Y-m-d'),
         ])
             ->whereIn('pegawai_id', $pegawaiIds)
-            ->get(['pegawai_id', 'jadwal_id', 'tanggal', 'status', 'is_lembur', 'lembur_status', 'jam_masuk', 'jam_keluar', 'persentase_bayar_jam', 'unit_sekolah_id']);
+            ->get(['pegawai_id', 'jadwal_id', 'tanggal', 'status', 'is_lembur', 'lembur_status', 'jam_masuk', 'jam_keluar', 'persentase_bayar_jam', 'unit_sekolah_id', 'tipe_presensi']);
 
         return [
             'attendance' => $this->attendanceByPegawai($presensiRows, $unitScope),
             'sakit_prorata' => $this->sakitProrata($presensiRows),
             'present_days' => $this->presentDaysByPegawai($presensiRows, $unitScope),
+            'kantor_days' => $this->kantorDaysByPegawai($presensiRows, $unitScope),
+            'active_dates' => $this->activeDatesByPegawai($presensiRows),
             'lembur' => $this->lemburByPegawai($presensiRows, $attendanceCutoff),
             'attended_jadwal' => $this->attendedJadwalByPegawai($presensiRows, $attendanceCutoff),
         ];
@@ -136,6 +138,43 @@ class PresensiAggregator
                 ->map(fn ($tanggal) => $tanggal->format('Y-m-d'))
                 ->unique()
                 ->count());
+    }
+
+    /**
+     * Hari kantor-masuk (transport harian): tipe kantor + jam_masuk tercatat +
+     * hadir/telat, dedup per tanggal. Auto-cover tanpa jam_masuk dikecualikan.
+     */
+    private function kantorDaysByPegawai(Collection $rows, ?int $unitScope): Collection
+    {
+        return $rows
+            ->filter(fn ($p) => ! $p->is_lembur
+                && in_array($p->status, self::ACTIVE_STATUSES, true)
+                && $p->tipe_presensi === 'kantor'
+                && $p->jam_masuk !== null
+                && ($unitScope === null || $p->unit_sekolah_id == $unitScope || $p->unit_sekolah_id === null))
+            ->groupBy('pegawai_id')
+            ->map(fn ($pegawaiRows) => $pegawaiRows->pluck('tanggal')
+                ->map(fn ($tanggal) => $tanggal->format('Y-m-d'))
+                ->unique()
+                ->values()
+                ->all());
+    }
+
+    /**
+     * Tanggal berkehadiran fisik per pegawai (hadir/telat apa pun tipenya) —
+     * untuk mengecualikan hari ½ (flag) yang sudah tercatat hadir.
+     */
+    private function activeDatesByPegawai(Collection $rows): Collection
+    {
+        return $rows
+            ->filter(fn ($p) => ! $p->is_lembur
+                && in_array($p->status, self::ACTIVE_STATUSES, true))
+            ->groupBy('pegawai_id')
+            ->map(fn ($pegawaiRows) => $pegawaiRows->pluck('tanggal')
+                ->map(fn ($tanggal) => $tanggal->format('Y-m-d'))
+                ->unique()
+                ->flip()
+                ->all());
     }
 
     /**

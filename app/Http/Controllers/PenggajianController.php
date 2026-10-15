@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Models\HariLibur;
 use App\Models\KomponenGaji;
 use App\Models\Pegawai;
+use App\Models\PengajuanIzin;
 use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
 use App\Models\SkalaMasaBakti;
@@ -173,8 +174,16 @@ class PenggajianController extends Controller
         $attendanceByPegawai = $presensiAgg['attendance'];
         $sakitProrata = $presensiAgg['sakit_prorata'];
         $presentDaysByPegawai = $presensiAgg['present_days'];
+        $kantorDaysByPegawai = $presensiAgg['kantor_days'];
+        $activeDatesByPegawai = $presensiAgg['active_dates'];
         $lemburByPegawai = $presensiAgg['lembur'];
         $attendedJadwalByPegawai = $presensiAgg['attended_jadwal'];
+
+        // Hari ½ (izin + tugas, flag admin): 1 query untuk semua pegawai,
+        // tanggal overlap dihitung di PHP, lewati tanggal berkehadiran fisik.
+        $setengahCountByPegawai = $this->setengahCountByPegawai(
+            $pegawais->pluck('id'), $periodeStart, $attendanceCutoff, $activeDatesByPegawai
+        );
 
         // [OPT] Satu query ambil hari libur (nasional + unit pegawai) untuk seluruh run.
         // Dipetakan ke weekday→count agar exclude libur O(1) per jadwal (hindari N+1).
@@ -200,7 +209,7 @@ class PenggajianController extends Controller
                 }
 
                 $pegawaiKomponens = $pegawai->komponenGaji->keyBy('id');
-                $counts = $this->computeAttendance($pegawai, $attendanceByPegawai, $periodeStart, $attendanceCutoff, $holidayMap);
+                $counts = $this->computeAttendance($pegawai, $attendanceByPegawai, $periodeStart, $attendanceCutoff, $holidayMap, $setengahCountByPegawai);
 
                 $totalPendapatan = '0.00';
                 $totalPotongan = '0.00';
@@ -214,7 +223,7 @@ class PenggajianController extends Controller
                         continue;
                     }
                     $nominal = round((float) $this->computeComponentNominal(
-                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDaysByPegawai, $attendedJadwalByPegawai, $holidayMap, $jabatanRates
+                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDaysByPegawai, $attendedJadwalByPegawai, $holidayMap, $jabatanRates, $kantorDaysByPegawai
                     ), 2);
 
                     if ($nominal > 0) {
@@ -228,15 +237,29 @@ class PenggajianController extends Controller
                             $totalTaxable = bcadd($totalTaxable, (string) $nominal, 2);
                         }
 
+                        $namaDetail = $komponen->nama;
+                        if ($komponen->kode === 'transport_harian' && $nominal > 0) {
+                            $hari = $kantorDaysByPegawai[$pegawai->id] ?? [];
+                            $namaDetail = sprintf(
+                                'Transport (%d × Rp %s)',
+                                count($hari),
+                                number_format($this->resolveFixedNominal($komponen, $pegawaiKomponens), 0, ',', '.')
+                            );
+                        }
+
                         $details[] = [
                             'komponen_gaji_id' => $komponen->id,
-                            'nama_komponen' => $komponen->nama,
+                            'nama_komponen' => $namaDetail,
                             'tipe' => $komponen->tipe,
                             'nominal' => $nominal,
                             'is_taxable' => (bool) $komponen->is_taxable,
                         ];
                     }
                 }
+
+                // Potongan kehadiran otomatis (baris virtual, komponen_gaji_id NULL):
+                // tetap di bawah 90% → gaji × (1−rate); honorer → (honor ÷ hari) × hari_nol.
+                $this->appendKehadiranAdjustments($pegawai, $pegawaiKomponens, $globalKomponens, $counts, $details, $totalPotongan);
 
                 $penggajian = Penggajian::create([
                     'pegawai_id' => $pegawai->id,
@@ -592,7 +615,7 @@ class PenggajianController extends Controller
      * @param  array  $holidayMap  Map hari libur (buildHolidayWeekdayMap) untuk exclude libur
      * @return array<string,int> ['hadir'=>X, 'telat'=>Y, 'alpa'=>Z, 'sakit'=>A, 'izin'=>B, 'cuti'=>C]
      */
-    protected function computeAttendance(Pegawai $pegawai, $attendanceByPegawai, Carbon $periodeStart, Carbon $attendanceCutoff, array $holidayMap = []): array
+    protected function computeAttendance(Pegawai $pegawai, $attendanceByPegawai, Carbon $periodeStart, Carbon $attendanceCutoff, array $holidayMap = [], $setengahCountByPegawai = null): array
     {
         $pAtt = $attendanceByPegawai->get($pegawai->id, collect());
         $countHadir = (int) $pAtt->where('status', 'hadir')->sum('total');
@@ -624,6 +647,7 @@ class PenggajianController extends Controller
         }
         $presentOrLeave = $countHadir + $countTelat + $countSakit + $countIzin + $countCuti + $countAlpaManual;
         $countAlpa = $countAlpaManual + max(0, $workingDays - $presentOrLeave);
+        $setengah = (int) ($setengahCountByPegawai[$pegawai->id] ?? 0);
 
         return [
             'hadir' => $countHadir,
@@ -632,7 +656,151 @@ class PenggajianController extends Controller
             'sakit' => $countSakit,
             'izin' => $countIzin,
             'cuti' => $countCuti,
+            'setengah' => $setengah,
+            'working_days' => $workingDays,
         ];
+    }
+
+    /**
+     * Rate kehadiran: hari penuh (hadir/telat/sakit/cuti) + ½ hari izin-tugas,
+     * dibagi hari kerja. Tanpa hari kerja terjadwal → penuh (tak ada yang bisa alpa).
+     */
+    protected function attendanceRate(array $counts, int $setengah, int $workingDays): float
+    {
+        if ($workingDays <= 0) {
+            return 1.0;
+        }
+
+        return ($counts['hadir'] + $counts['telat'] + $counts['sakit'] + $counts['cuti'] + 0.5 * $setengah) / $workingDays;
+    }
+
+    /**
+     * Jumlah hari ½ per pegawai: izin disetujui berflag dalam periode
+     * (dipotong tanggal cutoff + tanggal berkehadiran fisik).
+     */
+    protected function setengahCountByPegawai($pegawaiIds, Carbon $periodeStart, Carbon $attendanceCutoff, $activeDatesByPegawai): Collection
+    {
+        $rows = PengajuanIzin::whereIn('pegawai_id', $pegawaiIds instanceof Collection ? $pegawaiIds->all() : $pegawaiIds)
+            ->where('status', 'disetujui')
+            ->where('dihitung_setengah', true)
+            ->whereDate('tanggal_mulai', '<=', $attendanceCutoff->toDateString())
+            ->whereDate('tanggal_selesai', '>=', $periodeStart->toDateString())
+            ->get(['pegawai_id', 'tanggal_mulai', 'tanggal_selesai']);
+
+        return $rows->groupBy('pegawai_id')->map(function ($items, $pid) use ($periodeStart, $attendanceCutoff, $activeDatesByPegawai) {
+            $active = $activeDatesByPegawai[$pid] ?? [];
+            $days = [];
+            foreach ($items as $r) {
+                $s = max(Carbon::parse($r->tanggal_mulai)->startOfDay(), $periodeStart->copy()->startOfDay());
+                $e = min(Carbon::parse($r->tanggal_selesai)->startOfDay(), $attendanceCutoff->copy()->startOfDay());
+                for ($d = $s->copy(); $d->lte($e); $d->addDay()) {
+                    $key = $d->format('Y-m-d');
+                    if (! isset($active[$key])) {
+                        $days[$key] = true;
+                    }
+                }
+            }
+
+            return count($days);
+        });
+    }
+
+    /**
+     * Baris potongan kehadiran otomatis (append ke $details + $totalPotongan):
+     * - Tetap, rate ≤ 90%: Potongan Kehadiran = gaji_pokok × (1 − rate).
+     * - Honorer: Potongan Honorer = (honor ÷ hari_kerja) × hari_nol.
+     * Bukan komponen master (komponen_gaji_id NULL, non-taxable by construction
+     * karena hanya pendapatan yang akumulasi taxable).
+     */
+    protected function appendKehadiranAdjustments(Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, array &$details, string &$totalPotongan): void
+    {
+        $setengah = (int) ($counts['setengah'] ?? 0);
+        $workingDays = (int) ($counts['working_days'] ?? 0);
+        $rate = $this->attendanceRate($counts, $setengah, $workingDays);
+        $isTetap = in_array($pegawai->status_kepegawaian, $this->tetapKodes(), true);
+
+        if ($isTetap) {
+            if ($rate > 0.9 || $workingDays <= 0) {
+                return;
+            }
+            $gajiPokok = $this->findKomponenByKode($globalKomponens, 'gaji_pokok', ['Gaji Pokok'], $pegawai);
+            if (! $gajiPokok) {
+                return;
+            }
+            $base = $this->resolveFixedNominal($gajiPokok, $pegawaiKomponens);
+            if ($base <= 0) {
+                return;
+            }
+            $potongan = round($base * (1 - $rate), 2);
+            if ($potongan <= 0) {
+                return;
+            }
+            $hadirEq = $counts['hadir'] + $counts['telat'] + $counts['sakit'] + $counts['cuti'] + 0.5 * $setengah;
+            $details[] = [
+                'komponen_gaji_id' => null,
+                'nama_komponen' => sprintf(
+                    'Potongan Kehadiran — Gaji × %s%% (%s/%d hari)',
+                    $this->fmtId($rate * 100),
+                    $this->fmtId($hadirEq),
+                    $workingDays
+                ),
+                'tipe' => 'potongan',
+                'nominal' => $potongan,
+                'is_taxable' => false,
+            ];
+            $totalPotongan = bcadd($totalPotongan, (string) $potongan, 2);
+
+            return;
+        }
+
+        // Honorer: potong per hari langsung, tanpa threshold (½ hari = ½ potong).
+        $hariNol = max(0, $workingDays - ($counts['hadir'] + $counts['telat'] + $counts['sakit'] + $counts['cuti'] + 0.5 * $setengah));
+        if ($hariNol <= 0 || $workingDays <= 0) {
+            return;
+        }
+        $honor = $this->findKomponenByKode($globalKomponens, 'honor_honorer', ['Honor'], $pegawai);
+        if (! $honor) {
+            return;
+        }
+        $base = $this->resolveFixedNominal($honor, $pegawaiKomponens);
+        if ($base <= 0) {
+            return;
+        }
+        $potongan = round($base / $workingDays * $hariNol, 2);
+        $details[] = [
+            'komponen_gaji_id' => null,
+            'nama_komponen' => sprintf(
+                'Potongan Honorer — (Rp %s ÷ %d hari × %s hari)',
+                number_format($base, 0, ',', '.'),
+                $workingDays,
+                $this->fmtId($hariNol)
+            ),
+            'tipe' => 'potongan',
+            'nominal' => $potongan,
+            'is_taxable' => false,
+        ];
+        $totalPotongan = bcadd($totalPotongan, (string) $potongan, 2);
+    }
+
+    /**
+     * Nominal fixed: override pivot per pegawai menang, else nilai_default.
+     * Pola yang sama dipakai semua cabang fixed/rate agar konsisten.
+     */
+    protected function resolveFixedNominal(KomponenGaji $komponen, $pegawaiKomponens): float
+    {
+        if ($pegawaiKomponens->has($komponen->id) && $pegawaiKomponens[$komponen->id]->pivot->nominal !== null) {
+            return (float) $pegawaiKomponens[$komponen->id]->pivot->nominal;
+        }
+
+        return (float) ($komponen->nilai_default ?? 0);
+    }
+
+    /** Format angka gaya Indonesia: 17,5 (bukan 17.5), bulat tanpa koma. */
+    protected function fmtId(float $n): string
+    {
+        $s = number_format(round($n, 1), 1, ',', '.');
+
+        return str_ends_with($s, ',0') ? substr($s, 0, -2) : $s;
     }
 
     /**
@@ -663,7 +831,7 @@ class PenggajianController extends Controller
      * @param  array  $holidayMap  Map hari libur untuk exclude libur di sesi mengajar
      * @return float nominal komponen gaji
      */
-    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null, $presentDays = null, $attendedJadwalByPegawai = null, array $holidayMap = [], $jabatanRatesByKomponen = null): float
+    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null, $presentDays = null, $attendedJadwalByPegawai = null, array $holidayMap = [], $jabatanRatesByKomponen = null, $kantorDaysByPegawai = null): float
     {
         $nominal = 0;
 
@@ -696,6 +864,21 @@ class PenggajianController extends Controller
             }
             $nominal = ($komponen->nilai_default / 100) * $baseSalary;
         } elseif ($komponen->jenis === 'dinamis_kehadiran') {
+            // Transport harian: nominal × hari kantor-masuk (bukan semua hadir).
+            // Early return agar tak jatuh ke pencocokan nama 'transport' di bawah.
+            // Override pivot menang; honorer tersaring via applies_to_status.
+            if ($komponen->kode === 'transport_harian') {
+                if ($pegawaiKomponens->has($komponen->id) && $pegawaiKomponens[$komponen->id]->pivot->nominal !== null) {
+                    return (float) $pegawaiKomponens[$komponen->id]->pivot->nominal;
+                }
+                $rateHarian = $komponen->nilai_default ?? 0;
+                $hariKantor = $kantorDaysByPegawai && isset($kantorDaysByPegawai[$pegawai->id])
+                    ? count($kantorDaysByPegawai[$pegawai->id])
+                    : 0;
+
+                return (float) ($rateHarian * $hariKantor);
+            }
+
             $rate = $pegawaiKomponens->has($komponen->id) && $pegawaiKomponens[$komponen->id]->pivot->nominal !== null
                 ? $pegawaiKomponens[$komponen->id]->pivot->nominal
                 : ($komponen->nilai_default ?? 0);

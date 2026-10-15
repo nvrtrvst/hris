@@ -46,12 +46,13 @@ class TestablePenggajianController extends PenggajianController
         $lemburByPegawai = null,
         $sakitProrata = null,
         $presentDays = null,
-        $jabatanRatesByKomponen = null
+        $jabatanRatesByKomponen = null,
+        $kantorDaysByPegawai = null
     ): float {
         return $this->computeComponentNominal(
             $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas,
             $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDays,
-            null, [], $jabatanRatesByKomponen
+            null, [], $jabatanRatesByKomponen, $kantorDaysByPegawai
         );
     }
 }
@@ -318,6 +319,39 @@ class PayrollMathTest extends TestCase
         $nominal = $this->controller()->pubComputeComponentNominal(
             $komponen, $pegawai, new Collection, new Collection, [],
             new Collection, $periodeEnd, $periodeStart, $periodeEnd, null, null, null, new Collection
+        );
+
+        $this->assertSame(0.0, $nominal);
+    }
+
+    public function test_transport_harian_kantor_saja(): void
+    {
+        $komponen = $this->makeKomponen(['id' => 9, 'kode' => 'transport_harian', 'nama' => 'Transport', 'jenis' => 'dinamis_kehadiran', 'nilai_default' => 25000]);
+        $pegawai = $this->makePegawai();
+        $kantor = collect([$pegawai->id => ['2026-08-03', '2026-08-04', '2026-08-05']]);
+        $periodeEnd = Carbon::create(2026, 8, 31);
+        $periodeStart = Carbon::create(2026, 8, 1);
+
+        $nominal = $this->controller()->pubComputeComponentNominal(
+            $komponen, $pegawai, new Collection, new Collection, [],
+            new Collection, $periodeEnd, $periodeStart, $periodeEnd,
+            null, null, null, null, $kantor
+        );
+
+        $this->assertSame(75000.0, $nominal);
+    }
+
+    public function test_transport_harian_tanpa_kantor_nol(): void
+    {
+        $komponen = $this->makeKomponen(['id' => 9, 'kode' => 'transport_harian', 'nama' => 'Transport', 'jenis' => 'dinamis_kehadiran', 'nilai_default' => 25000]);
+        $pegawai = $this->makePegawai();
+        $periodeEnd = Carbon::create(2026, 8, 31);
+        $periodeStart = Carbon::create(2026, 8, 1);
+
+        $nominal = $this->controller()->pubComputeComponentNominal(
+            $komponen, $pegawai, new Collection, new Collection, [],
+            new Collection, $periodeEnd, $periodeStart, $periodeEnd,
+            null, null, null, null, new Collection
         );
 
         $this->assertSame(0.0, $nominal);

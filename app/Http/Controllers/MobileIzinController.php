@@ -87,7 +87,9 @@ class MobileIzinController extends Controller
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'alasan' => 'required|string',
-            'bukti_foto' => ['nullable', 'string', 'max:'.PresensiMessages::MAX_FOTO_BASE64, 'regex:/^data:image\/\w+;base64,/'],
+            'bukti_foto' => ['required_if:jenis_izin,sakit', 'nullable', 'string', 'max:'.PresensiMessages::MAX_FOTO_BASE64, 'regex:/^data:image\/\w+;base64,/'],
+        ], [
+            'bukti_foto.required_if' => 'Bukti wajib diunggah untuk pengajuan sakit.',
         ]);
 
         // ── Validasi overlap: cegah pengajuan untuk tanggal yg sudah ada pengajuan pending/disetujui ──

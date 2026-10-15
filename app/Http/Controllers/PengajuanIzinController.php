@@ -129,10 +129,18 @@ class PengajuanIzinController extends Controller
         $request->validate([
             'catatan_approval' => 'nullable|string|max:500',
             'dihitung_hadir_kcd' => 'nullable|boolean',
+            'dihitung_setengah' => 'nullable|boolean',
         ]);
 
         $pengajuan = DB::transaction(function () use ($id, $user, $request) {
             $pengajuan = PengajuanIzin::with('pegawai')->lockForUpdate()->findOrFail($id);
+
+            // Flag ½ hari (izin + tugas): boleh dipasang di tahap mana pun,
+            // berlaku bila pengajuan berakhir disetujui. Pakai exists()
+            // (bukan filled) agar nilai false ikut tersimpan.
+            if ($request->exists('dihitung_setengah')) {
+                $pengajuan->dihitung_setengah = $request->boolean('dihitung_setengah');
+            }
 
             if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
                 if (! $pengajuan->pegawai->belongsToUnit($user->unit_sekolah_id)) {
