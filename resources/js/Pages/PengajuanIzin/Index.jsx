@@ -131,6 +131,25 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         }
     };
 
+    const ApproverLine = ({ item }) => {
+        if (item.approved_at_l1) {
+            return (
+                <p className="mt-1 text-[11px] text-text-muted">
+                    Disetujui oleh {item.approver_l1?.name || 'Atasan'}
+                    {item.approved_at_l2 && <>, {item.approver_l2?.name || 'Atasan'}</>}
+                </p>
+            );
+        }
+        if (item.status === 'ditolak') {
+            return (
+                <p className="mt-1 text-[11px] text-text-muted">
+                    Ditolak oleh {item.rejectedByUser?.name || 'Atasan'}
+                </p>
+            );
+        }
+        return null;
+    };
+
     const getStageBadge = (stage) => {
         switch (stage) {
             case 'pending_l1':
@@ -348,6 +367,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                         {getStatusBadge(item.status)}
                                         {getStageBadge(item.approval_stage)}
                                     </div>
+                                    <ApproverLine item={item} />
                                 </div>
                                 <div className="mt-3 flex justify-end gap-2 border-t border-border/50 pt-2.5">
                                     <button onClick={() => openModal(item, 'detail')} className="btn-secondary btn-sm py-1 px-2.5">
@@ -435,6 +455,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                                     {getStatusBadge(item.status)}
                                                     {getStageBadge(item.approval_stage)}
                                                 </div>
+                                                <ApproverLine item={item} />
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <div className="flex justify-end space-x-2 opacity-80 group-hover:opacity-100 transition-opacity">
