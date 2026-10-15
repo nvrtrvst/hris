@@ -573,34 +573,67 @@ class PegawaiController extends Controller
             Storage::disk('presensi')->delete($fotoLama);
         }
 
-        // Sinkronisasi penugasan unit + jabatan
-        $syncUnits = [];
+        // Sinkronisasi penugasan unit + jabatan. Satu unit boleh punya
+        // banyak jabatan (rangkap: Guru + Wakasek di unit sama).
+        $groups = []; // unitId => ['jabatan_ids' => [...], 'is_primary' => bool]
         foreach ($request->input('units', []) as $u) {
             if (empty($u['unit_sekolah_id']) || empty($u['jabatan_id'])) {
                 continue;
             }
-            $syncUnits[$u['unit_sekolah_id']] = [
-                'jabatan_id' => $u['jabatan_id'],
-                'is_primary' => ! empty($u['is_primary']),
-            ];
+            $uid = (int) $u['unit_sekolah_id'];
+            $groups[$uid]['jabatan_ids'][] = (int) $u['jabatan_id'];
+            $groups[$uid]['is_primary'] = ! empty($groups[$uid]['is_primary']) || ! empty($u['is_primary']);
+            $groups[$uid]['jabatan_ids'] = array_values(array_unique($groups[$uid]['jabatan_ids']));
         }
-        $pegawai->units()->sync($syncUnits);
+        $desired = []; // "uid:jid" => is_primary
+        foreach ($groups as $uid => $g) {
+            foreach ($g['jabatan_ids'] as $jid) {
+                $desired[$uid.':'.$jid] = $g['is_primary'];
+            }
+        }
+        $have = DB::table('pegawai_unit')->where('pegawai_id', $pegawai->id)
+            ->get(['unit_sekolah_id', 'jabatan_id'])
+            ->map(fn ($r) => $r->unit_sekolah_id.':'.$r->jabatan_id)->all();
+        foreach (array_diff($have, array_keys($desired)) as $gone) {
+            [$du, $dj] = explode(':', $gone);
+            DB::table('pegawai_unit')->where('pegawai_id', $pegawai->id)
+                ->where('unit_sekolah_id', $du)->where('jabatan_id', $dj)->delete();
+        }
+        foreach ($desired as $key => $primary) {
+            [$uid, $jid] = explode(':', $key);
+            if (in_array($key, $have, true)) {
+                DB::table('pegawai_unit')
+                    ->where('pegawai_id', $pegawai->id)
+                    ->where('unit_sekolah_id', $uid)
+                    ->where('jabatan_id', $jid)
+                    ->update(['is_primary' => $primary, 'updated_at' => now()]);
+            } else {
+                DB::table('pegawai_unit')->insert([
+                    'pegawai_id' => $pegawai->id,
+                    'unit_sekolah_id' => $uid,
+                    'jabatan_id' => $jid,
+                    'is_primary' => $primary,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
 
         // Auto-assign atasan jika belum di-set manual
         $pegawai->load('units');
         $pegawai->autoAssignAtasan();
 
         // Sync User.unit_sekolah_id ke unit primari pegawai
-        if ($pegawai->user_id && ! empty($syncUnits)) {
+        if ($pegawai->user_id && ! empty($groups)) {
             $primaryUnitId = null;
-            foreach ($syncUnits as $unitId => $attrs) {
+            foreach ($groups as $unitId => $attrs) {
                 if (! empty($attrs['is_primary'])) {
                     $primaryUnitId = $unitId;
                     break;
                 }
             }
             if (! $primaryUnitId) {
-                $primaryUnitId = array_key_first($syncUnits);
+                $primaryUnitId = array_key_first($groups);
             }
             User::where('id', $pegawai->user_id)->update(['unit_sekolah_id' => $primaryUnitId]);
         }

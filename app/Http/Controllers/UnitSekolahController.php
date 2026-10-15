@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Jabatan;
 use App\Models\UnitLokasi;
 use App\Models\UnitSekolah;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class UnitSekolahController extends Controller
@@ -87,7 +89,12 @@ class UnitSekolahController extends Controller
 
     public function edit(UnitSekolah $unit_sekolah)
     {
-        return inertia('UnitSekolah/Edit', ['unit' => $unit_sekolah, 'lokalis' => $unit_sekolah->lokalis]);
+        return inertia('UnitSekolah/Edit', [
+            'unit' => $unit_sekolah,
+            'lokalis' => $unit_sekolah->lokalis,
+            'jabatans' => Jabatan::orderBy('nama')->get(['id', 'nama']),
+            'tembusan' => DB::table('unit_tembusan')->where('unit_sekolah_id', $unit_sekolah->id)->pluck('jabatan_id')->all(),
+        ]);
     }
 
     public function update(Request $request, UnitSekolah $unit_sekolah)
@@ -112,6 +119,8 @@ class UnitSekolahController extends Controller
             'web' => 'nullable|string|max:255',
             'telepon' => 'nullable|string|max:255',
             'alamat' => 'nullable|string|max:1000',
+            'tembusan_jabatan_ids' => 'nullable|array',
+            'tembusan_jabatan_ids.*' => 'integer|exists:jabatan,id',
         ]);
 
         $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;
@@ -141,6 +150,21 @@ class UnitSekolahController extends Controller
 
         if ($newLogo && $oldLogo) {
             Storage::disk($disk)->delete($oldLogo);
+        }
+
+        // Sinkronisasi jabatan penerima tembusan izin unit ini.
+        $tembusanIds = $validated['tembusan_jabatan_ids'] ?? null;
+        unset($validated['tembusan_jabatan_ids']);
+        if (is_array($tembusanIds)) {
+            $keep = array_values(array_unique(array_map('intval', $tembusanIds)));
+            DB::table('unit_tembusan')->where('unit_sekolah_id', $unit_sekolah->id)
+                ->whereNotIn('jabatan_id', $keep ?: [-1])->delete();
+            foreach ($keep as $jabatanId) {
+                DB::table('unit_tembusan')->updateOrInsert(
+                    ['unit_sekolah_id' => $unit_sekolah->id, 'jabatan_id' => $jabatanId],
+                    ['updated_at' => now(), 'created_at' => now()]
+                );
+            }
         }
 
         return redirect()->route('unit-sekolah.index')->with('message', 'Unit Sekolah berhasil diperbarui.');

@@ -3,7 +3,9 @@
 namespace App\Helpers;
 
 use App\Models\Pegawai;
+use App\Models\PengajuanIzin;
 use App\Models\User;
+use App\Notifications\TembusanIzin;
 use Illuminate\Support\Facades\DB;
 
 class ApprovalHelper
@@ -107,6 +109,61 @@ class ApprovalHelper
             ->where('pegawai_unit.unit_sekolah_id', $unitId)
             ->whereIn('jabatan.nama', self::HEAD_JABATAN_ALIASES)
             ->exists();
+    }
+
+    /**
+     * Penerima tembusan izin di satu unit: user aktif yang pegawainya
+     * memegang jabatan terdaftar di unit_tembusan unit tsb.
+     *
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    public static function tembusanIzinRecipients(int $unitId): \Illuminate\Support\Collection
+    {
+        $jabatanIds = DB::table('unit_tembusan')
+            ->where('unit_sekolah_id', $unitId)
+            ->pluck('jabatan_id')
+            ->all();
+        if ($jabatanIds === []) {
+            return collect();
+        }
+
+        $userIds = DB::table('pegawai_unit')
+            ->join('pegawai', 'pegawai.id', '=', 'pegawai_unit.pegawai_id')
+            ->where('pegawai_unit.unit_sekolah_id', $unitId)
+            ->whereIn('pegawai_unit.jabatan_id', $jabatanIds)
+            ->where('pegawai.status_aktif', 'aktif')
+            ->whereNotNull('pegawai.user_id')
+            ->distinct()
+            ->pluck('pegawai.user_id')
+            ->all();
+
+        return User::whereIn('id', $userIds)->get();
+    }
+
+    /**
+     * Kirim tembusan izin (read-only, tanpa hak approve) ke pemegang jabatan
+     * terdaftar di unit pegawai pengaju. $momen: diajukan|disetujui|ditolak.
+     */
+    public static function sendTembusanIzin(PengajuanIzin $pengajuan, string $momen, array $skipUserIds = []): void
+    {
+        $pegawai = $pengajuan->pegawai;
+        $unit = $pegawai?->units()->wherePivot('is_primary', true)->first()
+            ?? $pegawai?->units()->first();
+        if (! $unit) {
+            return;
+        }
+
+        $skip = array_map('intval', $skipUserIds);
+        if ($pegawai?->user_id) {
+            $skip[] = (int) $pegawai->user_id;
+        }
+
+        foreach (self::tembusanIzinRecipients((int) $unit->id) as $target) {
+            if (in_array((int) $target->id, $skip, true)) {
+                continue;
+            }
+            NotificationHelper::sendSafely($target, new TembusanIzin($pengajuan, $momen));
+        }
     }
 
     /**

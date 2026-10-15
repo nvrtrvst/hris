@@ -82,7 +82,7 @@ export default function PegawaiDataCard() {
     const kepegLabel = (value) => statusOptions.find((o) => o.kode === value)?.label ?? value;
 
     const primaryUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0];
-    const primaryJabatan = pegawai?.jabatans?.find((j) => j.pivot?.is_primary) ?? pegawai?.jabatans?.[0];
+    const jabatanNama = [...new Set((pegawai?.jabatans || []).map((j) => j.nama))].join(', ') || 'Pegawai';
 
     const [editing, setEditing] = useState(false);
 
@@ -342,7 +342,7 @@ export default function PegawaiDataCard() {
                         <Field icon={IdCard} label="NIK" value={pegawai?.nik_masked} />
                         <Field icon={IdCard} label="NIP" value={pegawai?.nuptk} />
                         <Field icon={Building2} label="Unit" value={primaryUnit?.nama || primaryUnit?.nama_unit} />
-                        <Field icon={Briefcase} label="Jabatan" value={primaryJabatan?.nama} />
+                        <Field icon={Briefcase} label="Jabatan" value={jabatanNama} />
                         <Field
                             icon={Baby}
                             label="Tempat, Tanggal Lahir"

@@ -25,6 +25,7 @@ const JENIS_META = {
     dinamis_jam_mengajar: { label: 'Honor Jam Mengajar', desc: 'Dihitung dari JTM', tone: 'border-sky-200 bg-sky-50 text-sky-700' },
     dinamis_masa_bakti: { label: 'Masa Bakti', desc: 'Otomatis dari skala', tone: 'border-amber-200 bg-amber-50 text-amber-700' },
     dinamis_lembur: { label: 'Lembur', desc: 'Dihitung dari jam lembur', tone: 'border-orange-200 bg-orange-50 text-orange-700' },
+    dinamis_jabatan: { label: 'Tunjangan Jabatan', desc: 'Jumlah nominal semua jabatan pegawai', tone: 'border-teal-200 bg-teal-50 text-teal-700' },
 };
 
 const StatPill = ({ label, value, cls }) => (
@@ -39,7 +40,7 @@ const StatPill = ({ label, value, cls }) => (
     </div>
 );
 
-export default function Komponen({ auth, komponens, units }) {
+export default function Komponen({ auth, komponens, units, jabatans = [], jabatanMappings = {} }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editId, setEditId] = useState(null);
     const [search, setSearch] = useState('');
@@ -57,7 +58,7 @@ export default function Komponen({ auth, komponens, units }) {
         is_taxable: true,
         is_active: true,
         urutan: 99,
-        tampil_di_matrix: true,
+        jabatan_nominals: [],
     });
 
     const handleEdit = (k) => {
@@ -76,6 +77,7 @@ export default function Komponen({ auth, komponens, units }) {
             is_active: k.is_active == 1,
             urutan: k.urutan || 99,
             tampil_di_matrix: k.tampil_di_matrix == 1,
+            jabatan_nominals: (jabatanMappings[k.id] || []).map((m) => ({ jabatan_id: String(m.jabatan_id), nominal: m.nominal })),
         });
         clearErrors();
     };
@@ -200,6 +202,7 @@ export default function Komponen({ auth, komponens, units }) {
                                             <option value="dinamis_jam_mengajar">Dinamis Jam Mengajar (Honor JTM)</option>
                                             <option value="dinamis_masa_bakti">Dinamis Masa Bakti (Otomatis dari Skala)</option>
                                             <option value="dinamis_lembur">Dinamis Lembur (Dihitung dari Jam Lembur)</option>
+                                            <option value="dinamis_jabatan">Dinamis Jabatan (Tunjangan per Jabatan)</option>
                                         </select>
                                         {JENIS_META[data.jenis] && (
                                             <p className="mt-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-medium text-text-secondary">
@@ -233,6 +236,61 @@ export default function Komponen({ auth, komponens, units }) {
                                             ))}
                                         </select>
                                     </Field>
+                                    {data.jenis === 'dinamis_jabatan' && (
+                                        <Field label="Nominal per Jabatan" error={errors.jabatan_nominals}
+                                            hint="Rangkap jabatan dijumlah semua (full sebulan). Override manual per pegawai tetap menang.">
+                                            <div className="space-y-2">
+                                                {(data.jabatan_nominals || []).map((row, i) => (
+                                                    <div key={i} className="flex items-center gap-2">
+                                                        <select
+                                                            value={row.jabatan_id}
+                                                            onChange={(e) => {
+                                                                const next = [...(data.jabatan_nominals || [])];
+                                                                next[i] = { ...next[i], jabatan_id: e.target.value };
+                                                                setData('jabatan_nominals', next);
+                                                            }}
+                                                            className={`${selectClass} flex-1`}
+                                                            aria-label="Jabatan"
+                                                        >
+                                                            <option value="">Pilih jabatan</option>
+                                                            {jabatans.map((j) => (
+                                                                <option key={j.id} value={j.id} disabled={(data.jabatan_nominals || []).some((r, ri) => ri !== i && String(r.jabatan_id) === String(j.id))}>
+                                                                    {j.nama}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <input
+                                                            type="number" min="0" step="0.01"
+                                                            value={row.nominal}
+                                                            onChange={(e) => {
+                                                                const next = [...(data.jabatan_nominals || [])];
+                                                                next[i] = { ...next[i], nominal: e.target.value };
+                                                                setData('jabatan_nominals', next);
+                                                            }}
+                                                            placeholder="Rp"
+                                                            className={`${inputClass} w-36`}
+                                                            aria-label="Nominal"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setData('jabatan_nominals', (data.jabatan_nominals || []).filter((_, ri) => ri !== i))}
+                                                            className="shrink-0 rounded-lg p-1.5 text-danger transition-colors hover:bg-danger-light"
+                                                            title="Hapus baris ini"
+                                                        >
+                                                            Hapus
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setData('jabatan_nominals', [...(data.jabatan_nominals || []), { jabatan_id: '', nominal: '' }])}
+                                                    className="text-xs font-bold text-primary hover:underline"
+                                                >
+                                                    + Tambah jabatan
+                                                </button>
+                                            </div>
+                                        </Field>
+                                    )}
                                     {data.jenis === 'dinamis_jam_mengajar' && (
                                         <Field label="Syarat Bayar Jam Mengajar" error={errors.syarat_bayar_jam_mengajar}
                                             hint="'Hanya Hadir' = jam dihitung dari jadwal yg ada presensi hadir/telat. 'Semua Jadwal' = semua jam jadwal dibayar.">

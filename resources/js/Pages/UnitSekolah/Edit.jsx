@@ -5,7 +5,7 @@ import { ArrowLeft, Plus, Trash2, MapPin, Settings2 } from 'lucide-react';
 import UnitForm from './UnitForm';
 import LeafletPicker from '@/Components/LeafletPicker';
 
-export default function Edit({ auth, unit, lokalis }) {
+export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = [] }) {
     const { data, setData, put, processing, errors } = useForm({
         nama: unit.nama,
         singkatan: unit.singkatan,
@@ -25,6 +25,7 @@ export default function Edit({ auth, unit, lokalis }) {
         web: unit.web ?? '',
         telepon: unit.telepon ?? '',
         alamat: unit.alamat ?? '',
+        tembusan_jabatan_ids: (tembusan || []).map(String),
     });
 
     const [showLokasiForm, setShowLokasiForm] = React.useState(false);
@@ -86,6 +87,34 @@ export default function Edit({ auth, unit, lokalis }) {
                         unitName={unit.nama}
                         unitLogoUrl={unit.logo_url}
                     />
+
+                    {/* Tembusan Izin Section */}
+                    <div className="page-card">
+                        <div className="p-6">
+                            <h3 className="section-title">Tembusan Pengajuan Izin</h3>
+                            <p className="text-sm text-text-secondary mb-3">Jabatan yang otomatis menerima tembusan (notifikasi + push, tanpa hak approve) setiap ada pengajuan izin di unit ini — saat diajukan dan diputus.</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {jabatans.map((j) => {
+                                    const checked = (data.tembusan_jabatan_ids || []).map(String).includes(String(j.id));
+                                    return (
+                                        <label key={j.id} className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border px-3 py-2.5 text-sm hover:border-primary/50">
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={(e) => {
+                                                    const cur = (data.tembusan_jabatan_ids || []).map(String);
+                                                    setData('tembusan_jabatan_ids', e.target.checked ? [...cur, String(j.id)] : cur.filter((x) => x !== String(j.id)));
+                                                }}
+                                                className="h-5 w-5 rounded border-border text-primary focus:ring-primary/25"
+                                            />
+                                            <span className="font-medium text-text-primary">{j.nama}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            {errors.tembusan_jabatan_ids && <p className="form-error mt-2">{errors.tembusan_jabatan_ids}</p>}
+                        </div>
+                    </div>
 
                     {/* Lokasi / Kampus Section */}
                     <div className="page-card">

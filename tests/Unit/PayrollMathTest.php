@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Http\Controllers\PenggajianController;
+use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
 use App\Models\PayrollReferenceType;
@@ -44,11 +45,13 @@ class TestablePenggajianController extends PenggajianController
         Carbon $attendanceCutoff,
         $lemburByPegawai = null,
         $sakitProrata = null,
-        $presentDays = null
+        $presentDays = null,
+        $jabatanRatesByKomponen = null
     ): float {
         return $this->computeComponentNominal(
             $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas,
-            $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDays
+            $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDays,
+            null, [], $jabatanRatesByKomponen
         );
     }
 }
@@ -256,6 +259,68 @@ class PayrollMathTest extends TestCase
         );
 
         $this->assertSame(100000.0, $nominal);
+    }
+
+    public function test_dinamis_jabatan_menjumlah_semua_jabatan(): void
+    {
+        $komponen = $this->makeKomponen(['id' => 8, 'kode' => 'tunjangan_jabatan', 'nama' => 'Tunjangan Jabatan', 'jenis' => 'dinamis_jabatan']);
+        $pegawai = $this->makePegawai();
+        $guru = new Jabatan(['nama' => 'Guru']);
+        $guru->id = 1;
+        $waka = new Jabatan(['nama' => 'Wakasek']);
+        $waka->id = 2;
+        $pegawai->setRelation('jabatans', collect([$guru, $waka]));
+        $rates = collect([8 => collect([
+            ['komponen_gaji_id' => 8, 'jabatan_id' => 1, 'nominal' => 500000],
+            ['komponen_gaji_id' => 8, 'jabatan_id' => 2, 'nominal' => 1500000],
+        ])]);
+
+        $periodeEnd = Carbon::create(2026, 8, 31);
+        $periodeStart = Carbon::create(2026, 8, 1);
+
+        $nominal = $this->controller()->pubComputeComponentNominal(
+            $komponen, $pegawai, new Collection, new Collection, [],
+            new Collection, $periodeEnd, $periodeStart, $periodeEnd,
+            null, null, null, $rates
+        );
+
+        $this->assertSame(2000000.0, $nominal);
+    }
+
+    public function test_dinamis_jabatan_override_menang(): void
+    {
+        $komponen = $this->makeKomponen(['id' => 8, 'kode' => 'tunjangan_jabatan', 'nama' => 'Tunjangan Jabatan', 'jenis' => 'dinamis_jabatan']);
+        $override = $this->makeKomponen(['id' => 8, 'jenis' => 'dinamis_jabatan']);
+        $override->pivot = (object) ['nominal' => 999000];
+        $pegawai = $this->makePegawai();
+        $pegawai->setRelation('jabatans', new Collection);
+
+        $periodeEnd = Carbon::create(2026, 8, 31);
+        $periodeStart = Carbon::create(2026, 8, 1);
+
+        $nominal = $this->controller()->pubComputeComponentNominal(
+            $komponen, $pegawai, collect([8 => $override]), new Collection, [],
+            new Collection, $periodeEnd, $periodeStart, $periodeEnd
+        );
+
+        $this->assertSame(999000.0, $nominal);
+    }
+
+    public function test_dinamis_jabatan_tanpa_mapping_nol(): void
+    {
+        $komponen = $this->makeKomponen(['id' => 8, 'kode' => 'tunjangan_jabatan', 'nama' => 'Tunjangan Jabatan', 'jenis' => 'dinamis_jabatan']);
+        $pegawai = $this->makePegawai();
+        $pegawai->setRelation('jabatans', new Collection);
+
+        $periodeEnd = Carbon::create(2026, 8, 31);
+        $periodeStart = Carbon::create(2026, 8, 1);
+
+        $nominal = $this->controller()->pubComputeComponentNominal(
+            $komponen, $pegawai, new Collection, new Collection, [],
+            new Collection, $periodeEnd, $periodeStart, $periodeEnd, null, null, null, new Collection
+        );
+
+        $this->assertSame(0.0, $nominal);
     }
 
     public function test_komponen_applies_only_to_matching_status(): void

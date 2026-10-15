@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Jabatan;
 use App\Models\KomponenGaji;
 use App\Models\UnitSekolah;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class KomponenGajiController extends Controller
@@ -13,8 +15,16 @@ class KomponenGajiController extends Controller
     {
         $komponens = KomponenGaji::orderBy('urutan', 'asc')->get();
         $units = UnitSekolah::orderBy('nama')->get();
+        $jabatans = Jabatan::orderBy('nama')->get(['id', 'nama']);
+        $jabatanMappings = DB::table('komponen_jabatan')->get(['komponen_gaji_id', 'jabatan_id', 'nominal'])
+            ->groupBy('komponen_gaji_id');
 
-        return inertia('Payroll/Komponen', ['komponens' => $komponens, 'units' => $units]);
+        return inertia('Payroll/Komponen', [
+            'komponens' => $komponens,
+            'units' => $units,
+            'jabatans' => $jabatans,
+            'jabatanMappings' => $jabatanMappings,
+        ]);
     }
 
     public function store(Request $request)
@@ -23,7 +33,7 @@ class KomponenGajiController extends Controller
             'nama' => 'required|string',
             'kode' => 'nullable|string|max:50',
             'tipe' => 'required|in:pendapatan,potongan',
-            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,lookup_reference',
+            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,dinamis_jabatan,lookup_reference',
             'payroll_reference_type_id' => [
                 'nullable',
                 'exists:payroll_reference_types,id',
@@ -37,6 +47,9 @@ class KomponenGajiController extends Controller
             'is_active' => 'boolean',
             'urutan' => 'nullable|integer',
             'tampil_di_matrix' => 'boolean',
+            'jabatan_nominals' => 'nullable|array',
+            'jabatan_nominals.*.jabatan_id' => 'required|exists:jabatan,id',
+            'jabatan_nominals.*.nominal' => 'required|numeric|min:0',
         ]);
 
         if (($validated['jenis'] ?? null) !== 'lookup_reference') {
@@ -50,7 +63,12 @@ class KomponenGajiController extends Controller
             $validated['urutan'] = 99;
         }
 
-        KomponenGaji::create($validated);
+        $touchedMapping = $request->exists('jabatan_nominals');
+        $jabatanNominals = $validated['jabatan_nominals'] ?? [];
+        unset($validated['jabatan_nominals']);
+
+        $komponen = KomponenGaji::create($validated);
+        $this->syncJabatanNominals($komponen->id, $validated['jenis'] ?? null, $jabatanNominals, $touchedMapping);
 
         return redirect()->route('komponen-gaji.index')->with('message', 'Komponen Gaji berhasil ditambah.');
     }
@@ -62,7 +80,7 @@ class KomponenGajiController extends Controller
             'nama' => 'required|string',
             'kode' => 'nullable|string|max:50',
             'tipe' => 'required|in:pendapatan,potongan',
-            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,lookup_reference',
+            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,dinamis_jabatan,lookup_reference',
             'payroll_reference_type_id' => [
                 'nullable',
                 'exists:payroll_reference_types,id',
@@ -75,6 +93,9 @@ class KomponenGajiController extends Controller
             'is_active' => 'boolean',
             'urutan' => 'nullable|integer',
             'tampil_di_matrix' => 'boolean',
+            'jabatan_nominals' => 'nullable|array',
+            'jabatan_nominals.*.jabatan_id' => 'required|exists:jabatan,id',
+            'jabatan_nominals.*.nominal' => 'required|numeric|min:0',
         ]);
 
         if (($validated['jenis'] ?? null) !== 'lookup_reference') {
@@ -88,7 +109,12 @@ class KomponenGajiController extends Controller
             $validated['urutan'] = 99;
         }
 
+        $touchedMapping = $request->exists('jabatan_nominals');
+        $jabatanNominals = $validated['jabatan_nominals'] ?? [];
+        unset($validated['jabatan_nominals']);
+
         $komponen->update($validated);
+        $this->syncJabatanNominals($komponen->id, $validated['jenis'] ?? null, $jabatanNominals, $touchedMapping);
 
         return redirect()->route('komponen-gaji.index')->with('message', 'Komponen Gaji berhasil diupdate.');
     }
@@ -98,5 +124,36 @@ class KomponenGajiController extends Controller
         KomponenGaji::destroy($id);
 
         return redirect()->route('komponen-gaji.index')->with('message', 'Komponen Gaji dihapus.');
+    }
+
+    /**
+     * Sinkronisasi nominal per jabatan (khusus jenis dinamis_jabatan).
+     * Key tak dikirim = jangan sentuh. Jenis lain: mapping lama dibersihkan.
+     */
+    private function syncJabatanNominals(int $komponenId, ?string $jenis, $rows, bool $touched): void
+    {
+        if (! $touched) {
+            return;
+        }
+        if ($jenis !== 'dinamis_jabatan' || empty($rows)) {
+            DB::table('komponen_jabatan')->where('komponen_gaji_id', $komponenId)->delete();
+
+            return;
+        }
+
+        $keep = [];
+        foreach ($rows as $row) {
+            if (empty($row['jabatan_id'])) {
+                continue;
+            }
+            $jid = (int) $row['jabatan_id'];
+            $keep[] = $jid;
+            DB::table('komponen_jabatan')->updateOrInsert(
+                ['komponen_gaji_id' => $komponenId, 'jabatan_id' => $jid],
+                ['nominal' => $row['nominal'] ?? 0, 'updated_at' => now(), 'created_at' => now()]
+            );
+        }
+        DB::table('komponen_jabatan')->where('komponen_gaji_id', $komponenId)
+            ->whereNotIn('jabatan_id', $keep ?: [-1])->delete();
     }
 }

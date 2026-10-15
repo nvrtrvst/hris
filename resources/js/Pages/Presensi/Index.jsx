@@ -91,7 +91,7 @@ const TugasLuarCell = ({ p, openTugasLuar }) => (
             <div>
                 <TugasLuarBadge status={p.tugas_luar_status} onClick={() => openTugasLuar(p)} />
                 {p.tujuan && (
-                    <p className="mt-1 max-w-[160px] text-[10px] leading-tight text-text-secondary">{p.tujuan}</p>
+                    <p className="mt-1 max-w-[160px] whitespace-normal break-words text-[10px] leading-tight text-text-secondary">{p.tujuan}</p>
                 )}
             </div>
         ) : <span className="text-xs text-text-secondary">—</span>}
@@ -203,7 +203,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                     {c.is_tugas_luar ? (
                         <div>
                             <TugasLuarBadge status={c.tugas_luar_status} onClick={() => openTugasLuar(c)} />
-                            {c.tujuan && <p className="mt-1 max-w-[160px] text-[10px] leading-tight text-text-secondary">{c.tujuan}</p>}
+                            {c.tujuan && <p className="mt-1 max-w-[160px] whitespace-normal break-words text-[10px] leading-tight text-text-secondary">{c.tujuan}</p>}
                         </div>
                     ) : <span className="text-xs text-text-secondary">—</span>}
                 </td>
@@ -454,7 +454,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             <div>
                                 <TugasLuarBadge status={tugasLuar.tugas_luar_status} onClick={() => openTugasLuar(tugasLuar)} />
                                 {tugasLuar.tujuan && (
-                                    <p className="mt-1 max-w-[160px] text-[10px] leading-tight text-text-secondary">{tugasLuar.tujuan}</p>
+                                    <p className="mt-1 max-w-[160px] whitespace-normal break-words text-[10px] leading-tight text-text-secondary">{tugasLuar.tujuan}</p>
                                 )}
                             </div>
                         ) : <span className="text-xs text-text-secondary">—</span>}

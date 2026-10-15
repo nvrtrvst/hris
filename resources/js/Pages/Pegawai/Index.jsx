@@ -263,7 +263,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                             pegawais.data.map((pegawai) => {
                                 const kep = kepagawaianBadge(pegawai.status_kepegawaian);
                                 const unitNames = pegawai.units?.map(u => u.nama).join(', ') || '—';
-                                const jabatanNama = pegawai.jabatans?.[0]?.nama || '—';
+                                const jabatanNama = [...new Set((pegawai.jabatans || []).map((j) => j.nama))].join(', ') || '—';
                                 return (
                                     <Link key={pegawai.id} href={route('pegawai.show', pegawai.id)} className="card block p-4 active:bg-surface/70 transition-colors">
                                         <div className="flex items-start gap-3">

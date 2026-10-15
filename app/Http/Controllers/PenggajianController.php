@@ -127,7 +127,7 @@ class PenggajianController extends Controller
         $year = $request->year;
 
         // [FIX] N+1: Eager load komponenGaji dan jadwals.unitSekolah
-        $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'units', 'jadwals.unitSekolah']);
+        $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'units', 'jadwals.unitSekolah', 'jabatans:id']);
 
         if ($user && ! $user->can('view_all_units')) {
             $unitIds = $this->payrollUnitScope($user);
@@ -146,6 +146,9 @@ class PenggajianController extends Controller
             ->with(['referenceValues'])
             ->get();
         $skalas = SkalaMasaBakti::orderBy('masa_kerja_tahun', 'desc')->get();
+        // [FIX] N+1: mapping tunjangan jabatan per komponen (dinamis_jabatan).
+        $jabatanRates = DB::table('komponen_jabatan')->get(['komponen_gaji_id', 'jabatan_id', 'nominal'])
+            ->groupBy('komponen_gaji_id');
 
         $periodeStart = Carbon::createFromDate($year, $month, 1)->startOfMonth();
         $periodeEnd = Carbon::createFromDate($year, $month, 1)->endOfMonth();
@@ -211,7 +214,7 @@ class PenggajianController extends Controller
                         continue;
                     }
                     $nominal = round((float) $this->computeComponentNominal(
-                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDaysByPegawai, $attendedJadwalByPegawai, $holidayMap
+                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDaysByPegawai, $attendedJadwalByPegawai, $holidayMap, $jabatanRates
                     ), 2);
 
                     if ($nominal > 0) {
@@ -642,6 +645,7 @@ class PenggajianController extends Controller
      * - dinamis_masa_bakti: Lookup pada SkalaMasaBakti berdasarkan masa kerja
      * - dinamis_jam_mengajar: Rate × total jam jadwal dalam periode
      * - dinamis_lembur: Rate × total jam lembur disetujui
+     * - dinamis_jabatan: Jumlah nominal mapping komponen-jabatan utk semua jabatan pegawai
      *
      * @param  KomponenGaji  $komponen  Komponen gaji yang dihitung
      * @param  Pegawai  $pegawai  Pegawai yang dihitung gajinya
@@ -659,7 +663,7 @@ class PenggajianController extends Controller
      * @param  array  $holidayMap  Map hari libur untuk exclude libur di sesi mengajar
      * @return float nominal komponen gaji
      */
-    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null, $presentDays = null, $attendedJadwalByPegawai = null, array $holidayMap = []): float
+    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null, $presentDays = null, $attendedJadwalByPegawai = null, array $holidayMap = [], $jabatanRatesByKomponen = null): float
     {
         $nominal = 0;
 
@@ -778,6 +782,18 @@ class PenggajianController extends Controller
             }
 
             $nominal = $rate * ($totalMinutes / 60);
+        } elseif ($komponen->jenis === 'dinamis_jabatan') {
+            // Override manual per pegawai menang (pola komponen lain).
+            if ($pegawaiKomponens->has($komponen->id) && $pegawaiKomponens[$komponen->id]->pivot->nominal !== null) {
+                $nominal = $pegawaiKomponens[$komponen->id]->pivot->nominal;
+            } else {
+                // Rangkap jabatan = jumlahkan semua mapping yang cocok (full).
+                $jabatanIds = $pegawai->jabatans->pluck('id')->unique()->all();
+                $rates = $jabatanRatesByKomponen && isset($jabatanRatesByKomponen[$komponen->id])
+                    ? $jabatanRatesByKomponen[$komponen->id]
+                    : collect();
+                $nominal = $rates->whereIn('jabatan_id', $jabatanIds)->sum('nominal');
+            }
         } elseif ($komponen->jenis === 'lookup_reference') {
             $refType = $komponen->payrollReferenceType;
             if (! $refType) {

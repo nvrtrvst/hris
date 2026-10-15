@@ -177,7 +177,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                                                     ? 'Superadmin'
                                                     : role === 'admin_unit'
                                                         ? 'Admin Unit'
-                                                        : (user.pegawai?.jabatans?.[0]?.nama || 'Pegawai')}
+                                                        : ([...new Set((user.pegawai?.jabatans || []).map((j) => j.nama))].join(', ') || 'Pegawai')}
                                             </div>
                                         </div>
                                         <svg className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

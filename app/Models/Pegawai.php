@@ -244,18 +244,32 @@ class Pegawai extends Model
     }
 
     /**
-     * Jabatan dari penugasan PRIMARY (atau penugasan pertama bila tidak ada
-     * yang ditandai primary). Asumsikan relasi `units` sudah eager-load dengan
-     * pivot jabatan_id/is_primary.
+     * Jabatan primer: struktural menang (hierarchy_level terkecil; null = 99).
+     * Seri → unit primary dulu, lalu baris pertama. Asumsikan relasi `units`
+     * sudah eager-load dengan pivot jabatan_id/is_primary.
      */
     public function jabatanPrimer(): ?Jabatan
     {
-        $unit = $this->units->first(fn ($u) => ! empty($u->pivot->is_primary))
-            ?? $this->units->first();
+        $rows = $this->units
+            ->map(fn ($u) => [
+                'jabatan_id' => $u->pivot->jabatan_id ?? null,
+                'primary' => ! empty($u->pivot->is_primary),
+            ])
+            ->filter(fn ($r) => $r['jabatan_id'])
+            ->values();
+        if ($rows->isEmpty()) {
+            return null;
+        }
 
-        return $unit?->pivot?->jabatan_id
-            ? Jabatan::find($unit->pivot->jabatan_id)
-            : null;
+        $levels = Jabatan::whereIn('id', $rows->pluck('jabatan_id')->unique()->all())
+            ->pluck('hierarchy_level', 'id');
+
+        $best = $rows->sortBy([
+            fn ($r) => $levels->get($r['jabatan_id']) ?? 99,
+            fn ($r) => $r['primary'] ? 0 : 1,
+        ])->first();
+
+        return Jabatan::find($best['jabatan_id']);
     }
 
     /**

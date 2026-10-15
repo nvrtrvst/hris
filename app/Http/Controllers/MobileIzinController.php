@@ -166,6 +166,9 @@ class MobileIzinController extends Controller
 
         $this->notifyPengajuanBaru($pengajuan, $pegawai, $approvers);
 
+        // Tembusan struktural (mis. Wakasek Kurikulum se-unit): read-only.
+        ApprovalHelper::sendTembusanIzin($pengajuan, 'diajukan', array_filter([$approvers['l1_id'] ?? null]));
+
         // Real-time: beri tahu approver L1 via Reverb (F2b).
         IzinBaruEvent::dispatch($pengajuan);
 

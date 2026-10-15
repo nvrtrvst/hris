@@ -57,7 +57,7 @@ export default function MobileProfile({ status }) {
     const pegawai = user?.pegawai;
 
     const primaryUnit = pegawai?.units?.find((u) => u.pivot?.is_primary) ?? pegawai?.units?.[0];
-    const primaryJabatan = pegawai?.jabatans?.find((j) => j.pivot?.is_primary) ?? pegawai?.jabatans?.[0];
+    const jabatanNama = [...new Set((pegawai?.jabatans || []).map((j) => j.nama))].join(', ') || 'Pegawai';
     const displayName = pegawai?.nama_lengkap || user?.name;
     const initial = (displayName || 'P').charAt(0).toUpperCase();
     const photo = pegawai?.foto_url;
@@ -150,7 +150,7 @@ export default function MobileProfile({ status }) {
                             )}
                         </div>
                         <h2 className="mt-3 text-xl font-bold text-white">{displayName}</h2>
-                        <p className="text-sm text-emerald-100">{primaryJabatan?.nama || 'Pegawai'}</p>
+                        <p className="text-sm text-emerald-100">{jabatanNama}</p>
                         <div className="mt-1 flex items-center gap-1.5 text-xs text-emerald-200">
                             {primaryUnit ? (
                                 <>
@@ -194,7 +194,7 @@ export default function MobileProfile({ status }) {
                 <Card className="divide-y divide-slate-50 p-0">
                     <Field icon={IdCard} label="NIP" value={pegawai?.nuptk} />
                     <Field icon={Building2} label="Unit Sekolah" value={primaryUnit?.nama} />
-                    <Field icon={User} label="Jabatan" value={primaryJabatan?.nama} />
+                    <Field icon={User} label="Jabatan" value={jabatanNama} />
                     <Field icon={Phone} label="No. HP" value={pegawai?.no_hp} />
                     <Field icon={Mail} label="Email" value={user?.email} />
                     <Field icon={GraduationCap} label="Pendidikan" value={pegawai?.pendidikan_terakhir} />

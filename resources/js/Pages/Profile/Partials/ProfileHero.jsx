@@ -14,8 +14,7 @@ export default function ProfileHero({ user }) {
     const verified = !!user?.email_verified_at;
 
     const jabatan =
-        user?.pegawai?.jabatans?.find((j) => j.pivot?.is_primary === 1)?.nama ||
-        user?.pegawai?.jabatans?.[0]?.nama;
+        [...new Set((user?.pegawai?.jabatans || []).map((j) => j.nama))].join(', ') || undefined;
 
     const foto = user?.pegawai?.foto_url;
 

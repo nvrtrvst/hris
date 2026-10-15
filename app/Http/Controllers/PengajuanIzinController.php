@@ -203,6 +203,7 @@ class PengajuanIzinController extends Controller
 
         if ($pengajuan->status === 'disetujui') {
             NotificationHelper::sendSafely($pengajuan->pegawai?->user, new StatusIzin($pengajuan, 'disetujui'));
+            ApprovalHelper::sendTembusanIzin($pengajuan, 'disetujui', array_filter([$pengajuan->approver_l1_id, $pengajuan->approver_l2_id]));
         }
 
         if ($pengajuan->approval_stage === 'pending_l2' && $pengajuan->approver_l2_id) {
@@ -260,6 +261,7 @@ class PengajuanIzinController extends Controller
         });
 
         NotificationHelper::sendSafely($pengajuan->pegawai?->user, new StatusIzin($pengajuan, 'ditolak', $request->alasan_penolakan));
+        ApprovalHelper::sendTembusanIzin($pengajuan, 'ditolak', array_filter([$pengajuan->approver_l1_id, $pengajuan->approver_l2_id]));
 
         return back()->with('message', 'Pengajuan berhasil ditolak.');
     }

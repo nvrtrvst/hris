@@ -114,13 +114,25 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
 
     const hasFoto = pegawai.foto_url && !data.hapus_foto && !fotoPreview;
 
-    const updateUnit = (index, field, value) => {
+    const addUnit = () => setData('units', [...data.units, { unit_sekolah_id: '', jabatan_id: '', is_primary: false }]);
+    const removeUnit = (unitId) => setData('units', data.units.filter((u) => String(u.unit_sekolah_id) !== String(unitId)));
+    const changeUnit = (index, newId) => {
+        const old = data.units[index]?.unit_sekolah_id || '';
+        setData('units', data.units.map((u, i) => {
+            if (old === '') return i === index ? { ...u, unit_sekolah_id: newId } : u;
+            return String(u.unit_sekolah_id) === String(old) ? { ...u, unit_sekolah_id: newId } : u;
+        }));
+    };
+    const addJabatan = (unitId) => setData('units', [...data.units, { unit_sekolah_id: unitId, jabatan_id: '', is_primary: false }]);
+    const updateJabatan = (index, jabatanId) => {
         const next = [...data.units];
-        next[index] = { ...next[index], [field]: value };
+        next[index] = { ...next[index], jabatan_id: jabatanId };
         setData('units', next);
     };
-    const addUnit = () => setData('units', [...data.units, { unit_sekolah_id: '', jabatan_id: '', is_primary: false }]);
-    const removeUnit = (index) => setData('units', data.units.filter((_, i) => i !== index));
+    const removeJabatan = (index) => setData('units', data.units.filter((_, i) => i !== index));
+    const setPrimaryUnit = (unitId, value) => setData('units', data.units.map((u) => (
+        String(u.unit_sekolah_id) === String(unitId) ? { ...u, is_primary: value } : u
+    )));
 
     const updateMapel = (index, field, value) => {
         const next = [...data.mapels];
@@ -369,9 +381,13 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                         {/* Penugasan Unit & Jabatan */}
                         <UnitAssignmentSection
                             units={data.units}
-                            onUpdate={updateUnit}
-                            onAdd={addUnit}
-                            onRemove={removeUnit}
+                            onAddUnit={addUnit}
+                            onRemoveUnit={removeUnit}
+                            onUnitChange={changeUnit}
+                            onAddJabatan={addJabatan}
+                            onUpdateJabatan={updateJabatan}
+                            onRemoveJabatan={removeJabatan}
+                            onPrimaryChange={setPrimaryUnit}
                             unitSekolahs={unitSekolahs}
                             jabatans={jabatans}
                         />
