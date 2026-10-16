@@ -7,6 +7,39 @@ import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, getDay }
 import { id } from 'date-fns/locale';
 import { History, CalendarDays, Clock, MapPin, CheckCircle2, AlertTriangle, FileText, XCircle, Ban, ChevronDown } from 'lucide-react';
 
+/**
+ * Bukti foto satu sisi (masuk/keluar): thumbnail + jam, tap = layar penuh.
+ * URL foto ber-overlay server (nama, waktu detik, koordinat).
+ */
+function FotoBukti({ url, jam, label, status }) {
+    if (url) {
+        return (
+            <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block overflow-hidden rounded-xl border border-slate-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+                aria-label={`Buka foto ${label} layar penuh`}
+            >
+                <img src={url} alt={`Foto ${label}`} loading="lazy" width="300" height="200" className="block h-[120px] w-full object-cover" />
+                <p className="px-2 py-1.5 text-[11px] font-bold text-slate-700">
+                    {label}<span className="ml-1.5 font-semibold tabular-nums text-slate-500">{jam}</span>
+                </p>
+            </a>
+        );
+    }
+    if (status === 'expired') {
+        return <p className="rounded-xl bg-slate-100 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500">Foto kedaluwarsa (retensi 3 bulan).</p>;
+    }
+    if (status === 'pending' || status === 'processing') {
+        return <p className="rounded-xl bg-slate-100 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500">Foto sedang diproses.</p>;
+    }
+    if (status === 'failed') {
+        return <p className="rounded-xl bg-slate-100 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500">Foto gagal diproses.</p>;
+    }
+    return <p className="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500">Tak ada foto.</p>;
+}
+
 export default function Riwayat({ auth, presensi, summary, filters }) {
     const activeMonth = `${filters?.tahun || new Date().getFullYear()}-${String(filters?.bulan || new Date().getMonth() + 1).padStart(2, '0')}`;
 
@@ -243,6 +276,10 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                             </div>
                                             <Badge tone={badge.tone} icon={badge.icon}>{badge.label}</Badge>
                                         </div>
+                                        <div className="mt-2.5 grid grid-cols-2 gap-2">
+                                            <FotoBukti url={p.foto_masuk_url} jam={fmtDetik(p.jam_masuk)} label="Masuk" status={p.foto_masuk_status} />
+                                            <FotoBukti url={p.foto_keluar_url} jam={fmtDetik(p.jam_keluar)} label="Keluar" status={p.foto_keluar_status} />
+                                        </div>
                                         {belumPulang && (
                                             <button
                                                 type="button"
@@ -286,9 +323,22 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                                 const slots = splitJadwalKeJp(p, durasi);
                                                 return slots.map((s, si) => (
                                                     <div key={`${p.id}-${si}`} className="rounded-xl bg-slate-50 px-3 py-2">
-                                                        <div className="flex items-center justify-between">
+                                                        <div className="flex items-center justify-between gap-2">
                                                             <span className="text-xs font-semibold text-slate-600">{s.mulai}–{s.selesai}</span>
-                                                            <Badge tone={ib.tone} icon={ib.icon}>{ib.label}</Badge>
+                                                            <span className="flex shrink-0 items-center gap-2">
+                                                                {si === 0 && p.foto_masuk_url && (
+                                                                    <a
+                                                                        href={p.foto_masuk_url}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="block overflow-hidden rounded-lg border border-slate-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+                                                                        aria-label="Buka foto presensi layar penuh"
+                                                                    >
+                                                                        <img src={p.foto_masuk_url} alt="Foto presensi" loading="lazy" width="100" height="100" className="block h-11 w-11 object-cover" />
+                                                                    </a>
+                                                                )}
+                                                                <Badge tone={ib.tone} icon={ib.icon}>{ib.label}</Badge>
+                                                            </span>
                                                         </div>
                                                         {si === slots.length - 1 && p.jam_masuk && !p.jam_keluar && (
                                                             <button
