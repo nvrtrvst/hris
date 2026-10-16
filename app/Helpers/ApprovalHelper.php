@@ -6,6 +6,7 @@ use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\User;
 use App\Notifications\TembusanIzin;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ApprovalHelper
@@ -115,9 +116,9 @@ class ApprovalHelper
      * Penerima tembusan izin di satu unit: user aktif yang pegawainya
      * memegang jabatan terdaftar di unit_tembusan unit tsb.
      *
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
-    public static function tembusanIzinRecipients(int $unitId): \Illuminate\Support\Collection
+    public static function tembusanIzinRecipients(int $unitId): Collection
     {
         $jabatanIds = DB::table('unit_tembusan')
             ->where('unit_sekolah_id', $unitId)
