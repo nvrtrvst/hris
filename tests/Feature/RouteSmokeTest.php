@@ -297,7 +297,7 @@ class RouteSmokeTest extends TestCase
         'presensi.gaji.index' => ['pegawai' => true, 'penggajians' => true],
         'presensi.gaji.show' => ['penggajian' => true],
         'presensi.notifikasi.index' => ['notifications' => true, 'filters' => false],
-        'presensi.izin.index' => ['pengajuan' => true],
+        'presensi.izin.index' => ['pengajuan' => true, 'filters' => false, 'stats' => true, 'pegawai' => true],
         'presensi.pulang-cepat.index' => ['pengajuan' => true],
         'presensi.izin.create' => ['pegawai' => true],
         'presensi.piket.riwayat' => ['riwayat' => false, 'label' => true],
