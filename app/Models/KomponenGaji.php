@@ -17,8 +17,10 @@ class KomponenGaji extends Model
         'tipe',
         'jenis',
         'payroll_reference_type_id',
+        'mata_pelajaran_id',
         'applies_to_status_kepegawaian',
         'syarat_bayar_jam_mengajar',
+        'persentase_base',
         'nilai_default',
         'unit_sekolah_id',
         'is_taxable',
@@ -37,6 +39,11 @@ class KomponenGaji extends Model
     public function unitSekolah()
     {
         return $this->belongsTo(UnitSekolah::class);
+    }
+
+    public function mataPelajaran()
+    {
+        return $this->belongsTo(MataPelajaran::class);
     }
 
     public function payrollReferenceType()

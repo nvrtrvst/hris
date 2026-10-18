@@ -33,14 +33,20 @@ class KomponenGajiController extends Controller
             'nama' => 'required|string',
             'kode' => 'nullable|string|max:50',
             'tipe' => 'required|in:pendapatan,potongan',
-            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,dinamis_jabatan,lookup_reference',
+            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,dinamis_jabatan,dinamis_piket,dinamis_ekskul,lookup_reference',
             'payroll_reference_type_id' => [
                 'nullable',
                 'exists:payroll_reference_types,id',
                 Rule::requiredIf(fn () => $request->input('jenis') === 'lookup_reference'),
             ],
-            'applies_to_status_kepegawaian' => 'nullable|in:tetap,honorer',
+            'mata_pelajaran_id' => [
+                'nullable',
+                'exists:mata_pelajaran,id',
+                Rule::requiredIf(fn () => $request->input('jenis') === 'dinamis_ekskul'),
+            ],
+            'applies_to_status_kepegawaian' => 'nullable|in:tetap,honorer,guru,non_guru',
             'syarat_bayar_jam_mengajar' => 'nullable|in:semua_jadwal,hanya_hadir',
+            'persentase_base' => 'nullable|in:taxable,gaji_pokok,total_pendapatan',
             'nilai_default' => 'nullable|numeric',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
             'is_taxable' => 'boolean',
@@ -54,6 +60,9 @@ class KomponenGajiController extends Controller
 
         if (($validated['jenis'] ?? null) !== 'lookup_reference') {
             $validated['payroll_reference_type_id'] = null;
+        }
+        if (($validated['jenis'] ?? null) !== 'dinamis_ekskul') {
+            $validated['mata_pelajaran_id'] = null;
         }
 
         $validated['is_taxable'] = $request->has('is_taxable') ? $request->is_taxable : true;
@@ -80,13 +89,20 @@ class KomponenGajiController extends Controller
             'nama' => 'required|string',
             'kode' => 'nullable|string|max:50',
             'tipe' => 'required|in:pendapatan,potongan',
-            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,dinamis_jabatan,lookup_reference',
+            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,dinamis_jabatan,dinamis_piket,dinamis_ekskul,lookup_reference',
             'payroll_reference_type_id' => [
                 'nullable',
                 'exists:payroll_reference_types,id',
                 Rule::requiredIf(fn () => $request->input('jenis') === 'lookup_reference'),
             ],
+            'mata_pelajaran_id' => [
+                'nullable',
+                'exists:mata_pelajaran,id',
+                Rule::requiredIf(fn () => $request->input('jenis') === 'dinamis_ekskul'),
+            ],
+            'applies_to_status_kepegawaian' => 'nullable|in:tetap,honorer,guru,non_guru',
             'syarat_bayar_jam_mengajar' => 'nullable|in:semua_jadwal,hanya_hadir',
+            'persentase_base' => 'nullable|in:taxable,gaji_pokok,total_pendapatan',
             'nilai_default' => 'nullable|numeric',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
             'is_taxable' => 'boolean',
@@ -100,6 +116,9 @@ class KomponenGajiController extends Controller
 
         if (($validated['jenis'] ?? null) !== 'lookup_reference') {
             $validated['payroll_reference_type_id'] = null;
+        }
+        if (($validated['jenis'] ?? null) !== 'dinamis_ekskul') {
+            $validated['mata_pelajaran_id'] = null;
         }
 
         if (! isset($validated['tampil_di_matrix'])) {

@@ -234,6 +234,28 @@ class Pegawai extends Model
         return (bool) ($this->statusRef?->is_tetap);
     }
 
+    /**
+     * Nama hari kerja unit (Senin–Jumat, + Sabtu bila unit beroperasi Sabtu).
+     * Sumber tunggal aturan hari kerja — dipakai payroll, FinalizeAlpa, absen.
+     *
+     * @return list<string>
+     */
+    public static function hariKerjaUnit(?UnitSekolah $unit): array
+    {
+        $hari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+        if ($unit && $unit->jam_kerja_sabtu_mulai) {
+            $hari[] = 'Sabtu';
+        }
+
+        return $hari;
+    }
+
+    /** Unit utama pegawai (pivot is_primary menang, else baris pertama). */
+    public function unitUtama(): ?UnitSekolah
+    {
+        return $this->units->sortByDesc('pivot.is_primary')->first() ?? $this->units->first();
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

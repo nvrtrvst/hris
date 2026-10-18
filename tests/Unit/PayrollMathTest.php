@@ -33,6 +33,11 @@ class TestablePenggajianController extends PenggajianController
         $this->tetapKodeCache = $kodes;
     }
 
+    public function setGuruKodeCache(array $kodes): void
+    {
+        $this->guruKodeCache = $kodes;
+    }
+
     public function pubComputeComponentNominal(
         KomponenGaji $komponen,
         Pegawai $pegawai,

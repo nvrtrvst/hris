@@ -6,13 +6,13 @@ use App\Exports\TransferBankExport;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Models\HariLibur;
 use App\Models\KomponenGaji;
+use App\Models\LaporanPiket;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
 use App\Models\SkalaMasaBakti;
 use App\Models\StatusKepegawaian;
-use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Services\PresensiAggregator;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -27,6 +27,9 @@ class PenggajianController extends Controller
 {
     use ScopesPimpinan;
 
+    /** Batas honor ekskul per ekskul per bulan (mis. 4 × Rp 60.000). */
+    private const EKSKUL_CAP_NOMINAL = 240000;
+
     /**
      * Cache kode status tetap (ref table) per-request — dipakai loop payroll
      * agar tidak query berulang per komponen × pegawai. Injectable utk test.
@@ -34,6 +37,13 @@ class PenggajianController extends Controller
      * @var list<string>|null
      */
     protected ?array $tetapKodeCache = null;
+
+    /**
+     * Cache kode status grup guru (GTYS/GTY/GTT) per-request.
+     *
+     * @var list<string>|null
+     */
+    protected ?array $guruKodeCache = null;
 
     public function __construct(
         private readonly PresensiAggregator $presensiAggregator,
@@ -47,6 +57,16 @@ class PenggajianController extends Controller
     protected function tetapKodes(): array
     {
         return $this->tetapKodeCache ??= StatusKepegawaian::activeTetapKodes();
+    }
+
+    /**
+     * Kode status grup guru — cache per-request.
+     *
+     * @return list<string>
+     */
+    protected function guruKodes(): array
+    {
+        return $this->guruKodeCache ??= StatusKepegawaian::activeGuruKodes();
     }
 
     public function index(Request $request)
@@ -127,8 +147,8 @@ class PenggajianController extends Controller
         $month = $request->month;
         $year = $request->year;
 
-        // [FIX] N+1: Eager load komponenGaji dan jadwals.unitSekolah
-        $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'units', 'jadwals.unitSekolah', 'jabatans:id']);
+        // [FIX] N+1: Eager load komponenGaji, jadwal + mapel (honor ekskul), jabatan.
+        $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'units', 'jadwals.unitSekolah', 'jadwals.pegawaiMapel.mataPelajaran', 'jabatans:id']);
 
         if ($user && ! $user->can('view_all_units')) {
             $unitIds = $this->payrollUnitScope($user);
@@ -190,6 +210,15 @@ class PenggajianController extends Controller
         $allUnitIds = $pegawais->flatMap->units->pluck('id')->filter()->unique()->toArray();
         $holidayMap = $this->buildHolidayWeekdayMap($allUnitIds, $periodeStart, $attendanceCutoff);
 
+        // Honor piket: jumlah laporan piket submitted per pegawai dalam periode
+        // (numerator). 1 query untuk semua pegawai.
+        $piketSubmittedByPegawai = LaporanPiket::whereIn('pegawai_id', $pegawais->pluck('id'))
+            ->where('status', LaporanPiket::STATUS_SUBMITTED)
+            ->whereBetween('tanggal', [$periodeStart->toDateString(), $attendanceCutoff->toDateString()])
+            ->get()
+            ->groupBy('pegawai_id')
+            ->map->count();
+
         DB::beginTransaction();
         try {
             foreach ($pegawais as $pegawai) {
@@ -218,38 +247,41 @@ class PenggajianController extends Controller
 
                 $pegawaiUnitIds = $pegawai->units->pluck('id')->toArray();
 
-                foreach ($globalKomponens as $komponen) {
-                    if ($komponen->unit_sekolah_id && ! in_array($komponen->unit_sekolah_id, $pegawaiUnitIds, true)) {
-                        continue;
-                    }
-                    $nominal = round((float) $this->computeComponentNominal(
-                        $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDaysByPegawai, $attendedJadwalByPegawai, $holidayMap, $jabatanRates, $kantorDaysByPegawai
-                    ), 2);
+                // Dua-pass: pendapatan dulu (akumulasi taxable), lalu potongan —
+                // agar persentase ber-dasar 'taxable'/'total_pendapatan' akurat.
+                $ordered = $globalKomponens->sortBy(fn ($k) => $k->tipe === 'potongan' ? 1 : 0)->values();
 
-                    if ($nominal > 0) {
-                        if ($komponen->tipe === 'pendapatan') {
-                            $totalPendapatan = bcadd($totalPendapatan, (string) $nominal, 2);
-                        } else {
+                foreach ([0, 1] as $pass) {
+                    foreach ($ordered as $komponen) {
+                        if (($komponen->tipe === 'potongan') !== ($pass === 1)) {
+                            continue;
+                        }
+                        if ($komponen->unit_sekolah_id && ! in_array($komponen->unit_sekolah_id, $pegawaiUnitIds, true)) {
+                            continue;
+                        }
+                        $nominal = round((float) $this->computeComponentNominal(
+                            $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDaysByPegawai, $attendedJadwalByPegawai, $holidayMap, $jabatanRates, $kantorDaysByPegawai, (float) $totalTaxable, (float) $totalPendapatan, $piketSubmittedByPegawai
+                        ), 2);
+
+                        if ($nominal <= 0) {
+                            continue;
+                        }
+
+                        if ($komponen->tipe === 'potongan') {
                             $totalPotongan = bcadd($totalPotongan, (string) $nominal, 2);
-                        }
-
-                        if ($komponen->is_taxable && $komponen->tipe === 'pendapatan') {
-                            $totalTaxable = bcadd($totalTaxable, (string) $nominal, 2);
-                        }
-
-                        $namaDetail = $komponen->nama;
-                        if ($komponen->kode === 'transport_harian' && $nominal > 0) {
-                            $hari = $kantorDaysByPegawai[$pegawai->id] ?? [];
-                            $namaDetail = sprintf(
-                                'Transport (%d × Rp %s)',
-                                count($hari),
-                                number_format($this->resolveFixedNominal($komponen, $pegawaiKomponens), 0, ',', '.')
-                            );
+                        } else {
+                            $totalPendapatan = bcadd($totalPendapatan, (string) $nominal, 2);
+                            if ($komponen->is_taxable) {
+                                $totalTaxable = bcadd($totalTaxable, (string) $nominal, 2);
+                            }
                         }
 
                         $details[] = [
                             'komponen_gaji_id' => $komponen->id,
-                            'nama_komponen' => $namaDetail,
+                            'nama_komponen' => $this->detailNama(
+                                $komponen, $pegawai, $pegawaiKomponens,
+                                $kantorDaysByPegawai, $attendedJadwalByPegawai, $piketSubmittedByPegawai
+                            ),
                             'tipe' => $komponen->tipe,
                             'nominal' => $nominal,
                             'is_taxable' => (bool) $komponen->is_taxable,
@@ -630,7 +662,9 @@ class PenggajianController extends Controller
         $workingDays = 0;
         $seenHariUnit = [];
         foreach ($pegawai->jadwals as $jadwal) {
-            if ($jadwal->jenis_jadwal === 'lembur') {
+            // Piket bukan sesi presensi (akuntabilitas via laporan piket) —
+            // samakan dengan FinalizeAlpa yang tak menandai alpa slot piket.
+            if (in_array($jadwal->jenis_jadwal, ['lembur', 'piket'], true)) {
                 continue;
             }
             // Dedup (hari, unit): 2 jadwal Senin di unit sama = 1 hari kerja,
@@ -644,6 +678,20 @@ class PenggajianController extends Controller
                 $jadwal->hari, $periodeStart, $attendanceCutoff,
                 $this->holidayCountFor($holidayMap, $jadwal->unit_sekolah_id, $jadwal->hari)
             ));
+        }
+
+        // Tanpa jadwal (mis. non-guru staf kantor) → hari kerja unit utama
+        // (Sen–Jum, +Sabtu bila unit kerja Sabtu), minus libur.
+        if ($workingDays === 0) {
+            $unit = $pegawai->unitUtama();
+            if ($unit) {
+                foreach (Pegawai::hariKerjaUnit($unit) as $hari) {
+                    $workingDays += max(0, $this->countWeekdayInRange(
+                        $hari, $periodeStart, $attendanceCutoff,
+                        $this->holidayCountFor($holidayMap, $unit->id, $hari)
+                    ));
+                }
+            }
         }
         $presentOrLeave = $countHadir + $countTelat + $countSakit + $countIzin + $countCuti + $countAlpaManual;
         $countAlpa = $countAlpaManual + max(0, $workingDays - $presentOrLeave);
@@ -706,71 +754,41 @@ class PenggajianController extends Controller
     }
 
     /**
-     * Baris potongan kehadiran otomatis (append ke $details + $totalPotongan):
-     * - Tetap, rate ≤ 90%: Potongan Kehadiran = gaji_pokok × (1 − rate).
-     * - Honorer: Potongan Honorer = (honor ÷ hari_kerja) × hari_nol.
-     * Bukan komponen master (komponen_gaji_id NULL, non-taxable by construction
-     * karena hanya pendapatan yang akumulasi taxable).
+     * Potongan kehadiran harian — HANYA non-guru (baris virtual, komponen_gaji_id
+     * NULL): (gaji_pokok ÷ hari kerja) × hari nol. Guru tidak dipotong kehadiran
+     * (gajinya murni JP dihadiri × tarif).
      */
     protected function appendKehadiranAdjustments(Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, array &$details, string &$totalPotongan): void
     {
-        $setengah = (int) ($counts['setengah'] ?? 0);
-        $workingDays = (int) ($counts['working_days'] ?? 0);
-        $rate = $this->attendanceRate($counts, $setengah, $workingDays);
-        $isTetap = in_array($pegawai->status_kepegawaian, $this->tetapKodes(), true);
-
-        if ($isTetap) {
-            if ($rate > 0.9 || $workingDays <= 0) {
-                return;
-            }
-            $gajiPokok = $this->findKomponenByKode($globalKomponens, 'gaji_pokok', ['Gaji Pokok'], $pegawai);
-            if (! $gajiPokok) {
-                return;
-            }
-            $base = $this->resolveFixedNominal($gajiPokok, $pegawaiKomponens);
-            if ($base <= 0) {
-                return;
-            }
-            $potongan = round($base * (1 - $rate), 2);
-            if ($potongan <= 0) {
-                return;
-            }
-            $hadirEq = $counts['hadir'] + $counts['telat'] + $counts['sakit'] + $counts['cuti'] + 0.5 * $setengah;
-            $details[] = [
-                'komponen_gaji_id' => null,
-                'nama_komponen' => sprintf(
-                    'Potongan Kehadiran — Gaji × %s%% (%s/%d hari)',
-                    $this->fmtId($rate * 100),
-                    $this->fmtId($hadirEq),
-                    $workingDays
-                ),
-                'tipe' => 'potongan',
-                'nominal' => $potongan,
-                'is_taxable' => false,
-            ];
-            $totalPotongan = bcadd($totalPotongan, (string) $potongan, 2);
-
+        if (in_array($pegawai->status_kepegawaian, $this->guruKodes(), true)) {
             return;
         }
 
-        // Honorer: potong per hari langsung, tanpa threshold (½ hari = ½ potong).
-        $hariNol = max(0, $workingDays - ($counts['hadir'] + $counts['telat'] + $counts['sakit'] + $counts['cuti'] + 0.5 * $setengah));
+        $setengah = (int) ($counts['setengah'] ?? 0);
+        $workingDays = (int) ($counts['working_days'] ?? 0);
+        $hadirEq = $counts['hadir'] + $counts['telat'] + $counts['sakit'] + $counts['cuti'] + 0.5 * $setengah;
+        $hariNol = max(0, $workingDays - $hadirEq);
         if ($hariNol <= 0 || $workingDays <= 0) {
             return;
         }
-        $honor = $this->findKomponenByKode($globalKomponens, 'honor_honorer', ['Honor'], $pegawai);
-        if (! $honor) {
+
+        $gajiPokok = $this->findKomponenByKode($globalKomponens, 'gaji_pokok', [], $pegawai);
+        if (! $gajiPokok) {
             return;
         }
-        $base = $this->resolveFixedNominal($honor, $pegawaiKomponens);
+        $base = $this->resolveFixedNominal($gajiPokok, $pegawaiKomponens);
         if ($base <= 0) {
             return;
         }
+
         $potongan = round($base / $workingDays * $hariNol, 2);
+        if ($potongan <= 0) {
+            return;
+        }
         $details[] = [
             'komponen_gaji_id' => null,
             'nama_komponen' => sprintf(
-                'Potongan Honorer — (Rp %s ÷ %d hari × %s hari)',
+                'Potongan Kehadiran — (Rp %s ÷ %d hari × %s hari)',
                 number_format($base, 0, ',', '.'),
                 $workingDays,
                 $this->fmtId($hariNol)
@@ -793,6 +811,25 @@ class PenggajianController extends Controller
         }
 
         return (float) ($komponen->nilai_default ?? 0);
+    }
+
+    /**
+     * Nama baris detail. Transport diberi keterangan (N × Rp rate); sisanya
+     * nama komponen apa adanya.
+     */
+    protected function detailNama(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $kantorDaysByPegawai, $attendedJadwalByPegawai, $piketSubmittedByPegawai = null): string
+    {
+        if ($komponen->kode === 'transport_harian') {
+            $hari = $kantorDaysByPegawai[$pegawai->id] ?? [];
+
+            return sprintf(
+                'Transport (%d × Rp %s)',
+                count($hari),
+                number_format($this->resolveFixedNominal($komponen, $pegawaiKomponens), 0, ',', '.')
+            );
+        }
+
+        return $komponen->nama;
     }
 
     /** Format angka gaya Indonesia: 17,5 (bukan 17.5), bulat tanpa koma. */
@@ -831,17 +868,23 @@ class PenggajianController extends Controller
      * @param  array  $holidayMap  Map hari libur untuk exclude libur di sesi mengajar
      * @return float nominal komponen gaji
      */
-    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null, $presentDays = null, $attendedJadwalByPegawai = null, array $holidayMap = [], $jabatanRatesByKomponen = null, $kantorDaysByPegawai = null): float
+    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null, $presentDays = null, $attendedJadwalByPegawai = null, array $holidayMap = [], $jabatanRatesByKomponen = null, $kantorDaysByPegawai = null, float $totalTaxable = 0, float $totalPendapatan = 0, $piketSubmittedByPegawai = null): float
     {
         $nominal = 0;
 
         // Filter by grup status kepegawaian (group-key, bukan kode individual):
-        // 'tetap' = grup tetap (GTYS/PTY), 'honorer' = grup non-tetap.
+        // 'tetap'/'honorer' = grup tetap/non-tetap; 'guru'/'non_guru' = grup guru.
         // Nilai legacy di DB tetap valid — match via flag tabel referensi.
         if ($komponen->applies_to_status_kepegawaian) {
-            $isTetap = in_array($pegawai->status_kepegawaian, $this->tetapKodes(), true);
-            $grupPegawai = $isTetap ? 'tetap' : 'honorer';
-            if ($komponen->applies_to_status_kepegawaian !== $grupPegawai) {
+            $kode = $pegawai->status_kepegawaian;
+            $cocok = match ($komponen->applies_to_status_kepegawaian) {
+                'tetap' => in_array($kode, $this->tetapKodes(), true),
+                'honorer' => ! in_array($kode, $this->tetapKodes(), true),
+                'guru' => in_array($kode, $this->guruKodes(), true),
+                'non_guru' => ! in_array($kode, $this->guruKodes(), true),
+                default => true,
+            };
+            if (! $cocok) {
                 return 0;
             }
         }
@@ -853,25 +896,24 @@ class PenggajianController extends Controller
                 $nominal = $komponen->nilai_default ?? 0;
             }
         } elseif ($komponen->jenis === 'persentase') {
-            $gajiPokok = $this->findKomponenByKode($globalKomponens, 'gaji_pokok', ['Gaji Pokok', 'Basic Salary'], $pegawai);
-            $gajiPokokId = $gajiPokok ? $gajiPokok->id : null;
-
-            $baseSalary = 0;
-            if ($gajiPokokId && $pegawaiKomponens->has($gajiPokokId) && $pegawaiKomponens[$gajiPokokId]->pivot->nominal !== null) {
-                $baseSalary = $pegawaiKomponens[$gajiPokokId]->pivot->nominal;
-            } elseif ($gajiPokok) {
-                $baseSalary = $gajiPokok->nilai_default ?? 0;
+            // Dasar persentase: 'gaji_pokok' (default/legacy), 'taxable' (penghasilan
+            // kena pajak — PPh 21), atau 'total_pendapatan' (bruto).
+            $baseKind = $komponen->persentase_base ?: 'gaji_pokok';
+            if ($baseKind === 'taxable') {
+                $base = $totalTaxable;
+            } elseif ($baseKind === 'total_pendapatan') {
+                $base = $totalPendapatan;
+            } else {
+                $gajiPokok = $this->findKomponenByKode($globalKomponens, 'gaji_pokok', ['Gaji Pokok', 'Basic Salary'], $pegawai);
+                $base = $gajiPokok ? $this->resolveFixedNominal($gajiPokok, $pegawaiKomponens) : 0;
             }
-            $nominal = ($komponen->nilai_default / 100) * $baseSalary;
+            $nominal = ($komponen->nilai_default / 100) * $base;
         } elseif ($komponen->jenis === 'dinamis_kehadiran') {
-            // Transport harian: nominal × hari kantor-masuk (bukan semua hadir).
-            // Early return agar tak jatuh ke pencocokan nama 'transport' di bawah.
-            // Override pivot menang; honorer tersaring via applies_to_status.
+            // Transport harian: tarif × hari kantor-masuk (bukan semua hadir).
+            // Override pivot menang sebagai TARIF (bukan nominal flat) — jenis
+            // ini dibayar per hari, jadi tetap dikali hari.
             if ($komponen->kode === 'transport_harian') {
-                if ($pegawaiKomponens->has($komponen->id) && $pegawaiKomponens[$komponen->id]->pivot->nominal !== null) {
-                    return (float) $pegawaiKomponens[$komponen->id]->pivot->nominal;
-                }
-                $rateHarian = $komponen->nilai_default ?? 0;
+                $rateHarian = $this->resolveFixedNominal($komponen, $pegawaiKomponens);
                 $hariKantor = $kantorDaysByPegawai && isset($kantorDaysByPegawai[$pegawai->id])
                     ? count($kantorDaysByPegawai[$pegawai->id])
                     : 0;
@@ -888,7 +930,7 @@ class PenggajianController extends Controller
             } elseif ($this->isKehadiranType($komponen, 'kehadiran_alpa', ['alpa'])) {
                 $nominal = $rate * $counts['alpa'];
             } elseif ($this->isKehadiranType($komponen, 'kehadiran_sakit', ['sakit'])) {
-                $multiplier = $sakitProrata && $sakitProrata->has($pegawai->id)
+                $multiplier = ($sakitProrata && $counts['sakit'] > 0 && $sakitProrata->has($pegawai->id))
                     ? min(1, (int) $sakitProrata[$pegawai->id] / ($counts['sakit'] * 100))
                     : 1;
                 $nominal = $rate * $counts['sakit'] * $multiplier;
@@ -934,6 +976,10 @@ class PenggajianController extends Controller
 
             $totalHoursMonthly = 0;
             foreach ($pegawai->jadwals as $jadwal) {
+                // Hanya JP mengajar. Piket/ekskul/shift punya komponen sendiri.
+                if ($jadwal->jenis_jadwal !== 'mengajar') {
+                    continue;
+                }
                 $unit = $jadwal->unitSekolah;
                 if ($komponen->unit_sekolah_id && (! $unit || $unit->id !== $komponen->unit_sekolah_id)) {
                     continue;
@@ -941,6 +987,9 @@ class PenggajianController extends Controller
                 $mulai = Carbon::parse($jadwal->jam_mulai);
                 $selesai = Carbon::parse($jadwal->jam_selesai);
                 $durasiJp = (int) ($unit->durasi_jp ?? 45);
+                if ($durasiJp <= 0) {
+                    $durasiJp = 45;
+                }
                 $sessionHours = $mulai->diffInMinutes($selesai) / $durasiJp;
 
                 $count = $syarat === 'hanya_hadir'
@@ -977,6 +1026,62 @@ class PenggajianController extends Controller
                     : collect();
                 $nominal = $rates->whereIn('jabatan_id', $jabatanIds)->sum('nominal');
             }
+        } elseif ($komponen->jenis === 'dinamis_piket') {
+            $rate = $this->resolveFixedNominal($komponen, $pegawaiKomponens);
+
+            // Penyebut = pertemuan piket nyata bulan itu (mis. 5 Senin), minus
+            // libur. Dibayar rasio, dibatasi 1 JP/bulan.
+            $dijadwalkan = 0;
+            $seenPiket = [];
+            foreach ($pegawai->jadwals as $jadwal) {
+                if ($jadwal->jenis_jadwal !== 'piket') {
+                    continue;
+                }
+                if ($komponen->unit_sekolah_id && $jadwal->unit_sekolah_id !== $komponen->unit_sekolah_id) {
+                    continue;
+                }
+                $key = $jadwal->hari.'|'.$jadwal->unit_sekolah_id;
+                if (isset($seenPiket[$key])) {
+                    continue;
+                }
+                $seenPiket[$key] = true;
+                $dijadwalkan += max(0, $this->countWeekdayInRange(
+                    $jadwal->hari, $periodeStart, $attendanceCutoff,
+                    $this->holidayCountFor($holidayMap, $jadwal->unit_sekolah_id, $jadwal->hari)
+                ));
+            }
+            if ($dijadwalkan <= 0) {
+                return 0;
+            }
+
+            // Numerator = laporan piket submitted (akuntabilitas harian piket).
+            $hadir = $piketSubmittedByPegawai ? ($piketSubmittedByPegawai[$pegawai->id] ?? 0) : 0;
+            $nominal = $rate * min(1.0, $hadir / $dijadwalkan);
+        } elseif ($komponen->jenis === 'dinamis_ekskul') {
+            if (! $komponen->mata_pelajaran_id) {
+                return 0;
+            }
+            $rate = $this->resolveFixedNominal($komponen, $pegawaiKomponens);
+            $attendedJadwalIds = $attendedJadwalByPegawai && isset($attendedJadwalByPegawai[$pegawai->id])
+                ? $attendedJadwalByPegawai[$pegawai->id]
+                : collect();
+
+            // Pertemuan ekskul dihadiri (identitas ekskul = mata pelajaran).
+            $pertemuan = 0;
+            foreach ($pegawai->jadwals as $jadwal) {
+                if ($jadwal->jenis_jadwal !== 'ekskul') {
+                    continue;
+                }
+                if ((int) ($jadwal->pegawaiMapel?->mata_pelajaran_id) !== (int) $komponen->mata_pelajaran_id) {
+                    continue;
+                }
+                if ($komponen->unit_sekolah_id && $jadwal->unit_sekolah_id !== $komponen->unit_sekolah_id) {
+                    continue;
+                }
+                $pertemuan += (int) ($attendedJadwalIds[$jadwal->id] ?? 0);
+            }
+
+            $nominal = min($rate * $pertemuan, self::EKSKUL_CAP_NOMINAL);
         } elseif ($komponen->jenis === 'lookup_reference') {
             $refType = $komponen->payrollReferenceType;
             if (! $refType) {
