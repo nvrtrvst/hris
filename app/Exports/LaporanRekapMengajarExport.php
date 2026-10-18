@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
+use App\Services\JpCalculator;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -156,21 +157,11 @@ class LaporanRekapMengajarExport implements FromCollection, ShouldAutoSize, With
 
     /**
      * Bobot JP 1 baris presensi = durasi jadwal ÷ durasi_jp unit (default 45).
-     * Jadwal dibuat kelipatan durasi_jp (import/generate) → mayoritas integer.
+     * Delegasi ke JpCalculator (sumber tunggal, dipakai juga metrik beban mingguan).
      */
     private function jpWeight($p): float
     {
-        $jadwal = $p->jadwal;
-        if (! $jadwal) {
-            return 0.0;
-        }
-        $durasiJp = (int) ($jadwal->unitSekolah?->durasi_jp ?? 45);
-        if ($durasiJp <= 0) {
-            $durasiJp = 45;
-        }
-        $menit = Carbon::parse($jadwal->jam_mulai)->diffInMinutes(Carbon::parse($jadwal->jam_selesai));
-
-        return round(max(0, $menit) / $durasiJp, 2);
+        return JpCalculator::weight($p);
     }
 
     /**

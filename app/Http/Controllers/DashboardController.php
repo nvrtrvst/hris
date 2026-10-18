@@ -16,6 +16,7 @@ use App\Models\Presensi;
 use App\Models\StatusKepegawaian;
 use App\Models\UnitSekolah;
 use App\Models\User;
+use App\Services\JpCalculator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -202,6 +203,7 @@ class DashboardController extends Controller
 
         $cached = $this->adminCachedStats($user, $unitId, $bawahanIds);
         $live = $this->adminLiveData($user, $today, $unitId, $bawahanIds);
+        $bebanJp = $this->bebanMengajarMingguan($unitId);
 
         // Daftar unit untuk dropdown filter (superadmin), + unit aktif saat ini.
         $units = $user->can('view_all_units') ? UnitSekolah::orderBy('nama')->get(['id', 'nama', 'singkatan']) : collect();
@@ -243,6 +245,9 @@ class DashboardController extends Controller
                 'is_estimasi_payroll' => $cached['isEstimasiPayroll'],
                 'kontrak_berakhir_count' => $cached['kontrakBerakhir_count'],
                 'pengajuan_pending' => $cached['pengajuanPending'],
+                'guru_mengajar' => $bebanJp['total_mengajar'],
+                'guru_over_jp' => $bebanJp['over_target'],
+                'target_jp_minggu' => $bebanJp['target'],
             ],
             'trends' => $live['attendanceTrend'],
             'kontrakBerakhir' => $cached['kontrakBerakhir'],
@@ -253,6 +258,26 @@ class DashboardController extends Controller
             'piketHariIni' => $live['piketHariIni'],
             'pengumuman' => $pengumuman,
         ]);
+    }
+
+    /**
+     * Beban mengajar mingguan (JP) per guru — metrik anti-kelebihan JP (target 24).
+     * Sumber bobot sama dengan rekap mengajar (JpCalculator).
+     */
+    private function bebanMengajarMingguan(?int $unitId = null): array
+    {
+        $perGuru = Jadwal::with('unitSekolah:id,durasi_jp')
+            ->where('jenis_jadwal', 'mengajar')
+            ->when($unitId, fn ($q) => $q->where('unit_sekolah_id', $unitId))
+            ->get(['id', 'pegawai_id', 'unit_sekolah_id', 'jam_mulai', 'jam_selesai'])
+            ->groupBy('pegawai_id')
+            ->map(fn ($rows) => round($rows->sum(fn ($j) => JpCalculator::weightFromJadwal($j)), 2));
+
+        return [
+            'total_mengajar' => $perGuru->count(),
+            'over_target' => $perGuru->filter(fn ($jp) => $jp > JpCalculator::TARGET_JP_MINGGU)->count(),
+            'target' => JpCalculator::TARGET_JP_MINGGU,
+        ];
     }
 
     /**

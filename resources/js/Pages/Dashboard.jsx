@@ -9,6 +9,7 @@ import {
     AlertTriangle,
     ArrowRight,
     Banknote,
+    BookOpen,
     Building2,
     CalendarDays,
     CalendarClock,
@@ -252,6 +253,16 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                             alert={s.kontrak_berakhir_count > 0}
                         />
                         <StatCard label="Pengajuan Pending" value={s.pengajuan_pending || 0} Icon={Clock3} iconBg={s.pengajuan_pending > 0 ? 'bg-rose-100' : 'bg-surface'} iconCls={s.pengajuan_pending > 0 ? 'text-rose-600' : 'text-border'} alert={s.pengajuan_pending > 0} />
+                        {s.guru_mengajar > 0 && (
+                            <StatCard
+                                label={`Guru > ${s.target_jp_minggu} JP/minggu`}
+                                value={`${s.guru_over_jp || 0} / ${s.guru_mengajar}`}
+                                Icon={BookOpen}
+                                iconBg={s.guru_over_jp > 0 ? 'bg-red-100' : 'bg-surface'}
+                                iconCls={s.guru_over_jp > 0 ? 'text-red-600' : 'text-border'}
+                                alert={s.guru_over_jp > 0}
+                            />
+                        )}
                     </div>
 
                     {/* Kelas Kosong — terpisah mengajar vs piket */}
