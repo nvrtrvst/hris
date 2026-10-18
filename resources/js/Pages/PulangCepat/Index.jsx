@@ -5,7 +5,8 @@ import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
-import { Search, Filter, CheckCircle, XCircle, Clock, Info, FileText, AlertCircle, Inbox, CalendarCheck2, Printer } from 'lucide-react';
+import { Search, Filter, CheckCircle, XCircle, Clock, Info, FileText, AlertCircle, Inbox, CalendarCheck2, Printer, AlarmClock } from 'lucide-react';
+import { realisasiInfo } from '@/Utils/pulangAwal';
 
 const getStatusBadge = (status) => {
     switch (status) {
@@ -92,6 +93,8 @@ export default function Index({ auth, pengajuans, filters, stats }) {
     }, [search, statusFilter]);
 
     const cetak = (item) => window.open(route('pulang-cepat.cetak', item.id), '_blank');
+
+    const realisasi = realisasiInfo(selectedItem?.realisasi, selectedItem?.status);
 
     return (
         <AuthenticatedLayout
@@ -336,6 +339,28 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                     <p className="mt-2 text-danger">Alasan penolakan: {selectedItem.alasan_penolakan}</p>
                                 )}
                             </div>
+
+                            {realisasi && (
+                                <div className="rounded-card border border-border bg-surface p-3">
+                                    <p className="text-xs font-semibold uppercase text-text-muted">Realisasi Presensi</p>
+                                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                                        <p className="font-bold text-text-primary">
+                                            {realisasi.ada ? `Tercatat pulang ${realisasi.jam}` : 'Belum tercatat pulang'}
+                                        </p>
+                                        {realisasi.ada && realisasi.awal && (
+                                            <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${realisasi.diizinkan ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
+                                                <AlarmClock className="h-3 w-3" />
+                                                Pulang awal {realisasi.menit}m · {realisasi.diizinkan ? 'Diizinkan' : 'Tanpa izin'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="mt-0.5 text-xs text-text-muted">
+                                        {realisasi.ada
+                                            ? (realisasi.awal ? 'Waktu pulang lebih awal dari jam pulang unit.' : 'Tidak lebih awal dari jam pulang unit.')
+                                            : 'Pengajuan disetujui, presensi keluar pegawai belum tercatat.'}
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         <form onSubmit={submitAction}>

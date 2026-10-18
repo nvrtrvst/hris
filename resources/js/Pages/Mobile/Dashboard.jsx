@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { fmtDetik } from '@/Utils/waktuPresensi';
+import { realisasiInfo } from '@/Utils/pulangAwal';
 import { Badge } from '@/Components/MobileUI';
 import {
     ArrowRight,
@@ -67,6 +68,13 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
     const lemburRec = todayRecords.find((r) => r.is_lembur);
     const mengajarRecs = todayRecords.filter((r) => r.tipe_presensi === 'mengajar');
     const primary = kantorRec || lemburRec || mengajarRecs[0] || presensi || null;
+    // Hari mengajar punya banyak baris; jam keluar hari itu ada di baris paling akhir
+    // (slide pulang mencatat di JP terakhir) - bukan JP pertama seperti `primary`.
+    const keluarRec = todayRecords.reduce(
+        (max, r) => (r.jam_keluar && (!max || r.jam_keluar > max.jam_keluar) ? r : max),
+        null,
+    ) ?? primary;
+    const pulangAwal = realisasiInfo(keluarRec, null);
     const isMengajar = !kantorRec && !lemburRec && mengajarRecs.length > 0;
     const mengajarStatus = mengajarRecs.some((r) => r.status === 'telat') ? 'telat'
         : mengajarRecs.some((r) => r.status === 'hadir') ? 'hadir'
@@ -140,15 +148,20 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                     <div className="flex flex-col justify-between px-5 py-4">
                         <div>
                             <p className="flex items-center gap-1.5 text-xs text-emerald-100"><LogOut className="h-4 w-4" /> Keluar</p>
-                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{fmtDetik(primary?.jam_keluar, '--:--')}</p>
+                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{fmtDetik(keluarRec?.jam_keluar, '--:--')}</p>
+                            {pulangAwal?.ada && pulangAwal.awal && (
+                                <p className={`mt-1 text-[11px] font-semibold ${pulangAwal.diizinkan ? 'text-emerald-200' : 'text-amber-200'}`}>
+                                    {pulangAwal.menit} menit lebih awal{pulangAwal.diizinkan ? '' : ' · tanpa izin'}
+                                </p>
+                            )}
                         </div>
-                        {primary?.jam_keluar && (
+                        {keluarRec?.jam_keluar && (
                             <div className="mt-4 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-inner">
-                                {primary.foto_keluar_url ? (
-                                    <img src={primary.foto_keluar_url} alt="Foto Keluar" className="h-full w-full object-cover opacity-90" />
+                                {keluarRec.foto_keluar_url ? (
+                                    <img src={keluarRec.foto_keluar_url} alt="Foto Keluar" className="h-full w-full object-cover opacity-90" />
                                 ) : (
                                     <span className="text-[10px] font-semibold text-white/50 text-center leading-tight px-1">
-                                        {primary.foto_keluar_status === 'pending' ? 'Diproses' : 'Tak Ada Foto'}
+                                        {keluarRec.foto_keluar_status === 'pending' ? 'Diproses' : 'Tak Ada Foto'}
                                     </span>
                                 )}
                             </div>
