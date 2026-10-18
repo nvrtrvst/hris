@@ -10,6 +10,7 @@ use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Notifications\StatusPulangCepat;
 use App\Services\PulangAwalDetector;
+use App\Services\PulangCepatRealisasi;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -51,8 +52,11 @@ class PengajuanPulangCepatController extends Controller
 
         $pengajuans = $query->orderByDesc('created_at')->paginate(10)->withQueryString();
 
-        $pengajuans->getCollection()->transform(function ($item) use ($user) {
+        $realisasi = app(PulangCepatRealisasi::class)->forPengajuans($pengajuans->getCollection());
+
+        $pengajuans->getCollection()->transform(function ($item) use ($user, $realisasi) {
             $item->can_act = $this->canDecide($user, $item);
+            $item->realisasi = $realisasi[$item->pegawai_id.'|'.$item->tanggal->toDateString()] ?? null;
 
             return $item;
         });

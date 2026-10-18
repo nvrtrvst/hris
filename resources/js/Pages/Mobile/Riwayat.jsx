@@ -5,7 +5,8 @@ import { fmtDetik, batasHadir, fmtJp, hitungJp, splitJadwalKeJp } from '@/Utils/
 import { Card, SectionTitle, Badge, Empty } from '@/Components/MobileUI';
 import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { History, CalendarDays, Clock, MapPin, CheckCircle2, AlertTriangle, FileText, XCircle, Ban, ChevronDown } from 'lucide-react';
+import { History, CalendarDays, Clock, MapPin, CheckCircle2, AlertTriangle, FileText, XCircle, Ban, ChevronDown, AlarmClock } from 'lucide-react';
+import { realisasiInfo } from '@/Utils/pulangAwal';
 
 /**
  * Bukti foto satu sisi (masuk/keluar): thumbnail + jam, tap = layar penuh.
@@ -256,6 +257,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                 const label = p.is_lembur ? 'Lembur' : p.tipe_presensi === 'kantor' ? 'Presensi Kantor' : 'Presensi';
                                 const isKantor = p.tipe_presensi === 'kantor';
                                 const belumPulang = Boolean(p.jam_masuk) && !p.jam_keluar;
+                                const pulangAwal = realisasiInfo(p, p.status);
                                 const badge = isKantor && belumPulang
                                     ? { tone: 'amber', label: 'Belum pulang', icon: Clock }
                                     : b;
@@ -273,6 +275,12 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                                 {p.status === 'telat' && !isKantor && p.jam_masuk && batasHadir(p.jadwal?.jam_mulai, p.jadwal?.unit_sekolah?.toleransi_menit ?? p.unit_sekolah?.toleransi_menit) && (
                                                     <p className="mt-0.5 text-[11px] font-semibold text-amber-600">
                                                         Batas hadir {batasHadir(p.jadwal?.jam_mulai, p.jadwal?.unit_sekolah?.toleransi_menit ?? p.unit_sekolah?.toleransi_menit)}
+                                                    </p>
+                                                )}
+                                                {pulangAwal?.ada && pulangAwal.awal && (
+                                                    <p className={`mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold ${pulangAwal.diizinkan ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                        <AlarmClock className="h-3 w-3" />
+                                                        Pulang awal {pulangAwal.menit}m · {pulangAwal.diizinkan ? 'diizinkan' : 'tanpa izin'}
                                                     </p>
                                                 )}
                                             </div>
@@ -323,6 +331,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                                 const ib = getStatusBadge(p.status);
                                                 const durasi = p.jadwal?.unit_sekolah?.durasi_jp ?? p.unit_sekolah?.durasi_jp ?? 45;
                                                 const slots = splitJadwalKeJp(p, durasi);
+                                                const pulangAwal = realisasiInfo(p, p.status);
                                                 return slots.map((s, si) => (
                                                     <div key={`${p.id}-${si}`} className="rounded-xl bg-slate-50 px-3 py-2">
                                                         <div className="flex items-center justify-between gap-2">
@@ -350,6 +359,12 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                                             >
                                                                 Ajukan Koreksi Jam Keluar
                                                             </button>
+                                                        )}
+                                                        {si === slots.length - 1 && pulangAwal?.ada && pulangAwal.awal && (
+                                                            <p className={`mt-1 inline-flex items-center gap-1 text-[11px] font-semibold ${pulangAwal.diizinkan ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                                <AlarmClock className="h-3 w-3" />
+                                                                Pulang awal {pulangAwal.menit}m · {pulangAwal.diizinkan ? 'diizinkan' : 'tanpa izin'}
+                                                            </p>
                                                         )}
                                                     </div>
                                                 ));

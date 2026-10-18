@@ -9,6 +9,7 @@ use App\Models\Pegawai;
 use App\Models\PengajuanPulangCepat;
 use App\Models\User;
 use App\Notifications\PulangCepatBaru;
+use App\Services\PulangCepatRealisasi;
 use App\Traits\ResolvesPegawai;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,10 @@ class MobilePulangCepatController extends Controller
             ->where('pegawai_id', $pegawai->id)
             ->orderByDesc('created_at')
             ->get();
+
+        $realisasi = app(PulangCepatRealisasi::class)->forPengajuans($pengajuan);
+
+        $pengajuan->each(fn ($item) => $item->realisasi = $realisasi[$item->pegawai_id.'|'.$item->tanggal->toDateString()] ?? null);
 
         return Inertia::render('Mobile/PulangCepat/Index', [
             'pengajuan' => $pengajuan,

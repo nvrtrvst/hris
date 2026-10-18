@@ -5,6 +5,13 @@ import { Card, Badge, Empty } from '@/Components/MobileUI';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Clock3, CheckCircle, XCircle, Printer, Plus } from 'lucide-react';
+import { realisasiInfo } from '@/Utils/pulangAwal';
+
+const realisasiTone = {
+    emerald: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+    amber: 'border-amber-100 bg-amber-50 text-amber-700',
+    slate: 'border-slate-200 bg-slate-50 text-slate-600',
+};
 
 export default function Index({ auth, pengajuan }) {
     const { flash } = usePage().props;
@@ -58,6 +65,7 @@ export default function Index({ auth, pengajuan }) {
                 <div className="space-y-3">
                     {pengajuan.map((item) => {
                         const st = getStatus(item.status);
+                        const realisasi = realisasiInfo(item.realisasi, item.status);
                         return (
                             <Card key={item.id} className="py-4">
                                 <div className="flex items-start justify-between gap-2">
@@ -79,6 +87,22 @@ export default function Index({ auth, pengajuan }) {
                                     </div>
                                     <Badge tone={st.tone} icon={st.icon}>{st.label}</Badge>
                                 </div>
+
+                                {realisasi && (
+                                    <div className={`mt-3 flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs font-semibold ${realisasiTone[realisasi.tone]}`}>
+                                        {realisasi.tone === 'emerald'
+                                            ? <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                            : <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+                                        <span>
+                                            {realisasi.ada
+                                                ? <>
+                                                    Tercatat pulang {realisasi.jam}
+                                                    {realisasi.awal && ` — ${realisasi.menit} menit lebih awal (${realisasi.diizinkan ? 'diizinkan' : 'tanpa izin'})`}
+                                                </>
+                                                : 'Belum tercatat pulang — tidak ada presensi keluar pada tanggal ini.'}
+                                        </span>
+                                    </div>
+                                )}
 
                                 {item.status === 'ditolak' && item.alasan_penolakan && (
                                     <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 p-3">

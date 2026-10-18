@@ -87,6 +87,69 @@ class PulangCepatTest extends TestCase
         $this->assertSame('1234567890123456', $props['pengajuans']['data'][0]['pegawai']['nuptk']);
     }
 
+    /**
+     * Realisasi pulang (jam_keluar + penanda pulang awal) ikut terkirim ke
+     * halaman admin & mobile - bukan cuma status approval, supaya admin dan
+     * pegawai bisa memastikan yang bersangkutan benar-benar sudah pulang.
+     */
+    public function test_realisasi_pulang_terkirim_ke_admin_dan_mobile(): void
+    {
+        Notification::fake();
+
+        Presensi::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tipe_presensi' => 'kantor',
+            'tanggal' => '2026-08-21',
+            'jam_masuk' => '07:00:00',
+            'jam_keluar' => '14:00:00',
+        ]);
+        $this->postStore()->assertRedirect();
+
+        // Belum disetujui: pulang awal tercatat, tapi belum berizin.
+        $mobile = $this->actingAs($this->pegawai->user, 'web_mobile')
+            ->get(route('presensi.pulang-cepat.index'));
+        $mobile->assertOk();
+        $realisasi = $mobile->viewData('page')['props']['pengajuan'][0]['realisasi'];
+        $this->assertSame('14:00', $realisasi['jam_keluar']);
+        $this->assertTrue($realisasi['is_pulang_awal']);
+        $this->assertSame(60, $realisasi['menit_pulang_awal']);
+        $this->assertFalse($realisasi['pulang_awal_diizinkan']);
+
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->post(route('pulang-cepat.approve', PengajuanPulangCepat::firstOrFail()->id))
+            ->assertRedirect();
+
+        $admin = $this->actingAs($this->superadmin, 'web_admin')->get(route('pulang-cepat.index'));
+        $admin->assertOk();
+        $adminRealisasi = $admin->viewData('page')['props']['pengajuans']['data'][0]['realisasi'];
+        $this->assertSame('14:00', $adminRealisasi['jam_keluar']);
+        $this->assertTrue($adminRealisasi['is_pulang_awal']);
+        $this->assertTrue($adminRealisasi['pulang_awal_diizinkan']);
+    }
+
+    /**
+     * Disetujui tapi pegawai belum presensi keluar -> realisasi null
+     * (FE menerjemahkannya jadi "Belum tercatat pulang").
+     */
+    public function test_realisasi_null_bila_presensi_keluar_belum_ada(): void
+    {
+        Notification::fake();
+
+        $this->postStore()->assertRedirect();
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->post(route('pulang-cepat.approve', PengajuanPulangCepat::firstOrFail()->id))
+            ->assertRedirect();
+
+        $res = $this->actingAs($this->pegawai->user, 'web_mobile')
+            ->get(route('presensi.pulang-cepat.index'));
+
+        $res->assertOk();
+        $row = $res->viewData('page')['props']['pengajuan'][0];
+        $this->assertArrayHasKey('realisasi', $row);
+        $this->assertNull($row['realisasi']);
+    }
+
     private function postStore(array $extra = [])
     {
         return $this->actingAs($this->pegawai->user, 'web_mobile')
