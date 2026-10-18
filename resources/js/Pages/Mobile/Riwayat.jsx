@@ -308,18 +308,16 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                             return (
                                 <div key={`${g.nama}-${g.kelas}`}>
                                     <button type="button" onClick={() => toggleMapel(`${g.nama}|||${g.kelas}`)} className="w-full">
-                                        <Card className="flex items-center justify-between py-3.5">
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="truncate font-bold text-slate-800">{g.nama}</p>
-                                                    {g.kelas && <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{g.kelas}</span>}
-                                                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{g.count} JP</span>
+                                        <Card className="flex items-center justify-between gap-3 py-3.5">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate font-bold text-slate-800" title={g.nama}>{g.nama}</p>
+                                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                                    {g.kelas && <span className="shrink-0 whitespace-nowrap rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{g.kelas}</span>}
+                                                    <span className="shrink-0 whitespace-nowrap rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{g.count} JP</span>
+                                                    <span className="inline-flex items-center gap-1 text-xs text-slate-500"><Clock className="h-3 w-3 text-emerald-600" />{g.timeRange}</span>
                                                 </div>
-                                                <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
-                                                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-600" />{g.timeRange}</span>
-                                                </p>
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex shrink-0 items-center gap-2">
                                                 <Badge tone={b.tone} icon={b.icon}>{b.label}</Badge>
                                                 <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
                                             </div>
