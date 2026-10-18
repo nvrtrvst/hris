@@ -341,6 +341,21 @@
     }
 }
 
+@layer base {
+    /* Fokus keyboard yang selalu terlihat — termasuk tombol/kartu kustom yang
+       tidak memakai class .btn. :focus-visible supaya tidak muncul saat di-tap. */
+    :where(a, button, [role='button'], [role='tab'], summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+        outline: 2px solid theme('colors.primary.DEFAULT');
+        outline-offset: 2px;
+    }
+
+    /* Tailwind preflight tidak memberi cursor pointer pada <button>/<summary>,
+       sehingga kartu & tombol kustom terasa tidak bisa diklik di perangkat bermouse. */
+    :where(button, [role='button'], summary, label[for]):not(:disabled):not([aria-disabled='true']) {
+        cursor: pointer;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

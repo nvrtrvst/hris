@@ -135,7 +135,7 @@ export default function Notifikasi({ auth, notifications, filters }) {
                                 </div>
                                     <div className="flex shrink-0 items-center gap-1.5">
                                         {routeInfo && (
-                                            <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-300" />
+                                            <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-500" />
                                         )}
                                         {view === 'all' && !n.read_at && (
                                             <button onClick={() => markRead(n.id)} className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-primary">Tandai baca</button>

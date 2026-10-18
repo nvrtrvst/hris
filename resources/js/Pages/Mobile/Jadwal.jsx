@@ -188,7 +188,7 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             {badge && <StatusBadge status={badge} />}
-                                            <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" />
+                                            <ArrowRight className="h-4 w-4 shrink-0 text-slate-500" />
                                         </div>
                                     </div>
                                 </Card>
@@ -198,7 +198,7 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                 </div>
             ) : (
                 <Card press={false} className="px-4 py-8 text-center">
-                    <Calendar className="mx-auto h-8 w-8 text-slate-300" />
+                    <Calendar className="mx-auto h-8 w-8 text-slate-500" />
                     <p className="mt-3 text-sm font-bold text-slate-700">Tidak ada jadwal {selectedDay}</p>
                     <p className="mt-1 text-xs text-slate-500">Pilih hari lain untuk melihat agenda mengajar.</p>
                 </Card>
@@ -274,7 +274,7 @@ function BawahanPresensiCard({ bawahanPresensi }) {
                                             <StatusBadge status={masuk.status} />
                                         </div>
                                     ) : (
-                                        <span className="text-[10px] font-bold text-slate-300">Belum absen</span>
+                                        <span className="text-[10px] font-bold text-slate-500">Belum absen</span>
                                     )}
                                     {masuk?.jam_keluar && (
                                         <p className="font-mono text-[10px] text-slate-600">→ {masuk.jam_keluar}</p>
