@@ -26,7 +26,10 @@ export async function initPush() {
     }
 
     try {
-        const reg = await navigator.serviceWorker.register('/sw.js');
+        // updateViaCache: 'none' — file sw.js sendiri tidak boleh diambil dari
+        // cache HTTP, kalau tidak device bisa terjebak di service worker usang
+        // meski versi baru sudah di-deploy.
+        const reg = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
         await navigator.serviceWorker.ready;
 
         if (subscribed) {

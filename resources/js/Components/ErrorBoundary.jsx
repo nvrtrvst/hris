@@ -46,8 +46,22 @@ export class ErrorBoundary extends React.Component {
                 timestamp: new Date().toISOString(),
             });
 
+            // URL dari Ziggy: di produksi portal mobile TIDAK ber-prefix /mobile
+            // (uri 'client-errors' di domain presensi.*), sedangkan di lokal
+            // justru '/mobile/client-errors'. Path hardcode lama membuat semua
+            // laporan error kena 404 di produksi. Fallback relatif kalau Ziggy
+            // belum tersedia saat ErrorBoundary pertama kali render.
+            let reportUrl = '/client-errors';
+            if (typeof window.route === 'function') {
+                try {
+                    reportUrl = window.route('presensi.client-errors.store');
+                } catch {
+                    /* route belum dikenal — pakai fallback relatif */
+                }
+            }
+
             // Blob + keepalive: payload > 1KB, navigator.sendBeacon unreliable untuk JSON.
-            fetch('/mobile/client-errors', {
+            fetch(reportUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

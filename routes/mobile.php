@@ -117,11 +117,6 @@ Route::middleware('auth:web_mobile')->group(function () {
     Route::post('/push/test', [PushSubscriptionController::class, 'test'])
         ->middleware('throttle:5,1')->name('presensi.push.test');
 
-    // Client error telemetry (ErrorBoundary). Endpoint publik di auth group —
-    // payload tidak PII (component stack + URL + user_agent). Throttle 30/menit
-    // supaya error loop / device nakal tidak menuhin log.
-    Route::post('/client-errors', [ClientErrorController::class, 'store'])
-        ->middleware('throttle:30,1')->name('presensi.client-errors.store');
     Route::get('/profile', function (Request $request) {
         $pegawai = $request->user()->pegawai;
         if ($pegawai) {
