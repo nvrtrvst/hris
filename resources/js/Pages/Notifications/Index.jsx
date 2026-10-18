@@ -7,6 +7,20 @@ import { Archive, ArchiveRestore, Bell, CheckCheck, ChevronRight, Inbox, MailOpe
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 
+/** Map notification data.type → admin route. */
+const NOTIF_ROUTE_BY_TYPE = {
+    status_izin: 'pengajuan-izin.index',
+    izin_baru: 'pengajuan-izin.index',
+    izin_reply: 'pengajuan-izin.index',
+    tembusan_izin: 'pengajuan-izin.index',
+    koreksi_baru: 'koreksi-presensi.index',
+    status_koreksi: 'koreksi-presensi.index',
+    pulang_cepat_baru: 'pulang-cepat.index',
+    status_pulang_cepat: 'pulang-cepat.index',
+    pulang_awal_baru: 'pulang-cepat.index',
+    announcement: 'pengumuman.index',
+};
+
 export default function NotificationsIndex({ auth, notifications, filters, flash }) {
     const [search, setSearch] = useState(filters?.search || '');
     const debounceRef = useRef(null);
@@ -37,11 +51,9 @@ export default function NotificationsIndex({ auth, notifications, filters, flash
 
     /** Map notification data.type → admin route. */
     const getNotificationRoute = (n) => {
-        const type = n.data?.type;
-        if (type === 'status_izin') return route('pengajuan-izin.index');
-        if (type === 'izin_baru') return route('pengajuan-izin.index');
-        if (type === 'announcement') return route('pengumuman.index');
-        return null;
+        const name = NOTIF_ROUTE_BY_TYPE[n.data?.type];
+
+        return name ? route(name) : null;
     };
 
     const total = notifications?.total ?? notifications.data?.length ?? 0;

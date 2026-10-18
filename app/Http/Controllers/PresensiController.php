@@ -481,7 +481,7 @@ class PresensiController extends Controller
 
         $rows = $pegawaiList->map(fn ($p, $i) => [
             'no' => $i + 1,
-            'nip' => $p->nip ?? '-',
+            'nip' => $p->nuptk ?? '-',
             'nama' => $p->nama_lengkap,
             'unit' => $p->units->pluck('nama')->implode(', ') ?: '-',
             'jabatan' => $p->jabatans->pluck('nama')->implode(', ') ?: '-',
@@ -655,7 +655,7 @@ class PresensiController extends Controller
             $statusMengajar = $totalKelas > 0 ? $selesaiKelas.'/'.$totalKelas.' Selesai' : '-';
 
             return [
-                'nip' => $p->nip ?? '-',
+                'nip' => $p->nuptk ?? '-',
                 'nama' => $p->nama_lengkap,
                 'unit' => $p->units->pluck('nama')->implode(', ') ?: '-',
                 'jabatan' => $p->jabatans->pluck('nama')->implode(', ') ?: '-',
