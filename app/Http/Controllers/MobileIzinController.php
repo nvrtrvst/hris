@@ -25,19 +25,53 @@ class MobileIzinController extends Controller
 {
     use ResolvesPegawai;
 
-    public function index()
+    public function index(Request $request)
     {
         $pegawai = $this->getPegawai();
         if (! $pegawai) {
             abort(403, 'Akses ditolak.');
         }
 
-        $pengajuan = PengajuanIzin::where('pegawai_id', $pegawai->id)
+        $request->validate([
+            'status' => 'nullable|in:semua,pending,disetujui,ditolak',
+            'jenis' => 'nullable|in:sakit,izin,cuti',
+            'bulan' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
+        ]);
+
+        // Filter jenis & bulan dipakai untuk daftar DAN hitungan chip status.
+        $base = PengajuanIzin::where('pegawai_id', $pegawai->id)
+            ->when($request->filled('jenis'), fn ($q) => $q->where('jenis_izin', $request->jenis))
+            ->when($request->filled('bulan'), function ($q) use ($request) {
+                [$tahun, $bulan] = explode('-', $request->bulan);
+                $q->whereYear('tanggal_mulai', (int) $tahun)->whereMonth('tanggal_mulai', (int) $bulan);
+            });
+
+        $stats = [
+            'total' => (clone $base)->count(),
+            'pending' => (clone $base)->where('status', 'pending')->count(),
+            'disetujui' => (clone $base)->where('status', 'disetujui')->count(),
+            'ditolak' => (clone $base)->where('status', 'ditolak')->count(),
+        ];
+
+        $pengajuan = (clone $base)
+            ->when($request->filled('status') && $request->status !== 'semua', fn ($q) => $q->where('status', $request->status))
+            ->with(['approverL1' => fn ($q) => $q->select('id', 'name')])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(15)
+            ->withQueryString();
+
+        // Pill "sisa cuti" — 1 query eksplisit (invariant MobileCutiSharedTest).
+        $pegawai->loadCutiInfo();
 
         return Inertia::render('Mobile/Izin/Index', [
             'pengajuan' => $pengajuan,
+            'filters' => [
+                'status' => $request->filled('status') ? $request->status : 'semua',
+                'jenis' => $request->filled('jenis') ? $request->jenis : '',
+                'bulan' => $request->filled('bulan') ? $request->bulan : '',
+            ],
+            'stats' => $stats,
+            'pegawai' => $pegawai,
         ]);
     }
 
