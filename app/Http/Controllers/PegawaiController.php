@@ -102,10 +102,14 @@ class PegawaiController extends Controller
      * Query pegawai dengan semua filter index (search, unit, mapel, jabatan, jenis).
      * Dipakai index() dan export() agar hasil export selalu sama dengan yang terlihat.
      */
-    private function pegawaiQuery(Request $request, array $with = ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'statusRef:kode,label,is_tetap', 'lokasis:id,nama,unit_sekolah_id'])
+    private function pegawaiQuery(Request $request, array $with = ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'statusRef:kode,label,is_tetap', 'lokasis:id,nama,unit_sekolah_id'], bool $applyUnitFilter = true)
     {
+        // Sentinel: '' = belum memilih unit, 'all' = sengaja memilih "Semua Unit".
+        $unitFilter = $request->input('unit_sekolah_id');
+        $semuaUnit = $unitFilter === 'all';
+
         $request->validate([
-            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'unit_sekolah_id' => $semuaUnit ? ['nullable', 'string'] : ['nullable', 'exists:unit_sekolah,id'],
             'mata_pelajaran_id' => 'nullable|exists:mata_pelajaran,id',
             'jabatan_id' => 'nullable|exists:jabatan,id',
             'jenis_filter' => 'nullable|in:pendidik,kependidikan',
@@ -126,7 +130,7 @@ class PegawaiController extends Controller
             $query->whereHas('units', function ($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
             });
-        } elseif ($request->filled('unit_sekolah_id')) {
+        } elseif ($applyUnitFilter && ! $semuaUnit && $request->filled('unit_sekolah_id')) {
             $query->whereHas('units', function ($q) use ($request) {
                 $q->where('unit_sekolah.id', $request->unit_sekolah_id);
             });
@@ -201,11 +205,15 @@ class PegawaiController extends Controller
     {
         $query = $this->pegawaiQuery($request, ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'user:id,email,username', 'statusRef:kode,label,is_tetap', 'lokasis:id,nama,unit_sekolah_id']);
         $user = auth()->user();
+        $isPimpinan = $this->isPimpinanReadOnly($user);
 
-        // Stats ringkasan: 1 query agregat + 1 count ringan (kontrak berakhir)
-        $agg = (clone $query)->selectRaw("COUNT(*) as total, SUM(CASE WHEN status_aktif = 'aktif' THEN 1 ELSE 0 END) as aktif")->first();
+        // Stats ringkasan: 1 query agregat + 1 count ringan (kontrak berakhir).
+        // Dihitung TANPA filter unit agar kartu statistik tetap menggambarkan
+        // seluruh yayasan (sesuai scope role) walau daftar pegawai belum difilter unit.
+        $statsQuery = $this->pegawaiQuery($request, [], applyUnitFilter: false);
+        $agg = (clone $statsQuery)->selectRaw("COUNT(*) as total, SUM(CASE WHEN status_aktif = 'aktif' THEN 1 ELSE 0 END) as aktif")->first();
         $kontrakEnd = now()->addDays(30)->format('Y-m-d');
-        $kontrakBerakhir = (clone $query)
+        $kontrakBerakhir = (clone $statsQuery)
             ->whereIn('status_kepegawaian', StatusKepegawaian::activeKodes())
             ->whereNotIn('status_kepegawaian', StatusKepegawaian::activeTetapKodes())
             ->whereNotNull('tanggal_akhir_kontrak')
@@ -219,9 +227,22 @@ class PegawaiController extends Controller
             'kontrak_berakhir' => (int) $kontrakBerakhir,
         ];
 
-        $pegawais = $query->paginate(10)->withQueryString();
+        // Superadmin: jangan langsung membuka seluruh pegawai yayasan — minta pilih
+        // unit dulu. Filter lain (cari/jabatan/mapel/jenis) dianggap niat eksplisit,
+        // jadi daftar tetap tampil walau unit belum dipilih.
+        $perluPilihUnit = ! $isPimpinan
+            && (bool) $user?->can('view_all_units')
+            && ! $request->filled('unit_sekolah_id')
+            && ! $request->filled('search')
+            && ! $request->filled('jabatan_id')
+            && ! $request->filled('mata_pelajaran_id')
+            && ! $request->filled('jenis_filter');
 
-        $isPimpinan = $this->isPimpinanReadOnly($user);
+        if ($perluPilihUnit) {
+            $query->whereRaw('1 = 0');
+        }
+
+        $pegawais = $query->paginate(10)->withQueryString();
 
         // Pimpinan: filter opsi jabatan hanya jabatan yang dimiliki bawahan langsung.
         if ($isPimpinan) {
@@ -256,6 +277,7 @@ class PegawaiController extends Controller
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'userUnitId' => $user->unit_sekolah_id,
             'isPimpinan' => $isPimpinan,
+            'perluPilihUnit' => $perluPilihUnit,
             'unitSekolahs' => $unitSekolahs,
             'mataPelajarans' => $mataPelajarans,
             'jabatans' => $jabatans,

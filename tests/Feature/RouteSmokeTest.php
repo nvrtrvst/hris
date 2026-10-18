@@ -1695,6 +1695,9 @@ class RouteSmokeTest extends TestCase
             // Superadmin tanpa unit → jadwal.index skip load (perf) — smoke
             // butuh props terisi, jadi kirim filter unit.
             'jadwal.index' => ['unit_sekolah_id' => $this->unit->id],
+            // Superadmin tanpa unit → pegawai.index sengaja kosong sampai unit
+            // dipilih; smoke butuh props terisi, jadi minta seluruh unit.
+            'pegawai.index' => ['unit_sekolah_id' => 'all'],
             'presensi.jadwal.kelas' => ['jadwal_id' => $this->jadwal->id],
             // Form koreksi butuh presensi pemilik (milik mobileUser) — tanpa
             // query ini controller balas 404.
