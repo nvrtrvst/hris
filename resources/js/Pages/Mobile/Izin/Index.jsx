@@ -82,7 +82,7 @@ export default function Index({ auth, pengajuan, filters = {}, stats = {}, pegaw
                             }`}
                         >
                             {c.label}
-                            <span className={`ml-1 ${active ? 'text-white/70' : 'text-slate-400'}`}>{c.count ?? 0}</span>
+                            <span className={`ml-1 ${active ? 'text-white/70' : 'text-slate-600'}`}>{c.count ?? 0}</span>
                         </button>
                     );
                 })}
@@ -136,15 +136,15 @@ export default function Index({ auth, pengajuan, filters = {}, stats = {}, pegaw
                                     <Card className="py-4">
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0 flex-1">
-                                                <Badge tone="indigo">{jenisLabel[item.jenis_izin] || item.jenis_izin}</Badge>
+                                                <Badge tone="slate">{jenisLabel[item.jenis_izin] || item.jenis_izin}</Badge>
                                                 <p className="mt-2 text-sm font-bold text-slate-800">
                                                     {fmtTanggal(item.tanggal_mulai)}
                                                     {item.tanggal_mulai !== item.tanggal_selesai && ` – ${fmtTanggal(item.tanggal_selesai)}`}
-                                                    <span className="ml-1 font-semibold text-slate-400">· {durasiHari(item.tanggal_mulai, item.tanggal_selesai)} hari</span>
+                                                    <span className="ml-1 font-semibold text-slate-600">· {durasiHari(item.tanggal_mulai, item.tanggal_selesai)} hari</span>
                                                 </p>
                                                 <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">{item.alasan}</p>
                                                 {menungguTingkat2 && item.approver_l1?.name && (
-                                                    <p className="mt-0.5 text-xs text-slate-400">
+                                                    <p className="mt-0.5 text-xs text-slate-600">
                                                         Disetujui {item.approver_l1.name}
                                                         {item.approved_at_l1 ? ` · ${format(new Date(item.approved_at_l1), 'd MMM yyyy', { locale: id })}` : ''}
                                                     </p>
@@ -158,7 +158,7 @@ export default function Index({ auth, pengajuan, filters = {}, stats = {}, pegaw
                                         {item.status === 'ditolak' && item.alasan_penolakan && (
                                             <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 p-3">
                                                 <p className="text-xs font-bold text-rose-800">Alasan Penolakan:</p>
-                                                <p className="mt-0.5 text-sm text-rose-600">{item.alasan_penolakan}</p>
+                                                <p className="mt-0.5 text-sm text-rose-700">{item.alasan_penolakan}</p>
                                             </div>
                                         )}
                                     </Card>

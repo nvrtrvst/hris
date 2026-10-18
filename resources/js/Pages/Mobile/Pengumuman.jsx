@@ -39,7 +39,7 @@ export default function Pengumuman({ auth, pengumuman }) {
                                         </a>
                                     )}
                                     <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{a.body}</p>
-                                    <div className="mt-3 flex items-center gap-4 text-[11px] text-slate-400">
+                                    <div className="mt-3 flex items-center gap-4 text-[11px] text-slate-600">
                                         <span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{a.published_at ? format(parseISO(a.published_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}</span>
                                         {a.creator && <span>{a.creator.name}</span>}
                                     </div>

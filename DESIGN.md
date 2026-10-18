@@ -18,15 +18,22 @@ UI mobile HRIS untuk pegawai yayasan yang melakukan presensi dari ponsel, sering
 - Background: `#F4F7F5`, netral hangat untuk mengurangi silau.
 - Surface: `#FFFFFF`, konten dan formulir.
 - Accent: `#C9A227`, hanya lembur atau perhatian khusus.
+- Emerald: sukses, tombol konfirmasi geser, indikator progres.
+- Sky: informasi netral dan alur dinas luar.
+- Rose: bahaya, penolakan, dan kesalahan; menggantikan `red` bawaan.
+- Slate: seluruh teks dan permukaan netral. Tidak ada violet, lime, atau indigo.
+- Teks kecil minimum `slate-600` (kontras 6.9:1 di permukaan netral, 7.6:1 di putih).
+- Teks semantik memakai tingkat `-700`; tingkat `-600` hanya untuk ikon atau teks besar.
 - Success, warning, danger selalu disertai teks atau ikon.
 
 # Typography
 
 - Font family: Figtree dengan system sans fallback.
 - Page title: `1.5rem`, 700.
-- Section label: `0.75rem`, 700, uppercase dengan tracking terbatas.
+- Section label: `0.75rem`, 700, uppercase, tracking `0.14em` (jangan lebih lebar).
 - Body: `0.875rem`, minimum line-height 1.4.
 - Waktu dan angka: monospace fallback, tabular figures.
+- Tanda pisah dalam kalimat memakai koma atau titik, bukan em dash.
 
 # Layout
 
@@ -38,15 +45,29 @@ UI mobile HRIS untuk pegawai yayasan yang melakukan presensi dari ponsel, sering
 
 # Elevation & Depth
 
-- Kartu memakai border tipis dan shadow ringan.
+- Kartu memakai border tipis dan shadow ringan `0_1px_2px_rgba(15,23,42,0.04)`.
+- Hero status boleh memakai shadow dalam (`shadow-inner`) karena kontennya berada di atas primary.
+- FAB memakai shadow berwarna primary `0_8px_18px_-8px_rgba(15,61,62,0.65)`; hanya satu FAB per layar.
 - Blur hanya untuk navigasi fixed.
 - Tidak ada orb, partikel, atau blur dekoratif pada konten scroll.
+
+# Motion
+
+- Gerak melalui transform atau opacity saja, tanpa animasi berulang.
+- Animasi `pulse`/loop dilarang; status cukup dari warna, teks, dan ikon.
+- Dial: ENERGY 1, RHYTHM 2, MOTION 1.
+
+# Theme
+
+- Terkunci light-only. Alasan: presensi dilakukan di luar ruangan dan keterbacaan di bawah sinar matahari lebih penting daripada preferensi sistem.
 
 # Shapes
 
 - Radius kartu `1rem`.
 - Radius tombol `0.75rem`.
-- Badge status berbentuk pill.
+- Radius overlay di dalam frame kamera atau peta `0.5rem`.
+- Badge status berbentuk pill; chip konten (kelas, jumlah JP) memakai radius `0.375rem`.
+- Satu treatment badge saja: tint + teks. Jangan menambah border dan uppercase bersamaan.
 - Tap target minimum 44px, ideal 48px.
 
 # Components
@@ -62,6 +83,7 @@ UI mobile HRIS untuk pegawai yayasan yang melakukan presensi dari ponsel, sering
 - Gunakan status eksplisit dan copy singkat.
 - Prioritaskan CTA presensi dan keterbacaan di bawah sinar matahari.
 - Gunakan transform/opacity untuk feedback gerak.
+- Panah hanya untuk baris yang benar-benar membuka detail; rentang waktu memakai tanda hubung.
 - Jangan gunakan glass card pada konten scroll.
 - Jangan memuat chart atau peta bila data dapat dijelaskan dengan teks.
 - Jangan memakai warna sebagai satu-satunya penanda status.

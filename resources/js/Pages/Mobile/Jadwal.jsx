@@ -16,7 +16,7 @@ const kelasColors = [
     { bar: 'bg-lime-600', bg: 'bg-lime-50', border: 'border-lime-200' },
 ];
 
-const fmtJam = (t) => (t ? String(t).substring(0, 5) : '—');
+const fmtJam = (t) => (t ? String(t).substring(0, 5) : '-');
 
 function getKelasColor(kelas, seen) {
     if (!kelas) return null;
@@ -45,7 +45,7 @@ const statusConfig = {
     telat: { label: 'Telat', color: 'text-amber-600', bg: 'bg-amber-50', icon: AlertTriangle },
     izin: { label: 'Izin', color: 'text-blue-600', bg: 'bg-blue-50', icon: CheckCircle },
     sakit: { label: 'Sakit', color: 'text-purple-600', bg: 'bg-purple-50', icon: CheckCircle },
-    alpa: { label: 'Alpa', color: 'text-red-600', bg: 'bg-red-50', icon: XCircle },
+    alpa: { label: 'Alpa', color: 'text-rose-700', bg: 'bg-rose-50', icon: XCircle },
 };
 
 function StatusBadge({ status }) {
@@ -85,7 +85,7 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                 <Card press={false} className="!bg-[#0F3D3E] border-0 px-4 py-3 text-white shadow-[0_8px_20px_-12px_rgba(15,61,62,0.7)] mb-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
                             <span className="text-xs font-bold text-white/90">Kantor</span>
                             <span className="font-mono text-xs font-bold text-white/70">{fmtDetik(kantor.jam_masuk)}</span>
                             {kantor.jam_keluar && (
@@ -102,7 +102,7 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
 
             {/* Day picker */}
             <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600">
                     {kantor ? 'Mengajar Hari Ini' : 'Jadwal Hari Ini'}
                 </h2>
                 <div className="rounded-xl bg-primary px-3 py-1.5 text-white">
@@ -127,7 +127,7 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                                 onClick={() => setSelectedDay(hari)}
                                 className={`min-w-[58px] rounded-xl border px-3 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 ${active ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-slate-600'}`}
                             >
-                                <span className={`block text-[10px] font-bold uppercase ${active ? 'text-emerald-100' : 'text-slate-400'}`}>{hari.slice(0, 3)}</span>
+                                <span className={`block text-[10px] font-bold uppercase ${active ? 'text-emerald-100' : 'text-slate-600'}`}>{hari.slice(0, 3)}</span>
                                 <span className={`mt-1 block text-[11px] font-bold ${active ? 'text-white' : 'text-slate-700'}`}>{tglStr}</span>
                                 {isTd && <span className={`mx-auto mt-1 block h-1 w-1 rounded-full ${active ? 'bg-emerald-200' : 'bg-primary'}`} />}
                             </button>
@@ -165,24 +165,21 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                                         <div className="w-14 shrink-0 text-center leading-none">
                                             <p className="font-mono text-sm font-bold tabular-nums text-slate-900">{fmtJam(j.jam_mulai)}</p>
                                             <div className="mx-auto my-1 h-3 w-px bg-slate-200" />
-                                            <p className="font-mono text-[11px] tabular-nums text-slate-400">{fmtJam(j.jam_selesai)}</p>
+                                            <p className="font-mono text-[11px] tabular-nums text-slate-600">{fmtJam(j.jam_selesai)}</p>
                                         </div>
                                         <div className="relative h-10 w-1.5 shrink-0 rounded-full">
                                             <div className={`absolute inset-0 rounded-full ${isLembur ? 'bg-amber-400' : color ? color.bar : 'bg-primary'}`} />
-                                            {sedangBerlangsung && (
-                                                <div className="absolute inset-0 rounded-full bg-primary animate-pulse opacity-60" />
-                                            )}
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2">
                                                 <p className="truncate text-sm font-bold text-slate-900">{mapel}</p>
-                                                {sedangBerlangsung && <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">NOW</span>}
+                                                {sedangBerlangsung && <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">NOW</span>}
                                             </div>
                                             <p className="mt-0.5 truncate text-xs text-slate-500">
                                                 {[kelas, unit].filter(Boolean).join(' • ')}
                                             </p>
                                             {batas && (
-                                                <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">
+                                                <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-600">
                                                     {badge === 'telat' && rec?.jam_masuk
                                                         ? `Masuk ${fmtDetik(rec.jam_masuk)} · batas ${batas}`
                                                         : `Batas hadir ${batas}`}
@@ -211,7 +208,7 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
             {/* Lembur (hanya hari ini) */}
             {isToday && lemburPresensi.length > 0 && (
                 <div className="mt-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Lembur</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">Lembur</p>
                     <div className="space-y-2">
                         {lemburPresensi.map((p, i) => (
                             <Card key={i} press={false} className="!bg-amber-50 border-0 px-4 py-3">
@@ -221,7 +218,7 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                                         <span className="font-mono text-xs font-bold text-slate-700">{fmtDetik(p.jam_masuk)}</span>
                                         {p.jam_keluar && (
                                             <>
-                                                <span className="text-slate-400">→</span>
+                                                <span className="text-slate-600">→</span>
                                                 <span className="font-mono text-xs font-bold text-slate-700">{fmtDetik(p.jam_keluar)}</span>
                                             </>
                                         )}
@@ -250,7 +247,7 @@ function BawahanPresensiCard({ bawahanPresensi }) {
         <div className="mb-4">
             <div className="flex items-center gap-2 mb-3">
                 <Users className="h-3.5 w-3.5 text-primary" />
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600">
                     Bawahan ({bawahanPresensi.length})
                 </h2>
             </div>
@@ -268,7 +265,7 @@ function BawahanPresensiCard({ bawahanPresensi }) {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <p className="truncate text-sm font-bold text-slate-900">{b.nama}</p>
-                                    <p className="truncate text-[11px] text-slate-400">{b.unit || '—'}</p>
+                                    <p className="truncate text-[11px] text-slate-600">{b.unit || '-'}</p>
                                 </div>
                                 <div className="text-right shrink-0">
                                     {masuk ? (
@@ -280,7 +277,7 @@ function BawahanPresensiCard({ bawahanPresensi }) {
                                         <span className="text-[10px] font-bold text-slate-300">Belum absen</span>
                                     )}
                                     {masuk?.jam_keluar && (
-                                        <p className="font-mono text-[10px] text-slate-400">→ {masuk.jam_keluar}</p>
+                                        <p className="font-mono text-[10px] text-slate-600">→ {masuk.jam_keluar}</p>
                                     )}
                                     {lembur.length > 0 && (
                                         <span className="inline-flex items-center rounded border border-accent-200 bg-accent-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent-700">Lembur</span>
@@ -439,7 +436,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
                                 </p>
                                  <p className="mt-2 font-mono text-sm font-bold tabular-nums text-primary">{fmtJam(selected.jam_mulai)} - {fmtJam(selected.jam_selesai)}</p>
                                  {batasHadir(selected.jam_mulai, selected.unit_sekolah?.toleransi_menit) && (
-                                     <p className="mt-0.5 text-xs font-semibold text-slate-400">
+                                     <p className="mt-0.5 text-xs font-semibold text-slate-600">
                                          Batas hadir {batasHadir(selected.jam_mulai, selected.unit_sekolah?.toleransi_menit)}
                                      </p>
                                  )}
@@ -463,9 +460,9 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
 
                         {!selectedClass ? (
                             loadingClasses ? (
-                                <p className="py-6 text-center text-sm text-slate-400">Memuat daftar kelas…</p>
+                                <p className="py-6 text-center text-sm text-slate-600">Memuat daftar kelas…</p>
                             ) : classOptions.length === 0 ? (
-                                <p className="py-6 text-center text-sm text-slate-400">Tidak ada kelas aktif di aplikasi keuangan.</p>
+                                <p className="py-6 text-center text-sm text-slate-600">Tidak ada kelas aktif di aplikasi keuangan.</p>
                             ) : (
                                 <div>
                                     <p className="mb-3 text-sm font-bold text-slate-700">Pilih kelas mengajar</p>
@@ -485,9 +482,9 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
                                 </div>
                             )
                         ) : loadingSiswa ? (
-                            <p className="py-6 text-center text-sm text-slate-400">Memuat…</p>
+                            <p className="py-6 text-center text-sm text-slate-600">Memuat…</p>
                         ) : siswa.length === 0 ? (
-                            <p className="py-6 text-center text-sm text-slate-400">
+                            <p className="py-6 text-center text-sm text-slate-600">
                                 Tidak ada data siswa yang cocok di app keuangan.
                             </p>
                         ) : (
@@ -504,7 +501,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
                                                 <div className="flex items-center justify-between">
                                                     <div className="min-w-0">
                                                         <p className="truncate text-sm font-bold text-slate-800">{s.nama}</p>
-                                                        <p className="text-xs text-slate-400">NIS {s.nis} • {genderText}</p>
+                                                        <p className="text-xs text-slate-600">NIS {s.nis} • {genderText}</p>
                                                     </div>
                                                 </div>
                                             </li>

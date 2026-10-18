@@ -23,7 +23,7 @@ export default function Index({ auth, pengajuan, koreksi_count, kuota }) {
         lainnya: 'Lainnya',
     };
 
-    const fmtJam = (j) => (j ? j.substring(0, 5) : '—');
+    const fmtJam = (j) => (j ? j.substring(0, 5) : '-');
 
     return (
         <MobileLayout user={auth.user}>
@@ -60,7 +60,7 @@ export default function Index({ auth, pengajuan, koreksi_count, kuota }) {
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-1.5">
-                                            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-700">
+                                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
                                                 {item.nomor}
                                             </span>
                                             {lewatKuota && (
@@ -77,9 +77,9 @@ export default function Index({ auth, pengajuan, koreksi_count, kuota }) {
                                             {item.presensi?.jam_keluar ? ' → ' : ''}
                                             <span className="font-bold text-slate-700">{fmtJam(item.nilai_baru)}</span>
                                         </p>
-                                        <p className="mt-0.5 text-xs text-slate-400">
+                                        <p className="mt-0.5 text-xs text-slate-600">
                                             {alasanLabel[item.alasan] || item.alasan}
-                                            {item.alasan_detail ? ` — ${item.alasan_detail}` : ''}
+                                            {item.alasan_detail ? `, ${item.alasan_detail}` : ''}
                                         </p>
                                     </div>
                                     <Badge tone={st.tone} icon={st.icon}>{st.label}</Badge>
@@ -88,7 +88,7 @@ export default function Index({ auth, pengajuan, koreksi_count, kuota }) {
                                 {item.status === 'ditolak' && item.alasan_penolakan && (
                                     <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 p-3">
                                         <p className="text-xs font-bold text-rose-800">Alasan Penolakan:</p>
-                                        <p className="mt-0.5 text-sm text-rose-600">{item.alasan_penolakan}</p>
+                                        <p className="mt-0.5 text-sm text-rose-700">{item.alasan_penolakan}</p>
                                     </div>
                                 )}
 

@@ -20,7 +20,7 @@ export default function AuthField({ id, label, icon: Icon, error, suffix, ...pro
                 {label}
             </label>
             <div className="relative">
-                <Icon className={`pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${error ? 'text-rose-500' : 'text-slate-400'}`} />
+                <Icon className={`pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${error ? 'text-rose-500' : 'text-slate-500'}`} />
                 <input
                     id={id}
                     aria-invalid={Boolean(error)}

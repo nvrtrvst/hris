@@ -234,7 +234,7 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                                             <label htmlFor="kk-slot" className={labelCls}>Kelas kosong</label>
                                             <select id="kk-slot" value={kkForm.slot_jadwal_id} onChange={(e) => setKkForm({ ...kkForm, slot_jadwal_id: e.target.value })} className={inputCls}>
                                                 <option value="">Pilih dari jadwal hari ini</option>
-                                                {slotKosong.length === 0 && <option value="" disabled>Tidak ada slot kosong — pakai input manual</option>}
+                                                {slotKosong.length === 0 && <option value="" disabled>Tidak ada slot kosong, pakai input manual</option>}
                                                 {slotKosong.map((s) => (
                                                     <option key={s.jadwal_id} value={s.jadwal_id}>
                                                         {s.kelas || 'Tanpa kelas'}{s.mapel ? `, ${s.mapel}` : ''} ({s.guru_nama}, {s.jam})

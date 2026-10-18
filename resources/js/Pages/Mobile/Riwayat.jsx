@@ -30,15 +30,15 @@ function FotoBukti({ url, jam, label, status }) {
         );
     }
     if (status === 'expired') {
-        return <p className="rounded-xl bg-slate-100 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500">Foto kedaluwarsa (retensi 3 bulan).</p>;
+                return <p className="rounded-xl bg-slate-100 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-600">Foto kedaluwarsa (retensi 3 bulan).</p>;
     }
     if (status === 'pending' || status === 'processing') {
-        return <p className="rounded-xl bg-slate-100 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500">Foto sedang diproses.</p>;
+                return <p className="rounded-xl bg-slate-100 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-600">Foto sedang diproses.</p>;
     }
     if (status === 'failed') {
-        return <p className="rounded-xl bg-slate-100 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500">Foto gagal diproses.</p>;
+                return <p className="rounded-xl bg-slate-100 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-600">Foto gagal diproses.</p>;
     }
-    return <p className="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500">Tak ada foto.</p>;
+                return <p className="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2.5 text-center text-[11px] font-semibold text-slate-600">Tak ada foto.</p>;
 }
 
 export default function Riwayat({ auth, presensi, summary, filters }) {
@@ -204,7 +204,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                     <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100">
                         <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all" style={{ width: `${Math.min(100, summary.percent)}%` }} />
                     </div>
-                    <p className="mt-2 text-[11px] text-slate-400">Alpa {summary.alpa} • Sakit {summary.sakit} • Izin {summary.izin} • Cuti {summary.cuti}</p>
+                    <p className="mt-2 text-[11px] text-slate-600">Alpa {summary.alpa} • Sakit {summary.sakit} • Izin {summary.izin} • Cuti {summary.cuti}</p>
                 </Card>
             )}
 
@@ -216,7 +216,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                     </div>
                     <CalendarDays className="h-5 w-5 text-primary" />
                 </div>
-                <div className="grid grid-cols-7 text-center text-[10px] font-bold uppercase text-slate-400" aria-hidden="true">
+                <div className="grid grid-cols-7 text-center text-[10px] font-bold uppercase text-slate-600" aria-hidden="true">
                     {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((day) => <span key={day} className="py-1">{day}</span>)}
                 </div>
                 <div className="mt-1 grid grid-cols-7 gap-1" aria-label={`Kalender kehadiran ${activeMonth}`}>
@@ -226,7 +226,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                         const status = dailyStatus[key];
                         const isSelected = selectedDate === key;
                         return (
-                            <button key={key} type="button" onClick={() => setSelectedDate(isSelected ? null : key)} aria-label={`${format(day, 'd MMMM', { locale: id })}: ${status ? getStatusBadge(status).label : 'Tidak ada catatan'}`} className={`flex aspect-square items-center justify-center rounded-lg text-xs font-bold tabular-nums ring-1 transition-all ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''} ${status ? calendarTone[status] : 'bg-slate-50 text-slate-400 ring-slate-100'}`}>
+                            <button key={key} type="button" onClick={() => setSelectedDate(isSelected ? null : key)} aria-label={`${format(day, 'd MMMM', { locale: id })}: ${status ? getStatusBadge(status).label : 'Tidak ada catatan'}`} className={`flex aspect-square items-center justify-center rounded-lg text-xs font-bold tabular-nums ring-1 transition-all ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''} ${status ? calendarTone[status] : 'bg-slate-50 text-slate-600 ring-slate-100'}`}>
                                 {format(day, 'd')}
                             </button>
                         );
@@ -243,9 +243,9 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
             {selectedDate && (
                 <div className="mt-2 space-y-2.5">
                     <div className="flex items-center gap-2 px-1">
-                        <CalendarDays className="h-4 w-4 text-emerald-400" />
+                        <CalendarDays className="h-4 w-4 text-emerald-600" />
                         <p className="text-sm font-extrabold text-slate-700">{formatTanggal(selectedDate)}</p>
-                        <span className="text-xs font-medium text-slate-400">• {dayName(selectedDate)}</span>
+                        <span className="text-xs font-medium text-slate-600">• {dayName(selectedDate)}</span>
                     </div>
                     {groupedByMapel.length === 0 ? (
                         <Empty icon={History} title="Tidak ada presensi" subtitle="Belum ada catatan kehadiran untuk tanggal ini." />
@@ -267,18 +267,18 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                             <div className="min-w-0">
                                                 <p className="truncate font-bold text-slate-800">{label}</p>
                                                 <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
-                                                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{fmtDetik(p.jam_masuk)}–{fmtDetik(p.jam_keluar)}</span>
+                                                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-600" />{fmtDetik(p.jam_masuk)}–{fmtDetik(p.jam_keluar)}</span>
                                                     {p.jarak_meter != null && (
-                                                        <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-400" />{p.jarak_meter}m</span>
+                                                        <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-600" />{p.jarak_meter}m</span>
                                                     )}
                                                 </p>
                                                 {p.status === 'telat' && !isKantor && p.jam_masuk && batasHadir(p.jadwal?.jam_mulai, p.jadwal?.unit_sekolah?.toleransi_menit ?? p.unit_sekolah?.toleransi_menit) && (
-                                                    <p className="mt-0.5 text-[11px] font-semibold text-amber-600">
+                                                    <p className="mt-0.5 text-[11px] font-semibold text-amber-700">
                                                         Batas hadir {batasHadir(p.jadwal?.jam_mulai, p.jadwal?.unit_sekolah?.toleransi_menit ?? p.unit_sekolah?.toleransi_menit)}
                                                     </p>
                                                 )}
                                                 {pulangAwal?.ada && pulangAwal.awal && (
-                                                    <p className={`mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold ${pulangAwal.diizinkan ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                    <p className={`mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold ${pulangAwal.diizinkan ? 'text-emerald-700' : 'text-amber-700'}`}>
                                                         <AlarmClock className="h-3 w-3" />
                                                         Pulang awal {pulangAwal.menit}m · {pulangAwal.diizinkan ? 'diizinkan' : 'tanpa izin'}
                                                     </p>
@@ -312,16 +312,16 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <p className="truncate font-bold text-slate-800">{g.nama}</p>
-                                                    {g.kelas && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{g.kelas}</span>}
-                                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{g.count} JP</span>
+                                                    {g.kelas && <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{g.kelas}</span>}
+                                                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{g.count} JP</span>
                                                 </div>
                                                 <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
-                                                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-400" />{g.timeRange}</span>
+                                                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-600" />{g.timeRange}</span>
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <Badge tone={b.tone} icon={b.icon}>{b.label}</Badge>
-                                                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                                                <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
                                             </div>
                                         </Card>
                                     </button>
@@ -361,7 +361,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                                             </button>
                                                         )}
                                                         {si === slots.length - 1 && pulangAwal?.ada && pulangAwal.awal && (
-                                                            <p className={`mt-1 inline-flex items-center gap-1 text-[11px] font-semibold ${pulangAwal.diizinkan ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                            <p className={`mt-1 inline-flex items-center gap-1 text-[11px] font-semibold ${pulangAwal.diizinkan ? 'text-emerald-700' : 'text-amber-700'}`}>
                                                                 <AlarmClock className="h-3 w-3" />
                                                                 Pulang awal {pulangAwal.menit}m · {pulangAwal.diizinkan ? 'diizinkan' : 'tanpa izin'}
                                                             </p>

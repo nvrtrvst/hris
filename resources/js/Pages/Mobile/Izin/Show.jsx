@@ -50,7 +50,7 @@ export default function Show({ auth, pengajuan }) {
             <Card className="mb-4">
                 <div className="flex items-start justify-between gap-3">
                     <div>
-                        <Badge tone="indigo">{jenisLabel[pengajuan.jenis_izin] || pengajuan.jenis_izin}</Badge>
+                        <Badge tone="slate">{jenisLabel[pengajuan.jenis_izin] || pengajuan.jenis_izin}</Badge>
                         <h1 className="mt-2 text-lg font-extrabold text-slate-900">Detail Pengajuan</h1>
                     </div>
                     <Badge tone={st.tone} icon={StatusIcon}>{st.label}</Badge>
@@ -65,14 +65,14 @@ export default function Show({ auth, pengajuan }) {
                         <Calendar className="h-4 w-4 text-slate-500" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Periode</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Periode</p>
                         <p className="mt-0.5 text-sm font-bold text-slate-800">
                             {format(new Date(pengajuan.tanggal_mulai), 'd MMM yyyy', { locale: id })}
                             {pengajuan.tanggal_mulai !== pengajuan.tanggal_selesai && (
                                 <> &ndash; {format(new Date(pengajuan.tanggal_selesai), 'd MMM yyyy', { locale: id })}</>
                             )}
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-400">{totalDays} hari</p>
+                        <p className="mt-0.5 text-xs text-slate-600">{totalDays} hari</p>
                     </div>
                 </div>
 
@@ -82,7 +82,7 @@ export default function Show({ auth, pengajuan }) {
                         <FileText className="h-4 w-4 text-slate-500" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Alasan</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Alasan</p>
                         <p className="mt-0.5 text-sm text-slate-700 whitespace-pre-wrap">{pengajuan.alasan}</p>
                     </div>
                 </div>
@@ -94,7 +94,7 @@ export default function Show({ auth, pengajuan }) {
                             <FileText className="h-4 w-4 text-slate-500" />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Bukti Foto</p>
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Bukti Foto</p>
                             <img
                                 src={fotoSrc}
                                 alt="Bukti foto pengajuan"
@@ -118,7 +118,7 @@ export default function Show({ auth, pengajuan }) {
                             pengajuan.status === 'disetujui' ? 'bg-emerald-100' : 'bg-rose-100'
                         }`}>
                             <StatusIcon className={`h-4 w-4 ${
-                                pengajuan.status === 'disetujui' ? 'text-emerald-600' : 'text-rose-600'
+                                pengajuan.status === 'disetujui' ? 'text-emerald-700' : 'text-rose-700'
                             }`} />
                         </div>
                         <div className="min-w-0">
@@ -131,21 +131,21 @@ export default function Show({ auth, pengajuan }) {
                             {pengajuan.approved_at_l1 && (
                                 <p className="mt-0.5 text-xs text-slate-500">
                                     Disetujui oleh {pengajuan.approver_l1?.name || 'Atasan'}
-                                    <span className="ml-1 text-slate-400">· {format(new Date(pengajuan.approved_at_l1), 'd MMM yyyy, HH:mm', { locale: id })}</span>
+                                    <span className="ml-1 text-slate-600">· {format(new Date(pengajuan.approved_at_l1), 'd MMM yyyy, HH:mm', { locale: id })}</span>
                                 </p>
                             )}
                             {/* Disetujui oleh L2 */}
                             {pengajuan.approved_at_l2 && (
                                 <p className="mt-0.5 text-xs text-slate-500">
                                     Disetujui oleh {pengajuan.approver_l2?.name || 'Atasan'}
-                                    <span className="ml-1 text-slate-400">· {format(new Date(pengajuan.approved_at_l2), 'd MMM yyyy, HH:mm', { locale: id })}</span>
+                                    <span className="ml-1 text-slate-600">· {format(new Date(pengajuan.approved_at_l2), 'd MMM yyyy, HH:mm', { locale: id })}</span>
                                 </p>
                             )}
                             {/* Catatan atasan */}
                             {pengajuan.catatan_approval && (
                                 <div className="mt-2 rounded-xl bg-white/80 p-3 ring-1 ring-emerald-100">
                                     <p className="text-xs font-bold text-emerald-700">Catatan Atasan:</p>
-                                    <p className="mt-0.5 text-sm text-emerald-600">{pengajuan.catatan_approval}</p>
+                                    <p className="mt-0.5 text-sm text-emerald-700">{pengajuan.catatan_approval}</p>
                                 </div>
                             )}
                             {/* Ditolak */}
@@ -154,7 +154,7 @@ export default function Show({ auth, pengajuan }) {
                                     <p className="flex items-center gap-1 text-xs font-bold text-rose-700">
                                         <AlertTriangle className="h-3 w-3" /> Alasan Penolakan
                                     </p>
-                                    <p className="mt-1 text-sm text-rose-600">{pengajuan.alasan_penolakan}</p>
+                                    <p className="mt-1 text-sm text-rose-700">{pengajuan.alasan_penolakan}</p>
                                     {pengajuan.rejected_by_user && (
                                         <p className="mt-1 text-xs text-rose-400">Ditolak oleh {pengajuan.rejected_by_user.name}</p>
                                     )}
@@ -174,7 +174,7 @@ export default function Show({ auth, pengajuan }) {
                         </div>
                         <div>
                             <p className="text-sm font-bold text-amber-800">Menunggu Persetujuan</p>
-                            <p className="mt-0.5 text-xs text-amber-600">Pengajuan Anda sedang ditinjau oleh atasan.</p>
+                            <p className="mt-0.5 text-xs text-amber-700">Pengajuan Anda sedang ditinjau oleh atasan.</p>
                         </div>
                     </div>
                 </Card>

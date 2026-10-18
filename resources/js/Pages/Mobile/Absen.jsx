@@ -501,7 +501,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                                 <p className="mt-1 text-xs text-slate-500">{j.kelas_label || (j.hari || '')}</p>
                                 <p className="mt-1 font-mono text-xs font-bold tabular-nums text-primary">{j.jam_mulai} - {j.jam_selesai}</p>
                                 {batasHadir(j.jam_mulai, j.unit_sekolah?.toleransi_menit) && (
-                                    <p className="mt-0.5 text-[10px] font-semibold text-slate-400">Batas hadir {batasHadir(j.jam_mulai, j.unit_sekolah?.toleransi_menit)}</p>
+                                    <p className="mt-0.5 text-[10px] font-semibold text-slate-600">Batas hadir {batasHadir(j.jam_mulai, j.unit_sekolah?.toleransi_menit)}</p>
                                 )}
                             </button>
                         ))}
@@ -525,7 +525,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                         <span className="block text-sm font-bold text-slate-700">Laporan Piket terkunci</span>
                         <span className="mt-0.5 block text-xs text-slate-500">Selesaikan presensi masuk dulu untuk membuka</span>
                     </span>
-                    <Lock className="h-5 w-5 text-slate-400" />
+                    <Lock className="h-5 w-5 text-slate-500" />
                 </div>
             )}
 
@@ -580,7 +580,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                                 <Camera className="h-6 w-6" />
                             </div>
                             <p className="text-sm font-medium">{locationError || 'Kamera tidak dapat diakses'}</p>
-                            <p className="text-xs text-slate-400">Aktifkan kamera untuk presensi realtime.</p>
+                            <p className="text-xs text-slate-600">Aktifkan kamera untuk presensi realtime.</p>
                         </div>
                     )}
 
@@ -704,12 +704,12 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                                 <div className="min-w-0">
                                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Posisi A (saat foto)</p>
                                     <p className="mt-0.5 font-mono text-xs tabular-nums text-slate-700">{posA.latitude.toFixed(6)}, {posA.longitude.toFixed(6)}</p>
-                                    <p className="text-[10px] text-slate-400">Akurasi {posA.accuracy?.toFixed(0)}m</p>
+                                    <p className="text-[10px] text-slate-600">Akurasi {posA.accuracy?.toFixed(0)}m</p>
                                 </div>
                                 <div className="shrink-0 text-right">
                                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Posisi B (submit)</p>
                                     <p className="mt-0.5 font-mono text-xs tabular-nums text-slate-700">{currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}</p>
-                                    <p className="text-[10px] text-slate-400">Akurasi {currentPosition.accuracy?.toFixed(0)}m</p>
+                                    <p className="text-[10px] text-slate-600">Akurasi {currentPosition.accuracy?.toFixed(0)}m</p>
                                 </div>
                             </div>
                         </div>

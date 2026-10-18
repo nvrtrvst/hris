@@ -19,7 +19,7 @@ function Field({ icon: Icon, label, value }) {
                 <Icon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
-                <p className="text-[11px] uppercase tracking-wider text-slate-400">{label}</p>
+                <p className="text-[11px] uppercase tracking-wider text-slate-600">{label}</p>
                 <p className="truncate text-sm font-semibold text-slate-800">{value}</p>
             </div>
         </div>
@@ -38,7 +38,7 @@ function Section({ title, icon: Icon, open, onToggle, children, accent = 'text-p
                     <Icon className={`h-5 w-5 ${accent}`} />
                     <span className="text-sm font-bold text-slate-800">{title}</span>
                 </span>
-                <ChevronDown className={`h-5 w-5 text-slate-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-5 w-5 text-slate-500 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
             </button>
             <div
                 className="grid transition-all duration-300 ease-in-out"
@@ -170,16 +170,16 @@ export default function MobileProfile({ status }) {
                 {/* QUICK STATS */}
                 <div className="grid grid-cols-2 gap-3">
                     <Card className="flex flex-col items-center py-4">
-                        <p className="text-[11px] uppercase tracking-wider text-slate-400">Sisa Cuti</p>
+                        <p className="text-[11px] uppercase tracking-wider text-slate-600">Sisa Cuti</p>
                         <p className="mt-0.5 text-2xl font-extrabold text-primary">{pegawai?.sisa_cuti ?? 0}</p>
-                        <p className="text-[11px] text-slate-400">hari</p>
+                        <p className="text-[11px] text-slate-600">hari</p>
                     </Card>
                     <Card className="flex flex-col items-center py-4">
-                        <p className="text-[11px] uppercase tracking-wider text-slate-400">Status</p>
-                        <p className="mt-1 text-sm font-bold text-emerald-600">
+                        <p className="text-[11px] uppercase tracking-wider text-slate-600">Status</p>
+                        <p className="mt-1 text-sm font-bold text-emerald-700">
                             {pegawai?.status_aktif ? 'Aktif' : 'Nonaktif'}
                         </p>
-                        <p className="text-[11px] text-slate-400">{pegawai?.statusRef?.label || pegawai?.status_kepegawaian || '-'}</p>
+                        <p className="text-[11px] text-slate-600">{pegawai?.statusRef?.label || pegawai?.status_kepegawaian || '-'}</p>
                     </Card>
                 </div>
 
@@ -322,7 +322,7 @@ export default function MobileProfile({ status }) {
                     href={route('presensi.logout')}
                     method="post"
                     as="button"
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50 py-3.5 text-sm font-bold text-red-600 transition active:scale-[0.98]"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 py-3.5 text-sm font-bold text-rose-700 transition active:scale-[0.98]"
                 >
                     <LogOut className="h-4 w-4" />
                     Keluar

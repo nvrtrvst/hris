@@ -75,7 +75,7 @@ export default function Notifikasi({ auth, notifications, filters }) {
             {/* Search + Tabs */}
             <div className="mb-4 space-y-3">
                 <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                     <input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -130,7 +130,7 @@ export default function Notifikasi({ auth, notifications, filters }) {
                                         <p className={`text-sm whitespace-pre-line ${!n.read_at ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
                                             {n.data?.message || n.data?.pegawai_nama || 'Notifikasi'}
                                         </p>
-                                        <p className="mt-0.5 text-xs text-slate-400">{n.created_at ? format(parseISO(n.created_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}</p>
+                                        <p className="mt-0.5 text-xs text-slate-600">{n.created_at ? format(parseISO(n.created_at), 'd MMM yyyy, HH:mm', { locale: idLocale }) : '-'}</p>
                                     </div>
                                 </div>
                                     <div className="flex shrink-0 items-center gap-1.5">
