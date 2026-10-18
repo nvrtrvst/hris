@@ -65,7 +65,7 @@ export default function Index({ auth, pengajuan, filters = {}, stats = {}, pegaw
                     <span className="block text-sm font-bold text-slate-800">Izin Pulang Cepat</span>
                     <span className="block text-xs text-slate-500">Perlu pulang lebih awal? Ajukan di sini</span>
                 </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-500" />
             </Link>
 
             <div className="mb-3 flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filter status pengajuan">
@@ -152,7 +152,7 @@ export default function Index({ auth, pengajuan, filters = {}, stats = {}, pegaw
                                             </div>
                                             <div className="flex shrink-0 items-center gap-2">
                                                 <Badge tone={st.tone} icon={st.icon}>{st.label}</Badge>
-                                                <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-300" />
+                                                <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-500" />
                                             </div>
                                         </div>
                                         {item.status === 'ditolak' && item.alasan_penolakan && (
