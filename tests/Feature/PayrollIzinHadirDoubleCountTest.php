@@ -95,7 +95,7 @@ class PayrollIzinHadirDoubleCountTest extends TestCase
             'hari' => 'Senin',
             'jam_mulai' => '07:00:00',
             'jam_selesai' => '08:30:00',
-            'jenis_jadwal' => 'reguler',
+            'jenis_jadwal' => 'mengajar',
             'tahun_ajaran' => '2026/2027',
             'semester' => 1,
         ]);
@@ -161,7 +161,7 @@ class PayrollIzinHadirDoubleCountTest extends TestCase
             'hari' => 'Senin',
             'jam_mulai' => '07:00:00',
             'jam_selesai' => '08:30:00',
-            'jenis_jadwal' => 'reguler',
+            'jenis_jadwal' => 'mengajar',
             'tahun_ajaran' => '2026/2027',
             'semester' => 1,
         ]);
@@ -209,7 +209,7 @@ class PayrollIzinHadirDoubleCountTest extends TestCase
             'hari' => 'Senin',
             'jam_mulai' => '07:00:00',
             'jam_selesai' => '08:30:00',
-            'jenis_jadwal' => 'reguler',
+            'jenis_jadwal' => 'mengajar',
             'tahun_ajaran' => '2026/2027',
             'semester' => 1,
         ]);
@@ -258,7 +258,7 @@ class PayrollIzinHadirDoubleCountTest extends TestCase
             'hari' => 'Senin',
             'jam_mulai' => '07:00:00',
             'jam_selesai' => '08:30:00',
-            'jenis_jadwal' => 'reguler',
+            'jenis_jadwal' => 'mengajar',
             'tahun_ajaran' => '2026/2027',
             'semester' => 1,
         ]);
@@ -268,7 +268,7 @@ class PayrollIzinHadirDoubleCountTest extends TestCase
             'hari' => 'Senin',
             'jam_mulai' => '09:00:00',
             'jam_selesai' => '10:30:00',
-            'jenis_jadwal' => 'reguler',
+            'jenis_jadwal' => 'mengajar',
             'tahun_ajaran' => '2026/2027',
             'semester' => 1,
         ]);
@@ -306,7 +306,7 @@ class PayrollIzinHadirDoubleCountTest extends TestCase
             'hari' => 'Senin',
             'jam_mulai' => '07:00:00',
             'jam_selesai' => '08:30:00',
-            'jenis_jadwal' => 'reguler',
+            'jenis_jadwal' => 'mengajar',
             'tahun_ajaran' => '2026/2027',
             'semester' => 1,
         ]);

@@ -1661,7 +1661,7 @@ class RouteSmokeTest extends TestCase
                 str_starts_with($routeName, 'presensi.notifikasi') => $this->mobileNotifId,
                 in_array($routeName, ['notifications.read', 'notifications.archive', 'notifications.restore'], true) => $this->adminNotifId,
                 $routeName === 'presensi.gaji.show' => $this->penggajianPaid->id,
-                $routeName === 'pengajuan-izin.approve' => $this->pengajuanApprove->id,
+                in_array($routeName, ['pengajuan-izin.approve', 'pengajuan-izin.comments'], true) => $this->pengajuanApprove->id,
                 $routeName === 'pengajuan-izin.reject' => $this->pengajuanReject->id,
                 $routeName === 'penggajian.destroy' => $this->penggajianDraft->id,
                 $routeName === 'koreksi-presensi.cetak' => $this->koreksi->id,

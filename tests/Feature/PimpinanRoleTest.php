@@ -177,9 +177,9 @@ class PimpinanRoleTest extends TestCase
             'hari' => 'Senin',
             'jam_mulai' => '07:00:00',
             'jam_selesai' => '08:00:00',
-            'jenis_jadwal' => 'reguler',
+            'jenis_jadwal' => 'mengajar',
             'tahun_ajaran' => '2026/2027',
-            'semester' => 'Ganjil',
+            'semester' => 1,
         ]);
         Jadwal::create([
             'pegawai_id' => $orangLain->id,
@@ -188,9 +188,9 @@ class PimpinanRoleTest extends TestCase
             'hari' => 'Senin',
             'jam_mulai' => '09:00:00',
             'jam_selesai' => '10:00:00',
-            'jenis_jadwal' => 'reguler',
+            'jenis_jadwal' => 'mengajar',
             'tahun_ajaran' => '2026/2027',
-            'semester' => 'Ganjil',
+            'semester' => 1,
         ]);
 
         $user = $this->makePimpinan($kepsek);

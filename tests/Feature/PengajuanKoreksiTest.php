@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditPresensi;
 use App\Models\Jabatan;
 use App\Models\Pegawai;
 use App\Models\PengajuanKoreksi;
@@ -233,11 +234,11 @@ class PengajuanKoreksiTest extends TestCase
             'status' => 'disetujui',
             'approver_id' => $this->superadmin->id,
         ]);
-        $this->assertDatabaseHas('audit_presensi', [
-            'presensi_id' => $presensi->id,
-            'aksi' => 'koreksi_jam_keluar',
-            'nilai_baru' => '15:30',
-        ]);
+        $audit = AuditPresensi::where('presensi_id', $presensi->id)
+            ->where('aksi', 'koreksi_jam_keluar')
+            ->firstOrFail();
+        // MySQL mengembalikan kolom TIME sebagai 'HH:MM:SS', sqlite apa adanya.
+        $this->assertSame('15:30', substr((string) $audit->nilai_baru, 0, 5));
         Notification::assertSentTo($this->pegawai->user, StatusKoreksi::class);
     }
 

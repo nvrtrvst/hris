@@ -66,12 +66,7 @@ jobs:
           DB_DATABASE: hris_test
           DB_USERNAME: root
           DB_PASSWORD: password
-
-      - name: Assert test DB driver is mysql
-        run: |
-          driver=$(php artisan tinker --execute="echo DB::connection()->getDriverName();" | tail -n1)
-          echo "Resolved test DB driver: $driver"
-          test "$driver" = "mysql"
+          CI_REQUIRE_MYSQL: 'true'
 
       - name: Check Code Style
         run: ./vendor/bin/pint --test
