@@ -35,7 +35,7 @@ export default function GajiIndex({ auth, pegawai, penggajians }) {
                                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusCls[p.status] || statusCls.draft}`}>
                                         {p.status}
                                     </span>
-                                    <ChevronRight className="h-4 w-4 text-slate-300" />
+                                    <ChevronRight className="h-4 w-4 text-slate-500" />
                                 </div>
                             </Card>
                         </Link>
