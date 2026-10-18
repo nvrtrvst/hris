@@ -5,7 +5,7 @@ import { fmtDetik, batasHadir, fmtJp, hitungJp, splitJadwalKeJp } from '@/Utils/
 import { Card, SectionTitle, Badge, Empty } from '@/Components/MobileUI';
 import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { History, CalendarDays, Clock, Clock3, MapPin, CheckCircle2, AlertTriangle, FileText, XCircle, Ban, ChevronDown } from 'lucide-react';
+import { History, CalendarDays, Clock, MapPin, CheckCircle2, AlertTriangle, FileText, XCircle, Ban, ChevronDown } from 'lucide-react';
 
 /**
  * Bukti foto satu sisi (masuk/keluar): thumbnail + jam, tap = layar penuh.
@@ -164,13 +164,6 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                         <p className="mt-0.5 text-sm text-slate-500">Rekap kehadiran Anda</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
-                        <Link
-                            href={route('presensi.pulang-cepat.index')}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700 transition active:scale-95"
-                        >
-                            <Clock3 className="h-3.5 w-3.5" />
-                            Pulang Cepat
-                        </Link>
                         <Link
                             href={route('presensi.koreksi.index')}
                             className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition active:scale-95"
