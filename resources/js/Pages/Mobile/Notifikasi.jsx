@@ -19,6 +19,12 @@ function getNotificationRoute(n) {
     if (type === 'koreksi_baru' || type === 'status_koreksi') {
         return { name: 'presensi.koreksi.index', params: null };
     }
+    if (type === 'pulang_cepat_baru' || type === 'status_pulang_cepat') {
+        return { name: 'presensi.pulang-cepat.index', params: null };
+    }
+    if (type === 'pulang_awal_baru') {
+        return { name: 'presensi.riwayat', params: null };
+    }
     if (type === 'announcement') {
         return { name: 'presensi.pengumuman', params: null };
     }

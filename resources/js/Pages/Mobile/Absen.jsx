@@ -14,7 +14,7 @@ import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, ClipboardCheck, Lock } from 'lucide-react';
 
-export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false, izinHariIni = null }) {
+export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false, izinHariIni = null, adaIzinPulangCepat = false }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
@@ -415,6 +415,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     jadwals={jadwals}
                     presensiHariIni={presensiHariIni}
                     attestationToken={attestation_token}
+                    adaIzinPulangCepat={adaIzinPulangCepat}
                 />
             </MobileLayout>
         );

@@ -16,6 +16,7 @@ use App\Models\PegawaiDokumen;
 use App\Models\PegawaiMapel;
 use App\Models\PengajuanIzin;
 use App\Models\PengajuanKoreksi;
+use App\Models\PengajuanPulangCepat;
 use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
 use App\Models\Presensi;
@@ -135,6 +136,7 @@ class RouteSmokeTest extends TestCase
         'unit-sekolah.edit' => 'UnitSekolah/Edit',
         'pengajuan-izin.index' => 'PengajuanIzin/Index',
         'koreksi-presensi.index' => 'Koreksi/Index',
+        'pulang-cepat.index' => 'PulangCepat/Index',
         'laporan.index' => 'Laporan/Index',
         'users.index' => 'Users/Index',
         'users.create' => 'Users/Create',
@@ -167,6 +169,8 @@ class RouteSmokeTest extends TestCase
         'presensi.izin.show' => 'Mobile/Izin/Show',
         'presensi.koreksi.index' => 'Mobile/Koreksi/Index',
         'presensi.koreksi.create' => 'Mobile/Koreksi/Create',
+        'presensi.pulang-cepat.index' => 'Mobile/PulangCepat/Index',
+        'presensi.pulang-cepat.create' => 'Mobile/PulangCepat/Create',
         'presensi.absen' => 'Mobile/Absen',
         'presensi.piket.index' => 'Mobile/Piket',
         'presensi.piket.riwayat' => 'Mobile/PiketRiwayat',
@@ -264,6 +268,7 @@ class RouteSmokeTest extends TestCase
         'unit-sekolah.create' => [],
         'unit-sekolah.edit' => ['unit' => true],
         'pengajuan-izin.index' => ['pengajuans' => true, 'filters' => false, 'stats' => true],
+        'pulang-cepat.index' => ['pengajuans' => true, 'filters' => false, 'stats' => true],
         'laporan.index' => ['units' => true],
         'laporan.piket' => ['filters' => true, 'units' => true, 'laporan' => false, 'belum' => false, 'label' => true],
         'users.index' => ['users' => true, 'filters' => false, 'stats' => true],
@@ -293,6 +298,7 @@ class RouteSmokeTest extends TestCase
         'presensi.gaji.show' => ['penggajian' => true],
         'presensi.notifikasi.index' => ['notifications' => true, 'filters' => false],
         'presensi.izin.index' => ['pengajuan' => true],
+        'presensi.pulang-cepat.index' => ['pengajuan' => true],
         'presensi.izin.create' => ['pegawai' => true],
         'presensi.piket.riwayat' => ['riwayat' => false, 'label' => true],
         'presensi.absen' => [
@@ -419,6 +425,9 @@ class RouteSmokeTest extends TestCase
         'pengajuan-izin.index' => [
             'pengajuans.data.*.pegawai' => false,
         ],
+        'pulang-cepat.index' => [
+            'pengajuans.data.*.pegawai' => false,
+        ],
 
         // ── Mobile (web_mobile) ──
         'presensi.dashboard' => [
@@ -464,6 +473,8 @@ class RouteSmokeTest extends TestCase
     private Presensi $presensiLembur2;
 
     private PengajuanKoreksi $koreksi;
+
+    private PengajuanPulangCepat $pulangCepat;
 
     private KomponenGaji $komponen;
 
@@ -681,6 +692,15 @@ class RouteSmokeTest extends TestCase
             'nilai_baru' => '17:00',
             'alasan' => 'lupa_presensi',
             'nomor' => 'KOR/SMOKE/0001',
+        ]);
+
+        $this->pulangCepat = PengajuanPulangCepat::create([
+            'pegawai_id' => $this->pegawai->id,
+            'tanggal' => now()->format('Y-m-d'),
+            'jam_diminta' => '14:00',
+            'alasan' => 'keperluan_pribadi',
+            'alasan_detail' => 'Smoke izin pulang cepat',
+            'nomor' => 'PPC/SMOKE/0001',
         ]);
 
         $this->komponen = KomponenGaji::create([
@@ -1645,6 +1665,7 @@ class RouteSmokeTest extends TestCase
                 $routeName === 'pengajuan-izin.reject' => $this->pengajuanReject->id,
                 $routeName === 'penggajian.destroy' => $this->penggajianDraft->id,
                 $routeName === 'koreksi-presensi.cetak' => $this->koreksi->id,
+                in_array($routeName, ['pulang-cepat.cetak', 'presensi.pulang-cepat.cetak'], true) => $this->pulangCepat->id,
                 default => $this->penggajianDraft->id,
             },
             'hari_libur' => $routeName === 'hari-libur.destroy' ? $this->disposableHariLibur->id : $this->hariLibur->id,

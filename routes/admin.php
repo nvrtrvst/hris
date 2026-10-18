@@ -17,6 +17,7 @@ use App\Http\Controllers\PegawaiDokumenController;
 use App\Http\Controllers\PegawaiKomponenController;
 use App\Http\Controllers\PengajuanIzinController;
 use App\Http\Controllers\PengajuanKoreksiController;
+use App\Http\Controllers\PengajuanPulangCepatController;
 use App\Http\Controllers\PenggajianController;
 use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\ProfileController;
@@ -262,6 +263,17 @@ Route::middleware('auth:web_admin')->group(function () {
         ->name('koreksi-presensi.reject');
     Route::get('/koreksi-presensi/{id}/cetak', [PengajuanKoreksiController::class, 'print'])
         ->name('koreksi-presensi.cetak');
+
+    // Izin Pulang Cepat — otorisasi di controller/UI
+    Route::get('pulang-cepat', [PengajuanPulangCepatController::class, 'index'])->name('pulang-cepat.index');
+    Route::post('/pulang-cepat/{id}/approve', [PengajuanPulangCepatController::class, 'approve'])
+        ->middleware('throttle:60,1')
+        ->name('pulang-cepat.approve');
+    Route::post('/pulang-cepat/{id}/reject', [PengajuanPulangCepatController::class, 'reject'])
+        ->middleware('throttle:60,1')
+        ->name('pulang-cepat.reject');
+    Route::get('/pulang-cepat/{id}/cetak', [PengajuanPulangCepatController::class, 'print'])
+        ->name('pulang-cepat.cetak');
 
     // Laporan
     Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
