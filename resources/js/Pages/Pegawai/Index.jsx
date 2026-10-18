@@ -38,7 +38,7 @@ const UserAvatar = ({ pegawai }) => (
     )
 );
 
-export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSekolahs, mataPelajarans, jabatans, isPimpinan = false }) {
+export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSekolahs, mataPelajarans, jabatans, isPimpinan = false, perluPilihUnit = false }) {
     const isAdminUnit = auth.roles?.includes('admin_unit');
     const { flash = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
@@ -215,7 +215,8 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                         applyFilters({ unit_sekolah_id: val, search });
                                     }}
                                 >
-                                    <option value="">Semua Unit</option>
+                                    <option value="" disabled>Pilih Unit…</option>
+                                    <option value="all">Semua Unit</option>
                                     {unitSekolahs && unitSekolahs.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
                                 </select>
                             )}
@@ -306,8 +307,8 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                         ) : (
                             <div className="card px-6 py-12 text-center">
                                 <Users className="h-8 w-8 text-border mx-auto" />
-                                <p className="mt-3 text-sm font-bold text-primary">Data pegawai tidak ditemukan</p>
-                                <p className="mt-1 text-xs text-text-secondary">{hasFilter ? 'Coba ubah filter.' : 'Tambahkan pegawai pertama.'}</p>
+                                <p className="mt-3 text-sm font-bold text-primary">{perluPilihUnit ? 'Pilih unit terlebih dahulu' : 'Data pegawai tidak ditemukan'}</p>
+                                <p className="mt-1 text-xs text-text-secondary">{perluPilihUnit ? 'Daftar pegawai tampil setelah unit dipilih. Pilih "Semua Unit" untuk melihat seluruh yayasan.' : hasFilter ? 'Coba ubah filter.' : 'Tambahkan pegawai pertama.'}</p>
                             </div>
                         )}
                     </div>
@@ -411,9 +412,11 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface">
                                                         <Users className="h-8 w-8 text-border" />
                                                     </div>
-                                                    <p className="mt-4 text-base font-bold text-primary">Data pegawai tidak ditemukan</p>
+                                                    <p className="mt-4 text-base font-bold text-primary">{perluPilihUnit ? 'Pilih unit terlebih dahulu' : 'Data pegawai tidak ditemukan'}</p>
                                                     <p className="mt-1 text-sm text-text-secondary">
-                                                        {hasFilter ? 'Coba ubah kata kunci atau bersihkan filter.' : 'Tambahkan pegawai pertama Anda.'}
+                                                        {perluPilihUnit
+                                                            ? 'Daftar pegawai tampil setelah unit dipilih. Pilih "Semua Unit" untuk melihat seluruh yayasan.'
+                                                            : hasFilter ? 'Coba ubah kata kunci atau bersihkan filter.' : 'Tambahkan pegawai pertama Anda.'}
                                                     </p>
                                                     {hasFilter ? (
                                                         <button onClick={resetFilters} className="btn-secondary btn-sm mt-4 flex items-center gap-1.5">
