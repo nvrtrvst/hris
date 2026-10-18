@@ -1,15 +1,33 @@
 /* HRIS Yayasan — Service Worker */
-// Bump versi cache saat deploy: purges shell/HTML lama yang mereferensikan bundle usang.
-const CACHE_NAME = 'hris-mobile-v19';
+// Bump CACHE_NAME setiap deploy: SW baru meng-install (skipWaiting), langsung
+// mengambil alih tab yang terbuka (clients.claim), lalu activate menghapus cache
+// versi lama — sehingga device yang "nyangkut" sembuh tanpa aksi user.
+const CACHE_NAME = 'hris-mobile-v20';
 
-// Aset shell (fallback offline ringan — halaman Inertia tetap butuh jaringan untuk data).
+// HANYA aset statis yang aman di-cache (ikon + manifest).
+// HTML shell TIDAK di-precache lagi: halaman selalu diambil dari jaringan, jadi
+// tidak mungkin menyajikan HTML/bundle usang setelah deploy.
 const SHELL_ASSETS = [
-    '/',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
     '/icons/icon-maskable-192.png',
     '/icons/icon-maskable-512.png',
 ];
+
+// Prefix aset ber-hash yang isinya immutable (nama file berubah tiap build).
+const CACHEABLE_PREFIXES = ['/build/', '/icons/'];
+const CACHEABLE_FILES = ['/manifest.json'];
+
+const isStaticAsset = (url) =>
+    CACHEABLE_PREFIXES.some((prefix) => url.pathname.startsWith(prefix)) ||
+    CACHEABLE_FILES.includes(url.pathname);
+
+// Request Inertia (XHR antar-halaman) & permintaan data JSON TIDAK BOLEH
+// dilayani dari cache: props bisa berubah antar deploy dan JSON basi membuat
+// komponen React crash / data salah. Selalu ke jaringan.
+const isInertiaOrData = (request) =>
+    request.headers.get('X-Inertia') !== null ||
+    (request.headers.get('Accept') || '').includes('application/json');
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -27,35 +45,59 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Network-first untuk navigasi (data real-time), cache shell hanya fallback.
 self.addEventListener('fetch', (event) => {
     const { request } = event;
-    if (request.method !== 'GET' || !request.url.startsWith(self.location.origin)) {
+
+    if (request.method !== 'GET') {
         return;
     }
 
-    if (request.mode === 'navigate') {
-        // Network-only: HTML (shell Inertia) selalu di-fetch baru agar tidak
-        // pernah menyajikan bundle usang setelah deploy. Fallback cache hanya
-        // untuk offline (root shell).
-        event.respondWith(
-            fetch(request).catch(() => caches.match('/'))
-        );
+    let url;
+    try {
+        url = new URL(request.url);
+    } catch {
         return;
     }
 
-    // Aset statis: cache-first.
-    // Foto protected (presensi/photo) selalu network-first — respons rusak dari
-    // cache lama tidak boleh disajikan.
-    if (request.url.includes('/presensi/photo/')) {
-        event.respondWith(
-            fetch(request).catch(() => caches.match(request))
-        );
+    if (url.origin !== self.location.origin) {
         return;
     }
 
+    // Navigasi (HTML) dan semua permintaan Inertia/JSON: network-only.
+    // Tidak ada fallback cache — lebih baik gagal jelas daripada menyajikan
+    // halaman/JSON usang yang bikin tampilan blank.
+    if (request.mode === 'navigate' || url.pathname === '/' || isInertiaOrData(request)) {
+        event.respondWith(fetch(request));
+        return;
+    }
+
+    // Foto presensi protected: network-first, cache hanya fallback offline.
+    if (url.pathname.includes('/presensi/photo/')) {
+        event.respondWith(fetch(request).catch(() => caches.match(request)));
+        return;
+    }
+
+    // Selain aset statis: biarkan browser menanganinya (network biasa).
+    if (!isStaticAsset(url)) {
+        return;
+    }
+
+    // Aset statis immutable: cache-first + simpan untuk pemakaian berikutnya.
     event.respondWith(
-        caches.match(request).then((hit) => hit || fetch(request))
+        caches.match(request).then((hit) => {
+            if (hit) {
+                return hit;
+            }
+
+            return fetch(request).then((response) => {
+                if (response.ok) {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+                }
+
+                return response;
+            });
+        })
     );
 });
 
