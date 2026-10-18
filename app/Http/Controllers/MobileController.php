@@ -18,6 +18,7 @@ use App\Models\UnitLokasi;
 use App\Services\AttestationService;
 use App\Services\GeocodingService;
 use App\Services\SpoofDetector;
+use App\Support\HariKerja;
 use App\Traits\CalculatesDistance;
 use App\Traits\ResolvesPegawai;
 use Carbon\Carbon;
@@ -95,6 +96,7 @@ class MobileController extends Controller
             'izinHariIni' => $izinHariIni,
             'presensiSeminggu' => $presensiTerbaru,
             'jadwalsHariIni' => $jadwalsHariIni,
+            'alasanLibur' => HariKerja::alasanTidakBisaPresensi($pegawai, Carbon::now()),
         ]);
     }
 
@@ -458,16 +460,13 @@ class MobileController extends Controller
                 ->get();
         });
 
-        // Filter jadwal hari non-kerja: Minggu selalu libur, Sabtu hanya jika unit support
-        if ($hariIniIndo === 'Minggu') {
-            $jadwalHariIni = collect();
-        } elseif ($hariIniIndo === 'Sabtu') {
-            $jadwalHariIni = $jadwalHariIni->filter(function ($j) {
-                $unit = is_array($j) ? ($j['unitSekolah'] ?? null) : $j->unitSekolah;
-
-                return $unit && ($unit['jam_kerja_sabtu_mulai'] ?? $unit->jam_kerja_sabtu_mulai ?? null);
-            })->values();
-        }
+        // Hari kerja efektif (aturan tunggal di Support\HariKerja): Sabtu/Minggu hanya
+        // dibuka bila unit beroperasi hari itu (jam_kerja_sabtu_*/jam_kerja_minggu_*)
+        // — kecuali pegawai punya jadwal hari ini (jadwal = bukti unit beroperasi).
+        // Hari libur nasional / libur unit mematikan presensi kantor (lembur & tugas
+        // luar tetap bisa).
+        $hariIniBuka = HariKerja::unitBuka($pegawai, $hariIniIndo) !== null;
+        $alasanLibur = HariKerja::alasanTidakBisaPresensi($pegawai, Carbon::now(), null, $jadwalHariIni->isNotEmpty());
 
         $presensiHariIni = Presensi::where('pegawai_id', $pegawai->id)
             ->where('tanggal', Carbon::today()->toDateString())
@@ -475,7 +474,7 @@ class MobileController extends Controller
 
         $izinHariIni = $this->izinHariIniUntuk($pegawai);
 
-        // Kantor: Minggu selalu off, Sabtu off jika unit tidak support.
+        // Kantor: off di hari unit tidak beroperasi atau hari libur.
         // Slot piket bukan sesi presensi — pegawai yang hari ini hanya piket
         // boleh absen masuk kantor (pintu check-in duty piket), tanpa syarat
         // wajib_kantor (duty = hari kerja terjadwal).
@@ -487,13 +486,9 @@ class MobileController extends Controller
         });
         $piketSaja = $adaJadwal && ! $adaNonPiket;
         $kantorAktif = ($pegawai->wajib_kantor && ! $adaJadwal) || $piketSaja;
-        if ($hariIniIndo === 'Minggu') {
+        // Alasan libur non-null = hari libur nasional/unit → kantor mati.
+        if (! $hariIniBuka || $alasanLibur !== null) {
             $kantorAktif = false;
-        } elseif ($hariIniIndo === 'Sabtu') {
-            $primaryUnit = $pegawai->units()->orderByPivot('is_primary', 'desc')->first();
-            if (! $primaryUnit || ! $primaryUnit->jam_kerja_sabtu_mulai) {
-                $kantorAktif = false;
-            }
         }
 
         return inertia('Mobile/Absen', [
@@ -502,6 +497,7 @@ class MobileController extends Controller
             'presensiHariIni' => $presensiHariIni,
             'izinHariIni' => $izinHariIni,
             'officeAttendance' => $kantorAktif,
+            'alasanLibur' => $alasanLibur,
             'adaIzinPulangCepat' => PengajuanPulangCepat::disetujuiPada($pegawai->id, Carbon::today()) !== null,
             'attestation_token' => $this->attestationService->issue(),
         ]);
@@ -647,17 +643,12 @@ class MobileController extends Controller
             return response()->json(['success' => false, 'message' => $message, 'errors' => ['jadwal_id' => $message]], 422);
         }
 
-        // Blokir presensi reguler di hari Minggu atau Sabtu (jika unit tidak beroperasi)
+        // Blokir presensi reguler di hari unit tidak beroperasi (Sabtu/Minggu
+        // tanpa jam kerja) atau hari libur. Lembur & tugas luar dikecualikan.
         if (! $isLembur && ! $isTugasLuar) {
-            if ($hariIni === 'Minggu') {
-                $message = sprintf(PresensiMessages::HARI_TIDAK_AKTIF, 'Minggu');
-
-                return response()->json(['success' => false, 'message' => $message, 'errors' => ['jadwal_id' => $message]], 422);
-            }
-            if ($hariIni === 'Sabtu' && ! ($unitSekolah ?? $unit)->jam_kerja_sabtu_mulai) {
-                $message = sprintf(PresensiMessages::HARI_TIDAK_AKTIF, 'Sabtu');
-
-                return response()->json(['success' => false, 'message' => $message, 'errors' => ['jadwal_id' => $message]], 422);
+            $alasanTidakAktif = HariKerja::alasanTidakBisaPresensi($pegawai, Carbon::now(), $unitSekolah, $request->filled('jadwal_id'));
+            if ($alasanTidakAktif) {
+                return response()->json(['success' => false, 'message' => $alasanTidakAktif, 'errors' => ['jadwal_id' => $alasanTidakAktif]], 422);
             }
         }
 
@@ -925,9 +916,15 @@ class MobileController extends Controller
                     }
                 } else {
                     $timeUnit = $unitSekolah ?? $unit;
-                    $jamMulai = $tipePresensi === 'kantor'
-                        ? (Carbon::now()->isSaturday() && $timeUnit->jam_kerja_sabtu_mulai ? $timeUnit->jam_kerja_sabtu_mulai : $timeUnit->jam_masuk_kantor)
-                        : $jadwal->jam_mulai;
+                    if ($tipePresensi === 'kantor') {
+                        // Jam kerja hari itu (Sabtu/Minggu bisa beda), fallback jam kantor.
+                        $jamHariIni = Carbon::now()->isSaturday()
+                            ? $timeUnit->jam_kerja_sabtu_mulai
+                            : (Carbon::now()->isSunday() ? $timeUnit->jam_kerja_minggu_mulai : null);
+                        $jamMulai = $jamHariIni ?: $timeUnit->jam_masuk_kantor;
+                    } else {
+                        $jamMulai = $jadwal->jam_mulai;
+                    }
                     $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jamMulai, (int) $timeUnit->toleransi_menit);
                 }
 
@@ -1201,6 +1198,16 @@ class MobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Tujuan tugas luar wajib diisi.', 'errors' => ['tujuan' => 'Tujuan tugas luar wajib diisi.']], 422);
         }
 
+        // Presensi kantor tetap diblokir di hari unit tidak beroperasi / hari
+        // libur. Mode tugas luar dikecualikan.
+        if (! $isTugasLuar) {
+            $adaJadwalHariIni = $pegawai->jadwals()->where('hari', HariKerja::hariIndo())->exists();
+            $alasanTidakAktif = HariKerja::alasanTidakBisaPresensi($pegawai, Carbon::now(), null, $adaJadwalHariIni);
+            if ($alasanTidakAktif) {
+                return response()->json(['success' => false, 'message' => $alasanTidakAktif, 'errors' => ['libur' => $alasanTidakAktif]], 422);
+            }
+        }
+
         $geo = $this->resolveGeofenceLocation($pegawai);
         $unit = $geo['unit'];
         $unitSekolah = $geo['unitSekolah'];
@@ -1375,6 +1382,12 @@ class MobileController extends Controller
         abort_unless($jadwal->unitSekolah, 422, 'Unit jadwal tidak tersedia.');
         if ($jadwal->jenis_jadwal === 'piket') {
             return response()->json(['success' => false, 'message' => PresensiMessages::PIKET_TANPA_SLIDE, 'errors' => ['jadwal_id' => PresensiMessages::PIKET_TANPA_SLIDE]], 422);
+        }
+
+        // Slide diblokir bila unit jadwal tidak beroperasi hari ini / hari libur.
+        $alasanTidakAktif = HariKerja::alasanTidakBisaPresensi($pegawai, Carbon::now(), $jadwal->unitSekolah, true);
+        if ($alasanTidakAktif) {
+            return response()->json(['success' => false, 'message' => $alasanTidakAktif, 'errors' => ['jadwal_id' => $alasanTidakAktif]], 422);
         }
 
         $lokasiUnit = $jadwal->unitLokasi ?? $jadwal->unitSekolah;

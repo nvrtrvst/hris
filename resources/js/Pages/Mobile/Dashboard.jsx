@@ -51,7 +51,7 @@ function toMinutes(hms) {
     return parseInt(p[0], 10) * 60 + parseInt(p[1] || 0, 10);
 }
 
-export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null, presensiSeminggu = [], jadwalsHariIni = [] }) {
+export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null, presensiSeminggu = [], jadwalsHariIni = [], alasanLibur = null }) {
     const { flash = {} } = usePage().props;
     const today = format(new Date(), 'EEEE, d MMMM yyyy', { locale: id });
     const primaryUnit = pegawai?.units?.find((unit) => unit.pivot?.is_primary) ?? pegawai?.units?.[0];
@@ -176,7 +176,7 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                     </div>
                 ) : (
                     <Link href={route('presensi.absen')} className="mx-4 mb-4 flex min-h-12 items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-bold text-primary transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30">
-                        {!isMengajar && primary?.jam_masuk && !primary?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi'}
+                        {alasanLibur ? 'Presensi libur — lembur/tugas luar' : (!isMengajar && primary?.jam_masuk && !primary?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi')}
                         <ArrowRight className="h-5 w-5" />
                     </Link>
                 )}

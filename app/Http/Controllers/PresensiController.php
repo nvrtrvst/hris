@@ -804,15 +804,8 @@ class PresensiController extends Controller
         $jadwal = Jadwal::with(['unitSekolah', 'unitLokasi'])->findOrFail($request->jadwal_id);
         $unit = $jadwal->unitLokasi ?? $jadwal->unitSekolah;
 
-        // Blokir presensi di hari Minggu atau Sabtu (jika unit tidak beroperasi)
-        $hariMap = ['Sunday' => 'Minggu', 'Saturday' => 'Sabtu'];
-        $hariIni = $hariMap[Carbon::now()->format('l')] ?? null;
-        if ($hariIni === 'Minggu') {
-            return back()->withErrors(['jadwal_id' => sprintf(PresensiMessages::HARI_TIDAK_AKTIF, 'Minggu')]);
-        }
-        if ($hariIni === 'Sabtu' && ! $unit->jam_kerja_sabtu_mulai) {
-            return back()->withErrors(['jadwal_id' => sprintf(PresensiMessages::HARI_TIDAK_AKTIF, 'Sabtu')]);
-        }
+        // Admin boleh input/ralat presensi di hari apa pun (termasuk Minggu /
+        // Sabtu / hari libur) — blokir hanya berlaku di portal mobile pegawai.
 
         // Validasi Geofencing
         $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);

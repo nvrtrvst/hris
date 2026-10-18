@@ -93,4 +93,6 @@ class PresensiMessages
 
     // Hari non-kerja
     public const HARI_TIDAK_AKTIF = 'Unit ini tidak beroperasi di hari %s.';
+
+    public const LIBUR_NASIONAL = 'Hari ini libur: %s. Presensi dinonaktifkan.';
 }

@@ -11,6 +11,7 @@ import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, Clock, ClipboardCheck, Lock } from 'lucide-react';
 
+const LIBUR = 'libur';
 const FOTO_PAGI = 'foto_pagi';
 const SLIDE_JADWAL = 'slide_jadwal';
 const FOTO_SORE = 'foto_sore';
@@ -69,7 +70,7 @@ function groupConsecutiveJadwals(jadwals) {
 
 const pad = (n) => String(n).padStart(2, '0');
 
-export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null, adaIzinPulangCepat = false }) {
+export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null, adaIzinPulangCepat = false, libur = false, alasanLibur = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
@@ -164,6 +165,10 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
 
     const phase = useMemo(() => {
         if (allRecordsComplete) return SELESAI;
+        // Hari yang berubah jadi libur di tengah jalan (libur disisipkan admin atau
+        // jam kerja Minggu dikosongkan) tidak boleh mengunci pegawai yang sudah
+        // absen pagi — biarkan fase sore berjalan agar record tidak menggantung.
+        if (libur && !pagiRecord) return LIBUR;
         if (!pagiRecord) return FOTO_PAGI;
         if (pagiRecord.jam_keluar) return SELESAI;
         // Foto sore hanya setelah semua jadwal selesai DAN lewat jam pulang kantor.
@@ -172,7 +177,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         if (slideJadwals.length === 0 && jamSekarang >= jamSore) return FOTO_SORE;
 
         return SLIDE_JADWAL;
-    }, [allRecordsComplete, pagiRecord, semuaBeres, slideJadwals.length, jamSekarang]);
+    }, [allRecordsComplete, pagiRecord, semuaBeres, slideJadwals.length, jamSekarang, libur]);
 
     const tugasLuarOpen = useMemo(() => presensiHariIni.some((p) => p.is_tugas_luar && p.jam_masuk && !p.jam_keluar), [presensiHariIni]);
     const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_luar && p.jam_masuk), [presensiHariIni]);
@@ -487,7 +492,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         return MAP_TILE_URL.replace('{z}', String(zoom)).replace('{x}', String(x)).replace('{y}', String(y));
     })() : null;
 
-    const faseLabel = phase === FOTO_PAGI ? 'Foto Pagi' : phase === SLIDE_JADWAL ? 'Slide Jadwal' : phase === FOTO_SORE ? 'Foto Sore' : 'Selesai';
+    const faseLabel = libur && phase === LIBUR ? 'Hari Libur' : phase === FOTO_PAGI ? 'Foto Pagi' : phase === SLIDE_JADWAL ? 'Slide Jadwal' : phase === FOTO_SORE ? 'Foto Sore' : 'Selesai';
 
     return (
         <>
@@ -511,6 +516,13 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                     </div>
                 </div>
             </div>
+
+            {libur && (
+                <div role="note" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                    <span>{alasanLibur || 'Hari ini unit tidak beroperasi.'} Presensi kantor dinonaktifkan; mode tugas luar tetap dapat digunakan.</span>
+                </div>
+            )}
 
             {tugasLuarRecord ? (
                 <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
@@ -863,10 +875,10 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 </>
             )}
 
-            {activeGroups.length === 0 && slideJadwals.length > 0 && phase !== SELESAI && (
+            {!libur && activeGroups.length === 0 && slideJadwals.length > 0 && phase !== SELESAI && (
                 <Empty icon={Clock} title="Tidak ada jadwal yang bisa di-slide" subtitle={semuaBeres ? 'Semua jadwal sudah berakhir — lanjut ke foto sore.' : 'Jadwal aktif akan muncul setelah jam mengajar tiba.'} />
             )}
-            {slideJadwals.length === 0 && phase !== SELESAI && (
+            {!libur && slideJadwals.length === 0 && phase !== SELESAI && (
                 <Empty icon={Clock} title="Tidak ada jadwal mengajar hari ini" subtitle={piketJadwals.length > 0 ? 'Lanjut ke foto sore. Tugas piket lewat checklist di bawah.' : 'Jika tidak ada jadwal, lanjut ke foto sore.'} />
             )}
 
