@@ -630,6 +630,12 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [search, setSearch] = React.useState(filters?.search || '');
     const [sortKey, setSortKey] = React.useState('nama');
     const [sortDir, setSortDir] = React.useState('asc');
+    // Jumlah per halaman. Di mode ringkas satuannya KELOMPOK pegawai+tanggal.
+    const [perPage, setPerPage] = React.useState(Number(filters?.per_page) || 25);
+
+    // Dipakai untuk mengembalikan fokus + viewport ke awal daftar setelah pindah halaman.
+    const awalHasilRef = React.useRef(null);
+    const halamanTerakhirRef = React.useRef(presensis.current_page);
 
     const [confirmStatus, setConfirmStatus] = React.useState(null);
     const [persentaseBayar, setPersentaseBayar] = React.useState(100);
@@ -672,12 +678,31 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         search,
         view_mode: dataViewMode || undefined,
         display_mode: viewMode || undefined,
+        per_page: perPage || undefined,
         ...overrides,
-    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, jadwalFilter, jenisFilter, search, dataViewMode, viewMode]);
+    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, jadwalFilter, jenisFilter, search, dataViewMode, viewMode, perPage]);
 
     const applyFilters = React.useCallback((overrides = {}) => {
         router.get(route('presensi.index'), buildParams(overrides), { preserveState: true, preserveScroll: true });
     }, [buildParams]);
+
+    // Pindah halaman: kembalikan fokus & viewport ke awal daftar hasil supaya
+    // pengguna tidak tertinggal di area tombol pagination.
+    React.useEffect(() => {
+        if (halamanTerakhirRef.current === presensis.current_page) return;
+        halamanTerakhirRef.current = presensis.current_page;
+        const target = awalHasilRef.current;
+        if (!target) return;
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        target.focus({ preventScroll: true });
+    }, [presensis.current_page]);
+
+    // Jumlah KELOMPOK (pegawai+tanggal) pada halaman ini. Di mode ringkas
+    // `presensis.total` berisi jumlah kelompok, bukan jumlah baris.
+    const jumlahKelompokHalaman = React.useMemo(
+        () => new Set((presensis.data || []).map((p) => `${p.pegawai_id}__${p.tanggal}`)).size,
+        [presensis.data],
+    );
 
     // Klik kartu statistik → langsung filter ke data tersebut (preserve unit/jenis/date).
     const applyStatFilter = (overrides) => {
@@ -1049,6 +1074,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         )}
                     </div>
 
+                    {/* Target fokus + scroll saat berpindah halaman */}
+                    <div ref={awalHasilRef} tabIndex={-1} className="scroll-mt-24 focus:outline-none" />
+
                     {/* ─── ADMIN: Table ─── */}
                     {(() => {
                         const sortGetters = {
@@ -1352,10 +1380,42 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     {/* Pagination */}
                     {presensis.total > 0 && (
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <p className="text-xs text-text-secondary">
-                                Menampilkan <b className="text-primary">{presensis.from || 0}</b>–<b className="text-primary">{presensis.to || 0}</b> dari <b className="text-primary">{presensis.total}</b> data
+                            <p className="text-xs text-text-secondary" aria-live="polite">
+                                {viewMode === 'ringkas' ? (
+                                    <>
+                                        Menampilkan <b className="text-primary">{jumlahKelompokHalaman}</b> dari <b className="text-primary">{presensis.total}</b> kelompok pegawai/tanggal — halaman <b className="text-primary">{presensis.current_page}</b> dari <b className="text-primary">{presensis.last_page}</b>
+                                    </>
+                                ) : (
+                                    <>
+                                        Menampilkan <b className="text-primary">{presensis.from || 0}</b>–<b className="text-primary">{presensis.to || 0}</b> dari <b className="text-primary">{presensis.total}</b> data
+                                    </>
+                                )}
+                                {processing && <span className="ml-2 font-semibold text-primary">Memuat…</span>}
                             </p>
-                            <Pagination links={presensis.links} pagination={{ current_page: presensis.current_page, last_page: presensis.last_page }} />
+                            <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+                                <label className="flex items-center gap-1.5 text-xs text-text-secondary">
+                                    <span>{viewMode === 'ringkas' ? 'Kelompok/halaman' : 'Baris/halaman'}</span>
+                                    <select
+                                        value={perPage}
+                                        onChange={(e) => {
+                                            const nilai = Number(e.target.value);
+                                            setPerPage(nilai);
+                                            applyFilters({ per_page: nilai });
+                                        }}
+                                        disabled={processing}
+                                        className="rounded-lg border border-border bg-white px-2 py-1 text-xs font-bold text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
+                                    >
+                                        <option value={25}>25</option>
+                                        <option value={50}>50</option>
+                                        <option value={100}>100</option>
+                                    </select>
+                                </label>
+                                <Pagination
+                                    links={presensis.links}
+                                    pagination={{ current_page: presensis.current_page, last_page: presensis.last_page }}
+                                    data={buildParams()}
+                                />
+                            </div>
                         </div>
                     )}
 

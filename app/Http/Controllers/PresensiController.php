@@ -172,17 +172,58 @@ class PresensiController extends Controller
         // Sort: tanggal DESC, lalu jam_masuk ASC untuk kronologis harian,
         // lalu id ASC tie-breaker supaya baris jam_masuk sama (NULL/pulang tanpa masuk) deterministik.
         // Hindari join jadwal (jam_mulai) — tambah N+1 + lockForUpdate tidak relevan di index read-only.
-        // Ringkas view: kirim semua data tanpa pagination (buildGroups butuh semua records per orang).
         if ($request->input('display_mode') === 'ringkas') {
-            $presensis = $query
+            // View ringkas mengelompokkan baris per pegawai+tanggal (buildGroups di Index.jsx).
+            // Pagination dihitung per KELOMPOK, bukan per baris, supaya ringkasan satu orang
+            // tidak terbelah antar halaman. `per_page` di mode ini = jumlah kelompok.
+            $perPageGrup = min(max((int) $request->input('per_page', 25), 1), 100);
+            $pageGrup = max((int) $request->input('page', 1), 1);
+
+            $totalGrup = DB::query()->fromSub(
+                (clone $query)->select('pegawai_id', 'tanggal')->groupBy('pegawai_id', 'tanggal'),
+                'grup'
+            )->count();
+
+            // Urutan kelompok mengikuti urutan baris: tanggal DESC, lalu jam masuk terawal.
+            $grupHalaman = (clone $query)
+                ->select('pegawai_id', 'tanggal')
+                ->selectRaw('MIN(jam_masuk) as jam_pertama')
+                ->selectRaw('MIN(id) as id_pertama')
+                ->groupBy('pegawai_id', 'tanggal')
+                ->orderBy('tanggal', 'desc')
+                ->orderBy('jam_pertama', 'asc')
+                ->orderBy('id_pertama', 'asc')
+                ->forPage($pageGrup, $perPageGrup)
+                ->get();
+
+            $pasangan = $grupHalaman->map(fn ($grup) => [
+                $grup->pegawai_id,
+                $grup->tanggal instanceof \DateTimeInterface ? $grup->tanggal->format('Y-m-d') : $grup->tanggal,
+            ])->all();
+
+            // Ambil semua baris milik kelompok di halaman ini. Pakai OR-group (portabel di
+            // MySQL & SQLite) — jumlahnya dibatasi perPageGrup (maks 100) sehingga tetap murah.
+            // whereDate dipakai agar cocok baik kolom tanggal menyimpan 'Y-m-d' maupun 'Y-m-d H:i:s'.
+            $rows = (clone $query)->where(function ($q) use ($pasangan) {
+                foreach ($pasangan as [$pegawaiId, $tanggal]) {
+                    $q->orWhere(fn ($sub) => $sub->where('pegawai_id', $pegawaiId)->whereDate('tanggal', $tanggal));
+                }
+            });
+
+            if ($pasangan === []) {
+                $rows->whereRaw('1 = 0');
+            }
+
+            $presensis = $rows
                 ->orderBy('tanggal', 'desc')
                 ->orderBy('jam_masuk', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
             $presensis->load('pegawai.jabatans');
-            // Wrap in LengthAwarePaginator agar frontend tetap bisa akses .data dan .links
+
             $presensis = new LengthAwarePaginator(
-                $presensis, $presensis->count(), $presensis->count(), 1, ['path' => $request->url()]
+                $presensis, $totalGrup, $perPageGrup, $pageGrup,
+                ['path' => $request->url(), 'query' => $request->query()]
             );
         } else {
             $presensis = $query
@@ -194,6 +235,12 @@ class PresensiController extends Controller
             $presensis->load('pegawai.jabatans');
         }
 
+        // Deep link di luar rentang (mis. ?page=99) → kosong tanpa penjelasan.
+        // Alihkan ke halaman terakhir supaya data tetap terlihat.
+        if ($presensis->total() > 0 && $presensis->currentPage() > $presensis->lastPage()) {
+            return redirect()->to($presensis->url($presensis->lastPage()));
+        }
+
         $units = [];
         if ($user->can('view_all_units')) {
             $units = UnitSekolah::orderBy('nama')->get();
@@ -202,7 +249,7 @@ class PresensiController extends Controller
         return inertia('Presensi/Index', [
             'presensis' => $presensis,
             'pegawai' => $isAdmin ? null : ($pegawai ?? null),
-            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'status_filter', 'jadwal_filter', 'jenis_filter', 'search', 'view_mode']),
+            'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'status_filter', 'jadwal_filter', 'jenis_filter', 'search', 'view_mode', 'per_page']),
             'units' => $units,
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'stats' => $stats,
