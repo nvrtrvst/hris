@@ -160,16 +160,16 @@ class BackflowCoverTest extends TestCase
         $row2 = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jp2->id)->first();
         $this->assertNotNull($row2);
         $this->assertSame('hadir', $row2->status);
-        $this->assertSame('09:10', $row2->jam_masuk);
-        $this->assertSame('09:40', $row2->jam_keluar);
+        $this->assertSame('09:10', substr((string) $row2->jam_masuk, 0, 5));
+        $this->assertSame('09:40', substr((string) $row2->jam_keluar, 0, 5));
         $this->assertSame('mengajar', $row2->tipe_presensi);
         $this->assertSame("auto-cover dari slide JP #{$jp1->id} pukul 08:35:00", $row2->keterangan);
 
         $row3 = Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jp3->id)->first();
         $this->assertNotNull($row3);
         $this->assertSame('hadir', $row3->status);
-        $this->assertSame('09:40', $row3->jam_masuk);
-        $this->assertSame('10:20', $row3->jam_keluar);
+        $this->assertSame('09:40', substr((string) $row3->jam_masuk, 0, 5));
+        $this->assertSame('10:20', substr((string) $row3->jam_keluar, 0, 5));
     }
 
     public function test_forward_only_skips_jps_before_anchor(): void

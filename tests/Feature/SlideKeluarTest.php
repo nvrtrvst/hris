@@ -85,10 +85,10 @@ class SlideKeluarTest extends TestCase
             'hari' => $hari,
             'jam_mulai' => '07:00',
             'jam_selesai' => '15:00',
-            'jenis_jadwal' => 'reguler',
+            'jenis_jadwal' => 'ekskul',
             'kelas_label' => 'X-A',
             'tahun_ajaran' => '2026/2027',
-            'semester' => 'Ganjil',
+            'semester' => 1,
         ]);
 
         // Butuh foto pagi (kantor) dulu
@@ -143,10 +143,10 @@ class SlideKeluarTest extends TestCase
             'hari' => $hari,
             'jam_mulai' => '07:00',
             'jam_selesai' => '15:00',
-            'jenis_jadwal' => 'reguler',
+            'jenis_jadwal' => 'mengajar',
             'kelas_label' => 'X-A',
             'tahun_ajaran' => '2026/2027',
-            'semester' => 'Ganjil',
+            'semester' => 1,
         ]);
 
         Presensi::create([

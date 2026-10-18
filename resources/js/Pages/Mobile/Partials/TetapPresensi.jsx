@@ -33,6 +33,15 @@ const toMin = (hms) => {
 };
 
 /**
+ * Batas bawah pulang mengajar (menit). Izin pulang cepat boleh mengizinkan lebih
+ * awal, tapi tidak pernah memperketat aturan normal (sesiEnd - pulang_sebelum_menit).
+ */
+const batasPulangMenit = (g, jamIzin) => {
+    const normal = toMin(g.jamSelesaiLast) - (g.unit_sekolah?.pulang_sebelum_menit ?? 20);
+    return jamIzin ? Math.min(toMin(jamIzin), normal) : normal;
+};
+
+/**
  * Kelompokkan jadwal berurutan dengan mata pelajaran sama (gap ≤ 60 menit).
  * Syarat satu grup: pegawai_mapel_id SAMA + kelas_label SAMA + gap ≤ GAP_SESI_MENIT.
  * Jadwal beda mapel/kelas atau gap > 60 menit → grup baru.
@@ -70,7 +79,7 @@ function groupConsecutiveJadwals(jadwals) {
 
 const pad = (n) => String(n).padStart(2, '0');
 
-export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null, adaIzinPulangCepat = false, libur = false, alasanLibur = null }) {
+export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null, jamIzinPulangCepat = null, libur = false, alasanLibur = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
@@ -643,7 +652,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                         </>
                                     ) : done && !closed ? (
                                         g.unit_sekolah?.wajib_pulang_mengajar ? (
-                                            (adaIzinPulangCepat || jamSekarang >= toMin(g.jamSelesaiLast) - (g.unit_sekolah?.pulang_sebelum_menit ?? 20)) ? (
+                                            (jamSekarang >= batasPulangMenit(g, jamIzinPulangCepat)) ? (
                                                 <>
                                                     <SlideToConfirm
                                                         onConfirm={() => handleSlideGroup(g, 'keluar')}
@@ -662,7 +671,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-semibold text-emerald-700">
                                                     <CheckCircle className="h-4 w-4" /> Presensi mengajar tercatat
                                                     {count > 1 && <span className="text-emerald-500">({count} jam)</span>}
-                                                    <span className="text-slate-600">· tombol pulang {menitKeJam(toMin(g.jamSelesaiLast) - (g.unit_sekolah?.pulang_sebelum_menit ?? 20))}</span>
+                                                    <span className="text-slate-600">· tombol pulang {menitKeJam(batasPulangMenit(g, jamIzinPulangCepat))}</span>
                                                 </div>
                                             )
                                         ) : (

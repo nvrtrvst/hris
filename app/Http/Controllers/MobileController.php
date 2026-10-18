@@ -498,7 +498,8 @@ class MobileController extends Controller
             'izinHariIni' => $izinHariIni,
             'officeAttendance' => $kantorAktif,
             'alasanLibur' => $alasanLibur,
-            'adaIzinPulangCepat' => PengajuanPulangCepat::disetujuiPada($pegawai->id, Carbon::today()) !== null,
+            // Jam izin pulang cepat yang disetujui (batas bawah pulang), null bila tidak ada.
+            'jamIzinPulangCepat' => PengajuanPulangCepat::disetujuiPada($pegawai->id, Carbon::today())?->jam_diminta,
             'attestation_token' => $this->attestationService->issue(),
         ]);
     }
@@ -830,6 +831,21 @@ class MobileController extends Controller
     }
 
     /**
+     * Batas pulang efektif: izin pulang cepat boleh mengizinkan lebih awal, tapi
+     * tidak pernah memperketat aturan normal — ambil yang paling awal.
+     */
+    private function batasPulangEfektif(?PengajuanPulangCepat $izin, string $batasNormal): string
+    {
+        if (! $izin?->jam_diminta) {
+            return $batasNormal;
+        }
+
+        $jamIzin = Carbon::parse($izin->jam_diminta)->format('H:i:s');
+
+        return $jamIzin < $batasNormal ? $jamIzin : $batasNormal;
+    }
+
+    /**
      * Simpan presensi dalam satu transaksi — dipakai bersama storeAbsen
      * (mengajar / lembur / kantor) dan storeAbsenTetap (kantor).
      *
@@ -999,18 +1015,46 @@ class MobileController extends Controller
                         if ($presensi->jam_keluar < $batasPulang) {
                             $lokasiPerluReview = true;
                         }
+
+                        // ponytail: bar ini dorman selama unit.wajib_pulang_mengajar=0
+                        // (semua unit belum menyalakan). Saat flag dinyalakan, prefill
+                        // jam_keluar di atas juga harus dibalik untuk non-tetap — kalau
+                        // tidak, barisnya auto-tutup dan bar ini tak pernah kena.
+                        $unitJadwal = $jadwal?->unitSekolah;
+                        if ($unitJadwal?->wajib_pulang_mengajar) {
+                            $batasKeras = Carbon::parse($latestSelesai)
+                                ->subMinutes((int) ($unitJadwal->pulang_sebelum_menit ?? 20))
+                                ->format('H:i:s');
+                            $batasKeras = $this->batasPulangEfektif(
+                                PengajuanPulangCepat::disetujuiPada($pegawai->id, $tanggal),
+                                $batasKeras
+                            );
+                            if ($presensi->jam_keluar < $batasKeras) {
+                                throw ValidationException::withMessages([
+                                    'conflict' => sprintf(PresensiMessages::PULANG_BELUM_WAKTUNYA, substr($batasKeras, 0, 5)),
+                                ]);
+                            }
+                        }
                     }
                 } elseif (! $isLembur && $tipePresensi === 'kantor') {
                     $jamPulang = Carbon::now()->isSaturday() && $unit->jam_kerja_sabtu_selesai
                         ? $unit->jam_kerja_sabtu_selesai
                         : $unit->jam_pulang_kantor;
-                    // Izin Pulang Cepat yang disetujui membuka gate; detektor (observer)
+                    // Izin Pulang Cepat yang disetujui membuka gate lebih awal, tapi
+                    // batasnya jam yang diminta (bukan bebas sepanjang hari) dan tidak
+                    // pernah lebih ketat dari jam pulang kantor. Detektor (observer)
                     // yang menandai is_pulang_awal + pulang_awal_diizinkan.
-                    if ($jamPulang && $presensi->jam_keluar < $jamPulang
-                        && PengajuanPulangCepat::disetujuiPada($pegawai->id, $tanggal) === null) {
-                        throw ValidationException::withMessages([
-                            'conflict' => sprintf(PresensiMessages::PULANG_SEBELUM_JAM_KANTOR, substr($jamPulang, 0, 5)),
-                        ]);
+                    if ($jamPulang) {
+                        $izinPulang = PengajuanPulangCepat::disetujuiPada($pegawai->id, $tanggal);
+                        $batasPulang = $this->batasPulangEfektif($izinPulang, $jamPulang);
+                        if ($presensi->jam_keluar < $batasPulang) {
+                            throw ValidationException::withMessages([
+                                'conflict' => sprintf(
+                                    $izinPulang ? PresensiMessages::PULANG_BELUM_WAKTUNYA : PresensiMessages::PULANG_SEBELUM_JAM_KANTOR,
+                                    substr($batasPulang, 0, 5)
+                                ),
+                            ]);
+                        }
                     }
                 }
 
@@ -1413,11 +1457,16 @@ class MobileController extends Controller
             }
         } else {
             // Wajib pulang mengajar: tombol keluar hanya >= sesiEnd - pulang_sebelum_menit.
-            // Terlalu awal = 422; terlambat tetap boleh (fallback lupa → admin ralat).
+            // Izin Pulang Cepat memakai jam yang diminta sebagai batas bawah, di-min
+            // dengan aturan normal supaya izin tak pernah memperketat. Terlalu awal =
+            // 422; terlambat tetap boleh (fallback lupa → admin ralat).
             $unitCfg = $jadwal->unitSekolah;
-            $adaIzinPulang = PengajuanPulangCepat::disetujuiPada($pegawai->id, Carbon::today()) !== null;
-            if ($unitCfg->wajib_pulang_mengajar && ! $adaIzinPulang) {
+            if ($unitCfg->wajib_pulang_mengajar) {
                 $batasPulang = Carbon::parse($sesiEnd)->subMinutes((int) $unitCfg->pulang_sebelum_menit)->format('H:i:s');
+                $batasPulang = $this->batasPulangEfektif(
+                    PengajuanPulangCepat::disetujuiPada($pegawai->id, Carbon::today()),
+                    $batasPulang
+                );
                 if ($sekarang < $batasPulang) {
                     return response()->json([
                         'success' => false,

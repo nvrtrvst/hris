@@ -66,6 +66,7 @@ jobs:
           DB_DATABASE: hris_test
           DB_USERNAME: root
           DB_PASSWORD: password
+          CI_REQUIRE_MYSQL: 'true'
 
       - name: Check Code Style
         run: ./vendor/bin/pint --test

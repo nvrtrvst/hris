@@ -86,7 +86,7 @@ class WajibPulangMengajarTest extends TestCase
             'jenis_jadwal' => 'mengajar',
             'kelas_label' => 'X-A',
             'tahun_ajaran' => '2026/2027',
-            'semester' => 'Ganjil',
+            'semester' => 1,
         ]);
     }
 
