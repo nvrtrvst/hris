@@ -18,6 +18,28 @@ const lastNumericPage = (links) => {
     return pages.length ? Math.max(...pages) : 1;
 };
 
+// Laravel mengirim label paginator berbahasa Inggris ("« Previous" / "Next »").
+// Tampilkan dalam bahasa Indonesia agar konsisten dengan tombol sebelumnya/berikutnya.
+const LABEL_INDONESIA = [
+    [/previous/i, 'Sebelumnya'],
+    [/next/i, 'Berikutnya'],
+];
+
+const labelIndonesia = (text) => {
+    const found = LABEL_INDONESIA.find(([pattern]) => pattern.test(text));
+
+    return found ? text.replace(found[0], found[1]) : text;
+};
+
+// aria-label yang lebih bermakna dari sekadar "«" / "»".
+const ariaLabelUntuk = (text) => {
+    if (/previous/i.test(text)) return /«/.test(text) ? 'Halaman pertama' : 'Halaman sebelumnya';
+    if (/next/i.test(text)) return /»/.test(text) ? 'Halaman terakhir' : 'Halaman berikutnya';
+    if (/^\d+$/.test(text)) return `Halaman ${text}`;
+
+    return undefined;
+};
+
 /**
  * Komponen pagination bersama (admin desktop + mobile).
  *
@@ -53,7 +75,8 @@ export default function Pagination({ links, pagination = null, data = null, pres
                     type="button"
                     onClick={() => navigate(currentPage - 1)}
                     disabled={currentPage <= 1}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40 min-h-[44px]"
+                    aria-label="Halaman sebelumnya"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                     « Sebelumnya
                 </button>
@@ -62,7 +85,8 @@ export default function Pagination({ links, pagination = null, data = null, pres
                     type="button"
                     onClick={() => navigate(currentPage + 1)}
                     disabled={currentPage >= lastPage}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40 min-h-[44px]"
+                    aria-label="Halaman berikutnya"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                     Berikutnya »
                 </button>
@@ -75,10 +99,12 @@ export default function Pagination({ links, pagination = null, data = null, pres
             link.active
                 ? 'bg-primary text-white shadow-card'
                 : 'bg-white text-text-secondary hover:bg-primary-50 hover:text-primary border border-border hover:border-primary/20'
-        } ${!link.url ? 'opacity-40 cursor-not-allowed' : ''}`;
+        } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${!link.url ? 'opacity-40 cursor-not-allowed' : ''}`;
 
     const renderLink = (link, index) => {
-        const content = decodeEntities(link.label);
+        const raw = decodeEntities(link.label);
+        const content = labelIndonesia(raw);
+        const ariaLabel = ariaLabelUntuk(raw);
 
         if (!link.url) {
             return (
@@ -86,6 +112,7 @@ export default function Pagination({ links, pagination = null, data = null, pres
                     key={index}
                     className={baseClass(link)}
                     aria-disabled="true"
+                    aria-label={ariaLabel}
                     aria-current={link.active ? 'page' : undefined}
                 >
                     {content}
@@ -100,6 +127,7 @@ export default function Pagination({ links, pagination = null, data = null, pres
                     type="button"
                     onClick={() => router.get(link.url, data, { preserveState })}
                     className={baseClass(link)}
+                    aria-label={ariaLabel}
                     aria-current={link.active ? 'page' : undefined}
                 >
                     {content}
@@ -113,6 +141,7 @@ export default function Pagination({ links, pagination = null, data = null, pres
                 href={link.url}
                 preserveScroll
                 className={baseClass(link)}
+                aria-label={ariaLabel}
                 aria-current={link.active ? 'page' : undefined}
             >
                 {content}
