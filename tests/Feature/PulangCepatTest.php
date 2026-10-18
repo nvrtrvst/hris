@@ -71,6 +71,22 @@ class PulangCepatTest extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * Regresi: kolom identitas pegawai bernama `nuptk` (dulu `nip` sebelum
+     * migrasi rename). Nama kolom yang salah bikin 500 di MySQL.
+     */
+    public function test_halaman_admin_menampilkan_nuptk_pegawai(): void
+    {
+        $this->pegawai->update(['nuptk' => '1234567890123456']);
+        $this->postStore();
+
+        $res = $this->actingAs($this->superadmin, 'web_admin')->get(route('pulang-cepat.index'));
+
+        $res->assertOk();
+        $props = $res->viewData('page')['props'];
+        $this->assertSame('1234567890123456', $props['pengajuans']['data'][0]['pegawai']['nuptk']);
+    }
+
     private function postStore(array $extra = [])
     {
         return $this->actingAs($this->pegawai->user, 'web_mobile')

@@ -216,7 +216,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                                 <div className="text-sm font-bold text-text-primary group-hover:text-primary transition-colors">
                                                     {item.pegawai?.nama_lengkap}
                                                 </div>
-                                                <div className="text-xs text-text-muted font-mono mt-0.5">{item.pegawai?.nip || '—'}</div>
+                                                <div className="text-xs text-text-muted font-mono mt-0.5">{item.pegawai?.nuptk || '—'}</div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="text-sm text-text-primary font-medium">
@@ -307,7 +307,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                 <div className="rounded-card border border-border bg-surface p-3">
                                     <p className="text-xs font-semibold uppercase text-text-muted">Pegawai</p>
                                     <p className="mt-1 font-bold text-text-primary">{selectedItem.pegawai?.nama_lengkap}</p>
-                                    <p className="text-xs text-text-muted font-mono">{selectedItem.pegawai?.nip || '—'}</p>
+                                    <p className="text-xs text-text-muted font-mono">{selectedItem.pegawai?.nuptk || '—'}</p>
                                 </div>
                                 <div className="rounded-card border border-border bg-surface p-3">
                                     <p className="text-xs font-semibold uppercase text-text-muted">Tanggal Presensi</p>

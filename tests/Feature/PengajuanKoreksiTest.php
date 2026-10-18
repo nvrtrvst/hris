@@ -80,6 +80,23 @@ class PengajuanKoreksiTest extends TestCase
         ]);
     }
 
+    /**
+     * Regresi: kolom identitas pegawai bernama `nuptk` (dulu `nip` sebelum
+     * migrasi rename). Nama kolom yang salah bikin 500 di MySQL.
+     */
+    public function test_halaman_admin_menampilkan_nuptk_pegawai(): void
+    {
+        $this->pegawai->update(['nuptk' => '1234567890123456']);
+        $presensi = $this->makePresensi('2026-08-20');
+        $this->postStore(['presensi_id' => $presensi->id]);
+
+        $res = $this->actingAs($this->superadmin, 'web_admin')->get(route('koreksi-presensi.index'));
+
+        $res->assertOk();
+        $props = $res->viewData('page')['props'];
+        $this->assertSame('1234567890123456', $props['pengajuans']['data'][0]['pegawai']['nuptk']);
+    }
+
     private function postStore(array $extra = [])
     {
         return $this->actingAs($this->pegawai->user, 'web_mobile')

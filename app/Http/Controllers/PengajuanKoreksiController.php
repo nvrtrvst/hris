@@ -26,7 +26,7 @@ class PengajuanKoreksiController extends Controller
         }
 
         $query = PengajuanKoreksi::with([
-            'pegawai' => fn ($q) => $q->select('id', 'user_id', 'nama_lengkap', 'nip'),
+            'pegawai' => fn ($q) => $q->select('id', 'user_id', 'nama_lengkap', 'nuptk'),
             'presensi' => fn ($q) => $q->select('id', 'pegawai_id', 'tanggal', 'jam_masuk', 'jam_keluar', 'unit_sekolah_id'),
             'presensi.unitSekolah' => fn ($q) => $q->select('id', 'nama'),
             'approver:id,name',

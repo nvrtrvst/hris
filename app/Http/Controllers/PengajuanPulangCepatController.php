@@ -26,7 +26,7 @@ class PengajuanPulangCepatController extends Controller
         }
 
         $query = PengajuanPulangCepat::with([
-            'pegawai' => fn ($q) => $q->select('id', 'user_id', 'nama_lengkap', 'nip'),
+            'pegawai' => fn ($q) => $q->select('id', 'user_id', 'nama_lengkap', 'nuptk'),
             'approver:id,name',
         ]);
 
