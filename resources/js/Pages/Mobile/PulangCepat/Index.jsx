@@ -30,7 +30,7 @@ export default function Index({ auth, pengajuan }) {
         lainnya: 'Lainnya',
     };
 
-    const fmtJam = (j) => (j ? j.substring(0, 5) : '—');
+    const fmtJam = (j) => (j ? j.substring(0, 5) : '-');
 
     return (
         <MobileLayout user={auth.user}>
@@ -70,19 +70,19 @@ export default function Index({ auth, pengajuan }) {
                             <Card key={item.id} className="py-4">
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0 flex-1">
-                                        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-700">
+                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
                                             {item.nomor}
                                         </span>
                                         <p className="mt-2 text-sm font-bold text-slate-800">
                                             {format(parseISO(item.tanggal), 'd MMMM yyyy', { locale: id })}
                                         </p>
                                         <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slate-500">
-                                            <Clock3 className="h-4 w-4 text-emerald-400" />
+                                            <Clock3 className="h-4 w-4 text-emerald-600" />
                                             Pulang pukul <span className="font-bold text-slate-700">{fmtJam(item.jam_diminta)}</span>
                                         </p>
-                                        <p className="mt-0.5 text-xs text-slate-400">
+                                        <p className="mt-0.5 text-xs text-slate-600">
                                             {alasanLabel[item.alasan] || item.alasan}
-                                            {item.alasan_detail ? ` — ${item.alasan_detail}` : ''}
+                                            {item.alasan_detail ? `, ${item.alasan_detail}` : ''}
                                         </p>
                                     </div>
                                     <Badge tone={st.tone} icon={st.icon}>{st.label}</Badge>
@@ -97,9 +97,9 @@ export default function Index({ auth, pengajuan }) {
                                             {realisasi.ada
                                                 ? <>
                                                     Tercatat pulang {realisasi.jam}
-                                                    {realisasi.awal && ` — ${realisasi.menit} menit lebih awal (${realisasi.diizinkan ? 'diizinkan' : 'tanpa izin'})`}
+                                                    {realisasi.awal && `, ${realisasi.menit} menit lebih awal (${realisasi.diizinkan ? 'diizinkan' : 'tanpa izin'})`}
                                                 </>
-                                                : 'Belum tercatat pulang — tidak ada presensi keluar pada tanggal ini.'}
+                                                : 'Belum tercatat pulang. Tidak ada presensi keluar pada tanggal ini.'}
                                         </span>
                                     </div>
                                 )}
@@ -107,7 +107,7 @@ export default function Index({ auth, pengajuan }) {
                                 {item.status === 'ditolak' && item.alasan_penolakan && (
                                     <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 p-3">
                                         <p className="text-xs font-bold text-rose-800">Alasan Penolakan:</p>
-                                        <p className="mt-0.5 text-sm text-rose-600">{item.alasan_penolakan}</p>
+                                        <p className="mt-0.5 text-sm text-rose-700">{item.alasan_penolakan}</p>
                                     </div>
                                 )}
 

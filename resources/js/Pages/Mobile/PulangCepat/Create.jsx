@@ -99,7 +99,7 @@ export default function Create({ auth }) {
                 </div>
 
                 <div>
-                    <label className="mb-1 block text-sm font-semibold text-slate-700">Detail Alasan <span className="font-normal text-slate-400">(opsional)</span></label>
+                    <label className="mb-1 block text-sm font-semibold text-slate-700">Detail Alasan <span className="font-normal text-slate-600">(opsional)</span></label>
                     <textarea
                         rows="2"
                         value={data.alasan_detail}

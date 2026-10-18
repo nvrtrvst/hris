@@ -548,7 +548,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>
-                        Tugas luar aktif di tengah jam mengajar. JP yang belum di-slide tidak akan tercatat hadir — presensi mengajar tersimpan sampai terakhir di-slide.
+                        Tugas luar aktif di tengah jam mengajar. JP yang belum di-slide tidak akan tercatat hadir. Presensi mengajar tersimpan sampai terakhir di-slide.
                     </span>
                 </div>
             )}
@@ -637,7 +637,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                             {!geofence?.inside && (
                                                 <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
                                                     <MapPin className="h-3 w-3 shrink-0" />
-                                                    {!currentPosition ? 'Tunggu GPS aktif…' : 'Di luar radius unit — geser tidak aktif'}
+                                                    {!currentPosition ? 'Tunggu GPS aktif…' : 'Di luar radius unit, geser tidak aktif'}
                                                 </p>
                                             )}
                                         </>
@@ -654,7 +654,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                                     {!geofence?.inside && (
                                                         <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
                                                             <MapPin className="h-3 w-3 shrink-0" />
-                                                            {!currentPosition ? 'Tunggu GPS aktif…' : 'Di luar radius unit — geser tidak aktif'}
+                                                            {!currentPosition ? 'Tunggu GPS aktif…' : 'Di luar radius unit, geser tidak aktif'}
                                                         </p>
                                                     )}
                                                 </>
@@ -662,7 +662,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-semibold text-emerald-700">
                                                     <CheckCircle className="h-4 w-4" /> Presensi mengajar tercatat
                                                     {count > 1 && <span className="text-emerald-500">({count} jam)</span>}
-                                                    <span className="text-slate-400">· tombol pulang {menitKeJam(toMin(g.jamSelesaiLast) - (g.unit_sekolah?.pulang_sebelum_menit ?? 20))}</span>
+                                                    <span className="text-slate-600">· tombol pulang {menitKeJam(toMin(g.jamSelesaiLast) - (g.unit_sekolah?.pulang_sebelum_menit ?? 20))}</span>
                                                 </div>
                                             )
                                         ) : (
@@ -676,7 +676,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                             <CheckCircle className="h-4 w-4" /> Presensi mengajar lengkap
                                         </div>
                                     ) : (
-                                        <p className="text-xs text-slate-400">Slide masuk tersedia saat jam mengajar.</p>
+                                        <p className="text-xs text-slate-600">Slide masuk tersedia saat jam mengajar.</p>
                                     )}
                                 </div>
                             );
@@ -727,7 +727,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                         <Camera className="h-6 w-6" />
                                     </div>
                                     <p className="text-sm font-medium">{locationError || 'Kamera tidak dapat diakses'}</p>
-                                    <p className="text-xs text-slate-400">Aktifkan kamera untuk presensi realtime.</p>
+                                    <p className="text-xs text-slate-600">Aktifkan kamera untuk presensi realtime.</p>
                                 </div>
                             )}
 
@@ -839,12 +839,12 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                         <div className="min-w-0">
                                             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Posisi A (saat foto)</p>
                                             <p className="mt-0.5 font-mono text-xs tabular-nums text-slate-700">{posA.latitude.toFixed(6)}, {posA.longitude.toFixed(6)}</p>
-                                            <p className="text-[10px] text-slate-400">Akurasi {posA.accuracy?.toFixed(0)}m</p>
+                                            <p className="text-[10px] text-slate-600">Akurasi {posA.accuracy?.toFixed(0)}m</p>
                                         </div>
                                         <div className="shrink-0 text-right">
                                             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Posisi B (submit)</p>
                                             <p className="mt-0.5 font-mono text-xs tabular-nums text-slate-700">{currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}</p>
-                                            <p className="text-[10px] text-slate-400">Akurasi {currentPosition.accuracy?.toFixed(0)}m</p>
+                                            <p className="text-[10px] text-slate-600">Akurasi {currentPosition.accuracy?.toFixed(0)}m</p>
                                         </div>
                                     </div>
                                 </div>
@@ -876,7 +876,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             )}
 
             {!libur && activeGroups.length === 0 && slideJadwals.length > 0 && phase !== SELESAI && (
-                <Empty icon={Clock} title="Tidak ada jadwal yang bisa di-slide" subtitle={semuaBeres ? 'Semua jadwal sudah berakhir — lanjut ke foto sore.' : 'Jadwal aktif akan muncul setelah jam mengajar tiba.'} />
+                <Empty icon={Clock} title="Tidak ada jadwal yang bisa di-slide" subtitle={semuaBeres ? 'Semua jadwal sudah berakhir. Lanjut ke foto sore.' : 'Jadwal aktif akan muncul setelah jam mengajar tiba.'} />
             )}
             {!libur && slideJadwals.length === 0 && phase !== SELESAI && (
                 <Empty icon={Clock} title="Tidak ada jadwal mengajar hari ini" subtitle={piketJadwals.length > 0 ? 'Lanjut ke foto sore. Tugas piket lewat checklist di bawah.' : 'Jika tidak ada jadwal, lanjut ke foto sore.'} />
@@ -899,7 +899,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                         <span className="block text-sm font-bold text-slate-700">Laporan Piket terkunci</span>
                         <span className="mt-0.5 block text-xs text-slate-500">Selesaikan presensi masuk dulu untuk membuka</span>
                     </span>
-                    <Lock className="h-5 w-5 shrink-0 text-slate-400" />
+                    <Lock className="h-5 w-5 shrink-0 text-slate-500" />
                 </div>
             )}
 

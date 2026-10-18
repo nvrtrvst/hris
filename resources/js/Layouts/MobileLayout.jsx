@@ -4,14 +4,14 @@ import { initPush, disablePush, sendTestPush } from '@/push';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
-import { Bell, Megaphone } from 'lucide-react';
+import { Bell, CalendarDays, Clock, CreditCard, FileText, Home, LogOut, Megaphone, User } from 'lucide-react';
 
 const navItems = [
-    { route: 'presensi.dashboard', label: 'Beranda', match: () => route().current('presensi.dashboard'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" {...p} />) },
-    { route: 'presensi.jadwal', label: 'Jadwal', match: () => route().current('presensi.jadwal*'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" {...p} />) },
-    { route: 'presensi.absen', label: 'Presensi', match: () => route().current('presensi.absen'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" {...p} />) },
-    { route: 'presensi.izin.index', label: 'Izin', match: () => route().current('presensi.izin.*'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" {...p} />) },
-    { route: 'presensi.profile.edit', label: 'Profil', match: () => route().current('presensi.profile.*'), icon: (p) => (<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" {...p} />) },
+    { route: 'presensi.dashboard', label: 'Beranda', match: () => route().current('presensi.dashboard'), icon: Home },
+    { route: 'presensi.jadwal', label: 'Jadwal', match: () => route().current('presensi.jadwal*'), icon: CalendarDays },
+    { route: 'presensi.absen', label: 'Presensi', match: () => route().current('presensi.absen'), icon: Clock },
+    { route: 'presensi.izin.index', label: 'Izin', match: () => route().current('presensi.izin.*'), icon: FileText },
+    { route: 'presensi.profile.edit', label: 'Profil', match: () => route().current('presensi.profile.*'), icon: User },
 ];
 
 export default function MobileLayout({ user, header, children }) {
@@ -62,7 +62,7 @@ export default function MobileLayout({ user, header, children }) {
                     <div className="flex items-center space-x-3">
                         <ApplicationLogo src={primaryUnit?.logo_url || '/logo.png'} alt={`Logo ${primaryUnit?.nama || 'Yayasan'}`} width="44" height="44" className="h-11 w-11 text-white" />
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100">Portal Pegawai</p>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-100">Portal Pegawai</p>
                             <p className="max-w-52 truncate text-sm font-bold leading-tight">Presensi {unitLabel}</p>
                         </div>
                     </div>
@@ -70,7 +70,7 @@ export default function MobileLayout({ user, header, children }) {
                         <Link href={route('presensi.pengumuman')} className="relative flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white/80 hover:text-white" aria-label="Pengumuman">
                             <Megaphone className="h-5 w-5" />
                             {auth?.announcement_count > 0 && (
-                                <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-400 px-1 text-[9px] font-bold leading-none text-amber-950 ring-2 ring-primary">
+                                <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold leading-none text-amber-950 ring-2 ring-primary">
                                     {auth?.announcement_count > 99 ? '99+' : auth?.announcement_count}
                                 </span>
                             )}
@@ -78,7 +78,7 @@ export default function MobileLayout({ user, header, children }) {
                         <Link href={route('presensi.notifikasi.index')} className="relative flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white/80 hover:text-white" aria-label="Notifikasi">
                             <Bell className="h-5 w-5" />
                             {auth?.unread_notifications > 0 && (
-                                <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-primary">
+                                <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-primary">
                                     {auth?.unread_notifications > 99 ? '99+' : auth?.unread_notifications}
                                 </span>
                             )}
@@ -98,7 +98,7 @@ export default function MobileLayout({ user, header, children }) {
                         </Dropdown.Trigger>
                         <Dropdown.Content align="right" width="48">
                             <Dropdown.Link href={route('presensi.gaji.index')} className="flex items-center">
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                <CreditCard className="mr-2 h-4 w-4" />
                                 Slip Gaji
                             </Dropdown.Link>
                             <Dropdown.Link href={route('presensi.pengumuman')} className="flex items-center">
@@ -115,19 +115,21 @@ export default function MobileLayout({ user, header, children }) {
                                     {pushPermission === 'granted' ? 'Nonaktifkan Notifikasi' : 'Aktifkan Notifikasi'}
                                 </button>
                             )}
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    const r = await sendTestPush();
-                                    setTestMsg(r?.message || (r?.success ? 'Terkirim' : 'Gagal'));
-                                }}
-                                className="flex w-full items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                            >
-                                <Bell className="mr-2 h-4 w-4" />
-                                Kirim Tes Notif
-                            </button>
-                            <Dropdown.Link href={route('presensi.logout')} method="post" as="button" className="text-red-600 font-bold flex items-center">
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                            {import.meta.env.DEV && (
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        const r = await sendTestPush();
+                                        setTestMsg(r?.message || (r?.success ? 'Terkirim' : 'Gagal'));
+                                    }}
+                                    className="flex w-full items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                >
+                                    <Bell className="mr-2 h-4 w-4" />
+                                    Kirim Tes Notif
+                                </button>
+                            )}
+                            <Dropdown.Link href={route('presensi.logout')} method="post" as="button" className="text-rose-700 font-bold flex items-center">
+                                <LogOut className="mr-2 h-4 w-4" />
                                 Keluar
                             </Dropdown.Link>
                         </Dropdown.Content>
@@ -142,7 +144,7 @@ export default function MobileLayout({ user, header, children }) {
                 </div>
             )}
 
-            {testMsg && (
+            {import.meta.env.DEV && testMsg && (
                 <div className="px-4 pt-2">
                     <p className="rounded-lg bg-slate-100 px-3 py-2 text-xs leading-relaxed text-slate-600">{testMsg}</p>
                 </div>
@@ -169,9 +171,7 @@ export default function MobileLayout({ user, header, children }) {
                                     <span className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-primary" />
                                 )}
                                 <span>
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                        {item.icon({ strokeLinecap: 'round', strokeLinejoin: 'round' })}
-                                    </svg>
+                                    <item.icon className="h-5 w-5" />
                                 </span>
                                 <span className="truncate text-[10px] font-semibold">{item.label}</span>
                             </Link>

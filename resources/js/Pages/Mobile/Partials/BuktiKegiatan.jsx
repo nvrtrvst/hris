@@ -86,8 +86,8 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
                 </div>
             )}
 
-            {error && <p className="mt-3 text-xs font-medium text-red-600">{error}</p>}
-            {success && <p className="mt-3 text-xs font-medium text-emerald-600">{success}</p>}
+            {error && <p className="mt-3 text-xs font-medium text-rose-700">{error}</p>}
+            {success && <p className="mt-3 text-xs font-medium text-emerald-700">{success}</p>}
 
             {!open ? (
                 <button
@@ -107,7 +107,7 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
                             <button
                                 type="button"
                                 onClick={camera.switchCamera}
-                                title={camera.facing === 'user' ? 'Kamera depan — slide utk belakang' : 'Kamera belakang — slide utk depan'}
+                                title={camera.facing === 'user' ? 'Kamera depan, geser untuk kamera belakang' : 'Kamera belakang, geser untuk kamera depan'}
                                 className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1.5 text-xs font-semibold text-white"
                             >
                                 <SwitchCamera className="h-4 w-4" />
@@ -128,7 +128,7 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
                         <p className="px-1 text-center font-mono text-[10px] tabular-nums text-sky-700">{posLabel}</p>
                     )}
                     {!currentPosition && (
-                        <p className="px-1 text-center text-[10px] font-medium text-amber-600">GPS belum aktif — koordinat bukti tidak tercatat.</p>
+                        <p className="px-1 text-center text-[10px] font-medium text-amber-700">GPS belum aktif, koordinat bukti tidak tercatat.</p>
                     )}
 
                     {camera.capturedPhoto && (
@@ -138,7 +138,7 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
                                 <p className="mt-2 font-mono text-[10px] tabular-nums text-sky-700">{posLabel}</p>
                             )}
                             {!currentPosition && (
-                                <p className="mt-2 text-[10px] font-medium text-amber-600">GPS belum aktif — koordinat bukti tidak tercatat.</p>
+                                <p className="mt-2 text-[10px] font-medium text-amber-700">GPS belum aktif, koordinat bukti tidak tercatat.</p>
                             )}
                             <input
                                 type="text"
@@ -172,7 +172,7 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
                     )}
 
                     {camera.cameraError && !camera.showLive && !camera.capturedPhoto && (
-                        <p className="text-xs text-red-600">{camera.cameraError}</p>
+                        <p className="text-xs text-rose-700">{camera.cameraError}</p>
                     )}
 
                     <button

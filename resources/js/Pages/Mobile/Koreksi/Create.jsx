@@ -20,7 +20,7 @@ export default function Create({ auth, presensi, koreksi_count, kuota }) {
         post(route('presensi.koreksi.store'));
     };
 
-    const fmtJam = (j) => (j ? j.substring(0, 5) : '—');
+    const fmtJam = (j) => (j ? j.substring(0, 5) : '-');
     const lewatKuota = koreksi_count >= kuota;
 
     const options = [
@@ -46,20 +46,20 @@ export default function Create({ auth, presensi, koreksi_count, kuota }) {
 
             <form onSubmit={submit} className="space-y-4">
                 <Card className="space-y-1.5 py-4">
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Presensi Asal</p>
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Presensi Asal</p>
                     <p className="text-sm font-bold text-slate-800">
                         {format(parseISO(presensi.tanggal), 'EEEE, d MMMM yyyy', { locale: id })}
                     </p>
                     <p className="flex items-center gap-2 text-sm text-slate-500">
-                        <Clock className="h-4 w-4 text-emerald-400" />
+                        <Clock className="h-4 w-4 text-emerald-600" />
                         Masuk {fmtJam(presensi.jam_masuk)} · Keluar {fmtJam(presensi.jam_keluar)}
                     </p>
-                    <p className="text-xs text-slate-400">{presensi.unit_sekolah?.nama || '—'}</p>
+                    <p className="text-xs text-slate-600">{presensi.unit_sekolah?.nama || '-'}</p>
                 </Card>
 
                 <div className={`flex items-start gap-3 rounded-2xl border p-3 ${lewatKuota ? 'border-amber-200 bg-amber-50' : 'border-emerald-100 bg-emerald-50'}`}>
                     {lewatKuota ? (
-                        <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+                        <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-700" />
                     ) : (
                         <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
                     )}
@@ -67,7 +67,7 @@ export default function Create({ auth, presensi, koreksi_count, kuota }) {
                         <p className="text-sm font-bold text-slate-800">Kuota bulan ini: {koreksi_count}/{kuota} disetujui</p>
                         <p className="mt-0.5 text-xs text-slate-500">
                             {lewatKuota
-                                ? 'Kuota terlampaui — penjelasan khusus wajib diisi, pengajuan tetap dapat diproses.'
+                                ? 'Kuota terlampaui. Penjelasan khusus wajib diisi, pengajuan tetap dapat diproses.'
                                 : 'Kuota koreksi yang disetujui per bulan.'}
                         </p>
                     </div>
@@ -82,8 +82,8 @@ export default function Create({ auth, presensi, koreksi_count, kuota }) {
                         className="block w-full rounded-2xl border-slate-200 bg-slate-50 px-3 py-3 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
                         required
                     />
-                    <p className="mt-1 text-xs text-slate-400">Wajib setelah jam masuk {fmtJam(presensi.jam_masuk)}.</p>
-                    {errors.nilai_baru && <p className="mt-1 text-xs font-medium text-rose-600">{errors.nilai_baru}</p>}
+                    <p className="mt-1 text-xs text-slate-600">Wajib setelah jam masuk {fmtJam(presensi.jam_masuk)}.</p>
+                    {errors.nilai_baru && <p className="mt-1 text-xs font-medium text-rose-700">{errors.nilai_baru}</p>}
                 </div>
 
                 <div>
@@ -105,11 +105,11 @@ export default function Create({ auth, presensi, koreksi_count, kuota }) {
                             );
                         })}
                     </div>
-                    {errors.alasan && <p className="mt-1 text-xs font-medium text-rose-600">{errors.alasan}</p>}
+                    {errors.alasan && <p className="mt-1 text-xs font-medium text-rose-700">{errors.alasan}</p>}
                 </div>
 
                 <div>
-                    <label className="mb-1 block text-sm font-semibold text-slate-700">Detail Alasan <span className="font-normal text-slate-400">(opsional)</span></label>
+                    <label className="mb-1 block text-sm font-semibold text-slate-700">Detail Alasan <span className="font-normal text-slate-600">(opsional)</span></label>
                     <textarea
                         rows="2"
                         value={data.alasan_detail}
@@ -118,7 +118,7 @@ export default function Create({ auth, presensi, koreksi_count, kuota }) {
                         placeholder="Keterangan tambahan bila perlu..."
                         maxLength={500}
                     ></textarea>
-                    {errors.alasan_detail && <p className="mt-1 text-xs font-medium text-rose-600">{errors.alasan_detail}</p>}
+                    {errors.alasan_detail && <p className="mt-1 text-xs font-medium text-rose-700">{errors.alasan_detail}</p>}
                 </div>
 
                 {lewatKuota && (
@@ -135,7 +135,7 @@ export default function Create({ auth, presensi, koreksi_count, kuota }) {
                             maxLength={500}
                             required
                         ></textarea>
-                        {errors.penjelasan_khusus && <p className="mt-1 text-xs font-medium text-rose-600">{errors.penjelasan_khusus}</p>}
+                        {errors.penjelasan_khusus && <p className="mt-1 text-xs font-medium text-rose-700">{errors.penjelasan_khusus}</p>}
                     </div>
                 )}
 

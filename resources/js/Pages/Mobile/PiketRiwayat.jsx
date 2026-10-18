@@ -48,7 +48,7 @@ export default function PiketRiwayat({ riwayat = [], label = {} }) {
                                         {lap.status === 'submitted'
                                             ? <Badge tone="emerald" icon={CheckCircle2}>Terkirim</Badge>
                                             : <Badge tone="amber">Draft</Badge>}
-                                        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+                                        <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
                                     </span>
                                 </button>
                                 {open && (

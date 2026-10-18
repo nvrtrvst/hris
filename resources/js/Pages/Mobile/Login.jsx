@@ -13,12 +13,12 @@ function LoginField({ id, label, icon: Icon, error, suffix, ...props }) {
                 {label}
             </label>
             <div className="relative">
-                <Icon className={`pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${error ? 'text-rose-500' : 'text-slate-400'}`} />
+                <Icon className={`pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${error ? 'text-rose-500' : 'text-slate-500'}`} />
                 <input
                     id={id}
                     aria-invalid={Boolean(error)}
                     aria-describedby={errorId}
-                    className={`min-h-14 w-full rounded-xl border bg-slate-50 py-3.5 pl-12 text-[15px] font-medium text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:bg-white focus:ring-4 ${suffix ? 'pr-14' : 'pr-4'
+                    className={`min-h-14 w-full rounded-xl border bg-slate-50 py-3.5 pl-12 text-[15px] font-medium text-slate-950 outline-none transition-colors placeholder:text-slate-500 focus:bg-white focus:ring-4 ${suffix ? 'pr-14' : 'pr-4'
                         } ${error
                             ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-100'
                             : 'border-slate-200 focus:border-primary focus:ring-primary/10'

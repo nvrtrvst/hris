@@ -102,7 +102,7 @@ export default function SlideToConfirm({ onConfirm, disabled = false, confirmed 
                 <button
                     type="button"
                     onClick={() => { if (!disabled) onConfirm?.(); }}
-                    className="mt-1 w-full text-center text-[10px] font-semibold text-slate-400 underline underline-offset-2 active:text-slate-600"
+                    className="mt-1 w-full text-center text-[10px] font-semibold text-slate-600 underline underline-offset-2 active:text-slate-600"
                 >
                     Ketuk langsung jika tidak bisa geser
                 </button>

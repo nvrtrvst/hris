@@ -4,7 +4,11 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Empty } from '@/Components/MobileUI';
 import { Receipt, ChevronRight, Download } from 'lucide-react';
 
-const statusTone = { finalized: 'emerald', paid: 'indigo', draft: 'slate' };
+const statusCls = {
+    draft: 'bg-slate-100 text-slate-700',
+    finalized: 'bg-sky-100 text-sky-700',
+    paid: 'bg-emerald-100 text-emerald-700',
+};
 
 export default function GajiIndex({ auth, pegawai, penggajians }) {
     const totalFinalized = penggajians.filter((p) => p.status === 'paid' || p.status === 'finalized').length;
@@ -28,7 +32,7 @@ export default function GajiIndex({ auth, pegawai, penggajians }) {
                                     <p className="mt-0.5 text-sm text-slate-500">Rp {Number(p.gaji_bersih).toLocaleString('id-ID')}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusTone[p.status] === 'emerald' ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusCls[p.status] || statusCls.draft}`}>
                                         {p.status}
                                     </span>
                                     <ChevronRight className="h-4 w-4 text-slate-300" />

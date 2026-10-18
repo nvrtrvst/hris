@@ -35,12 +35,10 @@ export function SectionTitle({ children, icon: Icon, action, className = '' }) {
 export function Badge({ children, tone = 'slate', icon: Icon, className = '' }) {
     const tones = {
         slate: 'bg-slate-100 text-slate-600',
-        indigo: 'bg-emerald-100 text-emerald-700',
         emerald: 'bg-emerald-100 text-emerald-700',
         amber: 'bg-amber-100 text-amber-700',
         rose: 'bg-rose-100 text-rose-700',
         sky: 'bg-sky-100 text-sky-700',
-        red: 'bg-red-100 text-red-700',
     };
     return (
         <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold leading-none ${tones[tone] || tones.slate} ${className}`}>
@@ -52,7 +50,7 @@ export function Badge({ children, tone = 'slate', icon: Icon, className = '' }) 
 
 export function FAB({ onClick, href, icon: Icon, label }) {
     const inner = (
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_8px_18px_-8px_rgba(15,61,62,0.65)] transition-transform active:scale-95">
+        <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-white shadow-[0_8px_18px_-8px_rgba(15,61,62,0.65)] transition-transform active:scale-95">
             <Icon className="h-6 w-6" />
         </span>
     );
@@ -91,7 +89,7 @@ export function Toggle({ checked, onChange, tone = 'indigo', disabled = false })
 
 export function Seg({ children, active }) {
     return (
-        <div className={`flex-1 rounded-xl px-3 py-2.5 text-center text-sm font-bold transition-colors ${active ? 'bg-white text-primary shadow-sm' : 'text-slate-500'}`}>
+        <div className={`flex-1 rounded-xl px-3 py-2.5 text-center text-sm font-bold transition-colors ${active ? 'bg-white text-primary shadow-sm' : 'text-slate-600'}`}>
             {children}
         </div>
     );
@@ -100,11 +98,11 @@ export function Seg({ children, active }) {
 export function Empty({ icon: Icon, title, subtitle }) {
     return (
         <div className="flex flex-col items-center px-4 py-8 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
                 <Icon className="h-6 w-6" />
             </div>
             <h3 className="font-bold text-slate-700">{title}</h3>
-            {subtitle && <p className="mt-1 text-sm text-slate-400">{subtitle}</p>}
+            {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
         </div>
     );
 }

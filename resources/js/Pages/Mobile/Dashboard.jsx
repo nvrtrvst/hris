@@ -138,7 +138,7 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                                 {primary.foto_masuk_url ? (
                                     <img src={primary.foto_masuk_url} alt="Foto Masuk" className="h-full w-full object-cover opacity-90" />
                                 ) : (
-                                    <span className="text-[10px] font-semibold text-white/50 text-center leading-tight px-1">
+                                    <span className="text-[10px] font-semibold text-white/70 text-center leading-tight px-1">
                                         {primary.foto_masuk_status === 'pending' ? 'Diproses' : 'Tak Ada Foto'}
                                     </span>
                                 )}
@@ -160,7 +160,7 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                                 {keluarRec.foto_keluar_url ? (
                                     <img src={keluarRec.foto_keluar_url} alt="Foto Keluar" className="h-full w-full object-cover opacity-90" />
                                 ) : (
-                                    <span className="text-[10px] font-semibold text-white/50 text-center leading-tight px-1">
+                                    <span className="text-[10px] font-semibold text-white/70 text-center leading-tight px-1">
                                         {keluarRec.foto_keluar_status === 'pending' ? 'Diproses' : 'Tak Ada Foto'}
                                     </span>
                                 )}
@@ -176,7 +176,7 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                     </div>
                 ) : (
                     <Link href={route('presensi.absen')} className="mx-4 mb-4 flex min-h-12 items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-bold text-primary transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30">
-                        {alasanLibur ? 'Presensi libur — lembur/tugas luar' : (!isMengajar && primary?.jam_masuk && !primary?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi')}
+                        {alasanLibur ? 'Presensi libur: lembur/tugas luar' : (!isMengajar && primary?.jam_masuk && !primary?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi')}
                         <ArrowRight className="h-5 w-5" />
                     </Link>
                 )}
@@ -224,16 +224,16 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                                                 {jadwal.mata_pelajaran?.nama || 'Pelajaran'}
                                             </p>
                                             {sedangMengajar && (
-                                                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-100 border border-amber-400/40">
-                                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" aria-hidden="true" />
+                                                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-semibold text-amber-100">
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-300" aria-hidden="true" />
                                                     Mengajar
                                                 </span>
                                             )}
                                             {selesai && (
-                                                <span className="shrink-0 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-100 border border-emerald-400/40">Selesai</span>
+                                                <span className="shrink-0 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-100">Selesai</span>
                                             )}
                                             {bolos && (
-                                                <span className="shrink-0 rounded-full bg-rose-500/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-100 border border-rose-500/50">Tidak Hadir</span>
+                                                <span className="shrink-0 rounded-full bg-rose-500/40 px-2 py-0.5 text-[10px] font-semibold text-rose-100">Tidak Hadir</span>
                                             )}
                                         </div>
                                         <p className="mt-0.5 text-xs text-white/80">
@@ -267,7 +267,7 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                         <span className="block text-sm font-bold text-slate-700">Laporan Piket terkunci</span>
                         <span className="mt-0.5 block text-xs text-slate-500">Lakukan presensi masuk dulu untuk membuka</span>
                     </span>
-                    <Lock className="h-5 w-5 text-slate-400" />
+                    <Lock className="h-5 w-5 text-slate-500" />
                 </Link>
             )}
 
