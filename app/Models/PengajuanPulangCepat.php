@@ -29,7 +29,10 @@ class PengajuanPulangCepat extends Model
         'rejected_at' => 'datetime',
     ];
 
-    /** Izin pulang cepat disetujui untuk pegawai pada tanggal tertentu (dasar buka gate). */
+    /**
+     * Izin pulang cepat disetujui untuk pegawai pada tanggal tertentu (dasar buka gate).
+     * Bila ada lebih dari satu, ambil jam paling awal — izin paling longgar yang menang.
+     */
     public static function disetujuiPada(int $pegawaiId, Carbon|string $tanggal): ?self
     {
         $date = $tanggal instanceof Carbon ? $tanggal->toDateString() : (string) $tanggal;
@@ -37,6 +40,7 @@ class PengajuanPulangCepat extends Model
         return static::where('pegawai_id', $pegawaiId)
             ->where('status', 'disetujui')
             ->whereDate('tanggal', $date)
+            ->orderBy('jam_diminta')
             ->first();
     }
 

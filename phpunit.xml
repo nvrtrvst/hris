@@ -24,8 +24,10 @@
         <env name="BCRYPT_ROUNDS" value="4" force="true"/>
         <env name="BROADCAST_CONNECTION" value="null" force="true"/>
         <env name="CACHE_STORE" value="array" force="true"/>
-        <env name="DB_CONNECTION" value="sqlite" force="true"/>
-        <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <!-- DB tanpa force: lokal (tanpa env DB) tetap sqlite :memory:, CI memakai
+             service MySQL dengan env DB_* yang di-set step workflow. -->
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value="" force="true"/>
         <env name="MAIL_MAILER" value="array" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
@@ -41,8 +43,6 @@
         <server name="BCRYPT_ROUNDS" value="4" force="true"/>
         <server name="BROADCAST_CONNECTION" value="null" force="true"/>
         <server name="CACHE_STORE" value="array" force="true"/>
-        <server name="DB_CONNECTION" value="sqlite" force="true"/>
-        <server name="DB_DATABASE" value=":memory:" force="true"/>
         <server name="DB_URL" value="" force="true"/>
         <server name="MAIL_MAILER" value="array" force="true"/>
         <server name="QUEUE_CONNECTION" value="sync" force="true"/>
