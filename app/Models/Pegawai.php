@@ -235,8 +235,9 @@ class Pegawai extends Model
     }
 
     /**
-     * Nama hari kerja unit (Senin–Jumat, + Sabtu bila unit beroperasi Sabtu).
-     * Sumber tunggal aturan hari kerja — dipakai payroll, FinalizeAlpa, absen.
+     * Nama hari kerja unit (Senin–Jumat, + Sabtu/Minggu bila unit beroperasi
+     * di hari itu). Sumber tunggal aturan hari kerja — dipakai payroll,
+     * FinalizeAlpa, absen.
      *
      * @return list<string>
      */
@@ -245,6 +246,9 @@ class Pegawai extends Model
         $hari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
         if ($unit && $unit->jam_kerja_sabtu_mulai) {
             $hari[] = 'Sabtu';
+        }
+        if ($unit && $unit->jam_kerja_minggu_mulai) {
+            $hari[] = 'Minggu';
         }
 
         return $hari;

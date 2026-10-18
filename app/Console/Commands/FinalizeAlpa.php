@@ -38,11 +38,9 @@ class FinalizeAlpa extends Command
 
             foreach ($targets as $target) {
                 $hariTarget = $hariIndo[$target->format('l')];
-                if ($hariTarget === 'Minggu') {
-                    continue;
-                }
-                // Sabtu: hanya bila pegawai punya jadwal hari itu ATAU unit utama
-                // beroperasi Sabtu (hari KerjaUnit). Senin–Jumat selalu hari kerja.
+                // Hanya hari kerja unit (Senin–Jumat, + Sabtu/Minggu bila unit
+                // beroperasi) yang bisa alpa; kecuali pegawai punya jadwal di
+                // hari itu (mis. jadwal tetap berjalan walau unit libur).
                 $punyaJadwalHari = $pegawai->jadwals->contains(fn ($j) => $j->hari === $hariTarget);
                 if (! $punyaJadwalHari && ! in_array($hariTarget, Pegawai::hariKerjaUnit($pegawai->unitUtama()), true)) {
                     continue;

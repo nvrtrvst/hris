@@ -22,6 +22,8 @@ export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = []
         jam_pulang_kantor: unit.jam_pulang_kantor?.slice(0, 5) || '15:00',
         jam_kerja_sabtu_mulai: unit.jam_kerja_sabtu_mulai?.slice(0, 5) || null,
         jam_kerja_sabtu_selesai: unit.jam_kerja_sabtu_selesai?.slice(0, 5) || null,
+        jam_kerja_minggu_mulai: unit.jam_kerja_minggu_mulai?.slice(0, 5) || null,
+        jam_kerja_minggu_selesai: unit.jam_kerja_minggu_selesai?.slice(0, 5) || null,
         web: unit.web ?? '',
         telepon: unit.telepon ?? '',
         alamat: unit.alamat ?? '',

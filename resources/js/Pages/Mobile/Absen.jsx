@@ -14,7 +14,7 @@ import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, ClipboardCheck, Lock } from 'lucide-react';
 
-export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false, izinHariIni = null, adaIzinPulangCepat = false }) {
+export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false, izinHariIni = null, adaIzinPulangCepat = false, alasanLibur = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
@@ -244,6 +244,10 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             setError('Silakan ambil foto presensi terlebih dahulu.');
             return;
         }
+        if (alasanLibur && !isLembur && !isTugasLuar) {
+            setError(alasanLibur);
+            return;
+        }
         if (!isLembur && !isTugasLuar && !officeAttendance && jadwalsPresensi.length > 0 && !jadwalId) {
             setError('Silakan pilih jadwal presensi Anda.');
             return;
@@ -416,6 +420,8 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     presensiHariIni={presensiHariIni}
                     attestationToken={attestation_token}
                     adaIzinPulangCepat={adaIzinPulangCepat}
+                    libur={Boolean(alasanLibur)}
+                    alasanLibur={alasanLibur}
                 />
             </MobileLayout>
         );
@@ -436,6 +442,13 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             )}
             {flash.error && (
                 <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>
+            )}
+
+            {alasanLibur && (
+                <div role="note" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+                    <Lock className="mt-0.5 h-5 w-5 shrink-0" />
+                    <span>{alasanLibur} Presensi kantor dinonaktifkan; lembur, tugas luar, dan presensi sesuai jadwal tetap dapat digunakan.</span>
+                </div>
             )}
 
             {successMessage && (
@@ -466,7 +479,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </div>
             </div>
 
-            {!isLembur && !isTugasLuar && jadwalsPresensi.length > 0 && (
+            {!isLembur && !isTugasLuar && !alasanLibur && jadwalsPresensi.length > 0 && (
                 <section className="mb-4" aria-labelledby="jadwal-heading">
                     <div className="mb-2 flex items-center justify-between">
                         <h2 id="jadwal-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Jadwal hari ini</h2>

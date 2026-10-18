@@ -21,6 +21,8 @@ export default function Create({ auth }) {
         jam_pulang_kantor: '15:00',
         jam_kerja_sabtu_mulai: null,
         jam_kerja_sabtu_selesai: null,
+        jam_kerja_minggu_mulai: null,
+        jam_kerja_minggu_selesai: null,
         web: '',
         telepon: '',
         alamat: '',
