@@ -26,6 +26,20 @@ export default function Index({ auth, pengajuan }) {
                 <p className="mt-0.5 text-sm text-slate-500">Kelola riwayat pengajuan Anda</p>
             </div>
 
+            <Link
+                href={route('presensi.pulang-cepat.index')}
+                className="mb-4 flex min-h-16 items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+            >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-primary">
+                    <Clock className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-bold text-slate-800">Izin Pulang Cepat</span>
+                    <span className="block text-xs text-slate-500">Perlu pulang lebih awal? Ajukan di sini</span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+            </Link>
+
             {flash.message && (
                 <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{flash.message}</div>
             )}
