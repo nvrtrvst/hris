@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
+use App\Models\LaporanPiket;
+use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\PegawaiMapel;
 use App\Models\PengajuanIzin;
 use App\Models\Penggajian;
 use App\Models\Presensi;
@@ -113,6 +116,20 @@ class PayrollBaruTest extends TestCase
         $p->save();
     }
 
+    private function masukJadwal(Pegawai $pegawai, Jadwal $jadwal, string $tanggal): void
+    {
+        $p = Presensi::create([
+            'pegawai_id' => $pegawai->id,
+            'jadwal_id' => $jadwal->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tipe_presensi' => 'mengajar',
+            'tanggal' => $tanggal,
+            'jam_masuk' => $jadwal->jam_mulai,
+        ]);
+        $p->status = 'hadir';
+        $p->save();
+    }
+
     private function runDraft(): void
     {
         $this->actingAs($this->admin, 'web_admin')
@@ -127,34 +144,32 @@ class PayrollBaruTest extends TestCase
         return [$gajian, $gajian->details()->pluck('nominal', 'nama_komponen')->all()];
     }
 
-    public function test_tetap_rate_bawah_90_potong_dan_berumus(): void
+    public function test_guru_dibayar_per_jp_tanpa_potongan_kehadiran(): void
     {
-        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Tetap', 1);
-        $this->makeKomponen(['nama' => 'Gaji Pokok', 'kode' => 'gaji_pokok', 'jenis' => 'fixed', 'nilai_default' => 3000000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'tetap']);
-        $this->makeKomponen(['nama' => 'Tunjangan Transport SMPB', 'kode' => 'transport_harian', 'jenis' => 'dinamis_kehadiran', 'nilai_default' => 25000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'tetap']);
-        $this->makeJadwalSenin($pegawai);
-        // 4 dari 5 Senin hadir kantor → rate 80%.
-        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22'] as $tgl) {
-            $this->masukKantor($pegawai, $tgl);
+        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru JP', 1);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen(['nama' => 'Honor Mengajar', 'kode' => 'honor_mengajar', 'jenis' => 'dinamis_jam_mengajar', 'nilai_default' => 50000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'guru', 'is_taxable' => true]);
+        $jadwal = $this->makeJadwalSenin($pegawai);
+        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29'] as $tgl) {
+            $this->masukJadwal($pegawai, $jadwal, $tgl);
         }
 
         $this->runDraft();
-        [$gajian, $rows] = $this->details($pegawai);
+        [, $rows] = $this->details($pegawai);
 
-        $this->assertEquals(600000, (float) ($rows['Potongan Kehadiran — Gaji × 80% (4/5 hari)'] ?? 0));
-        $this->assertEquals(100000, (float) ($rows['Transport (4 × Rp 25.000)'] ?? 0));
-        // Bersih = agregat baris (termasuk potongan statutori bawaan seeder).
-        $this->assertEquals((float) $gajian->total_pendapatan - (float) $gajian->total_potongan, (float) $gajian->gaji_bersih);
+        // 5 pertemuan × 1 JP (45 menit / durasi_jp 45) × 50.000 = 250.000
+        $this->assertEquals(250000, (float) ($rows['Honor Mengajar'] ?? 0));
+        $potongan = array_filter(array_keys($rows), fn ($k) => str_contains($k, 'Potongan Kehadiran'));
+        $this->assertSame([], array_values($potongan));
     }
 
-    public function test_tetap_rate_di_atas_90_tanpa_potongan(): void
+    public function test_guru_tak_dipotong_kehadiran_meski_bolos(): void
     {
-        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Rajin', 2);
-        $this->makeKomponen(['nama' => 'Gaji Pokok', 'kode' => 'gaji_pokok', 'jenis' => 'fixed', 'nilai_default' => 3000000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'tetap']);
+        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Bolos', 2);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen(['nama' => 'Honor Mengajar', 'kode' => 'honor_mengajar', 'jenis' => 'dinamis_jam_mengajar', 'nilai_default' => 50000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'guru', 'is_taxable' => true]);
         $this->makeJadwalSenin($pegawai);
-        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29'] as $tgl) {
-            $this->masukKantor($pegawai, $tgl);
-        }
+        $this->masukKantor($pegawai, '2026-06-01');
 
         $this->runDraft();
         [, $rows] = $this->details($pegawai);
@@ -163,47 +178,125 @@ class PayrollBaruTest extends TestCase
         $this->assertSame([], array_values($potongan));
     }
 
-    public function test_setengah_hari_masuk_rate(): void
+    public function test_guru_tidak_tetap_tidak_dapat_transport(): void
     {
-        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Setengah', 3);
-        $this->makeKomponen(['nama' => 'Gaji Pokok', 'kode' => 'gaji_pokok', 'jenis' => 'fixed', 'nilai_default' => 3000000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'tetap']);
+        $pegawai = $this->makePegawai('guru_tidak_tetap', 'Guru GTT', 3);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen(['nama' => 'Honor Mengajar', 'kode' => 'honor_mengajar', 'jenis' => 'dinamis_jam_mengajar', 'nilai_default' => 50000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'guru', 'is_taxable' => true]);
+        $this->makeKomponen(['nama' => 'Tunjangan Transport '.$this->unit->singkatan, 'kode' => 'transport_harian', 'jenis' => 'dinamis_kehadiran', 'nilai_default' => 25000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'tetap']);
         $this->makeJadwalSenin($pegawai);
-        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22'] as $tgl) {
+        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29'] as $tgl) {
             $this->masukKantor($pegawai, $tgl);
         }
-        // 29 Juni: izin + tugas (flag) → 0,5. Rate = 4,5/5 = 90% → tetap potong (strict).
-        $izin = PengajuanIzin::create([
-            'pegawai_id' => $pegawai->id,
-            'jenis_izin' => 'izin',
-            'tanggal_mulai' => '2026-06-29',
-            'tanggal_selesai' => '2026-06-29',
-            'alasan' => 'Urusan keluarga dan tugas dinas.',
-        ]);
-        $izin->forceFill(['status' => 'disetujui', 'approval_stage' => 'approved', 'dihitung_setengah' => true])->save();
 
         $this->runDraft();
         [, $rows] = $this->details($pegawai);
 
-        $this->assertEquals(300000, (float) ($rows['Potongan Kehadiran — Gaji × 90% (4,5/5 hari)'] ?? 0));
+        $transport = array_filter(array_keys($rows), fn ($k) => str_starts_with($k, 'Transport ('));
+        $this->assertSame([], array_values($transport));
     }
 
-    public function test_honorer_potong_per_hari_dinamis(): void
+    public function test_non_guru_potongan_harian_dan_transport(): void
     {
-        $pegawai = $this->makePegawai('guru_tidak_tetap', 'Guru Honor', 4);
-        $this->makeKomponen(['nama' => 'Honor Honorer', 'kode' => 'honor_honorer', 'jenis' => 'fixed', 'nilai_default' => 2000000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'honorer']);
-        $this->makeJadwalSenin($pegawai);
-        foreach (['2026-06-01', '2026-06-08', '2026-06-15'] as $tgl) {
+        $pegawai = $this->makePegawai('pegawai_tetap_yayasan', 'Satpam', 4);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen(['nama' => 'Gaji Pokok', 'kode' => 'gaji_pokok', 'jenis' => 'fixed', 'nilai_default' => 2000000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'non_guru']);
+        $this->makeKomponen(['nama' => 'Tunjangan Transport '.$this->unit->singkatan, 'kode' => 'transport_harian', 'jenis' => 'dinamis_kehadiran', 'nilai_default' => 25000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'tetap']);
+        Jadwal::create([
+            'pegawai_id' => $pegawai->id, 'unit_sekolah_id' => $this->unit->id,
+            'hari' => 'Senin', 'jam_mulai' => '07:00:00', 'jam_selesai' => '15:00:00',
+            'jenis_jadwal' => 'shift_satpam', 'tahun_ajaran' => '2026/2027', 'semester' => 1,
+        ]);
+        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22'] as $tgl) {
             $this->masukKantor($pegawai, $tgl);
         }
 
         $this->runDraft();
-        [$gajian, $rows] = $this->details($pegawai);
+        [, $rows] = $this->details($pegawai);
 
-        // (2jt ÷ 5 × 2) = 800rb. Tanpa transport (tetap saja).
-        $this->assertEquals(800000, (float) ($rows['Potongan Honorer — (Rp 2.000.000 ÷ 5 hari × 2 hari)'] ?? 0));
-        $transport = array_filter(array_keys($rows), fn ($k) => str_starts_with($k, 'Transport ('));
-        $this->assertSame([], array_values($transport));
-        $this->assertEquals(2000000 - 800000, (float) $gajian->gaji_bersih);
+        $this->assertEquals(2000000, (float) ($rows['Gaji Pokok'] ?? 0));
+        $this->assertEquals(400000, (float) ($rows['Potongan Kehadiran — (Rp 2.000.000 ÷ 5 hari × 1 hari)'] ?? 0));
+        $this->assertEquals(100000, (float) ($rows['Transport (4 × Rp 25.000)'] ?? 0));
+    }
+
+    public function test_non_guru_tanpa_jadwal_hari_kerja_dari_unit(): void
+    {
+        $pegawai = $this->makePegawai('pegawai_tetap_yayasan', 'Staf', 5);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen(['nama' => 'Gaji Pokok', 'kode' => 'gaji_pokok', 'jenis' => 'fixed', 'nilai_default' => 2000000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'non_guru']);
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        // Tanpa jadwal → hari kerja Sen–Jum Juni 2026 (22 hari); 0 hadir → potong penuh.
+        $potongan = array_values(array_filter(array_keys($rows), fn ($k) => str_contains($k, 'Potongan Kehadiran')));
+        $this->assertCount(1, $potongan);
+        $this->assertEquals(2000000, (float) $rows[$potongan[0]]);
+    }
+
+    public function test_piket_prorata_dibatasi_satu_jp(): void
+    {
+        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Piket', 6);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen(['nama' => 'Honor Piket', 'kode' => 'honor_piket', 'jenis' => 'dinamis_piket', 'nilai_default' => 35000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'guru', 'is_taxable' => true]);
+        $jadwal = Jadwal::create([
+            'pegawai_id' => $pegawai->id, 'unit_sekolah_id' => $this->unit->id,
+            'hari' => 'Senin', 'jam_mulai' => '07:00:00', 'jam_selesai' => '07:45:00',
+            'jenis_jadwal' => 'piket', 'tahun_ajaran' => '2026/2027', 'semester' => 1,
+        ]);
+        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22'] as $tgl) {
+            LaporanPiket::create([
+                'pegawai_id' => $pegawai->id, 'jadwal_id' => $jadwal->id,
+                'unit_sekolah_id' => $this->unit->id, 'tanggal' => $tgl, 'status' => 'submitted',
+            ]);
+        }
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        // 35.000 × (4/5) = 28.000
+        $this->assertEquals(28000, (float) ($rows['Honor Piket'] ?? 0));
+    }
+
+    public function test_ekskul_dibatasi_240rb_per_ekskul(): void
+    {
+        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Ekskul', 7);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $mapel = MataPelajaran::create(['nama' => 'Futsal', 'unit_sekolah_id' => $this->unit->id]);
+        $pm = PegawaiMapel::create(['pegawai_id' => $pegawai->id, 'mata_pelajaran_id' => $mapel->id, 'unit_sekolah_id' => $this->unit->id]);
+        $this->makeKomponen(['nama' => 'Honor Ekskul', 'kode' => 'honor_ekskul_futsal', 'jenis' => 'dinamis_ekskul', 'nilai_default' => 60000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'guru', 'mata_pelajaran_id' => $mapel->id, 'is_taxable' => true]);
+        $jadwal = Jadwal::create([
+            'pegawai_id' => $pegawai->id, 'unit_sekolah_id' => $this->unit->id,
+            'pegawai_mapel_id' => $pm->id, 'hari' => 'Senin',
+            'jam_mulai' => '14:00:00', 'jam_selesai' => '15:00:00',
+            'jenis_jadwal' => 'ekskul', 'tahun_ajaran' => '2026/2027', 'semester' => 1,
+        ]);
+        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29'] as $tgl) {
+            $this->masukJadwal($pegawai, $jadwal, $tgl);
+        }
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        // 5 pertemuan × 60.000 = 300.000 → cap 240.000
+        $this->assertEquals(240000, (float) ($rows['Honor Ekskul'] ?? 0));
+    }
+
+    public function test_pph_dari_taxable_bpjs_dari_gaji_pokok(): void
+    {
+        $pegawai = $this->makePegawai('pegawai_tetap_yayasan', 'Staf Pajak', 8);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen(['nama' => 'Gaji Pokok', 'kode' => 'gaji_pokok', 'jenis' => 'fixed', 'nilai_default' => 2000000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'non_guru']);
+        $this->makeKomponen(['nama' => 'Tunjangan Kinerja', 'kode' => 'tunjangan_kinerja', 'jenis' => 'fixed', 'nilai_default' => 1000000, 'unit_sekolah_id' => $this->unit->id, 'applies_to_status_kepegawaian' => 'non_guru', 'is_taxable' => true]);
+        $this->makeKomponen(['nama' => 'PPh 21', 'kode' => 'pph21', 'tipe' => 'potongan', 'jenis' => 'persentase', 'nilai_default' => 5, 'persentase_base' => 'taxable', 'applies_to_status_kepegawaian' => 'tetap', 'unit_sekolah_id' => $this->unit->id]);
+        $this->makeKomponen(['nama' => 'BPJS Kesehatan', 'kode' => 'bpjs_kes', 'tipe' => 'potongan', 'jenis' => 'persentase', 'nilai_default' => 1, 'persentase_base' => 'gaji_pokok', 'applies_to_status_kepegawaian' => 'tetap', 'unit_sekolah_id' => $this->unit->id]);
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        // PPh = 5% × taxable (1jt) = 50.000 ; BPJS = 1% × gaji_pokok (2jt) = 20.000
+        $this->assertEquals(50000, (float) ($rows['PPh 21'] ?? 0));
+        $this->assertEquals(20000, (float) ($rows['BPJS Kesehatan'] ?? 0));
     }
 
     public function test_sakit_tanpa_bukti_ditolak(): void

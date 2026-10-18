@@ -73,4 +73,20 @@ class StatusKepegawaian extends Model
             ->pluck('kode')
             ->all();
     }
+
+    /**
+     * Kode status aktif ber-grup guru (semua GTYS/GTY/GTT) — filter komponen
+     * honor mengajar & honor piket (dibayar per JP, bukan gaji pokok bulanan).
+     *
+     * @return list<string>
+     */
+    public static function activeGuruKodes(): array
+    {
+        return static::query()
+            ->where('is_active', true)
+            ->where('is_guru', true)
+            ->orderBy('urutan')
+            ->pluck('kode')
+            ->all();
+    }
 }

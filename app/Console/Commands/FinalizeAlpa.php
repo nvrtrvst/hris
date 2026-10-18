@@ -26,7 +26,7 @@ class FinalizeAlpa extends Command
     public function handle(): int
     {
         $targets = $this->resolveTargets();
-        $pegawais = Pegawai::with('jadwals')->where('status_aktif', 'aktif')->get();
+        $pegawais = Pegawai::with(['jadwals', 'units'])->where('status_aktif', 'aktif')->get();
         $hariIndo = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa',
             'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
 
@@ -37,7 +37,14 @@ class FinalizeAlpa extends Command
             $unitIds = $pegawai->units->pluck('id')->filter()->unique()->toArray();
 
             foreach ($targets as $target) {
-                if (! $target->isWeekday()) {
+                $hariTarget = $hariIndo[$target->format('l')];
+                if ($hariTarget === 'Minggu') {
+                    continue;
+                }
+                // Sabtu: hanya bila pegawai punya jadwal hari itu ATAU unit utama
+                // beroperasi Sabtu (hari KerjaUnit). Senin–Jumat selalu hari kerja.
+                $punyaJadwalHari = $pegawai->jadwals->contains(fn ($j) => $j->hari === $hariTarget);
+                if (! $punyaJadwalHari && ! in_array($hariTarget, Pegawai::hariKerjaUnit($pegawai->unitUtama()), true)) {
                     continue;
                 }
                 $tanggal = $target->format('Y-m-d');
@@ -68,8 +75,6 @@ class FinalizeAlpa extends Command
 
                     continue;
                 }
-
-                $hariTarget = $hariIndo[$target->format('l')];
 
                 // Tugas luar/kantor (hadir utuh) -> jangan tandai alpa sama sekali.
                 $hasTugas = Presensi::where('pegawai_id', $pegawai->id)

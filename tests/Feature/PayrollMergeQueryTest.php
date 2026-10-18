@@ -90,7 +90,7 @@ class PayrollMergeQueryTest extends TestCase
             'hari' => 'Senin',
             'jam_mulai' => '07:00:00',
             'jam_selesai' => '08:30:00',
-            'jenis_jadwal' => 'reguler',
+            'jenis_jadwal' => 'mengajar',
             'tahun_ajaran' => '2026/2027',
             'semester' => 1,
         ]);
@@ -158,9 +158,8 @@ class PayrollMergeQueryTest extends TestCase
         //
         // pendapatan = 3.000.000 + 150.000 + 180.000 + 50.000 + 200.000 = 3.580.000
         // potongan   = 10.000 + 20.000 + 5.000 = 35.000
-        // rate = (2+1+1+0)/5 = 80% ≤ 90% → Potongan Kehadiran = 3jt × 20% = 600.000
-        // potongan total = 635.000
-        // gaji_bersih = 2.945.000
+        // Guru (GTYS) TIDAK dipotong kehadiran → tanpa baris Potongan Kehadiran.
+        // gaji_bersih = 3.545.000
         // total_taxable (hanya gaji_pokok) = 3.000.000
 
         $penggajian = Penggajian::where('pegawai_id', $pegawai->id)
@@ -170,8 +169,8 @@ class PayrollMergeQueryTest extends TestCase
         $this->assertNotNull($penggajian, 'Penggajian Juni 2026 harus dibuat.');
         $this->assertSame('draft', $penggajian->status);
         $this->assertSame(3580000.0, (float) $penggajian->total_pendapatan);
-        $this->assertSame(635000.0, (float) $penggajian->total_potongan);
-        $this->assertSame(2945000.0, (float) $penggajian->gaji_bersih);
+        $this->assertSame(35000.0, (float) $penggajian->total_potongan);
+        $this->assertSame(3545000.0, (float) $penggajian->gaji_bersih);
         $this->assertSame(3000000.0, (float) $penggajian->total_taxable);
 
         $details = $penggajian->details()->pluck('nominal', 'nama_komponen');
@@ -184,7 +183,6 @@ class PayrollMergeQueryTest extends TestCase
         $this->assertSame(180000.0, (float) $details['Jam Mengajar']);
         $this->assertSame(50000.0, (float) $details['Lembur']);
         $this->assertSame(200000.0, (float) $details['Masa Bakti']);
-        $this->assertSame(600000.0, (float) $details['Potongan Kehadiran — Gaji × 80% (4/5 hari)']);
 
         // Pastikan record presensi tetap utuh (tidak terpengaruh proses generate)
         $this->assertDatabaseHas('presensi', ['id' => $p1->id, 'pegawai_id' => $pegawai->id]);
