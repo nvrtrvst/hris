@@ -12,6 +12,7 @@ use App\Models\PegawaiMapel;
 use App\Models\Presensi;
 use App\Models\UnitLokasi;
 use App\Models\UnitSekolah;
+use App\Services\JpCalculator;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
@@ -32,7 +33,7 @@ class JadwalController extends Controller
         $isAdmin = $user && ($user->can('view_jadwal') || $user->can('manage_jadwal'));
         $search = trim((string) $request->input('search', ''));
 
-        $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'pegawaiMapel.mataPelajaran:id,nama']);
+        $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan,durasi_jp', 'pegawaiMapel.mataPelajaran:id,nama']);
 
         // Superadmin tanpa filter unit: skip load jadwal (bisa ribuan row di
         // semua unit → lambat). Halaman menampilkan prompt pilih unit;
@@ -82,6 +83,11 @@ class JadwalController extends Controller
             ->get();
 
         $kelasLabels = $jadwals->pluck('kelas_label')->filter()->unique()->sort()->values();
+
+        // Beban mengajar mingguan per guru (JP) vs target 24 — metrik anti-kelebihan JP.
+        $jpMinggu = $jadwals->where('jenis_jadwal', 'mengajar')
+            ->groupBy('pegawai_id')
+            ->map(fn ($rows) => round($rows->sum(fn ($j) => JpCalculator::weightFromJadwal($j)), 2));
 
         // Scope unit dropdown — admin_unit/pimpinan hanya lihat unit sendiri
         $unitsQuery = UnitSekolah::query()->select(['id', 'nama', 'singkatan']);
@@ -174,6 +180,8 @@ class JadwalController extends Controller
             'mapel' => $mapel,
             'kelasLabels' => $kelasLabels,
             'stats' => $stats,
+            'jpMinggu' => $jpMinggu,
+            'targetJpMinggu' => JpCalculator::TARGET_JP_MINGGU,
             'presensiHariIni' => $presensiHariIni->get()->toArray(),
             'filters' => $request->only(['unit_sekolah_id', 'kelas_label', 'search', 'jenis_filter']),
             'canMutateJadwal' => (bool) $user?->can('manage_jadwal'),

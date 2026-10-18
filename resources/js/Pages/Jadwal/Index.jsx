@@ -95,11 +95,23 @@ const JadwalLiveBadge = ({ jadwal, presensi, now }) => {
     );
 };
 
-export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, stats = {}, filters = {}, presensiHariIni = [], canMutateJadwal = false, needsUnitFilter = false }) {
+export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, stats = {}, filters = {}, presensiHariIni = [], canMutateJadwal = false, needsUnitFilter = false, jpMinggu = {}, targetJpMinggu = 24 }) {
     const isAdmin = auth.permissions?.includes('view_jadwal') || auth.permissions?.includes('manage_jadwal');
     const { flash = {}, errors = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
     const now = useNowEveryMinute();
+
+    // Badge beban mengajar mingguan (JP) vs target 24 JP/minggu.
+    const jpBadge = (pegawaiId) => {
+        const jp = jpMinggu[pegawaiId];
+        if (jp === undefined) return null;
+        const warna = jp > targetJpMinggu ? 'bg-red-100 text-red-700' : jp < targetJpMinggu ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700';
+        return (
+            <span className={`inline-flex rounded font-semibold text-[10px] px-1.5 py-0.5 ${warna}`} title={`Beban mengajar ${jp} dari target ${targetJpMinggu} JP/minggu`}>
+                {jp}/{targetJpMinggu} JP
+            </span>
+        );
+    };
 
     // Overlay "Memuat jadwal…" HANYA untuk navigasi penuh — polling partial reload
     // (only: ['presensiHariIni']) tidak boleh memicu flash overlay tiap 60 detik.
@@ -632,6 +644,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                         <div className="flex items-center gap-2">
                                                             <span className="font-bold text-primary text-sm truncate">{pegawai.nama_lengkap}</span>
                                                             <span className="text-xs text-text-muted shrink-0">{unitSingkatan(pegawai)}</span>
+                                                            {jpBadge(pegawai.id)}
                                                         </div>
                                                         <div className="mt-1 flex items-center gap-2 text-xs text-text-secondary">
                                                             <span>{kelasCount} kelas</span>
@@ -705,6 +718,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                         <div className="flex items-center gap-2 mb-3">
                                             <div className="font-bold text-gray-900 text-sm">{pegawai.nama_lengkap}</div>
                                             <span className="text-[11px] text-gray-500">{unitSingkatan(pegawai)}</span>
+                                            {jpBadge(pegawai.id)}
                                         </div>
                                         <div className="space-y-2">
                                             {DAYS.map((day) => {
@@ -789,6 +803,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                             <ShieldCheck className="h-3 w-3 text-accent print:hidden" />
                                                             {unitSingkatan(pegawai)}
                                                         </span>
+                                                        {jpBadge(pegawai.id)}
                                                     </div>
                                                 </td>
                                                 {DAYS.map((day) => {
