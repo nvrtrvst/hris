@@ -120,7 +120,7 @@ class PresensiController extends Controller
         if ($request->lokasi_filter === 'perlu_review') {
             $query->where('lokasi_perlu_review', true);
         } elseif ($request->lokasi_filter === 'pulang_awal') {
-            $query->where('lokasi_perlu_review', true);
+            $query->where('is_pulang_awal', true);
         } elseif ($request->lokasi_filter === 'review_semua') {
             // Gabungan: perlu review ATAU posisi mencurigakan (anti-spoof v2)
             $query->where(function ($q) {

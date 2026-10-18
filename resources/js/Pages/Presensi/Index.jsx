@@ -1239,10 +1239,15 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                                 <span className="ml-1 font-mono text-[11px] font-semibold text-text-secondary">{p.jarak_masuk_meter}m</span>
                                                             )}
                                                         </div>
-                                                        {(p.lokasi_perlu_review || p.posisi_mencurigakan) && (
-                                                            <div className="mt-1 flex justify-end gap-1">
+                                                        {(p.lokasi_perlu_review || p.posisi_mencurigakan || p.is_pulang_awal) && (
+                                                            <div className="mt-1 flex flex-wrap justify-end gap-1">
                                                                 {p.lokasi_perlu_review && <span className="inline-flex items-center gap-1 rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-rose-600"><AlertTriangle className="h-2.5 w-2.5" /> Review</span>}
                                                                 {p.posisi_mencurigakan && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-600">Suspek</span>}
+                                                                {p.is_pulang_awal && (
+                                                                    <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${p.pulang_awal_diizinkan ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
+                                                                        <AlarmClock className="h-2.5 w-2.5" /> Pulang Awal {p.menit_pulang_awal}m{p.pulang_awal_diizinkan ? ' · Disetujui' : ''}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </td>
