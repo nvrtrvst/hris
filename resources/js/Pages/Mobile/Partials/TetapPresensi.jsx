@@ -69,7 +69,7 @@ function groupConsecutiveJadwals(jadwals) {
 
 const pad = (n) => String(n).padStart(2, '0');
 
-export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null }) {
+export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null, adaIzinPulangCepat = false }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
@@ -631,7 +631,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                         </>
                                     ) : done && !closed ? (
                                         g.unit_sekolah?.wajib_pulang_mengajar ? (
-                                            jamSekarang >= toMin(g.jamSelesaiLast) - (g.unit_sekolah?.pulang_sebelum_menit ?? 20) ? (
+                                            (adaIzinPulangCepat || jamSekarang >= toMin(g.jamSelesaiLast) - (g.unit_sekolah?.pulang_sebelum_menit ?? 20)) ? (
                                                 <>
                                                     <SlideToConfirm
                                                         onConfirm={() => handleSlideGroup(g, 'keluar')}

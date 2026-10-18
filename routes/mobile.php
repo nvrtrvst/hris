@@ -7,8 +7,10 @@ use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileGajiController;
 use App\Http\Controllers\MobileIzinController;
 use App\Http\Controllers\MobileKoreksiController;
+use App\Http\Controllers\MobilePulangCepatController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PengajuanKoreksiController;
+use App\Http\Controllers\PengajuanPulangCepatController;
 use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PushSubscriptionController;
@@ -76,6 +78,14 @@ Route::middleware('auth:web_mobile')->group(function () {
         ->middleware('throttle:10,1')->name('presensi.koreksi.store');
     Route::get('/koreksi/{koreksi}/cetak', [PengajuanKoreksiController::class, 'print'])
         ->name('presensi.koreksi.cetak');
+
+    // Izin Pulang Cepat Mobile — /create SEBELUM wildcard
+    Route::get('/pulang-cepat', [MobilePulangCepatController::class, 'index'])->name('presensi.pulang-cepat.index');
+    Route::get('/pulang-cepat/create', [MobilePulangCepatController::class, 'create'])->name('presensi.pulang-cepat.create');
+    Route::post('/pulang-cepat', [MobilePulangCepatController::class, 'store'])
+        ->middleware('throttle:10,1')->name('presensi.pulang-cepat.store');
+    Route::get('/pulang-cepat/{id}/cetak', [PengajuanPulangCepatController::class, 'print'])
+        ->name('presensi.pulang-cepat.cetak');
 
     Route::get('/absen', [MobileController::class, 'absen'])->name('presensi.absen');
     Route::post('/absen', [MobileController::class, 'storeAbsen'])

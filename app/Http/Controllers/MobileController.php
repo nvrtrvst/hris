@@ -11,6 +11,7 @@ use App\Models\LaporanPiket;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
+use App\Models\PengajuanPulangCepat;
 use App\Models\Presensi;
 use App\Models\TugasLuar;
 use App\Models\UnitLokasi;
@@ -501,6 +502,7 @@ class MobileController extends Controller
             'presensiHariIni' => $presensiHariIni,
             'izinHariIni' => $izinHariIni,
             'officeAttendance' => $kantorAktif,
+            'adaIzinPulangCepat' => PengajuanPulangCepat::disetujuiPada($pegawai->id, Carbon::today()) !== null,
             'attestation_token' => $this->attestationService->issue(),
         ]);
     }
@@ -964,6 +966,8 @@ class MobileController extends Controller
                 // Auto-close kantor terbuka saat mulai dinas luar. UPDATE atomik dengan
                 // guard whereNull('jam_keluar') mencegah double-close walau request
                 // berkonkurensi tinggi — tanpa lockForUpdate (sesuai kontrak anti-deadlock).
+                // query-builder update → observer pulang-awal tidak jalan (disengaja:
+                // pulang untuk dinas luar bukan "pulang awal").
                 if ($isTugasLuar) {
                     Presensi::where('pegawai_id', $pegawai->id)
                         ->where('tanggal', $tanggal)
@@ -1003,7 +1007,10 @@ class MobileController extends Controller
                     $jamPulang = Carbon::now()->isSaturday() && $unit->jam_kerja_sabtu_selesai
                         ? $unit->jam_kerja_sabtu_selesai
                         : $unit->jam_pulang_kantor;
-                    if ($jamPulang && $presensi->jam_keluar < $jamPulang) {
+                    // Izin Pulang Cepat yang disetujui membuka gate; detektor (observer)
+                    // yang menandai is_pulang_awal + pulang_awal_diizinkan.
+                    if ($jamPulang && $presensi->jam_keluar < $jamPulang
+                        && PengajuanPulangCepat::disetujuiPada($pegawai->id, $tanggal) === null) {
                         throw ValidationException::withMessages([
                             'conflict' => sprintf(PresensiMessages::PULANG_SEBELUM_JAM_KANTOR, substr($jamPulang, 0, 5)),
                         ]);
@@ -1395,7 +1402,8 @@ class MobileController extends Controller
             // Wajib pulang mengajar: tombol keluar hanya >= sesiEnd - pulang_sebelum_menit.
             // Terlalu awal = 422; terlambat tetap boleh (fallback lupa → admin ralat).
             $unitCfg = $jadwal->unitSekolah;
-            if ($unitCfg->wajib_pulang_mengajar) {
+            $adaIzinPulang = PengajuanPulangCepat::disetujuiPada($pegawai->id, Carbon::today()) !== null;
+            if ($unitCfg->wajib_pulang_mengajar && ! $adaIzinPulang) {
                 $batasPulang = Carbon::parse($sesiEnd)->subMinutes((int) $unitCfg->pulang_sebelum_menit)->format('H:i:s');
                 if ($sekarang < $batasPulang) {
                     return response()->json([

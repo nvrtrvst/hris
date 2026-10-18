@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Helpers\FileHelper;
+use App\Services\PulangAwalDetector;
+use App\Services\PulangAwalNotifier;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -62,7 +64,31 @@ class Presensi extends Model
         'lokasi_perlu_review',
         'posisi_mencurigakan',
         'motion_suspect',
+        'is_pulang_awal',
+        'menit_pulang_awal',
+        'pulang_awal_diizinkan',
     ];
+
+    protected static function booted(): void
+    {
+        // Deteksi pulang awal tiap jam_keluar berubah (skip bila bukan via query-builder).
+        static::saving(function (Presensi $presensi) {
+            if ($presensi->isDirty('jam_keluar')) {
+                app(PulangAwalDetector::class)->apply($presensi);
+            }
+        });
+
+        // Kabari atasan saat pulang awal tanpa izin (dedup harian ada di notifier).
+        static::saved(function (Presensi $presensi) {
+            if ($presensi->wasChanged('is_pulang_awal') && $presensi->is_pulang_awal) {
+                try {
+                    app(PulangAwalNotifier::class)->notify($presensi);
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+        });
+    }
 
     protected $casts = [
         'tanggal' => 'date:Y-m-d',
@@ -79,6 +105,9 @@ class Presensi extends Model
         'persentase_bayar_jam' => 'integer',
         'is_tugas_luar' => 'boolean',
         'foto_kegiatan' => 'array',
+        'is_pulang_awal' => 'boolean',
+        'pulang_awal_diizinkan' => 'boolean',
+        'menit_pulang_awal' => 'integer',
     ];
 
     public static function statusAt(string $actualTime, string $requiredTime, int $toleransiMenit = 0): string
