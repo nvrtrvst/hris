@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
-import { Search, Filter, CheckCircle, XCircle, Clock, Info, FileText, AlertCircle, Inbox, CalendarCheck2, Printer } from 'lucide-react';
+import { Search, Filter, CheckCircle, XCircle, Clock, Info, FileText, AlertCircle, Inbox, CalendarCheck2, Printer, Download } from 'lucide-react';
 
 const getStatusBadge = (status) => {
     switch (status) {
@@ -404,10 +404,20 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                 </button>
 
                                 {modalType === 'detail' && (
-                                    <button type="button" onClick={() => cetak(selectedItem)} className="btn-primary">
-                                        <Printer className="w-4 h-4 mr-2" />
-                                        Cetak Formulir
-                                    </button>
+                                    <>
+                                        <a
+                                            href={route('koreksi-presensi.cetak', { id: selectedItem.id, unduh: 1 })}
+                                            download
+                                            className="btn-secondary inline-flex items-center"
+                                        >
+                                            <Download className="w-4 h-4 mr-2" />
+                                            Unduh PDF
+                                        </a>
+                                        <button type="button" onClick={() => cetak(selectedItem)} className="btn-primary">
+                                            <Printer className="w-4 h-4 mr-2" />
+                                            Cetak Formulir
+                                        </button>
+                                    </>
                                 )}
 
                                 {modalType === 'approve' && (

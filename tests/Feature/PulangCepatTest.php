@@ -253,6 +253,12 @@ class PulangCepatTest extends TestCase
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
 
+        // unduh=1 -> attachment (opsi Unduh PDF di mobile), bukan inline.
+        $unduh = $this->actingAs($this->pegawai->user, 'web_mobile')
+            ->get(route('presensi.pulang-cepat.cetak', ['id' => $pengajuan->id, 'unduh' => 1]));
+        $unduh->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->assertStringContainsString('attachment', $unduh->headers->get('content-disposition'));
+
         $this->actingAs($this->superadmin, 'web_admin')
             ->get(route('pulang-cepat.cetak', $pengajuan->id))
             ->assertOk();

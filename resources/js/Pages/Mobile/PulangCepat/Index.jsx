@@ -4,7 +4,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Badge, Empty } from '@/Components/MobileUI';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Clock3, CheckCircle, XCircle, Printer, Plus } from 'lucide-react';
+import { Clock3, CheckCircle, XCircle, Download, Plus } from 'lucide-react';
 import { realisasiInfo } from '@/Utils/pulangAwal';
 
 const realisasiTone = {
@@ -111,13 +111,13 @@ export default function Index({ auth, pengajuan }) {
                                     </div>
                                 )}
 
-                                <button
-                                    type="button"
-                                    onClick={() => window.open(route('presensi.pulang-cepat.cetak', item.id), '_blank')}
-                                    className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-2.5 text-xs font-bold text-slate-600 transition active:scale-95"
+                                <a
+                                    href={route('presensi.pulang-cepat.cetak', { id: item.id, unduh: 1 })}
+                                    download
+                                    className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-3 text-xs font-bold text-slate-600 transition active:scale-95"
                                 >
-                                    <Printer className="h-3.5 w-3.5" /> Cetak Formulir
-                                </button>
+                                    <Download className="h-3.5 w-3.5" /> Unduh PDF
+                                </a>
                             </Card>
                         );
                     })}

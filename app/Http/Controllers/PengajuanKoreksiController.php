@@ -168,7 +168,7 @@ class PengajuanKoreksiController extends Controller
      * Cetak formulir (1 pengajuan = 1 lembar A4). Dipakai route desktop DAN
      * mobile (guard-agnostic): authorization cek user terhadap pengajuan.
      */
-    public function print($id)
+    public function print(Request $request, $id)
     {
         $user = auth()->user();
         abort_unless($user, 401);
@@ -215,7 +215,10 @@ class PengajuanKoreksiController extends Controller
         ])->setPaper('A4', 'portrait');
 
         // Nomor berisi '/' — tidak sah sebagai nama file HTTP disposition.
-        return $pdf->stream('Koreksi_Presensi_'.str_replace('/', '-', $koreksi->nomor).'.pdf');
+        $nama = 'Koreksi_Presensi_'.str_replace('/', '-', $koreksi->nomor).'.pdf';
+
+        // unduh=1 -> attachment (mobile: file masuk Downloads). Tanpa itu tetap inline untuk cetak.
+        return $request->boolean('unduh') ? $pdf->download($nama) : $pdf->stream($nama);
     }
 
     private function canDecide(User $user, PengajuanKoreksi $koreksi): bool
