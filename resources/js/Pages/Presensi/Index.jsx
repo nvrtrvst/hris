@@ -277,7 +277,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
             mg.items.forEach((c, ci) => {
                 const isLast = isLastGroup && ci === mg.items.length - 1;
                 rows.push(
-                    <tr key={c.id} className={`${c.is_sintetis ? 'bg-rose-50/40 ' : 'bg-surface/30 '}${isLast ? 'border-b-2 border-border' : ''}`}>
+                    <tr key={c.id} className={`${c.is_sintetis ? 'bg-slate-50/60 ' : 'bg-surface/30 '}${isLast ? 'border-b-2 border-border' : ''}`}>
                         <td className="px-4 py-3 whitespace-nowrap pl-16">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">JP</span>
                         </td>
@@ -394,13 +394,13 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                                 {initials(nama)}
                             </span>
                             <div className="min-w-0">
-                                <div className="text-sm font-bold text-primary truncate max-w-[180px]">{nama}</div>
-                                <div className="text-[11px] text-text-secondary truncate max-w-[180px]">
+                                <div className="text-sm font-bold text-primary truncate max-w-[220px] 2xl:max-w-[280px]">{nama}</div>
+                                <div className="text-[11px] text-text-secondary truncate max-w-[220px] 2xl:max-w-[280px]">
                                     {parent.pegawai?.jabatans?.some(j => j.is_guru) ? 'Guru' : (parent.pegawai?.jabatans?.map(j => j.nama).filter(Boolean).join(', ') || '—')}
                                     {' • '}{parent.unit_sekolah?.nama || '—'}
                                 </div>
                                 {lokasiLabel(parent.pegawai) && (
-                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 max-w-[180px] truncate">
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 max-w-[220px] 2xl:max-w-[280px] truncate">
                                         <MapPin className="h-2.5 w-2.5 shrink-0" />
                                         <span className="truncate">{lokasiLabel(parent.pegawai)}</span>
                                     </div>
@@ -617,7 +617,7 @@ const JadwalStatusBadge = ({ p, now }) => {
 
     return (
         <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden="true" />
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
             Mengajar
         </span>
     );
@@ -874,44 +874,23 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="page-title">{isAdmin ? 'Manajemen Presensi' : 'Riwayat Presensi'}</h2>}
+            header={<h2 className="page-title">{isAdmin ? 'Kehadiran Harian' : `Riwayat Absensi${pegawai ? `, ${pegawai.nama_lengkap}` : ''}`}</h2>}
         >
             <Head title="Presensi" />
-            <div className="py-8 bg-surface min-h-screen overflow-x-hidden">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 overflow-hidden">
+            <div className="bg-surface min-h-screen">
+                <div className="mx-auto w-full space-y-6">
                     {/* Flash */}
                     {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
                     {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
 
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
-                        <div>
-                            <h3 className="text-xl font-bold text-primary">
-                                {isAdmin ? 'Kehadiran Harian' : `Riwayat Absensi${pegawai ? ` — ${pegawai.nama_lengkap}` : ''}`}
-                            </h3>
-                            <p className="mt-1 text-sm text-text-secondary">Pantau kehadiran, verifikasi lokasi, dan kelola status presensi.</p>
-                        </div>
-                        <p className="flex items-center gap-2 text-xs font-medium text-text-secondary">
-                            <CalendarDays className="h-4 w-4 text-primary" />
-                            {jadwalFilter === 'sedang_berlangsung' ? (
-                                <span className="inline-flex items-center gap-1.5 text-amber-700">
-                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden="true" />
-                                    Kelas sedang berlangsung (hari ini)
-                                </span>
-                            ) : startDate || endDate
-                                ? `${startDate || '…'} s/d ${endDate || '…'}`
-                                : 'Semua periode'}
-                        </p>
-                    </div>
-
                     {/* Stats */}
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                         {statsCards.map((card) => <div key={card.label} className="min-h-[88px]"><StatCard {...card} onClick={() => applyStatFilter(card.filter)} /></div>)}
                     </div>
 
                     {/* Kepsek view mode toggle */}
                     {isPimpinan && (
-                        <div className="flex gap-1 rounded-lg bg-surface-secondary p-1 w-fit">
+                        <div className="flex gap-1 rounded-lg bg-surface p-1 w-fit">
                             <button
                                 onClick={() => setDataViewMode('all')}
                                 className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${dataViewMode !== 'self' ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}
@@ -930,7 +909,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     {/* Filter bar */}
                     <div className="card p-5">
                         {/* Row 1: Search + Quick Filters */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
                             {isAdmin && (
                                 <div className="relative">
                                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
@@ -970,11 +949,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     </select>
                                 </label>
                             )}
-                        </div>
 
-                        {/* Row 2: Extended Filters (admin only) */}
-                        {isAdmin && (
-                            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                            {/* Row 2: Extended Filters (admin only) */}
+                            {isAdmin && (
+                                <>
                                 <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
                                     <span>Jadwal</span>
                                     <select className={filterSelect} value={jadwalFilter} onChange={(e) => {
@@ -1014,8 +992,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         <option value="1">Posisi Mencurigakan</option>
                                     </select>
                                 </label>
-                            </div>
-                        )}
+                            </>
+                            )}
+                        </div>
 
                         {/* Row 3: Periode (preset + rentang custom) + Actions */}
                         <div className="mt-4 flex flex-col gap-4 border-t border-border/60 pt-4 lg:flex-row lg:items-center lg:justify-between">
@@ -1075,23 +1054,37 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         </div>
                     </div>
 
-                    {/* View mode + Tugas Luar */}
+                    {/* View mode + periode + Tugas Luar */}
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="inline-flex rounded-xl border border-border p-1">
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('detail')}
-                                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${viewMode === 'detail' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
-                            >
-                                Detail
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('ringkas')}
-                                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${viewMode === 'ringkas' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
-                            >
-                                Ringkas
-                            </button>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="inline-flex rounded-xl border border-border p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('detail')}
+                                    className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${viewMode === 'detail' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
+                                >
+                                    Detail
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('ringkas')}
+                                    className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${viewMode === 'ringkas' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
+                                >
+                                    Ringkas
+                                </button>
+                            </div>
+
+                            <p className="flex items-center gap-2 text-xs font-medium text-text-secondary">
+                                <CalendarDays className="h-4 w-4 text-primary" />
+                                {jadwalFilter === 'sedang_berlangsung' ? (
+                                    <span className="inline-flex items-center gap-1.5 text-amber-700">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                                        Kelas sedang berlangsung (hari ini)
+                                    </span>
+                                ) : startDate || endDate
+                                    ? `${startDate || '…'} s/d ${endDate || '…'}`
+                                    : 'Semua periode'}
+                            </p>
                         </div>
                         {isAdmin && (
                             <Link href={route('tugas-luar.index')} className="btn-secondary btn-sm flex items-center gap-1.5">
@@ -1118,13 +1111,13 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             applyFilters({ sort: key, dir: nextDir });
                         };
                         const SortIcon = ({ col }) => {
-                            if (sortKey !== col) return <span className="ml-1 text-text-secondary/40">↕</span>;
+                            if (sortKey !== col) return <span className="ml-1 text-text-muted">↕</span>;
                             return <span className="ml-1 text-primary">{sortDir === 'asc' ? '↑' : '↓'}</span>;
                         };
                     return isAdmin ? (
                         <div className="card p-0 overflow-hidden">
                             <StatusDistribution stats={s} />
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto lg:max-h-[72vh] lg:overflow-y-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">
                                         <tr>
@@ -1156,13 +1149,13 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                                 {initials(nama)}
                                                             </span>
                                                             <div className="min-w-0">
-                                                                <div className="text-sm font-bold text-primary truncate max-w-[180px]">{nama}</div>
-                                                                <div className="text-[11px] text-text-secondary truncate max-w-[180px]">
+                                                                <div className="text-sm font-bold text-primary truncate max-w-[220px] 2xl:max-w-[280px]">{nama}</div>
+                                                                <div className="text-[11px] text-text-secondary truncate max-w-[220px] 2xl:max-w-[280px]">
                                                                     {p.pegawai?.jabatans?.some(j => j.is_guru) ? 'Guru' : (p.pegawai?.jabatans?.map(j => j.nama).filter(Boolean).join(', ') || '—')}
                                                                     {' • '}{p.unit_sekolah?.nama || '—'}
                                                                 </div>
                                                                 {lokasiLabel(p.pegawai) && (
-                                                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 max-w-[180px] truncate">
+                                                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 max-w-[220px] 2xl:max-w-[280px] truncate">
                                                                         <MapPin className="h-2.5 w-2.5 shrink-0" />
                                                                         <span className="truncate">{lokasiLabel(p.pegawai)}</span>
                                                                     </div>
@@ -1423,7 +1416,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                             applyFilters({ per_page: nilai });
                                         }}
                                         disabled={processing}
-                                        className="rounded-lg border border-border bg-white px-2 py-1 text-xs font-bold text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
+                                        className="h-11 cursor-pointer rounded-lg border border-border bg-white px-2.5 text-xs font-bold text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
                                     >
                                         <option value={25}>25</option>
                                         <option value={50}>50</option>
@@ -1440,7 +1433,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     )}
 
                     {/* ─── MODAL: Riwayat Perubahan ─── */}
-                    <Modal show={auditModal.show} onClose={() => setAuditModal({ show: false, loading: false, data: [], presensi: null })} maxWidth="lg">
+                    <Modal show={auditModal.show} onClose={() => setAuditModal({ show: false, loading: false, data: [], presensi: null })} maxWidth="3xl">
                         <div className="p-6">
                             <div className="mb-6 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -1556,7 +1549,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     </Modal>
 
                     {/* ─── MODAL: Review Anti-Spoof ─── */}
-                    <Modal show={reviewModal.show} onClose={() => setReviewModal({ show: false, loading: false, data: null })} maxWidth="lg">
+                    <Modal show={reviewModal.show} onClose={() => setReviewModal({ show: false, loading: false, data: null })} maxWidth="3xl">
                         <div className="p-6">
                             <div className="mb-6 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -1682,7 +1675,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                             {d.trajectory?.length ? (
                                                 <div className="space-y-2">
                                                     {d.trajectory.map((t, i) => (
-                                                        <div key={i} className="flex items-center justify-between text-xs">
+                                                        <div key={i} className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
                                                             <span className="font-bold uppercase text-primary">{t.label || '?'}</span>
                                                             <span className="font-mono text-text-secondary">{t.lat}, {t.lng}</span>
                                                             <span className="text-text-secondary">akurasi {t.accuracy ?? '-'}m</span>
@@ -1730,7 +1723,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     </Modal>
 
                     {/* ─── MODAL: Detail Dinas Luar ─── */}
-                    <Modal show={tugasLuarModal.show} onClose={() => setTugasLuarModal({ show: false, loading: false, data: null })} maxWidth="lg">
+                    <Modal show={tugasLuarModal.show} onClose={() => setTugasLuarModal({ show: false, loading: false, data: null })} maxWidth="3xl">
                         <div className="p-6">
                             <div className="mb-6 flex items-center justify-between">
                                 <div className="flex items-center gap-3">

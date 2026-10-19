@@ -22,7 +22,7 @@ export default function StatCard({ Icon, label, value, sub, iconBg = 'bg-primary
             </div>
             <div className="min-w-0">
                 <p className={`text-2xl font-extrabold leading-none tabular-nums ${alert ? 'text-danger' : 'text-primary'}`}>{value}</p>
-                <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary">{label}</p>
+                <p className="mt-1.5 text-[11px] font-semibold uppercase leading-tight tracking-wide text-text-secondary">{label}</p>
                 {sub && <p className="mt-0.5 text-[10px] text-text-muted truncate">{sub}</p>}
             </div>
         </>
