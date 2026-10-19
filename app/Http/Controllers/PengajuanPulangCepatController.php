@@ -163,7 +163,7 @@ class PengajuanPulangCepatController extends Controller
         return back()->with('message', 'Pengajuan izin pulang cepat ditolak.');
     }
 
-    public function print($id)
+    public function print(Request $request, $id)
     {
         $user = auth()->user();
         abort_unless($user, 401);
@@ -208,7 +208,10 @@ class PengajuanPulangCepatController extends Controller
             'logoWidth' => $logoWidth,
         ])->setPaper('A4', 'portrait');
 
-        return $pdf->stream('Izin_Pulang_Cepat_'.str_replace('/', '-', $pengajuan->nomor).'.pdf');
+        $nama = 'Izin_Pulang_Cepat_'.str_replace('/', '-', $pengajuan->nomor).'.pdf';
+
+        // unduh=1 -> attachment (mobile: file masuk Downloads). Tanpa itu tetap inline untuk cetak.
+        return $request->boolean('unduh') ? $pdf->download($nama) : $pdf->stream($nama);
     }
 
     private function canDecide(User $user, PengajuanPulangCepat $pengajuan): bool

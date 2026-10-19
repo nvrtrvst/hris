@@ -4,7 +4,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Badge, Empty } from '@/Components/MobileUI';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { FileText, Clock, CheckCircle, XCircle, Printer, AlertTriangle } from 'lucide-react';
+import { FileText, Clock, CheckCircle, XCircle, Download, AlertTriangle } from 'lucide-react';
 
 export default function Index({ auth, pengajuan, koreksi_count, kuota }) {
     const { flash } = usePage().props;
@@ -92,13 +92,13 @@ export default function Index({ auth, pengajuan, koreksi_count, kuota }) {
                                     </div>
                                 )}
 
-                                <button
-                                    type="button"
-                                    onClick={() => window.open(route('presensi.koreksi.cetak', item.id), '_blank')}
-                                    className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-2.5 text-xs font-bold text-slate-600 transition active:scale-95"
+                                <a
+                                    href={route('presensi.koreksi.cetak', { koreksi: item.id, unduh: 1 })}
+                                    download
+                                    className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-3 text-xs font-bold text-slate-600 transition active:scale-95"
                                 >
-                                    <Printer className="h-3.5 w-3.5" /> Cetak Formulir
-                                </button>
+                                    <Download className="h-3.5 w-3.5" /> Unduh PDF
+                                </a>
                             </Card>
                         );
                     })}

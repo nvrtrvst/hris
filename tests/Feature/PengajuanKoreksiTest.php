@@ -296,6 +296,16 @@ class PengajuanKoreksiTest extends TestCase
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
 
+        // unduh=1 -> attachment (opsi Unduh PDF di mobile), bukan inline.
+        $unduh = $this->actingAs($this->pegawai->user, 'web_mobile')
+            ->get(route('presensi.koreksi.cetak', ['koreksi' => $koreksi->id, 'unduh' => 1]));
+        $unduh->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->assertStringContainsString('attachment', $unduh->headers->get('content-disposition'));
+
+        $unduhAdmin = $this->actingAs($this->superadmin, 'web_admin')
+            ->get(route('koreksi-presensi.cetak', ['id' => $koreksi->id, 'unduh' => 1]));
+        $this->assertStringContainsString('attachment', $unduhAdmin->headers->get('content-disposition'));
+
         $this->actingAs($this->superadmin, 'web_admin')
             ->get(route('koreksi-presensi.cetak', $koreksi->id))
             ->assertOk();
