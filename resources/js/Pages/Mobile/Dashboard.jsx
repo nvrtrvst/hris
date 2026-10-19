@@ -68,10 +68,13 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
     const lemburRec = todayRecords.find((r) => r.is_lembur);
     const mengajarRecs = todayRecords.filter((r) => r.tipe_presensi === 'mengajar');
     const primary = kantorRec || lemburRec || mengajarRecs[0] || presensi || null;
-    // Hari mengajar punya banyak baris; jam keluar hari itu ada di baris paling akhir
-    // (slide pulang mencatat di JP terakhir) - bukan JP pertama seperti `primary`.
-    const keluarRec = todayRecords.reduce(
-        (max, r) => (r.jam_keluar && (!max || r.jam_keluar > max.jam_keluar) ? r : max),
+    // Jam keluar hari itu: baris kantor/lembur (pulang aktual) menang atas baris
+    // mengajar yang jam_keluarnya hasil prefill dari jadwal. Baris mengajar hanya
+    // dipakai bila tak ada baris kantor/lembur ber-jam_keluar (pegawai honorer).
+    const pulangRecs = todayRecords.filter((r) => r.jam_keluar);
+    const aktualRecs = pulangRecs.filter((r) => r.tipe_presensi !== 'mengajar');
+    const keluarRec = (aktualRecs.length > 0 ? aktualRecs : pulangRecs).reduce(
+        (max, r) => (!max || r.jam_keluar > max.jam_keluar ? r : max),
         null,
     ) ?? primary;
     const pulangAwal = realisasiInfo(keluarRec, null);

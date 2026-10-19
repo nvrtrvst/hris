@@ -356,7 +356,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                     </div>
                                     <p className="mt-0.5 text-xs text-text-muted">
                                         {realisasi.ada
-                                            ? (realisasi.awal ? 'Waktu pulang lebih awal dari jam pulang unit.' : 'Tidak lebih awal dari jam pulang unit.')
+                                            ? (realisasi.awal ? 'Waktu pulang lebih awal dari jam pulang unit.' : 'Sesuai izin pulang cepat.')
                                             : 'Pengajuan disetujui, presensi keluar pegawai belum tercatat.'}
                                     </p>
                                 </div>

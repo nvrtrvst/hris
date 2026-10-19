@@ -1480,9 +1480,19 @@ class MobileController extends Controller
             ->whereNull('jadwal_id')
             ->where('tipe_presensi', 'kantor')
             ->where('tanggal', Carbon::today()->toDateString())
-            ->exists();
+            ->first();
 
         abort_unless($pagiRecord, 422, 'Silakan foto pagi terlebih dahulu.');
+
+        // Sudah absen pulang kantor = hari itu selesai (mis. realisasi izin pulang
+        // cepat). Slide JP setelahnya cuma mencatat hadir penuh lewat prefill.
+        if ($pagiRecord->jam_keluar) {
+            return response()->json([
+                'success' => false,
+                'message' => PresensiMessages::SUDAH_PULANG_HARI_INI,
+                'errors' => ['conflict' => PresensiMessages::SUDAH_PULANG_HARI_INI],
+            ], 422);
+        }
 
         // Geofence multi-lokasi: cek terhadap semua assigned lokasi pegawai (primary + lokasis).
         $geoData = $this->resolveGeofenceLocation($pegawai);

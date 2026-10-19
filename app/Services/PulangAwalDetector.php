@@ -55,16 +55,28 @@ class PulangAwalDetector
         $jadwal = $presensi->jadwal;
 
         if ($jadwal) {
-            if ($jadwal->jenis_jadwal === 'mengajar') {
-                $menit = (int) ($unit->pulang_sebelum_menit ?? self::PULANG_SEBELUM_DEFAULT);
+            $menit = $jadwal->jenis_jadwal === 'mengajar'
+                ? (int) ($unit->pulang_sebelum_menit ?? self::PULANG_SEBELUM_DEFAULT)
+                : 0;
 
-                return $this->shiftMinutes($jadwal->jam_selesai, -$menit);
-            }
-
-            return $this->shiftMinutes($jadwal->jam_selesai, 0);
+            $normal = $this->shiftMinutes($jadwal->jam_selesai, -$menit);
+        } else {
+            $normal = $unit->jam_pulang_kantor ? $this->shiftMinutes($unit->jam_pulang_kantor, 0) : null;
         }
 
-        return $unit->jam_pulang_kantor ? $this->shiftMinutes($unit->jam_pulang_kantor, 0) : null;
+        if (! $normal) {
+            return null;
+        }
+
+        // Izin pulang cepat disetujui = batas bawah pulang: sampai di jam izin
+        // bukan "pulang awal". Izin tak pernah memperketat (min dengan normal).
+        $izin = PengajuanPulangCepat::disetujuiPada($presensi->pegawai_id, $presensi->tanggal)?->jam_diminta;
+
+        if ($izin && strtotime('1970-01-01 '.$izin) < strtotime('1970-01-01 '.$normal)) {
+            return $izin;
+        }
+
+        return $normal;
     }
 
     private function shiftMinutes(?string $time, int $minutes): ?string
