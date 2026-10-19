@@ -27,6 +27,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->everyFiveMinutes()
             ->withoutOverlapping();
 
+        // Penutup hari presensi: JP mengajar yang tidak pernah diabsen ditandai
+        // alpa pada H+1 supaya terlihat di Ringkas, rekap mengajar, dan laporan.
+        $schedule->command('presensi:finalize-alpa')
+            ->dailyAt('01:00')
+            ->withoutOverlapping();
+
     })
 
     ->withMiddleware(function (Middleware $middleware): void {

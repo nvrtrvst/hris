@@ -7,8 +7,10 @@ use App\Helpers\PayrollLockHelper;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Jobs\ProcessPresensiFoto;
 use App\Models\AuditPresensi;
+use App\Models\HariLibur;
 use App\Models\Jadwal;
 use App\Models\Pegawai;
+use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Services\GeocodingService;
@@ -18,6 +20,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -232,6 +235,9 @@ class PresensiController extends Controller
                 ->get();
             $presensis->load('pegawai.jabatans');
 
+            // Mode Ringkas hanya merender baris presensi, jadi JP terjadwal yang
+            // tidak pernah diabsen perlu disisipkan agar atasan melihatnya.
+            $presensis = $this->mergeJpTerlewat($presensis, $request, $startDate, $endDate);
             $presensis = new LengthAwarePaginator(
                 $presensis, $totalGrup, $perPageGrup, $pageGrup,
                 ['path' => $request->url(), 'query' => $request->query()]
@@ -373,6 +379,180 @@ class PresensiController extends Controller
      * record presensi di rentang tanggal yang difilter.
      * Return presensi-shaped collection supaya frontend kompatibel.
      */
+    /**
+     * Mode Ringkas hanya merender baris presensi, sehingga JP yang dijadwalkan
+     * tetapi tidak pernah diabsen (mis. pegawai pulang lebih dulu) tidak
+     * terlihat sama sekali. Method ini menambahkan baris sintetis
+     * "belum_presensi" untuk JP tersebut; keesokan harinya command
+     * `presensi:finalize-alpa` mengubahnya menjadi baris alpa sungguhan.
+     *
+     * @param  Collection  $presensis
+     * @return Collection
+     */
+    private function mergeJpTerlewat($presensis, Request $request, ?string $startDate, ?string $endDate)
+    {
+        // Filter detail tidak boleh disisipi baris yang tidak punya data presensi.
+        foreach (['status_filter', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'jadwal_filter'] as $filter) {
+            if ($request->filled($filter)) {
+                return $presensis;
+            }
+        }
+
+        if (! $startDate || ! $endDate) {
+            return $presensis;
+        }
+
+        $tanggalMulai = Carbon::parse($startDate)->startOfDay();
+        $tanggalAkhir = Carbon::parse($endDate)->startOfDay();
+
+        // Batasi rentang agar query jadwal tetap ringan.
+        if ($tanggalMulai->diffInDays($tanggalAkhir) > 31) {
+            return $presensis;
+        }
+
+        // Pegawai yang sama sekali belum punya presensi sudah ditangani filter
+        // `status_filter=belum_presensi`, jadi cukup yang sudah punya baris.
+        $pegawaiIds = $presensis->pluck('pegawai_id')->filter()->unique()->values();
+
+        if ($pegawaiIds->isEmpty()) {
+            return $presensis;
+        }
+
+        $hariIndo = [
+            'Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa',
+            'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat',
+            'Saturday' => 'Sabtu',
+        ];
+
+        $tanggalList = [];
+        for ($tanggal = $tanggalMulai->copy(); $tanggal->lte($tanggalAkhir); $tanggal->addDay()) {
+            $tanggalList[$tanggal->toDateString()] = $hariIndo[$tanggal->format('l')] ?? null;
+        }
+
+        $jadwals = Jadwal::with(['pegawai', 'unitSekolah:id,nama', 'pegawaiMapel'])
+            ->whereIn('pegawai_id', $pegawaiIds)
+            ->whereIn('hari', array_values(array_unique(array_filter($tanggalList))))
+            ->where('jenis_jadwal', 'mengajar')
+            ->get()
+            ->groupBy('pegawai_id');
+
+        if ($jadwals->isEmpty()) {
+            return $presensis;
+        }
+
+        // Pengecualian: hari libur, izin/cuti/sakit disetujui, dan tugas luar.
+        // whereDate dipakai karena kolom tanggal pada HariLibur/PengajuanIzin
+        // memakai cast `date` bawaan Laravel ('Y-m-d H:i:s') — perbandingan
+        // string tanggal polos bisa gagal.
+        $hariLibur = HariLibur::whereDate('tanggal', '>=', $tanggalMulai->toDateString())
+            ->whereDate('tanggal', '<=', $tanggalAkhir->toDateString())
+            ->get();
+        $izins = PengajuanIzin::whereIn('pegawai_id', $pegawaiIds)
+            ->where('status', 'disetujui')
+            ->whereDate('tanggal_mulai', '<=', $tanggalAkhir->toDateString())
+            ->whereDate('tanggal_selesai', '>=', $tanggalMulai->toDateString())
+            ->get();
+        $tugasLuar = Presensi::whereIn('pegawai_id', $pegawaiIds)
+            ->whereDate('tanggal', '>=', $tanggalMulai->toDateString())
+            ->whereDate('tanggal', '<=', $tanggalAkhir->toDateString())
+            ->whereIn('tipe_presensi', ['tugas_luar', 'tugas_kantor'])
+            ->where('status', '!=', 'alpa')
+            ->get(['pegawai_id', 'tanggal']);
+
+        $sudahAda = [];
+        foreach ($presensis as $row) {
+            if ($row->jadwal_id) {
+                $sudahAda[$row->pegawai_id.'|'.$row->jadwal_id.'|'.$this->tanggalString($row->tanggal)] = true;
+            }
+        }
+
+        $sintetis = [];
+
+        foreach ($jadwals as $pegawaiId => $items) {
+            $pegawai = $items->first()->pegawai;
+
+            foreach ($items as $jadwal) {
+                $unitId = $jadwal->unit_sekolah_id;
+
+                foreach ($tanggalList as $tanggal => $hari) {
+                    if ($jadwal->hari !== $hari) {
+                        continue;
+                    }
+
+                    // JP hari ini yang belum selesai belum bisa disebut terlewat.
+                    if (Carbon::parse($tanggal.' '.$jadwal->jam_selesai)->isFuture()) {
+                        continue;
+                    }
+
+                    if (isset($sudahAda[$pegawaiId.'|'.$jadwal->id.'|'.$tanggal])) {
+                        continue;
+                    }
+
+                    if ($hariLibur->contains(fn ($l) => $this->tanggalString($l->tanggal) === $tanggal
+                        && ($l->unit_sekolah_id === null || $l->unit_sekolah_id === $unitId))) {
+                        continue;
+                    }
+
+                    if ($izins->contains(fn ($i) => (int) $i->pegawai_id === (int) $pegawaiId
+                        && $this->tanggalString($i->tanggal_mulai) <= $tanggal
+                        && $this->tanggalString($i->tanggal_selesai) >= $tanggal)) {
+                        continue;
+                    }
+
+                    if ($tugasLuar->contains(fn ($t) => (int) $t->pegawai_id === (int) $pegawaiId
+                        && $this->tanggalString($t->tanggal) === $tanggal)) {
+                        continue;
+                    }
+
+                    $sintetis[] = (object) [
+                        'id' => 'jp-'.$jadwal->id.'-'.$tanggal,
+                        'pegawai_id' => (int) $pegawaiId,
+                        'jadwal_id' => $jadwal->id,
+                        'unit_sekolah_id' => $unitId,
+                        'is_sintetis' => true,
+                        'tipe_presensi' => 'mengajar',
+                        'is_tugas_luar' => false,
+                        'tanggal' => $tanggal,
+                        'jam_masuk' => null,
+                        'jam_keluar' => null,
+                        'status' => 'belum_presensi',
+                        'is_lembur' => false,
+                        'lembur_status' => null,
+                        'lokasi_perlu_review' => false,
+                        'posisi_mencurigakan' => false,
+                        'foto' => null,
+                        'foto_masuk_url' => null,
+                        'foto_keluar_url' => null,
+                        'foto_kegiatan_urls' => [],
+                        'keterangan' => null,
+                        'unit_lokasi_masuk' => null,
+                        'unit_lokasi_keluar' => null,
+                        'pegawai' => $pegawai,
+                        'jadwal' => $jadwal,
+                        'unit_sekolah' => $jadwal->unitSekolah,
+                    ];
+                }
+            }
+        }
+
+        if ($sintetis === []) {
+            return $presensis;
+        }
+
+        return $presensis
+            ->concat($sintetis)
+            ->sortByDesc(fn ($row) => $this->tanggalString($row->tanggal))
+            ->values();
+    }
+
+    /**
+     * Normalisasi tanggal (Carbon atau string) menjadi format Y-m-d.
+     */
+    private function tanggalString($tanggal): string
+    {
+        return $tanggal instanceof \DateTimeInterface ? $tanggal->format('Y-m-d') : (string) $tanggal;
+    }
+
     private function handleBelumPresensi(Request $request, $user, array $stats): Response
     {
         $startDate = $request->start_date ?? Carbon::today()->toDateString();

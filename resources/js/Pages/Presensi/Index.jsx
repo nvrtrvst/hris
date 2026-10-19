@@ -277,7 +277,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
             mg.items.forEach((c, ci) => {
                 const isLast = isLastGroup && ci === mg.items.length - 1;
                 rows.push(
-                    <tr key={c.id} className={`bg-surface/30 ${isLast ? 'border-b-2 border-border' : ''}`}>
+                    <tr key={c.id} className={`${c.is_sintetis ? 'bg-rose-50/40 ' : 'bg-surface/30 '}${isLast ? 'border-b-2 border-border' : ''}`}>
                         <td className="px-4 py-3 whitespace-nowrap pl-16">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">JP</span>
                         </td>
@@ -312,7 +312,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                             <span className="text-xs text-text-secondary">—</span>
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap">
-                            {auth.permissions?.includes('manage_master_data') ? (
+                            {auth.permissions?.includes('manage_master_data') && !c.is_sintetis ? (
                                 <select
                                     className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
                                     value={c.status}
@@ -332,11 +332,13 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         {auth.permissions?.includes('manage_master_data') && (
                             <td className="px-4 py-3.5 whitespace-nowrap text-right">
                                 <div className="flex items-center justify-end gap-1.5">
-                                    {c.lokasi_perlu_review && (
-                                        <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
-                                    )}
-                                    {auth.permissions?.includes('manage_master_data') && (
-                                        <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                                    {!c.is_sintetis && (
+                                        <>
+                                            {c.lokasi_perlu_review && (
+                                                <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
+                                            )}
+                                            <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                                        </>
                                     )}
                                 </div>
                             </td>
@@ -367,7 +369,11 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
 
     return groups.map((group) => {
         const kantorRow = group.find((g) => g.tipe_presensi === 'kantor' && !g.is_lembur && !g.is_tugas_luar);
-        const parent = kantorRow || group[0];
+        // Utamakan baris presensi nyata sebagai induk: baris sintetis (JP
+        // terjadwal tanpa presensi) hanya jadi induk bila memang itu satu-satunya
+        // data yang ada untuk hari itu.
+        const parent = kantorRow || group.find((g) => !g.is_sintetis) || group[0];
+        const hanyaSintetis = group.every((g) => g.is_sintetis);
         const children = group.filter((g) => g !== parent);
         const key = `${parent.pegawai_id}__${parent.tanggal}`;
         const isOpen = Boolean(expanded[key]);
@@ -407,11 +413,13 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         <div className="text-[11px] text-text-secondary">{format(parseDate(parent.tanggal), 'EEEE', { locale: id })}</div>
                     </td>
                     <td className="hidden sm:table-cell px-4 py-3.5 whitespace-nowrap">
-                        {children.length > 0
-                            ? <span className="text-xs font-semibold text-text-secondary">Kantor dan Mengajar</span>
-                            : parent.is_tugas_luar
-                                ? <span className="text-xs font-semibold text-text-secondary">Tugas Luar</span>
-                                : <span className="text-xs text-text-secondary">Kantor</span>}
+                        {hanyaSintetis
+                            ? <span className="text-xs font-semibold text-text-secondary">Mengajar</span>
+                            : children.length > 0
+                                ? <span className="text-xs font-semibold text-text-secondary">Kantor dan Mengajar</span>
+                                : parent.is_tugas_luar
+                                    ? <span className="text-xs font-semibold text-text-secondary">Tugas Luar</span>
+                                    : <span className="text-xs text-text-secondary">Kantor</span>}
                     </td>
                     <td className="px-4 py-3.5 whitespace-nowrap">
                         {parent.jam_masuk ? (
@@ -485,7 +493,9 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                     {auth.permissions?.includes('manage_master_data') && (
                         <td className="px-4 py-3.5 whitespace-nowrap text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                                <button onClick={() => openAudit(parent)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                                {!parent.is_sintetis && (
+                                    <button onClick={() => openAudit(parent)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                                )}
                             </div>
                         </td>
                     )}
@@ -577,11 +587,25 @@ const JadwalStatusBadge = ({ p, now }) => {
     if (!p?.jadwal) return null;
     const current = now || new Date();
     const nowMinutes = current.getHours() * 60 + current.getMinutes();
+    // Baris sintetis = JP terjadwal yang belum pernah diabsen (mode Ringkas).
+    // Tidak pernah "berjalan" atau "selesai" — cukup ditandai terlewat supaya
+    // atasan cepat melihat JP yang hilang.
+    const sintetis = Boolean(p.is_sintetis);
     // Badge "Mengajar" hanya bermakna untuk record hari ini — record hari
     // sebelumnya/lama selalu sudah selesai, apa pun jam sekarang.
     const todayStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
     const isHariIni = String(p.tanggal || '').startsWith(todayStr);
     const sudahLewat = !isHariIni || toMinutes(p.jadwal.jam_selesai) <= nowMinutes;
+
+    if (sintetis) {
+        if (!sudahLewat) return null;
+
+        return (
+            <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-700">
+                Terlewat
+            </span>
+        );
+    }
 
     if (sudahLewat) {
         return (
