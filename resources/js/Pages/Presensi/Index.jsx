@@ -679,8 +679,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         view_mode: dataViewMode || undefined,
         display_mode: viewMode || undefined,
         per_page: perPage || undefined,
+        sort: sortKey || undefined,
+        dir: sortDir || undefined,
         ...overrides,
-    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, jadwalFilter, jenisFilter, search, dataViewMode, viewMode, perPage]);
+    }), [startDate, endDate, unitId, lemburFilter, lokasiFilter, suspiciousFilter, statusFilter, jadwalFilter, jenisFilter, search, dataViewMode, viewMode, perPage, sortKey, sortDir]);
 
     const applyFilters = React.useCallback((overrides = {}) => {
         router.get(route('presensi.index'), buildParams(overrides), { preserveState: true, preserveScroll: true });
@@ -1079,23 +1081,17 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                     {/* ─── ADMIN: Table ─── */}
                     {(() => {
-                        const sortGetters = {
-                            nama: (p) => p.pegawai?.nama_lengkap || '',
-                            tanggal: (p) => p.tanggal || '',
-                            masuk: (p) => p.jam_masuk || '',
-                            keluar: (p) => p.jam_keluar || '',
-                            status: (p) => p.status || '',
-                        };
-                        const sorted = [...presensis.data].sort((a, b) => {
-                            const fn = sortGetters[sortKey];
-                            if (!fn) return 0;
-                            const av = fn(a), bv = fn(b);
-                            const cmp = av < bv ? -1 : av > bv ? 1 : 0;
-                            return sortDir === 'asc' ? cmp : -cmp;
-                        });
+                        // Urutan ditentukan SERVER (sort/dir ikut dikirim di buildParams)
+                        // supaya konsisten lintas halaman — sortir di klien cuma mengurutkan
+                        // halaman yang sedang tampil.
+                        const rows = presensis.data;
                         const toggleSort = (key) => {
-                            if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-                            else { setSortKey(key); setSortDir('asc'); }
+                            // Mode ringkas selalu urut nama dari server: header tak menyortir.
+                            if (viewMode === 'ringkas') return;
+                            const nextDir = sortKey === key && sortDir === 'asc' ? 'desc' : 'asc';
+                            setSortKey(key);
+                            setSortDir(nextDir);
+                            applyFilters({ sort: key, dir: nextDir });
                         };
                         const SortIcon = ({ col }) => {
                             if (sortKey !== col) return <span className="ml-1 text-text-secondary/40">↕</span>;
@@ -1121,9 +1117,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         </tr>
                                     </thead>
                                     <tbody className={`divide-y divide-border/50 ${processing ? 'opacity-60 pointer-events-none transition-opacity' : ''}`}>
-                                        {sorted.length === 0 ? null : viewMode === 'ringkas' ? (
-                                            <RingkasBody data={sorted} auth={auth} now={now} expanded={expanded} setExpanded={setExpanded} openReview={openReview} openAudit={openAudit} openTugasLuar={openTugasLuar} setConfirmStatus={setConfirmStatus} />
-                                        ) : sorted.map((p) => {
+                                        {rows.length === 0 ? null : viewMode === 'ringkas' ? (
+                                            <RingkasBody data={rows} auth={auth} now={now} expanded={expanded} setExpanded={setExpanded} openReview={openReview} openAudit={openAudit} openTugasLuar={openTugasLuar} setConfirmStatus={setConfirmStatus} />
+                                        ) : rows.map((p) => {
                                             const durasi = kerjaDurasi(p.jam_masuk, p.jam_keluar);
                                             const flagReview = p.lokasi_perlu_review || p.posisi_mencurigakan || p.motion_suspect;
                                             const nama = p.pegawai?.nama_lengkap || '-';
@@ -1283,7 +1279,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                 </tr>
                                             );
                                         })}
-                                        {sorted.length === 0 && (
+                                        {rows.length === 0 && (
                                             <tr>
                                                 <td colSpan="10" className="px-6 py-16">
                                                     <div className="flex flex-col items-center text-center">
