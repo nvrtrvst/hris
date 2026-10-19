@@ -1,10 +1,10 @@
 import React from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Card, Badge, Empty } from '@/Components/MobileUI';
+import { Card, Badge, Empty, FAB } from '@/Components/MobileUI';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { FileText, Clock, CheckCircle, XCircle, ChevronRight, ChevronDown } from 'lucide-react';
+import { FileText, Plus, Clock, CheckCircle, XCircle, ChevronRight, ChevronDown } from 'lucide-react';
 
 const jenisLabel = { sakit: 'Sakit', izin: 'Izin', cuti: 'Cuti' };
 
@@ -178,6 +178,8 @@ export default function Index({ auth, pengajuan, filters = {}, stats = {}, pegaw
                     <ChevronDown className="h-4 w-4" /> Muat lebih banyak
                 </Link>
             )}
+
+            <FAB href={route('presensi.izin.create')} icon={Plus} label="Buat Pengajuan" />
         </MobileLayout>
     );
 }
