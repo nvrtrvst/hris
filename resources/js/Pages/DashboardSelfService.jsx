@@ -30,8 +30,8 @@ export default function DashboardSelfService({ auth, stats }) {
         >
             <Head title="Beranda Pegawai" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            <div className="bg-surface min-h-screen">
+                <div className="mx-auto w-full space-y-6">
 
                     {/* Welcome Banner */}
                     <div className="bg-gradient-to-r from-primary to-primary-600 rounded-xl p-6 text-white shadow-card">
@@ -65,8 +65,8 @@ export default function DashboardSelfService({ auth, stats }) {
                                 {card.progress !== undefined && (
                                     <div className="w-full bg-border rounded-full h-2 mt-4">
                                         <div
-                                            className={`h-2 rounded-full transition-all duration-500 ${persentaseHadir >= 90 ? 'bg-success' : 'bg-warning'}`}
-                                            style={{ width: `${Math.min(card.progress, 100)}%` }}
+                                            className={`h-2 w-full origin-left rounded-full transition-transform duration-500 motion-reduce:transition-none ${persentaseHadir >= 90 ? 'bg-success' : 'bg-warning'}`}
+                                            style={{ transform: `scaleX(${Math.min(card.progress, 100) / 100})` }}
                                         />
                                     </div>
                                 )}

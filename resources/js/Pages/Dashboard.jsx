@@ -3,7 +3,6 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import StatCard from '@/Components/StatCard';
 import { Head, Link, router } from '@inertiajs/react';
 import usePolling from '@/Utils/usePolling';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { avatarTone, initials } from '@/Utils/avatar';
 import {
     AlertTriangle,
@@ -45,6 +44,9 @@ class ErrorBoundary extends Component {
             return (
                 <div className="card p-6">
                     <h2 className="font-semibold text-danger">Terjadi kesalahan di Dashboard.</h2>
+                    <button type="button" onClick={() => window.location.reload()} className="btn-secondary btn-sm mt-3">
+                        Muat ulang halaman
+                    </button>
                     <details className="mt-2 text-sm text-text-muted whitespace-pre-wrap">
                         {this.state.error && this.state.error.toString()}
                         <br />
@@ -67,7 +69,7 @@ const STATUS_META = {
 };
 
 const StatusBadge = ({ status }) => {
-    const meta = STATUS_META[status] || { label: status || '−', badge: 'bg-gray-50 text-gray-500 border-gray-200' };
+    const meta = STATUS_META[status] || { label: status || '·', badge: 'bg-slate-50 text-slate-600 border-slate-200' };
 
     return (
         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${meta.badge}`}>
@@ -89,7 +91,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
     const [detailPiket, setDetailPiket] = useState(null);
 
     // Live polling: refresh data kehadiran/jadwal/presensi tiap 60 detik (partial reload
-    // Inertia — hanya prop yang di-`only` dikirim ulang). Berhenti saat tab tidak aktif.
+    // Inertia, hanya prop yang di-`only` dikirim ulang). Berhenti saat tab tidak aktif.
     const isAdmin = roleType === 'Admin';
     usePolling({ enabled: isAdmin, only: ['stats', 'trends', 'jadwalHariIni', 'presensiHariIni', 'kelasKosongMengajar', 'kelasKosongPiket', 'piketHariIni'] });
 
@@ -120,7 +122,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
     }, [presensiHariIni]);
 
     // Grup jadwal hari ini per guru (seperti tabel /presensi): dalam grup
-    // urut jam mulai + mapel; antar grup — guru yang TERAKHIR datang paling atas.
+    // urut jam mulai + mapel; antar grup, guru yang TERAKHIR datang paling atas.
     const jadwalGroups = useMemo(() => {
         const byGuru = new Map();
         (jadwalHariIni || []).forEach((j) => {
@@ -140,7 +142,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
         }));
 
         // Prioritas: (1) guru yang SUDAH hadir selalu di atas yang belum,
-        // (2) di antara yang hadir — terakhir datang paling atas,
+        // (2) di antara yang hadir, terakhir datang paling atas,
         // (3) yang belum hadir di bawah (di antara mereka, urut nama).
         const rank = (g) => (g.lastMasuk ? 0 : 1);
         return groups.sort((a, b) =>
@@ -155,6 +157,9 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
     const s = stats || {};
     const hasKontrak = (kontrakBerakhir || []).length > 0;
     const chartData = Array.isArray(trends) ? trends : [];
+    const totalHadirTrend = chartData.reduce((acc, d) => acc + (d.hadir || 0), 0);
+    const maxHadirTrend = chartData.reduce((acc, d) => Math.max(acc, d.hadir || 0), 0);
+    const rataHadirTrend = chartData.length > 0 ? Math.round(totalHadirTrend / chartData.length) : 0;
 
     const pengumumanStatus = (a) => {
         if (!a.published_at) return { label: 'Draft', cls: 'border-slate-200 bg-slate-50 text-slate-600' };
@@ -199,11 +204,10 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
         >
             <Head title={`Dashboard ${roleType}`} />
 
-            <div className="py-8 bg-surface min-h-screen overflow-x-hidden">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 overflow-hidden">
-                    {/* Kehadiran Hari Ini — prominent full-width */}
-                    <div className="card p-6 relative overflow-hidden">
-                        <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-emerald-500/5" />
+            <div className="bg-surface min-h-screen">
+                <div className="mx-auto w-full space-y-6">
+                    {/* Kehadiran Hari Ini, prominent full-width */}
+                    <div className="card p-6">
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
                             <UserCheck className="h-4 w-4 text-emerald-600" />
                             Kehadiran Hari Ini
@@ -219,8 +223,8 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                 </div>
                                 <div className="mt-3 h-3 w-full max-w-md overflow-hidden rounded-full bg-border/60" role="progressbar" aria-valuenow={s.hadir_percentage || 0} aria-valuemin={0} aria-valuemax={100} aria-label="Kehadiran hari ini">
                                     <div
-                                        className="h-full rounded-full bg-emerald-500 transition-all duration-700"
-                                        style={{ width: `${Math.min(100, s.hadir_percentage || 0)}%` }}
+                                        className="h-full w-full origin-left rounded-full bg-emerald-500 transition-transform duration-500 motion-reduce:transition-none"
+                                        style={{ transform: `scaleX(${Math.min(100, s.hadir_percentage || 0) / 100})` }}
                                     />
                                 </div>
                             </div>
@@ -241,7 +245,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                     </div>
 
                     {/* Stat cards */}
-                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
                         <StatCard label="Pegawai Aktif" value={s.total_pegawai || 0} Icon={Users} iconBg="bg-primary/10" iconCls="text-primary" />
                         <StatCard label={selectedUnitNama ? `Unit: ${selectedUnitNama}` : 'Unit Sekolah'} value={selectedUnitNama || s.total_unit || 0} Icon={School} iconBg="bg-blue-100" iconCls="text-blue-600" />
                         <StatCard
@@ -249,32 +253,33 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                             value={s.kontrak_berakhir_count || 0}
                             Icon={FileWarning}
                             iconBg={s.kontrak_berakhir_count > 0 ? 'bg-amber-100' : 'bg-surface'}
-                            iconCls={s.kontrak_berakhir_count > 0 ? 'text-amber-600' : 'text-border'}
+                            iconCls={s.kontrak_berakhir_count > 0 ? 'text-amber-600' : 'text-text-muted'}
                             alert={s.kontrak_berakhir_count > 0}
                         />
-                        <StatCard label="Pengajuan Pending" value={s.pengajuan_pending || 0} Icon={Clock3} iconBg={s.pengajuan_pending > 0 ? 'bg-rose-100' : 'bg-surface'} iconCls={s.pengajuan_pending > 0 ? 'text-rose-600' : 'text-border'} alert={s.pengajuan_pending > 0} />
+                        <StatCard label="Pengajuan Pending" value={s.pengajuan_pending || 0} Icon={Clock3} iconBg={s.pengajuan_pending > 0 ? 'bg-rose-100' : 'bg-surface'} iconCls={s.pengajuan_pending > 0 ? 'text-rose-600' : 'text-text-muted'} alert={s.pengajuan_pending > 0} />
                         {s.guru_mengajar > 0 && (
                             <StatCard
-                                label={`Guru > ${s.target_jp_minggu} JP/minggu`}
+                                label="Guru Over JP"
                                 value={`${s.guru_over_jp || 0} / ${s.guru_mengajar}`}
+                                sub={`target ${s.target_jp_minggu} JP/minggu`}
                                 Icon={BookOpen}
-                                iconBg={s.guru_over_jp > 0 ? 'bg-red-100' : 'bg-surface'}
-                                iconCls={s.guru_over_jp > 0 ? 'text-red-600' : 'text-border'}
+                                iconBg={s.guru_over_jp > 0 ? 'bg-rose-100' : 'bg-surface'}
+                                iconCls={s.guru_over_jp > 0 ? 'text-rose-600' : 'text-text-muted'}
                                 alert={s.guru_over_jp > 0}
                             />
                         )}
                     </div>
 
-                    {/* Kelas Kosong — terpisah mengajar vs piket */}
+                    {/* Kelas Kosong, terpisah mengajar vs piket */}
                     {(kelasKosongMengajar?.length > 0) && (
                         <div className="card border-amber-200 bg-amber-50 p-4">
                             <h4 className="flex items-center gap-2 text-sm font-bold text-amber-800">
-                                <AlertTriangle className="h-4 w-4" /> Kelas Kosong Mengajar — {kelasKosongMengajar.length} JP belum ada guru
+                                <AlertTriangle className="h-4 w-4" /> Kelas Kosong Mengajar ({kelasKosongMengajar.length} JP belum ada guru)
                             </h4>
                             <div className="mt-2 space-y-1">
                                 {kelasKosongMengajar.slice(0, 5).map((j) => (
                                     <div key={j.id} className="flex items-center justify-between text-xs">
-                                        <span className="font-medium text-amber-900">{j.jam_mulai?.substring(0,5)}–{j.jam_selesai?.substring(0,5)} • {j.kelas_label || '—'} • {j.pegawai?.nama_lengkap || '-'}</span>
+                                        <span className="font-medium text-amber-900">{j.jam_mulai?.substring(0,5)}–{j.jam_selesai?.substring(0,5)} • {j.kelas_label || '-'} • {j.pegawai?.nama_lengkap || '-'}</span>
                                         <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-amber-700">{j.pegawaiMapel?.mataPelajaran?.nama || j.jenis_jadwal}</span>
                                     </div>
                                 ))}
@@ -285,7 +290,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                     {(kelasKosongPiket?.length > 0) && (
                         <div className="card border-sky-200 bg-sky-50 p-4">
                             <h4 className="flex items-center gap-2 text-sm font-bold text-sky-800">
-                                <Clock3 className="h-4 w-4" /> Piket Kosong — {kelasKosongPiket.length} belum ada petugas
+                                <Clock3 className="h-4 w-4" /> Piket Kosong ({kelasKosongPiket.length} belum ada petugas)
                             </h4>
                             <div className="mt-2 space-y-1">
                                 {kelasKosongPiket.slice(0, 5).map((j) => (
@@ -294,6 +299,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                         <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-sky-700">Piket</span>
                                     </div>
                                 ))}
+                                {kelasKosongPiket.length > 5 && <p className="text-[11px] text-sky-700">+{kelasKosongPiket.length - 5} lagi</p>}
                             </div>
                         </div>
                     )}
@@ -336,7 +342,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                         <ul className="mt-1.5 space-y-1.5">
                                                             {review.map((e) => (
                                                                 <li key={e.idx} className="rounded-lg bg-white px-2.5 py-2 text-[11px] text-slate-700 ring-1 ring-slate-200">
-                                                                    <p><span className="font-bold">{e.kelas}</span>{e.mapel ? ` — ${e.mapel}` : ''} ({e.guru_nama})</p>
+                                                                    <p><span className="font-bold">{e.kelas}</span>{e.mapel ? `, ${e.mapel}` : ''} ({e.guru_nama})</p>
                                                                     {e.ada_amanat && <p className="mt-0.5">Amanat: {e.detail_amanat}{e.tersampaikan ? ' (tersampaikan)' : ' (belum tersampaikan)'}</p>}
                                                                     <p className="mt-0.5 text-slate-500">Cross-check: {e.validasi_catatan}</p>
                                                                     <div className="mt-1.5 flex gap-1.5">
@@ -372,7 +378,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                         </div>
 
                         {jadwalGroups.length > 0 ? (
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto lg:max-h-[72vh] lg:overflow-y-auto">
                                 <table className="min-w-full divide-y divide-border text-sm">
                                     <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">
                                         <tr>
@@ -396,8 +402,12 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                 return (
                                                     <tr
                                                         key={j.id || `${g.guru?.id}-${idx}`}
+                                                        tabIndex={0}
+                                                        aria-expanded={isExpanded}
+                                                        aria-controls="panel-detail-presensi"
+                                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailPresensi(isExpanded ? null : g.guru?.id); } }}
                                                         onClick={() => setDetailPresensi(isExpanded ? null : g.guru?.id)}
-                                                        className={`transition-colors cursor-pointer ${isExpanded ? 'bg-surface/70' : 'hover:bg-surface/70'} ${g.items.length > 1 && idx > 0 ? 'border-t-0' : ''}`}
+                                                        className={`transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 ${isExpanded ? 'bg-surface/70' : 'hover:bg-surface/70'} ${g.items.length > 1 && idx > 0 ? 'border-t-0' : ''}`}
                                                     >
                                                         <td className="px-4 py-3 font-mono text-sm font-semibold text-primary whitespace-nowrap">
                                                             {j.jam_mulai?.substring(0, 5)}–{j.jam_selesai?.substring(0, 5)}
@@ -429,10 +439,10 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                             )}
                                                         </td>
                                                         <td className="hidden md:table-cell px-4 py-3 text-xs text-text-muted">{j.unit_sekolah?.singkatan || j.unit_sekolah?.nama || '-'}</td>
-                                                        <td className="px-4 py-3 text-center">{ngajar ? <StatusBadge status={ngajar.status} /> : <span className="text-xs text-text-muted">—</span>}</td>
+                                                        <td className="px-4 py-3 text-center">{ngajar ? <StatusBadge status={ngajar.status} /> : <span className="text-xs text-text-muted">·</span>}</td>
                                                         {idx === 0 ? (
                                                             <td rowSpan={g.items.length} className="px-4 py-3 text-center align-top">
-                                                                {harian ? <StatusBadge status={harian.status} /> : <span className="text-xs text-text-muted">—</span>}
+                                                                {harian ? <StatusBadge status={harian.status} /> : <span className="text-xs text-text-muted">·</span>}
                                                             </td>
                                                         ) : null}
                                                     </tr>
@@ -445,7 +455,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                         ) : (
                             <div className="flex flex-col items-center py-12 text-center">
                                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface">
-                                    <CalendarDays className="h-7 w-7 text-border" />
+                                    <CalendarDays className="h-7 w-7 text-text-muted" />
                                 </div>
                                 <p className="mt-3 text-sm font-bold text-primary">Belum ada jadwal untuk hari ini</p>
                                 <p className="mt-1 text-xs text-text-secondary">Jadwal mengajar akan tampil di sini.</p>
@@ -460,7 +470,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                             const pNgajar = pList.filter((pr) => pr.jadwal_id);
 
                             return (
-                                <div className="border-t border-border bg-surface/40 px-5 py-4">
+                                <div id="panel-detail-presensi" className="border-t border-border bg-surface/40 px-5 py-4">
                                     <div className="mb-3 flex items-center justify-between">
                                         <h4 className="text-sm font-bold text-primary">{nama}</h4>
                                         <button type="button" onClick={() => setDetailPresensi(null)} className="cursor-pointer text-xs font-semibold text-text-muted transition-colors hover:text-primary">
@@ -469,28 +479,28 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                     </div>
                                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                         <div className="rounded-lg border border-border bg-white p-3">
-                                            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">Presensi Kantor</p>
+                                            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-text-secondary">Presensi Kantor</p>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
                                                 <div>
                                                     <span className="text-text-muted">Masuk</span>
-                                                    <p className="font-semibold text-primary">{harian?.jam_masuk?.substring(0, 8) || '—'}</p>
+                                                    <p className="font-semibold text-primary">{harian?.jam_masuk?.substring(0, 8) || '·'}</p>
                                                 </div>
                                                 <div>
                                                     <span className="text-text-muted">Keluar</span>
-                                                    <p className="font-semibold text-primary">{harian?.jam_keluar?.substring(0, 8) || '—'}</p>
+                                                    <p className="font-semibold text-primary">{harian?.jam_keluar?.substring(0, 8) || '·'}</p>
                                                 </div>
                                                 <div>
                                                     <span className="text-text-muted">Status</span>
-                                                    <p className="mt-0.5">{harian ? <StatusBadge status={harian.status} /> : '—'}</p>
+                                                    <p className="mt-0.5">{harian ? <StatusBadge status={harian.status} /> : '·'}</p>
                                                 </div>
                                                 <div>
                                                     <span className="text-text-muted">Jarak</span>
-                                                    <p className="font-semibold">{harian?.jarak_meter != null ? `${harian.jarak_meter}m` : '—'}</p>
+                                                    <p className="font-semibold">{harian?.jarak_meter != null ? `${harian.jarak_meter}m` : '·'}</p>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="rounded-lg border border-border bg-white p-3">
-                                            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">Per Jadwal Mengajar</p>
+                                            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-text-secondary">Per Jadwal Mengajar</p>
                                             {pNgajar.length > 0 ? pNgajar.slice(0, 3).map((p, i) => (
                                                 <div key={i} className="mb-1.5 flex items-center gap-2 text-xs last:mb-0">
                                                     <span className="font-mono text-text-muted">{p.jam_masuk?.substring(0, 8)}–{p.jam_keluar?.substring(0, 8) || '?'}</span>
@@ -512,35 +522,49 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                     {/* Tren Kehadiran + Payroll */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div className="card p-6">
-                            <h3 className="mb-4 flex items-center gap-2 text-base font-bold text-primary">
+                            <h3 className="flex flex-wrap items-center gap-2 text-base font-bold text-primary">
                                 <TrendingUp className="h-5 w-5 text-primary" />
                                 Tren Kehadiran 7 Hari
+                                {chartData.length > 0 && (
+                                    <span className="text-xs font-semibold text-text-secondary">
+                                        rata-rata {rataHadirTrend} orang/hari
+                                    </span>
+                                )}
                             </h3>
-                            <div className="h-64 w-full">
+                            <div className="mt-4">
                                 {chartData.length === 0 ? (
-                                    <div className="flex h-full flex-col items-center justify-center text-center">
-                                        <TrendingUp className="mb-2 h-8 w-8 text-border" />
+                                    <div className="flex h-56 flex-col items-center justify-center text-center">
+                                        <TrendingUp className="mb-2 h-8 w-8 text-text-muted" />
                                         <p className="text-sm text-text-secondary">Tidak ada data kehadiran 7 hari terakhir.</p>
                                     </div>
                                 ) : (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                            <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-                                            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                                            <Tooltip
-                                                formatter={(value) => [value, 'Hadir']}
-                                                contentStyle={{ borderRadius: 12, border: '1px solid #E5E7EB', fontSize: 12 }}
-                                            />
-                                            <Line type="monotone" dataKey="hadir" stroke="#1B4A4A" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
+                                    <>
+                                        <div
+                                            className="flex h-44 items-end gap-2"
+                                            role="img"
+                                            aria-label={`Jumlah hadir per hari: ${chartData.map((d) => `${d.day} ${d.hadir}`).join(', ')}`}
+                                        >
+                                            {chartData.map((d) => (
+                                                <div key={d.date || d.day} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5" title={`${d.day} ${d.date || ''}: ${d.hadir} orang`}>
+                                                    <span className="text-xs font-bold tabular-nums text-primary">{d.hadir}</span>
+                                                    <div
+                                                        className="w-full rounded-t-md bg-primary/80"
+                                                        style={{ height: `${maxHadirTrend > 0 ? Math.max(4, Math.round(((d.hadir || 0) / maxHadirTrend) * 100)) : 4}%` }}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="mt-2 flex gap-2 border-t border-border/60 pt-2">
+                                            {chartData.map((d) => (
+                                                <span key={d.date || d.day} className="flex-1 text-center text-[11px] font-semibold text-text-secondary">{d.day?.slice(0, 3)}</span>
+                                            ))}
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </div>
 
-                        <div className="card p-6 relative overflow-hidden">
-                            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-primary/5" />
+                        <div className="card p-6">
                             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
                                 <Banknote className="h-4 w-4 text-primary" />
                                 Payroll Bulan Ini
