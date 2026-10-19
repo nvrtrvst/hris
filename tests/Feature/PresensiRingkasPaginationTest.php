@@ -177,17 +177,17 @@ class PresensiRingkasPaginationTest extends TestCase
                 ->where('presensis.last_page', 2)
                 ->where('presensis.per_page', 2)
                 ->has('presensis.data', 4)
-                // Baris diurutkan global (tanggal DESC, jam_masuk ASC) — bukan blok per kelompok;
-                // FE mengelompokkan ulang per pegawai+tanggal. Yang penting: kelompok tidak terbelah
-                // antar halaman, jadi 3 baris Guru A semuanya ikut di halaman 1.
+                // Baris diurutkan global (nama ASC, lalu tanggal DESC, jam_masuk ASC) — bukan
+                // blok per kelompok; FE mengelompokkan ulang per pegawai+tanggal. Yang penting:
+                // kelompok tidak terbelah antar halaman, jadi 3 baris Guru A semuanya di halaman 1.
                 ->where('presensis.data.0.pegawai_id', $data['a']->id)
                 ->where('presensis.data.0.jam_masuk', '07:00:00')
-                ->where('presensis.data.1.pegawai_id', $data['b']->id)
-                ->where('presensis.data.1.jam_masuk', '08:00:00')
+                ->where('presensis.data.1.pegawai_id', $data['a']->id)
+                ->where('presensis.data.1.jam_masuk', '09:00:00')
                 ->where('presensis.data.2.pegawai_id', $data['a']->id)
-                ->where('presensis.data.2.jam_masuk', '09:00:00')
-                ->where('presensis.data.3.pegawai_id', $data['a']->id)
-                ->where('presensis.data.3.jam_masuk', '11:00:00')
+                ->where('presensis.data.2.jam_masuk', '11:00:00')
+                ->where('presensis.data.3.pegawai_id', $data['b']->id)
+                ->where('presensis.data.3.jam_masuk', '08:00:00')
             );
     }
 
@@ -251,5 +251,77 @@ class PresensiRingkasPaginationTest extends TestCase
                 ->where('presensis.last_page', 1)
                 ->has('presensis.data', 5)
             );
+    }
+
+    /**
+     * Kunci urut mode ringkas = NAMA, bukan jam masuk. Nama sengaja dibuat
+     * berlawanan arah dengan jam absen: "Guru Z" absen pagi (tidak telat),
+     * "Guru A" absen siang (telat). Dulu yang telat terlempar ke halaman 2.
+     */
+    public function test_ringkas_urut_nama_asc_lintas_halaman(): void
+    {
+        $z = $this->makePegawai('3030303030303030', 'Guru Z');
+        $a = $this->makePegawai('4040404040404040', 'Guru A');
+        $this->makePresensi($z, $this->hariIni, '07:00:00');
+        $this->makePresensi($a, $this->hariIni, '09:00:00');
+
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->get(route('presensi.index', $this->params(['per_page' => 1, 'page' => 1])))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('presensis.total', 2)
+                ->where('presensis.data.0.pegawai.nama_lengkap', 'Guru A'));
+
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->get(route('presensi.index', $this->params(['per_page' => 1, 'page' => 2])))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('presensis.data.0.pegawai.nama_lengkap', 'Guru Z'));
+    }
+
+    /**
+     * Mode detail: sort kolom dikerjakan server, jadi urutan konsisten lintas
+     * halaman (dulu FE hanya menyortir halaman yang sedang tampil).
+     */
+    public function test_detail_urut_kolom_dilakukan_server_lintas_halaman(): void
+    {
+        $z = $this->makePegawai('5050505050505050', 'Guru Z');
+        $a = $this->makePegawai('6060606060606060', 'Guru A');
+        $this->makePresensi($z, $this->hariIni, '07:00:00');
+        $this->makePresensi($a, $this->hariIni, '09:00:00');
+
+        $detail = fn (array $extra) => route('presensi.index', array_merge([
+            'start_date' => $this->hariIni,
+            'end_date' => $this->hariIni,
+            'per_page' => 1,
+        ], $extra));
+
+        // Default server = nama ASC (sama dengan tampilan lama yang disortir klien).
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->get($detail(['page' => 1]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('presensis.data.0.pegawai.nama_lengkap', 'Guru A'));
+
+        // sort=masuk asc: halaman 1 = absen terawal, halaman 2 = berikutnya.
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->get($detail(['page' => 1, 'sort' => 'masuk', 'dir' => 'asc']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('presensis.data.0.pegawai.nama_lengkap', 'Guru Z'));
+
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->get($detail(['page' => 2, 'sort' => 'masuk', 'dir' => 'asc']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('presensis.data.0.pegawai.nama_lengkap', 'Guru A'));
+
+        // dir=desc membalik urutan.
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->get($detail(['page' => 1, 'sort' => 'masuk', 'dir' => 'desc']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('presensis.data.0.pegawai.nama_lengkap', 'Guru A'));
+
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->get($detail(['page' => 1, 'sort' => 'nama', 'dir' => 'desc']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('presensis.data.0.pegawai.nama_lengkap', 'Guru Z'));
     }
 }

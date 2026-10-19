@@ -39,6 +39,8 @@ class PresensiController extends Controller
             'jadwal_filter' => 'nullable|in:sedang_berlangsung',
             'jenis_filter' => 'nullable|in:pendidik,kependidikan',
             'search' => 'nullable|string|max:100',
+            'sort' => 'nullable|in:nama,tanggal,masuk,keluar,status',
+            'dir' => 'nullable|in:asc,desc',
         ]);
 
         $user = auth()->user();
@@ -184,13 +186,19 @@ class PresensiController extends Controller
                 'grup'
             )->count();
 
-            // Urutan kelompok mengikuti urutan baris: tanggal DESC, lalu jam masuk terawal.
+            // Urutan kelompok: NAMA pegawai ASC, baru kronologis. Dulu kuncinya jam masuk
+            // terawal sehingga halaman awal hanya berisi yang absen pagi — yang telat selalu
+            // terlempar ke halaman belakang. Join di-alias `p` supaya kolom presensi
+            // (status, tanggal, id, ...) tetap tidak ambigu.
             $grupHalaman = (clone $query)
-                ->select('pegawai_id', 'tanggal')
-                ->selectRaw('MIN(jam_masuk) as jam_pertama')
-                ->selectRaw('MIN(id) as id_pertama')
-                ->groupBy('pegawai_id', 'tanggal')
-                ->orderBy('tanggal', 'desc')
+                ->join('pegawai as p', 'p.id', '=', 'presensi.pegawai_id')
+                ->select('presensi.pegawai_id', 'presensi.tanggal', 'p.nama_lengkap')
+                ->selectRaw('MIN(presensi.jam_masuk) as jam_pertama')
+                ->selectRaw('MIN(presensi.id) as id_pertama')
+                ->groupBy('presensi.pegawai_id', 'presensi.tanggal', 'p.nama_lengkap')
+                ->orderBy('p.nama_lengkap', 'asc')
+                ->orderBy('presensi.pegawai_id', 'asc')
+                ->orderBy('presensi.tanggal', 'desc')
                 ->orderBy('jam_pertama', 'asc')
                 ->orderBy('id_pertama', 'asc')
                 ->forPage($pageGrup, $perPageGrup)
@@ -215,9 +223,12 @@ class PresensiController extends Controller
             }
 
             $presensis = $rows
-                ->orderBy('tanggal', 'desc')
-                ->orderBy('jam_masuk', 'asc')
-                ->orderBy('id', 'asc')
+                ->select('presensi.*')
+                ->join('pegawai as p', 'p.id', '=', 'presensi.pegawai_id')
+                ->orderBy('p.nama_lengkap', 'asc')
+                ->orderBy('presensi.tanggal', 'desc')
+                ->orderBy('presensi.jam_masuk', 'asc')
+                ->orderBy('presensi.id', 'asc')
                 ->get();
             $presensis->load('pegawai.jabatans');
 
@@ -226,10 +237,32 @@ class PresensiController extends Controller
                 ['path' => $request->url(), 'query' => $request->query()]
             );
         } else {
+            // Sort kolom dikerjakan di SERVER supaya urutan konsisten lintas halaman
+            // (dulu FE menyortir hanya halaman aktif). Default nama ASC = tampilan lama.
+            $sort = $request->input('sort', 'nama');
+            $dir = $request->input('dir', 'asc') === 'desc' ? 'desc' : 'asc';
+
+            if ($sort === 'nama') {
+                // nama_lengkap ada di tabel pegawai: butuh join (alias `p`) + select
+                // eksplisit supaya `*` hasil join tidak menimpa kolom presensi (id).
+                $query->select('presensi.*')
+                    ->join('pegawai as p', 'p.id', '=', 'presensi.pegawai_id')
+                    ->orderBy('p.nama_lengkap', $dir)
+                    ->orderBy('presensi.tanggal', 'desc')
+                    ->orderBy('presensi.jam_masuk', 'asc');
+            } else {
+                $kolom = [
+                    'tanggal' => 'presensi.tanggal',
+                    'masuk' => 'presensi.jam_masuk',
+                    'keluar' => 'presensi.jam_keluar',
+                    'status' => 'presensi.status',
+                ][$sort];
+
+                $query->orderBy($kolom, $dir);
+            }
+
             $presensis = $query
-                ->orderBy('tanggal', 'desc')
-                ->orderBy('jam_masuk', 'asc')
-                ->orderBy('id', 'asc')
+                ->orderBy('presensi.id', 'asc')
                 ->paginate($perPage)
                 ->withQueryString();
             $presensis->load('pegawai.jabatans');
