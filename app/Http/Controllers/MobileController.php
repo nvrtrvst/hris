@@ -69,18 +69,27 @@ class MobileController extends Controller
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIniIndo = $hariMap[Carbon::now()->format('l')];
 
-        $presensiHariIni = Presensi::with('unitSekolah')->where('pegawai_id', $pegawai->id)
+        $presensiHariIni = Presensi::with(['unitSekolah', 'jadwal'])
+            ->where('pegawai_id', $pegawai->id)
             ->where('tanggal', Carbon::today()->toDateString())
-            ->first();
+            ->first()?->append('keluar_aktual');
 
         $izinHariIni = $this->izinHariIniUntuk($pegawai);
 
-        $presensiTerbaru = Presensi::with('unitSekolah')
+        // Pengajuan pulang cepat hari ini — dashboard hanya menampilkan yang
+        // sudah divalidasi (disetujui) saat pegawai belum absen pulang.
+        $pulangCepatHariIni = PengajuanPulangCepat::where('pegawai_id', $pegawai->id)
+            ->whereDate('tanggal', Carbon::today()->toDateString())
+            ->orderByDesc('created_at')
+            ->first(['id', 'tanggal', 'jam_diminta', 'alasan', 'status']);
+
+        $presensiTerbaru = Presensi::with(['unitSekolah', 'jadwal'])
             ->where('pegawai_id', $pegawai->id)
             ->where('tanggal', '>=', Carbon::today()->subDays(3)->toDateString())
             ->where('tanggal', '<=', Carbon::today()->toDateString())
             ->orderBy('tanggal', 'desc')
-            ->get();
+            ->get()
+            ->each->append('keluar_aktual');
 
         $jadwalsHariIni = $this->rememberJadwal('mobile.jadwal.'.$pegawai->id.'.'.$hariIniIndo, 900, function () use ($pegawai, $hariIniIndo) {
             return Jadwal::with(['unitSekolah', 'pegawaiMapel.mataPelajaran'])
@@ -95,6 +104,7 @@ class MobileController extends Controller
             'presensi' => $presensiHariIni,
             'izinHariIni' => $izinHariIni,
             'presensiSeminggu' => $presensiTerbaru,
+            'pulangCepatHariIni' => $pulangCepatHariIni,
             'jadwalsHariIni' => $jadwalsHariIni,
             'alasanLibur' => HariKerja::alasanTidakBisaPresensi($pegawai, Carbon::now()),
         ]);

@@ -51,7 +51,7 @@ function toMinutes(hms) {
     return parseInt(p[0], 10) * 60 + parseInt(p[1] || 0, 10);
 }
 
-export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null, presensiSeminggu = [], jadwalsHariIni = [], alasanLibur = null }) {
+export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null, presensiSeminggu = [], jadwalsHariIni = [], alasanLibur = null, pulangCepatHariIni = null }) {
     const { flash = {} } = usePage().props;
     const today = format(new Date(), 'EEEE, d MMMM yyyy', { locale: id });
     const primaryUnit = pegawai?.units?.find((unit) => unit.pivot?.is_primary) ?? pegawai?.units?.[0];
@@ -70,16 +70,18 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
     const primary = kantorRec || lemburRec || mengajarRecs[0] || presensi || null;
     // Hari mengajar punya banyak baris; jam keluar hari itu ada di baris paling akhir
     // (slide pulang mencatat di JP terakhir) - bukan JP pertama seperti `primary`.
-    const keluarRec = todayRecords.reduce(
-        (max, r) => (r.jam_keluar && (!max || r.jam_keluar > max.jam_keluar) ? r : max),
-        null,
-    ) ?? primary;
+    // Hanya baris hasil absen pulang pegawai (`keluar_aktual`) yang dihitung: jam
+    // keluar pre-fill dari jadwal (honorer) & auto-close dinas luar bukan bukti
+    // pegawai sudah pulang, jadi kartu tidak boleh mengklaim "Selesai".
+    const keluarRec = todayRecords
+        .filter((r) => r.keluar_aktual)
+        .reduce((max, r) => (!max || r.jam_keluar > max.jam_keluar ? r : max), null);
     const pulangAwal = realisasiInfo(keluarRec, null);
     const isMengajar = !kantorRec && !lemburRec && mengajarRecs.length > 0;
     const mengajarStatus = mengajarRecs.some((r) => r.status === 'telat') ? 'telat'
         : mengajarRecs.some((r) => r.status === 'hadir') ? 'hadir'
         : null;
-    const belumPulang = !isMengajar && primary?.jam_masuk && !primary?.jam_keluar;
+    const belumPulang = !isMengajar && Boolean(primary?.jam_masuk) && !keluarRec;
     const currentStatus = isMengajar ? mengajarStatus : primary?.status;
     const statusForCard = izinHariIni ? izinHariIni.jenis_izin : currentStatus;
     const statusDisplay = izinHariIni
@@ -122,7 +124,7 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                             <h2 id="today-status" className="mt-1 text-xl font-bold text-white">{statusDisplay}</h2>
                         </div>
                         <Badge tone={izinHariIni ? (statusTone[statusForCard] || 'slate') : belumPulang ? 'amber' : statusTone[currentStatus] || 'slate'} icon={belumPulang ? Clock3 : statusForCard ? CheckCircle2 : Clock3} className={!statusForCard ? 'bg-white/10 text-white' : belumPulang ? 'bg-white/10 text-white' : ''}>
-                            {izinHariIni ? (izinLabel[izinHariIni.jenis_izin] || 'Izin') : isMengajar ? (currentStatus ? statusLabel[currentStatus] || currentStatus : 'Belum masuk') : primary?.jam_keluar ? 'Selesai' : primary?.jam_masuk ? (belumPulang ? 'Belum pulang' : 'Sedang bekerja') : 'Belum masuk'}
+                            {izinHariIni ? (izinLabel[izinHariIni.jenis_izin] || 'Izin') : isMengajar ? (currentStatus ? statusLabel[currentStatus] || currentStatus : 'Belum masuk') : keluarRec ? 'Selesai' : primary?.jam_masuk ? (belumPulang ? 'Belum pulang' : 'Sedang bekerja') : 'Belum masuk'}
                         </Badge>
                     </div>
                 </div>
@@ -154,6 +156,11 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                                     {pulangAwal.menit} menit lebih awal{pulangAwal.diizinkan ? '' : ' · tanpa izin'}
                                 </p>
                             )}
+                            {!keluarRec && pulangCepatHariIni?.status === 'disetujui' && (
+                                <p className="mt-1 text-[11px] font-semibold text-emerald-200">
+                                    Izin pulang cepat {time(pulangCepatHariIni.jam_diminta)} · disetujui
+                                </p>
+                            )}
                         </div>
                         {keluarRec?.jam_keluar && (
                             <div className="mt-4 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-inner">
@@ -176,7 +183,7 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                     </div>
                 ) : (
                     <Link href={route('presensi.absen')} className="mx-4 mb-4 flex min-h-12 items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-bold text-primary transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30">
-                        {alasanLibur ? 'Presensi libur: lembur/tugas luar' : (!isMengajar && primary?.jam_masuk && !primary?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi')}
+                        {alasanLibur ? 'Presensi libur: lembur/tugas luar' : (!isMengajar && primary?.jam_masuk && !keluarRec ? 'Lakukan presensi keluar' : 'Buka presensi')}
                         <ArrowRight className="h-5 w-5" />
                     </Link>
                 )}

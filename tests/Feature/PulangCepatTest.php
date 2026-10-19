@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Jabatan;
+use App\Models\Jadwal;
 use App\Models\Pegawai;
 use App\Models\PengajuanPulangCepat;
 use App\Models\Presensi;
@@ -262,5 +263,106 @@ class PulangCepatTest extends TestCase
         $this->actingAs($orangLain, 'web_mobile')
             ->get(route('presensi.pulang-cepat.cetak', $pengajuan->id))
             ->assertStatus(403);
+    }
+
+    /**
+     * Jam keluar hasil pre-fill jadwal (tanpa koordinat keluar) bukan bukti
+     * pegawai sudah absen pulang: `keluar_aktual` false dan baris itu tidak
+     * boleh dihitung sebagai realisasi pengajuan pulang cepat.
+     */
+    public function test_jam_keluar_prefill_jadwal_bukan_absen_pulang(): void
+    {
+        Notification::fake();
+
+        $presensi = Presensi::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'jadwal_id' => $this->buatJadwalMengajar()->id,
+            'tipe_presensi' => 'mengajar',
+            'tanggal' => '2026-08-21',
+            'jam_masuk' => '13:00:00',
+            'jam_keluar' => '14:00:00',
+        ]);
+
+        $this->assertFalse($presensi->keluar_aktual);
+
+        $this->postStore()->assertRedirect();
+
+        $res = $this->actingAs($this->pegawai->user, 'web_mobile')
+            ->get(route('presensi.pulang-cepat.index'));
+        $res->assertOk();
+        $this->assertNull($res->viewData('page')['props']['pengajuan'][0]['realisasi']);
+    }
+
+    public function test_absen_pulang_dengan_koordinat_dianggap_aktual(): void
+    {
+        $presensi = Presensi::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'jadwal_id' => $this->buatJadwalMengajar()->id,
+            'tipe_presensi' => 'mengajar',
+            'tanggal' => '2026-08-21',
+            'jam_masuk' => '13:00:00',
+            'jam_keluar' => '14:00:00',
+            'latitude_keluar' => -6.2,
+            'longitude_keluar' => 106.8,
+        ]);
+
+        $this->assertTrue($presensi->keluar_aktual);
+    }
+
+    public function test_koreksi_jam_keluar_beda_dari_jadwal_dianggap_aktual(): void
+    {
+        $presensi = Presensi::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'jadwal_id' => $this->buatJadwalMengajar()->id,
+            'tipe_presensi' => 'mengajar',
+            'tanggal' => '2026-08-21',
+            'jam_masuk' => '13:00:00',
+            'jam_keluar' => '13:30:00',
+        ]);
+
+        $this->assertTrue($presensi->keluar_aktual);
+    }
+
+    public function test_dashboard_mobile_mengirim_pulang_cepat_dan_penanda_keluar_aktual(): void
+    {
+        Notification::fake();
+
+        Presensi::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'jadwal_id' => $this->buatJadwalMengajar()->id,
+            'tipe_presensi' => 'mengajar',
+            'tanggal' => '2026-08-21',
+            'jam_masuk' => '13:00:00',
+            'jam_keluar' => '14:00:00',
+        ]);
+
+        $this->postStore()->assertRedirect();
+
+        $res = $this->actingAs($this->pegawai->user, 'web_mobile')->get(route('presensi.dashboard'));
+        $res->assertOk();
+
+        $props = $res->viewData('page')['props'];
+        $this->assertSame('pending', $props['pulangCepatHariIni']['status']);
+        $this->assertSame('14:00', substr($props['pulangCepatHariIni']['jam_diminta'], 0, 5));
+        $this->assertFalse($props['presensiSeminggu'][0]['keluar_aktual']);
+    }
+
+    /** Jadwal mengajar 13:00-14:00 hari Kamis (tanggal test: 2026-08-21). */
+    private function buatJadwalMengajar(): Jadwal
+    {
+        return Jadwal::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'hari' => 'Kamis',
+            'jam_mulai' => '13:00:00',
+            'jam_selesai' => '14:00:00',
+            'jenis_jadwal' => 'mengajar',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
     }
 }

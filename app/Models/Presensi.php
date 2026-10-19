@@ -147,6 +147,33 @@ class Presensi extends Model
             ->all();
     }
 
+    /**
+     * Penanda pegawai benar-benar melakukan absen pulang.
+     *
+     * Jam keluar hasil pre-fill dari jadwal (unit tanpa `wajib_pulang_mengajar`
+     * atau pegawai non-tetap/honorer) tidak boleh ditampilkan seolah pegawai
+     * sudah pulang, jadi baris ber-jadwal dianggap bukan absen pulang bila jam
+     * keluarnya persis sama dengan jam selesai jadwalnya TANPA koordinat keluar
+     * (absen keluar sungguhan selalu mengisi `latitude_keluar`). Koreksi jam
+     * keluar lewat pengajuan koreksi tetap dihitung selama waktunya berbeda
+     * dari jadwal.
+     */
+    public function getKeluarAktualAttribute(): bool
+    {
+        if ($this->jam_keluar === null) {
+            return false;
+        }
+
+        if ($this->latitude_keluar !== null || $this->jadwal_id === null) {
+            return true;
+        }
+
+        $jamSelesai = $this->jadwal?->jam_selesai;
+
+        return $jamSelesai === null
+            || substr((string) $this->jam_keluar, 0, 5) !== substr((string) $jamSelesai, 0, 5);
+    }
+
     public function pegawai(): BelongsTo
     {
         return $this->belongsTo(Pegawai::class);
