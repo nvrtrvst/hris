@@ -91,6 +91,9 @@ class PresensiMessages
     // Pulang kantor
     public const PULANG_SEBELUM_JAM_KANTOR = 'Anda belum bisa pulang. Jam pulang kantor: %s.';
 
+    /** Slide JP diblokir setelah absen pulang kantor (mis. realisasi izin pulang cepat). */
+    public const SUDAH_PULANG_HARI_INI = 'Anda sudah absen pulang hari ini.';
+
     // Hari non-kerja
     public const HARI_TIDAK_AKTIF = 'Unit ini tidak beroperasi di hari %s.';
 

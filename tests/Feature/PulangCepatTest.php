@@ -102,7 +102,7 @@ class PulangCepatTest extends TestCase
             'tipe_presensi' => 'kantor',
             'tanggal' => '2026-08-21',
             'jam_masuk' => '07:00:00',
-            'jam_keluar' => '14:00:00',
+            'jam_keluar' => '13:00:00',
         ]);
         $this->postStore()->assertRedirect();
 
@@ -111,9 +111,9 @@ class PulangCepatTest extends TestCase
             ->get(route('presensi.pulang-cepat.index'));
         $mobile->assertOk();
         $realisasi = $mobile->viewData('page')['props']['pengajuan'][0]['realisasi'];
-        $this->assertSame('14:00', $realisasi['jam_keluar']);
+        $this->assertSame('13:00', $realisasi['jam_keluar']);
         $this->assertTrue($realisasi['is_pulang_awal']);
-        $this->assertSame(60, $realisasi['menit_pulang_awal']);
+        $this->assertSame(120, $realisasi['menit_pulang_awal']);
         $this->assertFalse($realisasi['pulang_awal_diizinkan']);
 
         $this->actingAs($this->superadmin, 'web_admin')
@@ -123,7 +123,7 @@ class PulangCepatTest extends TestCase
         $admin = $this->actingAs($this->superadmin, 'web_admin')->get(route('pulang-cepat.index'));
         $admin->assertOk();
         $adminRealisasi = $admin->viewData('page')['props']['pengajuans']['data'][0]['realisasi'];
-        $this->assertSame('14:00', $adminRealisasi['jam_keluar']);
+        $this->assertSame('13:00', $adminRealisasi['jam_keluar']);
         $this->assertTrue($adminRealisasi['is_pulang_awal']);
         $this->assertTrue($adminRealisasi['pulang_awal_diizinkan']);
     }
@@ -198,7 +198,7 @@ class PulangCepatTest extends TestCase
             'tipe_presensi' => 'kantor',
             'tanggal' => '2026-08-21',
             'jam_masuk' => '07:00:00',
-            'jam_keluar' => '14:00:00',
+            'jam_keluar' => '13:00:00',
         ]);
         $this->assertTrue($presensi->fresh()->is_pulang_awal);
         $this->assertFalse($presensi->fresh()->pulang_awal_diizinkan);

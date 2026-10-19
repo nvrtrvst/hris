@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Constants\PresensiMessages;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
@@ -167,6 +168,58 @@ class SlideKeluarTest extends TestCase
                 'tipe' => 'keluar',
             ])
             ->assertStatus(422);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_slide_ditolak_setelah_absen_pulang_kantor(): void
+    {
+        Carbon::setTestNow('2026-08-21 09:00:00');
+        $hari = Carbon::now()->locale('id')->dayName;
+        $pegawai = $this->makePegawaiTetap();
+        $mapel = MataPelajaran::create(['nama' => 'Matematika']);
+        $pegawaiMapel = PegawaiMapel::create([
+            'pegawai_id' => $pegawai->id,
+            'mata_pelajaran_id' => $mapel->id,
+            'unit_sekolah_id' => $this->unit->id,
+        ]);
+        $jadwal = Jadwal::create([
+            'pegawai_id' => $pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'pegawai_mapel_id' => $pegawaiMapel->id,
+            'hari' => $hari,
+            'jam_mulai' => '07:00',
+            'jam_selesai' => '15:00',
+            'jenis_jadwal' => 'mengajar',
+            'kelas_label' => 'X-A',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+
+        // Kantor sudah tuntas (mis. realisasi izin pulang cepat) → hari itu selesai.
+        Presensi::create([
+            'pegawai_id' => $pegawai->id,
+            'jadwal_id' => null,
+            'unit_sekolah_id' => $this->unit->id,
+            'tipe_presensi' => 'kantor',
+            'tanggal' => '2026-08-21',
+            'jam_masuk' => '07:05:00',
+            'jam_keluar' => '08:30:00',
+        ]);
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.slide'), [
+                'jadwal_id' => $jadwal->id,
+                'latitude' => -6.2,
+                'longitude' => 106.8,
+                'accuracy' => 15,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', PresensiMessages::SUDAH_PULANG_HARI_INI);
+
+        $this->assertNull(
+            Presensi::where('pegawai_id', $pegawai->id)->where('jadwal_id', $jadwal->id)->first()
+        );
 
         Carbon::setTestNow();
     }

@@ -180,13 +180,17 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         if (libur && !pagiRecord) return LIBUR;
         if (!pagiRecord) return FOTO_PAGI;
         if (pagiRecord.jam_keluar) return SELESAI;
+        // Izin pulang cepat disetujui = hak pulang lebih awal: tombol foto sore
+        // (absen pulang kantor) terbuka sejak jam yang diminta walau JP belum beres.
+        // JP yang belum di-slide tetap kosong (alpa) - ralat lewat Koreksi admin.
+        if (jamIzinPulangCepat && jamSekarang >= toMin(jamIzinPulangCepat)) return FOTO_SORE;
         // Foto sore hanya setelah semua jadwal selesai DAN lewat jam pulang kantor.
         if (semuaBeres && jamSekarang >= jamSore) return FOTO_SORE;
         // Tanpa jadwal sama sekali: foto sore tetap tersedia setelah jam sore tiba.
         if (slideJadwals.length === 0 && jamSekarang >= jamSore) return FOTO_SORE;
 
         return SLIDE_JADWAL;
-    }, [allRecordsComplete, pagiRecord, semuaBeres, slideJadwals.length, jamSekarang, libur]);
+    }, [allRecordsComplete, pagiRecord, semuaBeres, slideJadwals.length, jamSekarang, libur, jamIzinPulangCepat]);
 
     const tugasLuarOpen = useMemo(() => presensiHariIni.some((p) => p.is_tugas_luar && p.jam_masuk && !p.jam_keluar), [presensiHariIni]);
     const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_luar && p.jam_masuk), [presensiHariIni]);
@@ -525,6 +529,13 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                     </div>
                 </div>
             </div>
+
+            {phase === FOTO_SORE && jamIzinPulangCepat && (
+                <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-semibold text-sky-800">
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>Izin pulang cepat pukul {String(jamIzinPulangCepat).slice(0, 5)}. Absen pulang sekarang bila Anda sudah pulang — JP yang belum di-slide tidak dihitung hadir.</span>
+                </div>
+            )}
 
             {libur && (
                 <div role="note" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">

@@ -168,10 +168,31 @@ class PulangAwalTest extends TestCase
         $izin->save();
 
         $j = $this->makeJadwal('07:00', '15:00');
-        $p = $this->buatPresensi(['jadwal_id' => $j->id, 'tipe_presensi' => 'mengajar', 'jam_keluar' => '14:00:00']);
+        $p = $this->buatPresensi(['jadwal_id' => $j->id, 'tipe_presensi' => 'mengajar', 'jam_keluar' => '13:00:00']);
 
         $this->assertTrue($p->fresh()->is_pulang_awal);
         $this->assertTrue($p->fresh()->pulang_awal_diizinkan);
+    }
+
+    public function test_pulang_di_jam_izin_bukan_pulang_awal(): void
+    {
+        $izin = PengajuanPulangCepat::create([
+            'pegawai_id' => $this->pegawai->id,
+            'tanggal' => '2026-08-21',
+            'jam_diminta' => '14:00',
+            'alasan' => 'keperluan_pribadi',
+            'nomor' => 'PPC/2026/08/0003',
+        ]);
+        $izin->status = 'disetujui';
+        $izin->save();
+
+        // Normal 14:40, izin 14:00 → batas bawah 14:00. Pulang tepat di jam izin
+        // bukan "pulang awal" (izin = hak, bukan pelanggaran).
+        $j = $this->makeJadwal('07:00', '15:00');
+        $p = $this->buatPresensi(['jadwal_id' => $j->id, 'tipe_presensi' => 'mengajar', 'jam_keluar' => '14:00:00']);
+
+        $this->assertFalse($p->fresh()->is_pulang_awal);
+        $this->assertNull($p->fresh()->menit_pulang_awal);
     }
 
     public function test_gate_keluar_mengajar_terbuka_bila_ada_izin_disetujui(): void
@@ -201,7 +222,8 @@ class PulangAwalTest extends TestCase
 
         $row = Presensi::where('jadwal_id', $jadwal->id)->where('tanggal', '2026-08-21')->first();
         $this->assertNotNull($row->jam_keluar);
-        $this->assertTrue($row->fresh()->pulang_awal_diizinkan);
+        // Pulang tepat di jam izin → bukan pulang awal (izin batas bawah).
+        $this->assertFalse($row->fresh()->is_pulang_awal);
 
         Carbon::setTestNow();
     }
