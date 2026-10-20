@@ -254,6 +254,7 @@ class DashboardController extends Controller
             'jadwalHariIni' => $live['jadwalHariIni'],
             'presensiHariIni' => $live['presensiHariIni'],
             'kelasKosongMengajar' => $live['kelasKosongMengajar'],
+            'kelasKosongSummary' => $live['kelasKosongSummary'],
             'kelasKosongPiket' => $live['kelasKosongPiket'],
             'piketHariIni' => $live['piketHariIni'],
             'pengumuman' => $pengumuman,
@@ -485,7 +486,7 @@ class DashboardController extends Controller
         $jadwalHariIniQuery = Jadwal::with([
             'pegawai:id,nama_lengkap',
             'pegawaiMapel.mataPelajaran:id,nama',
-            'unitSekolah:id,nama,singkatan',
+            'unitSekolah:id,nama,singkatan,durasi_jp',
         ])
             ->where('hari', $hariIniIndo)
             ->orderBy('jam_mulai');
@@ -495,12 +496,16 @@ class DashboardController extends Controller
         } elseif ($scopedUnit) {
             $jadwalHariIniQuery->where('unit_sekolah_id', $scopedUnit);
         }
-        $jadwalHariIni = $jadwalHariIniQuery->get()->toArray();
+        // `jp` = bobot JP baris (durasi ÷ durasi_jp unit), sama dengan rekap mengajar.
+        $jadwalHariIni = $jadwalHariIniQuery->get()
+            ->map(fn (Jadwal $j) => array_merge($j->toArray(), ['jp' => JpCalculator::weightFromJadwal($j)]))
+            ->values()
+            ->toArray();
 
         // 7. Presensi Hari Ini
         $presensiQuery = Presensi::with('pegawai:id,nama_lengkap')
             ->where('tanggal', $today->toDateString())
-            ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status', 'lokasi_perlu_review']);
+            ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status', 'lokasi_perlu_review', 'is_lembur', 'tipe_presensi']);
 
         if ($bawahanIds !== null) {
             $presensiQuery->whereIn('pegawai_id', $bawahanIds);
@@ -520,15 +525,58 @@ class DashboardController extends Controller
 
         // Kelas kosong & piket — terpisah mengajar vs piket
         $presensiJadwalIds = Presensi::where('tanggal', $today->toDateString())->whereNotNull('jadwal_id')->pluck('jadwal_id')->toArray();
-        $baseKelasKosong = Jadwal::with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama', 'unitSekolah:id,nama'])
+        $baseKelasKosong = Jadwal::with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama', 'unitSekolah:id,nama,singkatan,durasi_jp'])
             ->where('hari', $hariIniIndo)->whereNotIn('id', $presensiJadwalIds);
         if ($bawahanIds !== null) {
             $baseKelasKosong->whereIn('pegawai_id', $bawahanIds);
         } elseif ($scopedUnit) {
             $baseKelasKosong->where('unit_sekolah_id', $scopedUnit);
         }
-        $kelasKosongMengajar = (clone $baseKelasKosong)->where('jenis_jadwal', 'mengajar')->orderBy('jam_mulai')->get()->toArray();
+        $kelasKosongMengajarModels = (clone $baseKelasKosong)->where('jenis_jadwal', 'mengajar')->orderBy('jam_mulai')->get();
         $kelasKosongPiket = (clone $baseKelasKosong)->where('jenis_jadwal', 'piket')->orderBy('jam_mulai')->get()->toArray();
+
+        // Status per baris untuk kartu dashboard:
+        // - jp          : bobot JP (bukan hitung baris; blok 2 JP dihitung 2)
+        // - status_waktu: lewat | berjalan | belum_mulai (jam server, bukan jam perangkat)
+        // - guru_hadir  : guru sudah presensi harian hari ini (tinggal catat JP-nya)
+        // ponytail: pakai jam_selesai tanpa toleransi slide; cukup untuk triage.
+        $nowH = Carbon::now('Asia/Jakarta')->format('H:i:s');
+        $hadirHarianIds = collect($presensiHariIni)
+            ->whereNull('jadwal_id')
+            ->where('is_lembur', false)
+            ->whereNotNull('jam_masuk')
+            ->pluck('pegawai_id')
+            ->flip();
+        $kelasKosongMengajar = $kelasKosongMengajarModels->map(function (Jadwal $j) use ($nowH, $hadirHarianIds) {
+            return array_merge($j->toArray(), [
+                'jp' => JpCalculator::weightFromJadwal($j),
+                'status_waktu' => $j->jam_mulai > $nowH ? 'belum_mulai' : ($j->jam_selesai <= $nowH ? 'lewat' : 'berjalan'),
+                'guru_hadir' => $hadirHarianIds->has($j->pegawai_id),
+            ]);
+        })->values();
+
+        $kelasKosongSummary = [
+            'jp_total' => round(collect($jadwalHariIni)->where('jenis_jadwal', 'mengajar')->sum('jp'), 2),
+            'jp_kosong' => round($kelasKosongMengajar->sum('jp'), 2),
+            'jp_lewat' => round($kelasKosongMengajar->where('status_waktu', 'lewat')->sum('jp'), 2),
+            'jp_berjalan' => round($kelasKosongMengajar->where('status_waktu', 'berjalan')->sum('jp'), 2),
+            'jp_belum_mulai' => round($kelasKosongMengajar->where('status_waktu', 'belum_mulai')->sum('jp'), 2),
+            'jp_guru_hadir' => round($kelasKosongMengajar->where('guru_hadir', true)->sum('jp'), 2),
+            'per_unit' => $kelasKosongMengajar->groupBy('unit_sekolah_id')->map(function ($rows, $unitId) {
+                $unit = $rows->first()['unit_sekolah'] ?? [];
+
+                return [
+                    'id' => (int) $unitId,
+                    'nama' => $unit['nama'] ?? 'Tanpa unit',
+                    'singkatan' => $unit['singkatan'] ?? null,
+                    'jp' => round($rows->sum('jp'), 2),
+                ];
+            })->sortByDesc('jp')->values()->all(),
+            // Libur hanya level global; libur khusus unit belum ditangani.
+            'hari_libur' => HariLibur::whereDate('tanggal', $today->toDateString())->whereNull('unit_sekolah_id')->value('nama'),
+        ];
+        $kelasKosongMengajar = $kelasKosongMengajar->toArray();
+
         $piketHariIni = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama'])
             ->where('hari', $hariIniIndo)->where('jenis_jadwal', 'piket')
             ->when($bawahanIds !== null, fn ($q) => $q->whereIn('pegawai_id', $bawahanIds))
@@ -566,6 +614,7 @@ class DashboardController extends Controller
             'jadwalHariIni' => $jadwalHariIni,
             'presensiHariIni' => $presensiHariIni,
             'kelasKosongMengajar' => $kelasKosongMengajar,
+            'kelasKosongSummary' => $kelasKosongSummary,
             'kelasKosongPiket' => $kelasKosongPiket,
             'piketHariIni' => $piketHariIni,
         ];
