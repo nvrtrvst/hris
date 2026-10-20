@@ -95,6 +95,7 @@ UI mobile HRIS untuk pegawai yayasan yang melakukan presensi dari ponsel, sering
 # Decisions
 
 - 2026-10-20 — Cari jadwal (`resources/js/Pages/Dashboard.jsx`): input search di header kartu "Jadwal Hari Ini", Enter-only, tanpa tombol filled primary (accent dijaga satu tempat), token `border-border`/`rounded-button`/`primary`. Empty state membedakan "belum ada jadwal" vs "tidak cocok dengan kata kunci" + aksi Reset.
+- 2026-10-20 — Layout PWA PR #28: fixed nav diberi inner `mx-auto max-w-md` (bukan nav-nya yang dibatasi) agar tetap full-viewport; form control mobile dipaksa 16px via rule CSS `.mobile-root :is(input, select, textarea)` (iOS auto-zoom), jadi JS/JSX input baru tak perlu ingat ini lagi; carousel pakai snap CSS dengan degrade aman; mask scroll wajib sertakan `-webkit-mask-image` + `mask-image` (pola `app.css` `.overflow-x-auto`). Audit item yang ternyata sudah benar: ikon header 44px, tab hari Jadwal 2-baris ≥ 44px, `min-[420px]` Piket memang tepat untuk kolom `max-w-md` (breakpoint `sm:` 640px tak akan aktif di HP).
 
 # Do's and Don'ts
 
