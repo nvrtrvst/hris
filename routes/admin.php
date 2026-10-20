@@ -290,6 +290,9 @@ Route::middleware('auth:web_admin')->group(function () {
 
     Route::get('laporan/pdf', [LaporanController::class, 'exportPdf'])->name('laporan.pdf');
     Route::get('laporan/piket', [LaporanController::class, 'laporanPiket'])->name('laporan.piket');
+    Route::post('laporan/piket/{laporan}/unlock', [LaporanController::class, 'unlockPiket'])
+        ->middleware(['can:view_presensi', 'throttle:60,1'])
+        ->name('laporan.piket.unlock');
     // Laporan KCD (daftar hadir bulanan untuk sertifikasi KCD)
     Route::middleware('can:view_laporan_kcd')->group(function () {
         Route::get('laporan/kcd', [LaporanController::class, 'kcdIndex'])->name('laporan.kcd');

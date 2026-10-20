@@ -101,7 +101,8 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
     const doneCount = wajib.filter(done).length;
     const submitted = laporan?.status === 'submitted';
     const inWin = (w) => hhmm >= w[0] && hhmm <= w[1];
-    const pagiOpen = inWin(windows.pagi);
+    // Jalur remedial: admin bisa membuka seksi Pagi di luar jendelanya.
+    const pagiOpen = inWin(windows.pagi) || Boolean(laporan?.unlocked_at);
     const kbmMulai = hhmm >= windows.kbm[0];
     const soreMulai = hhmm >= windows.sore[0];
     const errMsg = locErr || errors.geofence || errors.kode || errors.laporan;
@@ -175,6 +176,9 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                 <div className="space-y-4">
                     <section aria-label="Tugas pagi">
                         <SeksiHead icon={DoorOpen} title="Pagi" win={windows.pagi} state={done('gerbang') && done('cek_absen') ? 'done' : pagiOpen ? 'open' : 'locked'} />
+                        {!inWin(windows.pagi) && pagiOpen && !submitted && (
+                            <p className="mb-2 rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800">Admin membuka jalur telat — item Pagi bisa dicatat sampai laporan dikirim.</p>
+                        )}
                         <Card className="space-y-4">
                             <div>
                                 <p className="text-sm font-bold text-slate-800">Jaga gerbang {done('gerbang') && <span className="ml-1 text-xs font-semibold text-emerald-700">({items.gerbang.done_at?.substring(0, 5)}, {items.gerbang.terlambat_count ?? 0} terlambat)</span>}</p>

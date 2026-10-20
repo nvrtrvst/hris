@@ -1917,13 +1917,19 @@ class MobileController extends Controller
         $kode = $request->kode;
         $mode = $request->input('mode', 'centang');
 
-        // Jendela seksi: pagi terkunci jamnya; cek_absen-tambah boleh kapan
+        // Jendela seksi: pagi terkunci jamnya (kecuali admin sudah membuka
+        // jalur telat untuk laporan ini); cek_absen-tambah boleh kapan
         // saja sampai submit (konfirmasi sore); item KBM boleh sejak seksi
         // KBM sampai laporan dikirim.
+        $unlocked = (bool) LaporanPiket::where('pegawai_id', $pegawai->id)
+            ->where('tanggal', $today)
+            ->where('status', LaporanPiket::STATUS_DRAFT)
+            ->whereNotNull('unlocked_at')
+            ->exists();
         $seksi = LaporanPiket::ITEM_SEKSI[$kode];
         $boleh = match (true) {
             $kode === LaporanPiket::ITEM_CEK_ABSEN && $mode === 'tambah' => true,
-            $seksi === LaporanPiket::SEKSI_PAGI => $now >= $windows['pagi'][0] && $now <= $windows['pagi'][1],
+            $seksi === LaporanPiket::SEKSI_PAGI => $now >= $windows['pagi'][0] && ($now <= $windows['pagi'][1] || $unlocked),
             default => $now >= $windows['kbm'][0],
         };
         if (! $boleh) {

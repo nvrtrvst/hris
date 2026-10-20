@@ -106,6 +106,18 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
         status: filters.status || 'semua',
     });
     const [openId, setOpenId] = useState(null);
+    const [unlockingId, setUnlockingId] = useState(null);
+
+    const bukaJalur = (lap) => {
+        if (!window.confirm(`Buka jalur telat untuk laporan piket ${lap.pegawai?.nama_lengkap || ''} tgl ${lap.tanggal}? Item seksi Pagi bisa dicatat setelah jendela pagi.`)) {
+            return;
+        }
+        setUnlockingId(lap.id);
+        router.post(route('laporan.piket.unlock', lap.id), {}, {
+            preserveScroll: true,
+            onFinish: () => setUnlockingId(null),
+        });
+    };
 
     const tampilkan = (e) => {
         e.preventDefault();
@@ -190,18 +202,32 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
                                                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_BADGE[lap.status] || STATUS_BADGE.draft}`}>
                                                             {lap.status === 'submitted' ? 'Terkirim' : 'Belum lengkap'}
                                                         </span>
+                                                        {lap.unlocked_at && <span className="ml-1 inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-700">Telat dibuka</span>}
                                                     </td>
                                                     <td>{lap.perlu_cek > 0 ? <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">Perlu cek {lap.perlu_cek}</span> : <span className="text-text-muted">-</span>}</td>
                                                     <td>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setOpenId(openId === lap.id ? null : lap.id)}
-                                                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(openId === lap.id ? null : lap.id); } }}
-                                                            aria-expanded={openId === lap.id}
-                                                            className="inline-flex items-center gap-1 text-xs font-bold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                                                        >
-                                                            Detail <ChevronDown className={`h-3.5 w-3.5 transition-transform ${openId === lap.id ? 'rotate-180' : ''}`} />
-                                                        </button>
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setOpenId(openId === lap.id ? null : lap.id)}
+                                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(openId === lap.id ? null : lap.id); } }}
+                                                                aria-expanded={openId === lap.id}
+                                                                className="inline-flex items-center gap-1 text-xs font-bold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                                                            >
+                                                                Detail <ChevronDown className={`h-3.5 w-3.5 transition-transform ${openId === lap.id ? 'rotate-180' : ''}`} />
+                                                            </button>
+                                                            {lap.status !== 'submitted' && auth?.permissions?.includes('view_presensi') && !lap.unlocked_at && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => bukaJalur(lap)}
+                                                                    disabled={unlockingId === lap.id}
+                                                                    aria-label={`Buka jalur telat laporan piket ${lap.pegawai?.nama_lengkap || lap.tanggal}`}
+                                                                    className="rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 disabled:opacity-50"
+                                                                >
+                                                                    {unlockingId === lap.id ? '...' : 'Buka jalur telat'}
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                                 {openId === lap.id && (

@@ -366,6 +366,24 @@ class LaporanController extends Controller
         ]);
     }
 
+    /**
+     * Buka jalur remedial: item seksi Pagi boleh dicatat telat atas
+     * pengajuan pegawai (via WA/admin). Hanya laporan draft.
+     */
+    public function unlockPiket(Request $request, LaporanPiket $laporan)
+    {
+        if ($laporan->status === LaporanPiket::STATUS_SUBMITTED) {
+            return back()->withErrors(['laporan' => 'Laporan sudah dikirim, tidak bisa dibuka.']);
+        }
+
+        $laporan->forceFill([
+            'unlocked_at' => now(),
+            'unlocked_by' => $request->user()->id,
+        ])->save();
+
+        return back()->with('message', 'Jalur telat dibuka untuk laporan piket ini.');
+    }
+
     public function kcdIndex()
     {
         $user = request()->user();
