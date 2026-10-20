@@ -59,14 +59,14 @@ export default function MobileLayout({ user, header, children }) {
         <div className="mobile-root mx-auto max-w-md bg-[#f4f7f5] font-sans font-antialiased text-slate-900 shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
             <header className="sticky top-0 z-20 border-b border-emerald-950/10 bg-primary px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
                 <div className="flex min-h-11 items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                        <ApplicationLogo src={primaryUnit?.logo_url || '/logo.png'} alt={`Logo ${primaryUnit?.nama || 'Yayasan'}`} width="44" height="44" className="h-11 w-11 text-white" />
-                        <div>
+                    <div className="flex min-w-0 flex-1 items-center space-x-3">
+                        <ApplicationLogo src={primaryUnit?.logo_url || '/logo.png'} alt={`Logo ${primaryUnit?.nama || 'Yayasan'}`} width="44" height="44" className="h-11 w-11 shrink-0 text-white" />
+                        <div className="min-w-0">
                             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-100">Portal Pegawai</p>
-                            <p className="max-w-52 truncate text-sm font-bold leading-tight">Presensi {unitLabel}</p>
+                            <p className="truncate text-sm font-bold leading-tight">Presensi {unitLabel}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="ml-3 flex shrink-0 items-center gap-2">
                         <Link href={route('presensi.pengumuman')} className="relative flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white/80 hover:text-white" aria-label="Pengumuman">
                             <Megaphone className="h-5 w-5" />
                             {auth?.announcement_count > 0 && (
@@ -83,7 +83,6 @@ export default function MobileLayout({ user, header, children }) {
                                 </span>
                             )}
                         </Link>
-                    </div>
                         <Dropdown>
                         <Dropdown.Trigger>
                             <button className="flex min-h-11 min-w-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Buka menu akun">
@@ -109,7 +108,7 @@ export default function MobileLayout({ user, header, children }) {
                                 <button
                                     type="button"
                                     onClick={pushPermission === 'granted' ? disablePushNotifications : enablePushNotifications}
-                                    className="flex w-full items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                    className="flex w-full items-center px-4 py-3 text-sm text-slate-700 hover:bg-slate-100"
                                 >
                                     <Bell className="mr-2 h-4 w-4" />
                                     {pushPermission === 'granted' ? 'Nonaktifkan Notifikasi' : 'Aktifkan Notifikasi'}
@@ -122,7 +121,7 @@ export default function MobileLayout({ user, header, children }) {
                                         const r = await sendTestPush();
                                         setTestMsg(r?.message || (r?.success ? 'Terkirim' : 'Gagal'));
                                     }}
-                                    className="flex w-full items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                    className="flex w-full items-center px-4 py-3 text-sm text-slate-700 hover:bg-slate-100"
                                 >
                                     <Bell className="mr-2 h-4 w-4" />
                                     Kirim Tes Notif
@@ -133,7 +132,8 @@ export default function MobileLayout({ user, header, children }) {
                                 Keluar
                             </Dropdown.Link>
                         </Dropdown.Content>
-                    </Dropdown>
+                        </Dropdown>
+                    </div>
                 </div>
             </header>
 
@@ -155,7 +155,7 @@ export default function MobileLayout({ user, header, children }) {
             </main>
 
             <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]" aria-label="Navigasi utama">
-                <div className="flex h-16 items-stretch justify-between px-1">
+                <div className="mx-auto flex h-16 max-w-md items-stretch justify-between px-1">
                     {navItems.map((item) => {
                         const active = item.match(url);
                         return (
@@ -173,7 +173,7 @@ export default function MobileLayout({ user, header, children }) {
                                 <span>
                                     <item.icon className="h-5 w-5" />
                                 </span>
-                                <span className="truncate text-[10px] font-semibold">{item.label}</span>
+                                <span className="truncate text-xs font-semibold">{item.label}</span>
                             </Link>
                         );
                     })}

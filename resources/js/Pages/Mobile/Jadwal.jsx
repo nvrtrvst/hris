@@ -453,7 +453,7 @@ export default function Jadwal({ auth, pegawai, jadwalPerHari, presensiHariIni =
                         )}
 
                         {selectedClass && (
-                            <button type="button" onClick={changeClass} className="mb-3 text-sm font-bold text-primary">
+                            <button type="button" onClick={changeClass} className="mb-1 inline-flex min-h-11 items-center text-sm font-bold text-primary">
                                 Ganti kelas
                             </button>
                         )}

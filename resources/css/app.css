@@ -46,6 +46,13 @@
         min-height: -webkit-fill-available;
     }
 
+    /* iOS Safari auto-zoom saat fokus jika font input < 16px. Paksa 16px
+       untuk semua form control mobile, menimpa util Tailwind text-sm dari
+       asal JSX. specificity .mobile-root input > .text-sm. */
+    .mobile-root :is(input, select, textarea) {
+        font-size: 16px;
+    }
+
     /* Posisi toast "Versi baru tersedia": mobile full-width di atas dengan
        safe-area status bar PWA; desktop (sm+) kanan-atas. Dipisah dari
        Tailwind karena nilai env() + max() tidak diparse oleh vite plugin. */

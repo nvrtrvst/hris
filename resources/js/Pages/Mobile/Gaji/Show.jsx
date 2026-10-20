@@ -15,7 +15,7 @@ export default function GajiShow({ auth, penggajian }) {
         <MobileLayout user={auth.user}>
             <Head title={`Slip Gaji ${p.periode_bulan}`} />
 
-            <Link href={route('presensi.gaji.index')} className="mb-4 inline-flex items-center gap-1.5 text-sm font-bold text-primary">
+            <Link href={route('presensi.gaji.index')} className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-primary">
                 <ArrowLeft className="h-4 w-4" /> Kembali
             </Link>
 
@@ -34,14 +34,14 @@ export default function GajiShow({ auth, penggajian }) {
                 <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">Pendapatan</h2>
                 <div className="divide-y divide-slate-100">
                     {pendapatan.map((d, i) => (
-                        <div key={i} className="flex items-center justify-between py-2">
-                            <span className="text-sm text-slate-700">{d.nama_komponen}</span>
-                            <span className="text-sm font-bold text-slate-900">Rp {Number(d.nominal).toLocaleString('id-ID')}</span>
+                        <div key={i} className="flex items-center justify-between gap-3 py-2">
+                            <span className="min-w-0 truncate text-sm text-slate-700">{d.nama_komponen}</span>
+                            <span className="shrink-0 text-sm font-bold text-slate-900">Rp {Number(d.nominal).toLocaleString('id-ID')}</span>
                         </div>
                     ))}
                 </div>
-                <div className="mt-2 flex items-center justify-between border-t-2 border-primary pt-3">
-                    <span className="text-sm font-bold text-slate-800">Total Pendapatan</span>
+                <div className="mt-2 flex items-center justify-between gap-3 border-t-2 border-primary pt-3">
+                    <span className="min-w-0 truncate text-sm font-bold text-slate-800">Total Pendapatan</span>
                     <span className="text-sm font-bold text-primary">Rp {Number(p.total_pendapatan).toLocaleString('id-ID')}</span>
                 </div>
             </Card>
@@ -50,14 +50,14 @@ export default function GajiShow({ auth, penggajian }) {
                 <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">Potongan</h2>
                 <div className="divide-y divide-slate-100">
                     {potongan.map((d, i) => (
-                        <div key={i} className="flex items-center justify-between py-2">
-                            <span className="text-sm text-slate-700">{d.nama_komponen}</span>
-                            <span className="text-sm font-bold text-slate-900">Rp {Number(d.nominal).toLocaleString('id-ID')}</span>
+                        <div key={i} className="flex items-center justify-between gap-3 py-2">
+                            <span className="min-w-0 truncate text-sm text-slate-700">{d.nama_komponen}</span>
+                            <span className="shrink-0 text-sm font-bold text-slate-900">Rp {Number(d.nominal).toLocaleString('id-ID')}</span>
                         </div>
                     ))}
                 </div>
-                <div className="mt-2 flex items-center justify-between border-t-2 border-rose-500 pt-3">
-                    <span className="text-sm font-bold text-slate-800">Total Potongan</span>
+                <div className="mt-2 flex items-center justify-between gap-3 border-t-2 border-rose-500 pt-3">
+                    <span className="min-w-0 truncate text-sm font-bold text-slate-800">Total Potongan</span>
                     <span className="text-sm font-bold text-rose-600">Rp {Number(p.total_potongan).toLocaleString('id-ID')}</span>
                 </div>
             </Card>
