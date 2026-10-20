@@ -20,9 +20,11 @@ import {
     FileWarning,
     Hourglass,
     School,
+    Search,
     TrendingUp,
     UserCheck,
     Users,
+    X,
 } from 'lucide-react';
 
 class ErrorBoundary extends Component {
@@ -297,6 +299,9 @@ export default function Dashboard(props) {
 function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadwalHariIni, presensiHariIni, pengumuman = [], units = [], selectedUnitId = null, selectedUnitNama = null, kelasKosongMengajar = [], kelasKosongSummary = {}, kelasKosongPiket = [], piketHariIni = [] }) {
     const [detailPresensi, setDetailPresensi] = useState(null);
     const [detailPiket, setDetailPiket] = useState(null);
+    // Pencarian jadwal: kolom input bebas, filter baru berubah saat Enter (tanpa debounce).
+    const [draftCari, setDraftCari] = useState('');
+    const [cari, setCari] = useState('');
 
     // Live polling: refresh data kehadiran/jadwal/presensi tiap 60 detik (partial reload
     // Inertia, hanya prop yang di-`only` dikirim ulang). Berhenti saat tab tidak aktif.
@@ -358,6 +363,27 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
             || (b.lastMasuk || '99:99').localeCompare(a.lastMasuk || '99:99')
             || (a.guru?.nama_lengkap || '').localeCompare(b.guru?.nama_lengkap || ''));
     }, [jadwalHariIni, presensiMap]);
+
+    // Filter pencarian di level grup supaya kolom "Harian" (rowSpan) tetap utuh.
+    // Grup yang cocok lewat nama guru/unit menampilkan semua JP guru itu; selain itu
+    // hanya baris yang cocok (mapel, jenis, kelas, unit, jam).
+    const jadwalGroupsCari = useMemo(() => {
+        const q = cari.trim().toLowerCase();
+        if (!q) return jadwalGroups;
+
+        const cocok = (nilai) => (nilai || '').toLowerCase().includes(q);
+        const cocokBaris = (j) => cocok(j.mata_pelajaran?.nama)
+            || cocok(j.jenis_jadwal)
+            || cocok(j.kelas_label)
+            || cocok(j.unit_sekolah?.singkatan)
+            || cocok(j.unit_sekolah?.nama)
+            || cocok(j.jam_mulai?.slice(0, 5));
+
+        return jadwalGroups.flatMap((g) => {
+            const items = cocok(g.guru?.nama_lengkap) ? g.items : g.items.filter(cocokBaris);
+            return items.length > 0 ? [{ ...g, items, totalItems: g.items.length }] : [];
+        });
+    }, [jadwalGroups, cari]);
 
     const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka || 0);
 
@@ -559,20 +585,69 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
 
                     {/* Jadwal Hari Ini */}
                     <div className="card p-0 overflow-hidden">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 bg-surface/50 px-5 py-4">
-                            <h3 className="flex items-center gap-2 text-base font-bold text-primary">
+                        <div className="flex flex-col gap-3 border-b border-border/60 bg-surface/50 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                            <h3 className="flex flex-wrap items-center gap-2 text-base font-bold text-primary">
                                 <CalendarDays className="h-5 w-5 text-primary" />
                                 Jadwal Hari Ini
                                 <span className="text-xs font-semibold text-text-secondary normal-case">
                                     {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                                 </span>
                             </h3>
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/5 px-3 py-1 text-[11px] font-bold text-primary">
-                                <Users className="h-3.5 w-3.5" /> {s.pegawai_dijadwalkan || 0} guru dijadwalkan
-                            </span>
+
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary/5 px-3 py-1 text-xs font-bold text-primary tabular-nums">
+                                    <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                                    {cari
+                                        ? `${jadwalGroupsCari.length} dari ${jadwalGroups.length} guru`
+                                        : `${s.pegawai_dijadwalkan || 0} guru dijadwalkan`}
+                                </span>
+
+                                <form
+                                    role="search"
+                                    onSubmit={(e) => { e.preventDefault(); setCari(draftCari.trim()); }}
+                                    className="relative w-full sm:w-72"
+                                >
+                                    <label htmlFor="cari-jadwal" className="sr-only">Cari jadwal hari ini</label>
+                                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" aria-hidden="true" />
+                                    <input
+                                        id="cari-jadwal"
+                                        type="text"
+                                        enterKeyHint="search"
+                                        autoComplete="off"
+                                        value={draftCari}
+                                        onChange={(e) => setDraftCari(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Escape') {
+                                                e.preventDefault();
+                                                setDraftCari('');
+                                                setCari('');
+                                            }
+                                        }}
+                                        placeholder="Cari guru, mapel, kelas, unit, lalu Enter"
+                                        className="w-full rounded-button border border-border bg-white py-2 pl-8 pr-8 text-sm text-text-primary placeholder:text-text-secondary hover:border-border-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
+                                    {(draftCari || cari) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { setDraftCari(''); setCari(''); }}
+                                            aria-label="Reset pencarian jadwal"
+                                            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-button p-1 text-text-secondary hover:bg-surface hover:text-text-primary active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                        >
+                                            <X className="h-3.5 w-3.5" aria-hidden="true" />
+                                        </button>
+                                    )}
+                                </form>
+                            </div>
                         </div>
 
+                        {cari && (
+                            <p role="status" aria-live="polite" className="sr-only">
+                                Menampilkan {jadwalGroupsCari.length} dari {jadwalGroups.length} guru.
+                            </p>
+                        )}
+
                         {jadwalGroups.length > 0 ? (
+                            jadwalGroupsCari.length > 0 ? (
                             <div className="overflow-x-auto lg:max-h-[72vh] lg:overflow-y-auto">
                                 <table className="min-w-full divide-y divide-border text-sm">
                                     <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">
@@ -587,7 +662,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/50">
-                                        {jadwalGroups.map((g) => {
+                                        {jadwalGroupsCari.map((g) => {
                                             const isExpanded = detailPresensi === g.guru?.id;
                                             const harian = presensiMap[g.guru?.id];
 
@@ -624,8 +699,8 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                                     </span>
                                                                     <div className="min-w-0">
                                                                         <span className="font-semibold text-text-primary">{g.guru?.nama_lengkap || '-'}</span>
-                                                                        {g.items.length > 1 && (
-                                                                            <span className="ml-1.5 rounded-full bg-primary/5 px-1.5 py-0.5 text-[10px] font-bold text-primary">{g.items.length} JP</span>
+                                                                        {(g.totalItems ?? g.items.length) > 1 && (
+                                                                            <span className="ml-1.5 rounded-full bg-primary/5 px-1.5 py-0.5 text-[10px] font-bold text-primary">{g.totalItems ?? g.items.length} JP</span>
                                                                         )}
                                                                     </div>
                                                                 </div>
@@ -647,6 +722,24 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                     </tbody>
                                 </table>
                             </div>
+                            ) : (
+                                <div className="flex flex-col items-center px-6 py-12 text-center">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface">
+                                        <Search className="h-7 w-7 text-text-secondary" aria-hidden="true" />
+                                    </div>
+                                    <p className="mt-3 text-sm font-bold text-primary">Tidak ada jadwal yang cocok</p>
+                                    <p className="mt-1 max-w-sm text-xs text-text-secondary">
+                                        Tidak ada guru, mapel, kelas, atau unit yang mengandung &ldquo;{cari}&rdquo;. Coba kata kunci lain atau reset pencarian.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setDraftCari(''); setCari(''); }}
+                                        className="mt-4 inline-flex items-center gap-1.5 rounded-button border border-border bg-white px-3 py-2 text-xs font-bold text-primary hover:bg-surface active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                    >
+                                        <X className="h-3.5 w-3.5" aria-hidden="true" /> Reset pencarian
+                                    </button>
+                                </div>
+                            )
                         ) : (
                             <div className="flex flex-col items-center py-12 text-center">
                                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface">
