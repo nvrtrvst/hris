@@ -64,12 +64,15 @@ class LaporanPiket extends Model
         'items',
         'status',
         'submitted_at',
+        'unlocked_at',
+        'unlocked_by',
     ];
 
     protected $casts = [
         'tanggal' => 'date:Y-m-d',
         'items' => 'array',
         'submitted_at' => 'datetime',
+        'unlocked_at' => 'datetime',
     ];
 
     public function pegawai(): BelongsTo

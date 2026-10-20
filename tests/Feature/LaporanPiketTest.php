@@ -304,6 +304,105 @@ class LaporanPiketTest extends TestCase
         $this->assertDatabaseCount('laporan_piket', 0);
     }
 
+    public function test_item_pagi_telat_ditolak_tanpa_unlock(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai, '2026-10-12');
+        // Jendela pagi slot 07:00-15:00 = 07:00-09:40; 10:00 sudah lewat.
+        Carbon::setTestNow('2026-10-12 10:00:00');
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'gerbang', 'mode' => 'centang'],
+                $this->geo()
+            ));
+
+        $res->assertStatus(422);
+        Carbon::setTestNow();
+    }
+
+    public function test_item_pagi_telat_diterima_setelah_unlock_admin(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai, '2026-10-12');
+        // KBM terbuka pada 10:00, pagi (07:00-09:40) terkunci.
+        Carbon::setTestNow('2026-10-12 10:00:00');
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'buku', 'mode' => 'centang'],
+                $this->geo()
+            ))->assertRedirect();
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)->whereDate('tanggal', '2026-10-12')->first();
+
+        Carbon::setTestNow('2026-10-12 10:00:00');
+        // Pegawai masih terkunci sebelum admin membuka.
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'gerbang', 'mode' => 'centang'],
+                $this->geo()
+            ))->assertStatus(422);
+
+        // Admin membuka jalur telat.
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('laporan.piket.unlock', $laporan->id))
+            ->assertRedirect();
+        $laporan->refresh();
+        $this->assertNotNull($laporan->unlocked_at);
+        $this->assertSame($this->admin->id, $laporan->unlocked_by);
+
+        // Item pagi telat kini diterima.
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'gerbang', 'mode' => 'centang', 'terlambat_count' => 3],
+                $this->geo()
+            ))->assertRedirect();
+
+        $laporan->refresh();
+        $this->assertTrue($laporan->isItemDone(LaporanPiket::ITEM_GERBANG));
+        Carbon::setTestNow();
+    }
+
+    public function test_unlock_laporan_submitted_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai, '2026-10-12');
+        $laporan = LaporanPiket::create([
+            'pegawai_id' => $pegawai->id,
+            'jadwal_id' => Jadwal::where('pegawai_id', $pegawai->id)->first()->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-10-12',
+            'status' => LaporanPiket::STATUS_SUBMITTED,
+            'submitted_at' => '2026-10-12 14:00:00',
+        ]);
+
+        $res = $this->actingAs($this->admin, 'web_admin')
+            ->post(route('laporan.piket.unlock', $laporan->id));
+
+        $res->assertRedirect();
+        $res->assertSessionHasErrors('laporan');
+        $this->assertNull($laporan->refresh()->unlocked_at);
+    }
+
+    public function test_unlock_tanpa_izin_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $pengguna = User::factory()->create(); // tanpa role: tidak punya view_presensi
+        $laporan = LaporanPiket::create([
+            'pegawai_id' => $pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-10-12',
+        ]);
+
+        $this->actingAs($pengguna, 'web_admin')
+            ->post(route('laporan.piket.unlock', $laporan->id))
+            ->assertForbidden();
+        $this->assertNull($laporan->refresh()->unlocked_at);
+    }
+
     public function test_alur_lengkap_sampai_submit(): void
     {
         $pegawai = $this->makePegawai();
