@@ -68,6 +68,9 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
     const formatTanggal = (t) => format(parseISO(t), 'd MMMM yyyy', { locale: id });
     const formatJam = (j) => (j ? j.substring(0, 5) : '-');
     const dayName = (t) => capitalize(format(parseISO(t), 'EEEE', { locale: id }));
+    // Jam keluar baris mengajar yang pre-fill = jam_selesai jadwal
+    // (MobileController:969-976) bukan hasil absen keluar aktual.
+    const keluarPrefill = (p) => Boolean(p.jam_keluar && p.jadwal && p.jam_keluar === p.jadwal.jam_selesai);
 
     const [selectedDate, setSelectedDate] = useState(null);
 
@@ -257,6 +260,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                 const label = p.is_lembur ? 'Lembur' : p.tipe_presensi === 'kantor' ? 'Presensi Kantor' : 'Presensi';
                                 const isKantor = p.tipe_presensi === 'kantor';
                                 const belumPulang = Boolean(p.jam_masuk) && !p.jam_keluar;
+                                const prefillKeluar = keluarPrefill(p);
                                 const pulangAwal = realisasiInfo(p, p.status);
                                 const badge = isKantor && belumPulang
                                     ? { tone: 'amber', label: 'Belum pulang', icon: Clock }
@@ -267,7 +271,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                             <div className="min-w-0">
                                                 <p className="truncate font-bold text-slate-800">{label}</p>
                                                 <p className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
-                                                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-600" />{fmtDetik(p.jam_masuk)}–{fmtDetik(p.jam_keluar)}</span>
+                                                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-600" />{fmtDetik(p.jam_masuk)} – {prefillKeluar ? `selesai ${fmtDetik(p.jam_keluar)} (jadwal)` : fmtDetik(p.jam_keluar)}</span>
                                                     {p.jarak_meter != null && (
                                                         <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-emerald-600" />{p.jarak_meter}m</span>
                                                     )}
@@ -288,7 +292,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                         </div>
                                         <div className="mt-2.5 grid grid-cols-2 gap-2">
                                             <FotoBukti url={p.foto_masuk_url} jam={fmtDetik(p.jam_masuk)} label="Masuk" status={p.foto_masuk_status} />
-                                            <FotoBukti url={p.foto_keluar_url} jam={fmtDetik(p.jam_keluar)} label="Keluar" status={p.foto_keluar_status} />
+                                            <FotoBukti url={p.foto_keluar_url} jam={prefillKeluar ? null : fmtDetik(p.jam_keluar)} label="Keluar" status={p.foto_keluar_status} />
                                         </div>
                                         {belumPulang && (
                                             <button
