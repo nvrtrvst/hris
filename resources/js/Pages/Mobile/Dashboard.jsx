@@ -68,15 +68,16 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
     const lemburRec = todayRecords.find((r) => r.is_lembur);
     const mengajarRecs = todayRecords.filter((r) => r.tipe_presensi === 'mengajar');
     const primary = kantorRec || lemburRec || mengajarRecs[0] || presensi || null;
-    // Jam keluar hari itu: baris kantor/lembur (pulang aktual) menang atas baris
-    // mengajar yang jam_keluarnya hasil prefill dari jadwal. Baris mengajar hanya
-    // dipakai bila tak ada baris kantor/lembur ber-jam_keluar (pegawai honorer).
-    const pulangRecs = todayRecords.filter((r) => r.jam_keluar);
-    const aktualRecs = pulangRecs.filter((r) => r.tipe_presensi !== 'mengajar');
-    const keluarRec = (aktualRecs.length > 0 ? aktualRecs : pulangRecs).reduce(
-        (max, r) => (!max || r.jam_keluar > max.jam_keluar ? r : max),
-        null,
-    ) ?? primary;
+    // Jam keluar hari itu: HANYA dari pulang aktual (baris kantor/lembur/
+    // tugas luar). Baris mengajar di-pre-fill jam_keluar = jam_selesai jadwal
+    // oleh server (MobileController:969-976) — bukan absen keluar, jadi tidak
+    // boleh ditampilkan sebagai jam pulang hero. Tanpa pulang aktual = '--:--'.
+    const keluarRec = todayRecords
+        .filter((r) => r.tipe_presensi !== 'mengajar' && r.jam_keluar)
+        .reduce(
+            (max, r) => (!max || r.jam_keluar > max.jam_keluar ? r : max),
+            null,
+        );
     const pulangAwal = realisasiInfo(keluarRec, null);
     const isMengajar = !kantorRec && !lemburRec && mengajarRecs.length > 0;
     const mengajarStatus = mengajarRecs.some((r) => r.status === 'telat') ? 'telat'
