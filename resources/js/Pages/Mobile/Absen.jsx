@@ -536,23 +536,19 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </div>
             )}
 
-            {/* Presensi selesai */}
+            {/* Presensi selesai — ringkas hanya presensi kantor (masuk/pulang
+                aktual). Baris JP mengajar (jam_keluar pre-fill jadwal) tidak
+                ditampilkan di sini agar tak terbaca sebagai "sudah pulang". */}
             {presensiComplete && (
                 <Card press={false} className="border-emerald-200 bg-emerald-50 p-4 text-center">
                     <CheckCircle className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
                     <p className="text-sm font-bold text-emerald-900">Presensi hari ini sudah lengkap</p>
-                    {isTeaching && teachingRecord && (
-                        <p className="mt-1 text-xs text-emerald-700">Masuk: {teachingRecord.jam_masuk} · Keluar: {teachingRecord.jam_keluar}</p>
-                    )}
-                    {isLembur && lemburRecord && (
-                        <p className="mt-1 text-xs text-emerald-700">Masuk: {lemburRecord.jam_masuk} · Keluar: {lemburRecord.jam_keluar}</p>
-                    )}
-                    {isTugasLuar && tugasLuarRecord && (
-                        <p className="mt-1 text-xs text-emerald-700">Masuk: {tugasLuarRecord.jam_masuk} · Keluar: {tugasLuarRecord.jam_keluar}</p>
-                    )}
-                    {!isLembur && !isTugasLuar && !isTeaching && kantorRecord && (
-                        <p className="mt-1 text-xs text-emerald-700">Masuk: {kantorRecord.jam_masuk} · Keluar: {kantorRecord.jam_keluar}</p>
-                    )}
+                    {(() => {
+                        const kantorRow = (presensiHariIni || []).find((p) => !p.jadwal_id && !p.is_lembur && !p.is_tugas_luar && p.jam_masuk);
+                        return kantorRow ? (
+                            <p className="mt-1 text-xs text-emerald-700">Masuk: {kantorRow.jam_masuk} · Keluar: {kantorRow.jam_keluar || 'belum pulang'}</p>
+                        ) : null;
+                    })()}
                 </Card>
             )}
 
