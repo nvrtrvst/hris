@@ -485,14 +485,14 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                         <h2 id="jadwal-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Jadwal hari ini</h2>
                         <span className="text-xs text-slate-500">{jadwalsPresensi.length} jadwal</span>
                     </div>
-                    <div className="flex gap-2 overflow-x-auto pb-1">
+                    <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
                         {jadwalsPresensi.map((j) => (
                             <button
                                 key={j.id}
                                 type="button"
                                 onClick={() => selectJadwal(j.id)}
                                 aria-pressed={jadwalId === j.id}
-                                className={`min-h-[76px] min-w-[172px] shrink-0 rounded-xl border p-3 text-left transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 ${jadwalId === j.id ? 'border-primary bg-emerald-50 ring-1 ring-primary' : 'border-slate-200 bg-white'}`}
+                                className={`min-h-[76px] min-w-[172px] shrink-0 snap-start rounded-xl border p-3 text-left transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 ${jadwalId === j.id ? 'border-primary bg-emerald-50 ring-1 ring-primary' : 'border-slate-200 bg-white'}`}
                             >
                                 <div className="flex items-start justify-between gap-2">
                                     <p className="line-clamp-1 text-sm font-bold text-slate-900">{j.mata_pelajaran?.nama || 'Jadwal'}</p>
