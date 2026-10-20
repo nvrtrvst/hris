@@ -78,6 +78,18 @@ UI mobile HRIS untuk pegawai yayasan yang melakukan presensi dari ponsel, sering
 - Verification row: GPS dan bukti foto selalu terlihat sebelum submit.
 - Bottom nav: lima tujuan, label satu kata, active indicator garis atas.
 
+# Admin Dashboard (desktop)
+
+- Kontrak mobile di atas tidak berlaku di sini: tabel, grid dua kolom, dan sidebar boleh melebar.
+- Daftar yang butuh tindakan memakai kartu putih dengan garis aksen kiri `4px`: `warning` untuk JP mengajar, `info` untuk piket.
+- Angka JP memakai bobot `JpCalculator` (menit ÷ `durasi_jp` unit), bukan jumlah baris jadwal. Jangan tampilkan label "JP" dari `count()`.
+- Urgensi dibagi tiga label teks: `Terlewat`, `Berjalan`, `Belum mulai`. Badge selalu berisi kata, warna tidak berdiri sendiri.
+- "Guru sudah di unit" (ada presensi harian) dan "JP tercatat" (presensi per jadwal) adalah dua sumbu berbeda; jangan digabung jadi satu status.
+- Daftar rinci dibuka di tempat (`aria-expanded` + `aria-controls`), bukan modal. Filter unit berupa chip `aria-pressed`; menutup daftar mengosongkan filter unit.
+- Bar progres wajib `role="progressbar"` dengan `aria-valuenow/min/max`; gerak hanya pada `motion-safe`.
+- Teks kecil memakai `text-text-secondary`, bukan `text-text-muted`.
+- Rentang jam memakai tanda hubung `08:00-08:40`.
+
 # Do's and Don'ts
 
 - Gunakan status eksplisit dan copy singkat.

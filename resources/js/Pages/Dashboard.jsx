@@ -15,6 +15,7 @@ import {
     Megaphone,
     PinIcon,
     CheckCircle2,
+    ChevronDown,
     Clock3,
     FileWarning,
     Hourglass,
@@ -78,6 +79,213 @@ const StatusBadge = ({ status }) => {
     );
 };
 
+const formatJp = (value) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Math.round(value || 0));
+
+const jamPendek = (waktu) => (waktu ? waktu.slice(0, 5) : '—');
+
+/** Satu baris JP tanpa presensi. Unit opsional (disembunyikan di layar sempit). */
+function KelasKosongRow({ row, unit }) {
+    const mapel = row.mata_pelajaran?.nama || row.pegawaiMapel?.mataPelajaran?.nama || '—';
+
+    return (
+        <li className="flex flex-wrap items-center gap-x-2 gap-y-1 py-2">
+            <span className="font-mono text-xs font-semibold tabular-nums text-text-primary">
+                {jamPendek(row.jam_mulai)}-{jamPendek(row.jam_selesai)}
+            </span>
+            <span className="text-sm font-semibold text-text-primary">{row.kelas_label || '—'}</span>
+            <span className="text-xs text-text-secondary">· {mapel}</span>
+            <span className="max-w-[16rem] truncate text-xs text-text-secondary">{row.pegawai?.nama_lengkap || '—'}</span>
+            {row.jp > 1 && <span className="badge badge-neutral">{formatJp(row.jp)} JP</span>}
+            <span className="ml-auto flex flex-wrap items-center gap-1.5">
+                {unit && <span className="hidden text-xs text-text-secondary sm:inline">{unit.singkatan || unit.nama}</span>}
+                {row.guru_hadir
+                    ? <span className="badge badge-info">Guru sudah di unit</span>
+                    : <span className="badge badge-danger">Guru belum hadir</span>}
+                {row.status_waktu === 'lewat' && <span className="badge badge-danger">Terlewat</span>}
+                {row.status_waktu === 'berjalan' && <span className="badge badge-warning">Berjalan</span>}
+            </span>
+        </li>
+    );
+}
+
+/**
+ * Kartu "JP belum diabsen": ringkasan JP (bobot JpCalculator, bukan hitung baris),
+ * pemisahan lewat/berjalan/belum mulai, dan daftar lengkap yang bisa dibuka di tempat.
+ */
+function KelasKosongCard({ rows = [], summary = {} }) {
+    const [terbuka, setTerbuka] = React.useState(false);
+    const [unitId, setUnitId] = React.useState(null);
+
+    const jpTotal = summary.jp_total || 0;
+    const jpKosong = summary.jp_kosong || 0;
+    const jpTercatat = Math.max(0, jpTotal - jpKosong);
+    const persen = jpTotal > 0 ? Math.round((jpTercatat / jpTotal) * 100) : 0;
+    const perUnit = summary.per_unit || [];
+
+    const mendesak = React.useMemo(() => rows
+        .filter((r) => r.status_waktu !== 'belum_mulai')
+        .sort((a, b) => (a.status_waktu === b.status_waktu
+            ? (a.jam_mulai || '').localeCompare(b.jam_mulai || '')
+            : (a.status_waktu === 'lewat' ? -1 : 1))), [rows]);
+
+    const daftar = React.useMemo(() => rows
+        .filter((r) => !unitId || r.unit_sekolah_id === unitId)
+        .sort((a, b) => (a.jam_mulai || '').localeCompare(b.jam_mulai || '')), [rows, unitId]);
+
+    const unitDari = (id) => perUnit.find((u) => u.id === id) || null;
+    const bukaDaftar = (id = null) => { setUnitId(id); setTerbuka(true); };
+    const toggleDaftar = () => {
+        if (terbuka) setUnitId(null);
+        setTerbuka(!terbuka);
+    };
+
+    if (jpTotal <= 0) return null;
+
+    if (summary.hari_libur) {
+        return (
+            <section className="card px-5 py-4">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-text-primary">
+                    <CalendarDays className="h-4 w-4 text-text-secondary" aria-hidden="true" /> Hari libur: {summary.hari_libur}
+                </h3>
+                <p className="mt-1 text-xs text-text-secondary">Tidak ada KBM, jadi JP hari ini tidak dihitung kosong.</p>
+            </section>
+        );
+    }
+
+    if (jpKosong <= 0) {
+        return (
+            <section className="card border-l-4 border-success px-5 py-4">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-text-primary">
+                    <CheckCircle2 className="h-4 w-4 text-success" aria-hidden="true" /> Semua {formatJp(jpTotal)} JP sudah tercatat
+                </h3>
+                <p className="mt-1 text-xs text-text-secondary">Presensi guru untuk setiap JP hari ini lengkap.</p>
+            </section>
+        );
+    }
+
+    const unitTampil = unitId ? [unitId] : perUnit.map((u) => u.id);
+
+    return (
+        <section aria-labelledby="kelas-kosong-title" className="card border-l-4 border-warning px-5 py-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <h3 id="kelas-kosong-title" className="flex items-center gap-2 text-sm font-bold text-text-primary">
+                        <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" /> JP Belum Diabsen
+                    </h3>
+                    <p className="mt-1 text-xs text-text-secondary">
+                        dari {formatJp(jpTotal)} JP terjadwal hari ini · {formatJp(jpTercatat)} JP sudah tercatat
+                    </p>
+                </div>
+                <p className="shrink-0 text-2xl font-extrabold leading-none tabular-nums text-text-primary">
+                    {formatJp(jpKosong)} <span className="text-xs font-semibold text-text-secondary">JP</span>
+                </p>
+            </div>
+
+            <div
+                className="mt-3 h-2 w-full overflow-hidden rounded-full bg-border/60"
+                role="progressbar"
+                aria-valuenow={persen}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`JP tercatat ${persen} persen`}
+            >
+                <div className="h-full rounded-full bg-warning motion-safe:transition-all motion-safe:duration-500" style={{ width: `${persen}%` }} />
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-1.5">
+                <span className="badge badge-danger">Terlewat {formatJp(summary.jp_lewat)} JP</span>
+                <span className="badge badge-warning">Berjalan {formatJp(summary.jp_berjalan)} JP</span>
+                <span className="badge badge-neutral">Belum mulai {formatJp(summary.jp_belum_mulai)} JP</span>
+            </div>
+
+            {summary.jp_guru_hadir > 0 && (
+                <p className="mt-2 text-xs text-text-secondary">
+                    {formatJp(summary.jp_guru_hadir)} JP di antaranya gurunya sudah absen harian, tinggal catat JP-nya.
+                </p>
+            )}
+
+            {mendesak.length > 0 ? (
+                <div className="mt-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+                        Perlu ditindak · {formatJp((summary.jp_lewat || 0) + (summary.jp_berjalan || 0))} JP
+                    </p>
+                    <ul className="mt-1 divide-y divide-border/60">
+                        {mendesak.slice(0, 5).map((row) => (
+                            <KelasKosongRow key={row.id} row={row} unit={unitDari(row.unit_sekolah_id)} />
+                        ))}
+                    </ul>
+                    {mendesak.length > 5 && (
+                        <p className="text-xs text-text-secondary">+{mendesak.length - 5} JP lagi di daftar lengkap.</p>
+                    )}
+                </div>
+            ) : (
+                <p className="mt-4 text-xs text-text-secondary">
+                    Belum ada JP yang terlewat. {formatJp(jpKosong)} JP mulai nanti.
+                </p>
+            )}
+
+            <button
+                type="button"
+                onClick={toggleDaftar}
+                aria-expanded={terbuka}
+                aria-controls="kelas-kosong-daftar"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-button px-2 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 active:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+                {terbuka ? 'Tutup daftar' : `Lihat semua ${formatJp(jpKosong)} JP`}
+                <ChevronDown className={`h-4 w-4 transition-transform motion-reduce:transition-none ${terbuka ? 'rotate-180' : ''}`} aria-hidden="true" />
+            </button>
+
+            {terbuka && (
+                <div id="kelas-kosong-daftar" className="mt-3 border-t border-border/60 pt-3">
+                    <div className="flex flex-wrap gap-1.5">
+                        <button
+                            type="button"
+                            onClick={() => bukaDaftar(null)}
+                            aria-pressed={unitId === null}
+                            className={`badge cursor-pointer border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${unitId === null ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text-secondary hover:bg-surface'}`}
+                        >
+                            Semua {formatJp(jpKosong)} JP
+                        </button>
+                        {perUnit.map((u) => (
+                            <button
+                                key={u.id}
+                                type="button"
+                                onClick={() => bukaDaftar(u.id)}
+                                aria-pressed={unitId === u.id}
+                                className={`badge cursor-pointer border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${unitId === u.id ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text-secondary hover:bg-surface'}`}
+                            >
+                                {u.singkatan || u.nama} · {formatJp(u.jp)} JP
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="mt-2 max-h-80 overflow-y-auto pr-1">
+                        {daftar.length === 0 && (
+                            <p className="py-3 text-center text-xs text-text-secondary">Tidak ada JP untuk unit ini.</p>
+                        )}
+                        {unitTampil.map((id) => {
+                            const unit = unitDari(id);
+                            const baris = daftar.filter((r) => r.unit_sekolah_id === id);
+                            if (baris.length === 0) return null;
+
+                            return (
+                                <div key={id} className="mb-2 last:mb-0">
+                                    <p className="sticky top-0 z-[1] bg-white py-1 text-xs font-bold uppercase tracking-wider text-text-secondary">
+                                        {unit?.singkatan || unit?.nama || 'Tanpa unit'} · {formatJp(unit?.jp)} JP
+                                    </p>
+                                    <ul className="divide-y divide-border/60">
+                                        {baris.map((row) => <KelasKosongRow key={row.id} row={row} unit={null} />)}
+                                    </ul>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </section>
+    );
+}
+
 export default function Dashboard(props) {
     return (
         <ErrorBoundary>
@@ -86,14 +294,14 @@ export default function Dashboard(props) {
     );
 }
 
-function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadwalHariIni, presensiHariIni, pengumuman = [], units = [], selectedUnitId = null, selectedUnitNama = null, kelasKosongMengajar = [], kelasKosongPiket = [], piketHariIni = [] }) {
+function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadwalHariIni, presensiHariIni, pengumuman = [], units = [], selectedUnitId = null, selectedUnitNama = null, kelasKosongMengajar = [], kelasKosongSummary = {}, kelasKosongPiket = [], piketHariIni = [] }) {
     const [detailPresensi, setDetailPresensi] = useState(null);
     const [detailPiket, setDetailPiket] = useState(null);
 
     // Live polling: refresh data kehadiran/jadwal/presensi tiap 60 detik (partial reload
     // Inertia, hanya prop yang di-`only` dikirim ulang). Berhenti saat tab tidak aktif.
     const isAdmin = roleType === 'Admin';
-    usePolling({ enabled: isAdmin, only: ['stats', 'trends', 'jadwalHariIni', 'presensiHariIni', 'kelasKosongMengajar', 'kelasKosongPiket', 'piketHariIni'] });
+    usePolling({ enabled: isAdmin, only: ['stats', 'trends', 'jadwalHariIni', 'presensiHariIni', 'kelasKosongMengajar', 'kelasKosongSummary', 'kelasKosongPiket', 'piketHariIni'] });
 
     // Filter unit (superadmin): reload penuh agar semua angka ter-scope ke unit.
     const setUnitFilter = (e) => {
@@ -270,37 +478,24 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                         )}
                     </div>
 
-                    {/* Kelas Kosong, terpisah mengajar vs piket */}
-                    {(kelasKosongMengajar?.length > 0) && (
-                        <div className="card border-amber-200 bg-amber-50 p-4">
-                            <h4 className="flex items-center gap-2 text-sm font-bold text-amber-800">
-                                <AlertTriangle className="h-4 w-4" /> Kelas Kosong Mengajar ({kelasKosongMengajar.length} JP belum ada guru)
-                            </h4>
-                            <div className="mt-2 space-y-1">
-                                {kelasKosongMengajar.slice(0, 5).map((j) => (
-                                    <div key={j.id} className="flex items-center justify-between text-xs">
-                                        <span className="font-medium text-amber-900">{j.jam_mulai?.substring(0,5)}–{j.jam_selesai?.substring(0,5)} • {j.kelas_label || '-'} • {j.pegawai?.nama_lengkap || '-'}</span>
-                                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-amber-700">{j.pegawaiMapel?.mataPelajaran?.nama || j.jenis_jadwal}</span>
-                                    </div>
-                                ))}
-                                {kelasKosongMengajar.length > 5 && <p className="text-[11px] text-amber-700">+{kelasKosongMengajar.length - 5} lagi</p>}
-                            </div>
-                        </div>
-                    )}
+                    {/* Kelas kosong — JP tanpa presensi guru (mengajar), lalu piket */}
+                    <KelasKosongCard rows={kelasKosongMengajar} summary={kelasKosongSummary} />
                     {(kelasKosongPiket?.length > 0) && (
-                        <div className="card border-sky-200 bg-sky-50 p-4">
-                            <h4 className="flex items-center gap-2 text-sm font-bold text-sky-800">
-                                <Clock3 className="h-4 w-4" /> Piket Kosong ({kelasKosongPiket.length} belum ada petugas)
+                        <div className="card border-l-4 border-info px-5 py-4">
+                            <h4 className="flex items-center gap-2 text-sm font-bold text-text-primary">
+                                <Clock3 className="h-4 w-4 text-info" aria-hidden="true" /> Piket Kosong — {kelasKosongPiket.length} belum ada petugas
                             </h4>
-                            <div className="mt-2 space-y-1">
+                            <ul className="mt-1 divide-y divide-border/60">
                                 {kelasKosongPiket.slice(0, 5).map((j) => (
-                                    <div key={j.id} className="flex items-center justify-between text-xs">
-                                        <span className="font-medium text-sky-900">{j.jam_mulai?.substring(0,5)}–{j.jam_selesai?.substring(0,5)} • {j.pegawai?.nama_lengkap || '-'}</span>
-                                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-sky-700">Piket</span>
-                                    </div>
+                                    <li key={j.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 py-2 text-xs">
+                                        <span className="font-mono font-semibold tabular-nums text-text-primary">{jamPendek(j.jam_mulai)}-{jamPendek(j.jam_selesai)}</span>
+                                        <span className="text-text-secondary">·</span>
+                                        <span className="text-text-primary">{j.pegawai?.nama_lengkap || '—'}</span>
+                                        <span className="badge badge-info ml-auto">Piket</span>
+                                    </li>
                                 ))}
-                                {kelasKosongPiket.length > 5 && <p className="text-[11px] text-sky-700">+{kelasKosongPiket.length - 5} lagi</p>}
-                            </div>
+                            </ul>
+                            {kelasKosongPiket.length > 5 && <p className="text-xs text-text-secondary">+{kelasKosongPiket.length - 5} lagi</p>}
                         </div>
                     )}
                     {piketHariIni?.length > 0 && kelasKosongPiket?.length === 0 && (
