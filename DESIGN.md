@@ -89,6 +89,12 @@ UI mobile HRIS untuk pegawai yayasan yang melakukan presensi dari ponsel, sering
 - Bar progres wajib `role="progressbar"` dengan `aria-valuenow/min/max`; gerak hanya pada `motion-safe`.
 - Teks kecil memakai `text-text-secondary`, bukan `text-text-muted`.
 - Rentang jam memakai tanda hubung `08:00-08:40`.
+- Pencarian tabel pakai pola Enter-only: input bebas di state lokal, filter baru diterapkan saat Enter (tanpa debounce/`onChange` filtering), Escape mereset, tombol clear berikon `X` tanpa label visual.
+- Pencarian jadwal menyaring di level grup (guru cocok melihat semua JP-nya; selain itu per baris) agar kolom `rowSpan` tetap utuh.
+
+# Decisions
+
+- 2026-10-20 — Cari jadwal (`resources/js/Pages/Dashboard.jsx`): input search di header kartu "Jadwal Hari Ini", Enter-only, tanpa tombol filled primary (accent dijaga satu tempat), token `border-border`/`rounded-button`/`primary`. Empty state membedakan "belum ada jadwal" vs "tidak cocok dengan kata kunci" + aksi Reset.
 
 # Do's and Don'ts
 
