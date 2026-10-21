@@ -22,12 +22,13 @@ const PULLS = [
     { Icon: Sparkles, title: 'Komponen Otomatis', desc: 'Masa bakti, tunjangan kehadiran, persentase & fixed.' },
 ];
 
-export default function RunPayrollIndex({ auth }) {
+export default function RunPayrollIndex({ auth, units = [], canPickAll = false }) {
     const now = new Date();
     const monthInit = String(now.getMonth() + 1).padStart(2, '0');
     const { data, setData, post, processing, errors } = useForm({
         month: monthInit,
         year: now.getFullYear().toString(),
+        unit_sekolah_id: units[0]?.id ?? '',
     });
 
     const submit = (e) => {
@@ -100,6 +101,21 @@ export default function RunPayrollIndex({ auth }) {
                                     />
                                     {errors.year && <p className="form-error">{errors.year}</p>}
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="form-label mb-1.5">Unit Sekolah</label>
+                                <select
+                                    value={data.unit_sekolah_id}
+                                    onChange={(e) => setData('unit_sekolah_id', e.target.value)}
+                                    className="select-field"
+                                >
+                                    {canPickAll && <option value="">Semua Unit</option>}
+                                    {units.map((u) => (
+                                        <option key={u.id} value={u.id}>{u.singkatan ? `${u.singkatan} — ${u.nama}` : u.nama}</option>
+                                    ))}
+                                </select>
+                                {errors.unit_sekolah_id && <p className="form-error">{errors.unit_sekolah_id}</p>}
                             </div>
 
                             <button

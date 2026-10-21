@@ -13,6 +13,7 @@ use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
 use App\Models\SkalaMasaBakti;
 use App\Models\StatusKepegawaian;
+use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Services\PresensiAggregator;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -126,8 +127,21 @@ class PenggajianController extends Controller
 
     public function indexRun(Request $request)
     {
-        // Step 1: Layar Pilih Periode
-        return inertia('Payroll/Run/Index');
+        $user = auth()->user();
+        $canPickAll = $user && $user->can('view_all_units');
+
+        // Dropdown unit: superadmin lihat semua unit (+ opsi "Semua Unit"),
+        // admin unit/operator terbatas unit yang dikelola.
+        $units = $canPickAll
+            ? UnitSekolah::orderBy('nama')->get(['id', 'nama', 'singkatan'])
+            : UnitSekolah::whereIn('unit_sekolah.id', $this->payrollUnitScope($user))
+                ->orderBy('nama')->get(['id', 'nama', 'singkatan']);
+
+        // Step 1: Layar Pilih Periode + Unit
+        return inertia('Payroll/Run/Index', [
+            'units' => $units,
+            'canPickAll' => $canPickAll,
+        ]);
     }
 
     public function createDraft(Request $request)
@@ -141,6 +155,7 @@ class PenggajianController extends Controller
         $request->validate([
             'month' => 'required|string',
             'year' => 'required|string',
+            'unit_sekolah_id' => 'nullable|integer|exists:unit_sekolah,id',
         ]);
 
         $periode = $request->month.'-'.$request->year;
@@ -150,13 +165,20 @@ class PenggajianController extends Controller
         // [FIX] N+1: Eager load komponenGaji, jadwal + mapel (honor ekskul), jabatan.
         $query = Pegawai::where('status_aktif', 'aktif')->with(['komponenGaji', 'units', 'jadwals.unitSekolah', 'jadwals.pegawaiMapel.mataPelajaran', 'jabatans:id']);
 
+        // Validasi unit terpilih termasuk dalam cakupan user, lalu filter per-unit.
+        $unitTerpilih = $request->filled('unit_sekolah_id') ? (int) $request->unit_sekolah_id : null;
         if ($user && ! $user->can('view_all_units')) {
             $unitIds = $this->payrollUnitScope($user);
-            if (empty($unitIds)) {
+            if (empty($unitIds) || ($unitTerpilih !== null && ! in_array($unitTerpilih, $unitIds, true))) {
                 abort(403, 'Akses ditolak.');
             }
-            $query->whereHas('units', function ($q) use ($unitIds) {
-                $q->whereIn('unit_sekolah.id', $unitIds);
+            $ids = $unitTerpilih !== null ? [$unitTerpilih] : $unitIds;
+            $query->whereHas('units', function ($q) use ($ids) {
+                $q->whereIn('unit_sekolah.id', $ids);
+            });
+        } elseif ($unitTerpilih !== null) {
+            $query->whereHas('units', function ($q) use ($unitTerpilih) {
+                $q->where('unit_sekolah.id', $unitTerpilih);
             });
         }
 
