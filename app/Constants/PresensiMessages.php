@@ -39,6 +39,8 @@ class PresensiMessages
 
     public const PIKET_TANPA_SLIDE = 'Piket tidak perlu slide. Lakukan presensi kantor, lalu isi checklist Laporan Piket.';
 
+    public const PIKET_KELUAR_TERTAHAN = 'Laporan piket belum terkirim (%s). Selesaikan dan kirim di menu Piket dulu sebelum absen pulang.';
+
     // Ukuran foto (satu sumber kebenaran agar request & service konsisten)
     // Batas binary (decoded) — dipakai ImageUploadService & job foto.
     public const MAX_FOTO_BYTES = 5 * 1024 * 1024;

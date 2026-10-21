@@ -90,6 +90,8 @@ class MobileController extends Controller
                 ->get();
         });
 
+        $tahanPiket = $this->piketGateFor($pegawai);
+
         return inertia('Mobile/Dashboard', [
             'pegawai' => $pegawai,
             'presensi' => $presensiHariIni,
@@ -97,6 +99,10 @@ class MobileController extends Controller
             'presensiSeminggu' => $presensiTerbaru,
             'jadwalsHariIni' => $jadwalsHariIni,
             'alasanLibur' => HariKerja::alasanTidakBisaPresensi($pegawai, Carbon::now()),
+            'piketGate' => [
+                'blokir' => $tahanPiket['blokir'],
+                'progress' => $tahanPiket['progress'],
+            ],
         ]);
     }
 
@@ -473,6 +479,7 @@ class MobileController extends Controller
             ->get();
 
         $izinHariIni = $this->izinHariIniUntuk($pegawai);
+        $tahanPiket = $this->piketGateFor($pegawai);
 
         // Kantor: off di hari unit tidak beroperasi atau hari libur.
         // Slot piket bukan sesi presensi — pegawai yang hari ini hanya piket
@@ -496,6 +503,10 @@ class MobileController extends Controller
             'jadwals' => $jadwalHariIni,
             'presensiHariIni' => $presensiHariIni,
             'izinHariIni' => $izinHariIni,
+            'piketGate' => [
+                'blokir' => $tahanPiket['blokir'],
+                'progress' => $tahanPiket['progress'],
+            ],
             'officeAttendance' => $kantorAktif,
             'alasanLibur' => $alasanLibur,
             // Jam izin pulang cepat yang disetujui (batas bawah pulang), null bila tidak ada.
@@ -568,6 +579,12 @@ class MobileController extends Controller
         $this->assertTidakSedangIzin($pegawai);
         $isLembur = (bool) $request->input('is_lembur', false);
         $isTugasLuar = (bool) $request->input('is_tugas_luar', false);
+        if ($request->tipe === 'keluar' && ! $isLembur && ! $isTugasLuar) {
+            $tahanPiket = $this->pesanPiketBelumBeres($pegawai);
+            if ($tahanPiket !== null) {
+                throw ValidationException::withMessages(['piket' => $tahanPiket]);
+            }
+        }
         if ($isLembur && $request->filled('jadwal_id')) {
             throw ValidationException::withMessages(['jadwal_id' => 'Jadwal tidak boleh dipilih saat mode lembur.']);
         }
@@ -1241,6 +1258,12 @@ class MobileController extends Controller
         if ($isTugasLuar && ! $request->filled('tujuan')) {
             return response()->json(['success' => false, 'message' => 'Tujuan tugas luar wajib diisi.', 'errors' => ['tujuan' => 'Tujuan tugas luar wajib diisi.']], 422);
         }
+        if ($request->tipe === 'keluar' && ! $isTugasLuar) {
+            $tahanPiket = $this->pesanPiketBelumBeres($pegawai);
+            if ($tahanPiket !== null) {
+                throw ValidationException::withMessages(['piket' => $tahanPiket]);
+            }
+        }
 
         // Presensi kantor tetap diblokir di hari unit tidak beroperasi / hari
         // libur. Mode tugas luar dikecualikan.
@@ -1412,6 +1435,12 @@ class MobileController extends Controller
         ]);
 
         $tipe = $request->input('tipe', 'masuk');
+        if ($tipe === 'keluar') {
+            $tahanPiket = $this->pesanPiketBelumBeres($pegawai);
+            if ($tahanPiket !== null) {
+                throw ValidationException::withMessages(['piket' => $tahanPiket]);
+            }
+        }
 
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIni = $hariMap[Carbon::now()->format('l')];
@@ -2053,6 +2082,45 @@ class MobileController extends Controller
                 'presensi' => 'Lakukan presensi masuk terlebih dahulu.',
             ]);
         }
+    }
+
+    /**
+     * Blokir absen keluar reguler sebelum laporan piket hari ini terkirim
+     * (LaporanPiket::STATUS_SUBMITTED). Pegawai tanpa jadwal piket hari ini
+     * atau laporan yang sudah terkirim lolos. Lembur/tugas luar tidak
+     * melewati helper ini (dipanggil di cabang reguler saja).
+     */
+    private function piketGateFor(Pegawai $pegawai): array
+    {
+        $adaPiket = Jadwal::where('pegawai_id', $pegawai->id)
+            ->where('hari', HariKerja::hariIndo())
+            ->where('jenis_jadwal', 'piket')
+            ->exists();
+        if (! $adaPiket) {
+            return ['blokir' => false, 'progress' => null, 'pesan' => null];
+        }
+
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
+            ->whereDate('tanggal', Carbon::today())
+            ->first();
+        if ($laporan && $laporan->status === LaporanPiket::STATUS_SUBMITTED) {
+            return ['blokir' => false, 'progress' => null, 'pesan' => null];
+        }
+
+        $progres = $laporan
+            ? $laporan->doneCount().'/'.count(LaporanPiket::ITEM_WAJIB)
+            : '0/'.count(LaporanPiket::ITEM_WAJIB);
+
+        return [
+            'blokir' => true,
+            'progress' => $progres,
+            'pesan' => sprintf(PresensiMessages::PIKET_KELUAR_TERTAHAN, $progres),
+        ];
+    }
+
+    private function pesanPiketBelumBeres(Pegawai $pegawai): ?string
+    {
+        return $this->piketGateFor($pegawai)['pesan'];
     }
 
     /**

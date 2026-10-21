@@ -12,7 +12,7 @@ import BuktiKegiatan from '@/Pages/Mobile/Partials/BuktiKegiatan';
 import { useCamera } from '@/Hooks/useCamera';
 import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
-import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, ClipboardCheck, Lock } from 'lucide-react';
+import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, ClipboardCheck, Lock, Clock } from 'lucide-react';
 
 export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false, izinHariIni = null, jamIzinPulangCepat = null, alasanLibur = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -256,6 +256,10 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             setError('Anda sudah melakukan presensi lengkap untuk jadwal ini.');
             return;
         }
+        if (!isLembur && !isTugasLuar && piketGate?.blokir && ((officeAttendance && kantorOpen) || (isTeaching && teachingOpen))) {
+            setError(`Laporan piket belum terkirim${piketGate?.progress ? ` (${piketGate.progress})` : ''}. Selesaikan dan kirim di menu Piket dulu sebelum absen pulang.`);
+            return;
+        }
         if (!isLembur && officeAttendance && kantorRecord?.jam_keluar) {
             setError('Anda sudah melakukan presensi keluar.');
             return;
@@ -422,6 +426,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     jamIzinPulangCepat={jamIzinPulangCepat}
                     libur={Boolean(alasanLibur)}
                     alasanLibur={alasanLibur}
+                    piketGate={piketGate}
                 />
             </MobileLayout>
         );
@@ -533,6 +538,13 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                     <p className="text-sm font-bold text-emerald-900">Kehadiran kantor</p>
                     <p className="mt-0.5 text-xs leading-relaxed text-emerald-800">Tidak ada jadwal mengajar hari ini. Presensi memakai unit primer dan jam masuk kantor.</p>
+                </div>
+            )}
+
+            {piketGate?.blokir && !isLembur && !isTugasLuar && (
+                <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-semibold text-sky-800">
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>Laporan piket belum terkirim{piketGate?.progress ? ` (${piketGate.progress})` : ''}. Selesaikan dan kirim di menu Piket dulu sebelum absen pulang.</span>
                 </div>
             )}
 
@@ -773,7 +785,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) || (!isLembur && !isTugasLuar && !officeAttendance && !jadwals.length) || presensiComplete}
+                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) || (!isLembur && !isTugasLuar && !officeAttendance && !jadwals.length) || presensiComplete || (!isLembur && !isTugasLuar && piketGate?.blokir && ((officeAttendance && kantorOpen) || (isTeaching && teachingOpen)))}
                 className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isTugasLuar ? 'bg-sky-500 text-sky-950' : isLembur ? 'bg-amber-500 text-amber-950' : 'bg-primary text-white'}`}
             >
                 {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isLembur ? (lemburOpen ? 'Kirim presensi keluar lembur' : 'Kirim bukti lembur') : isTugasLuar ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : isTeaching ? (teachingOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}
