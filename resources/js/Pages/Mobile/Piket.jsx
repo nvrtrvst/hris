@@ -15,6 +15,7 @@ import {
     DoorOpen,
     Lock,
     Send,
+    X,
 } from 'lucide-react';
 
 const getPos = () =>
@@ -127,6 +128,26 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
         router.post(route('presensi.piket.submit'), {}, { preserveScroll: true, onFinish: () => setSending(false) });
     };
 
+    const hapusEntry = (kode, index) => {
+        if (!window.confirm('Hapus entry ini?')) return;
+        setSending(true);
+        router.post(route('presensi.piket.hapus'), { kode, index }, { preserveScroll: true, onFinish: () => setSending(false) });
+    };
+
+    // Tombol ✕ kecil di tiap entry list (cek guru / kelas kosong / insiden);
+    // sembunyi setelah laporan dikirim (server juga menolak).
+    const HapusBtn = ({ kode, index }) => submitted ? null : (
+        <button
+            type="button"
+            aria-label="Hapus entry"
+            disabled={sending}
+            onClick={() => hapusEntry(kode, index)}
+            className="ml-2 shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:scale-90 disabled:opacity-50"
+        >
+            <X className="h-3.5 w-3.5" />
+        </button>
+    );
+
     return (
         <MobileLayout user={auth.user}>
             <Head title="Laporan Piket" />
@@ -206,8 +227,9 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                                 {(items.cek_absen?.entries ?? []).length > 0 && (
                                     <ul className="mt-2 space-y-1.5">
                                         {(items.cek_absen.entries ?? []).map((e, i) => (
-                                            <li key={i} className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                                                <span className="font-bold">{e.nama_guru}</span> ({e.created_at?.substring(0, 5)}): {e.keterangan}
+                                            <li key={i} className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                                <span className="min-w-0"><span className="font-bold">{e.nama_guru}</span> ({e.created_at?.substring(0, 5)}): {e.keterangan}</span>
+                                                <HapusBtn kode="cek_absen" index={i} />
                                             </li>
                                         ))}
                                     </ul>
@@ -315,10 +337,13 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                                 {(items.kelas_kosong?.entries ?? []).length > 0 && (
                                     <ul className="mt-2 space-y-1.5">
                                         {(items.kelas_kosong.entries ?? []).map((e, i) => (
-                                            <li key={i} className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                                                <span className="font-bold">{e.kelas}</span>{e.mapel ? `, ${e.mapel}` : ''} ({e.guru_nama})
-                                                {e.ada_amanat ? `: amanat ${e.jenis_amanat === 'tugas' ? 'tugas' : e.jenis_amanat === 'pelajari_halaman' ? 'pelajari halaman' : 'lainnya'}${e.tersampaikan ? ', tersampaikan' : ', belum tersampaikan'}` : ': tanpa amanat'}
-                                                {e.validasi === 'perlu_cek' && <Badge tone="amber" className="ml-1.5">Perlu cek</Badge>}
+                                            <li key={i} className="flex items-start justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                                <span className="min-w-0">
+                                                    <span className="font-bold">{e.kelas}</span>{e.mapel ? `, ${e.mapel}` : ''} ({e.guru_nama})
+                                                    {e.ada_amanat ? `: amanat ${e.jenis_amanat === 'tugas' ? 'tugas' : e.jenis_amanat === 'pelajari_halaman' ? 'pelajari halaman' : 'lainnya'}${e.tersampaikan ? ', tersampaikan' : ', belum tersampaikan'}` : ': tanpa amanat'}
+                                                    {e.validasi === 'perlu_cek' && <Badge tone="amber" className="ml-1.5">Perlu cek</Badge>}
+                                                </span>
+                                                <HapusBtn kode="kelas_kosong" index={i} />
                                             </li>
                                         ))}
                                     </ul>
@@ -364,8 +389,9 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                                 {(items.insiden?.entries ?? []).length > 0 && (
                                     <ul className="mt-2 space-y-1.5">
                                         {(items.insiden.entries ?? []).map((e, i) => (
-                                            <li key={i} className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                                                <span className="font-bold">{e.jenis}</span> ({e.created_at?.substring(0, 5)}): {e.tindakan}
+                                            <li key={i} className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                                <span className="min-w-0"><span className="font-bold">{e.jenis}</span> ({e.created_at?.substring(0, 5)}): {e.tindakan}</span>
+                                                <HapusBtn kode="insiden" index={i} />
                                             </li>
                                         ))}
                                     </ul>

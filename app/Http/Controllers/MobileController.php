@@ -2021,6 +2021,60 @@ class MobileController extends Controller
     }
 
     /**
+     * Hapus satu entry piket (cek guru berhalangan / kelas kosong / insiden)
+     * saat input salah. Hanya laporan DRAFT hari ini milik pegawai sendiri.
+     * Bila entries jadi kosong, item ikut dihapus = kembali belum-done agar
+     * bisa diproses ulang.
+     */
+    public function deletePiketItem(Request $request)
+    {
+        $pegawai = $this->getPegawai();
+        $this->assertTidakSedangIzin($pegawai);
+
+        $request->validate([
+            'kode' => 'required|in:'.implode(',', [
+                LaporanPiket::ITEM_CEK_ABSEN,
+                LaporanPiket::ITEM_KELAS_KOSONG,
+                LaporanPiket::ITEM_INSIDEN,
+            ]),
+            'index' => 'required|integer|min:0|max:199',
+        ]);
+
+        $today = Carbon::today()->toDateString();
+        DB::transaction(function () use ($request, $pegawai, $today) {
+            $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
+                ->where('tanggal', $today)
+                ->lockForUpdate()
+                ->first();
+            if (! $laporan) {
+                throw ValidationException::withMessages(['laporan' => 'Belum ada laporan piket hari ini.']);
+            }
+            if ($laporan->status !== LaporanPiket::STATUS_DRAFT) {
+                throw ValidationException::withMessages(['laporan' => 'Laporan sudah dikirim, entry tidak bisa dihapus.']);
+            }
+
+            $kode = $request->kode;
+            $items = $laporan->items ?? [];
+            $entries = $items[$kode]['entries'] ?? [];
+            if (! isset($entries[(int) $request->index])) {
+                throw ValidationException::withMessages(['index' => 'Entry tidak ditemukan.']);
+            }
+
+            array_splice($entries, (int) $request->index, 1);
+            if ($entries === []) {
+                unset($items[$kode]);
+            } else {
+                $items[$kode]['entries'] = $entries;
+            }
+
+            $laporan->items = $items;
+            $laporan->save();
+        });
+
+        return back()->with('message', 'Entry dihapus.');
+    }
+
+    /**
      * Kirim laporan piket. Dibuka sejak seksi sore. Semua item wajib harus
      * selesai. Setelah submitted: read-only.
      */

@@ -577,6 +577,82 @@ class LaporanPiketTest extends TestCase
         $this->assertSame('Budi', $entries[0]['nama_guru']);
     }
 
+    public function test_hapus_entry_cek_absen_diterima(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
+        $post = fn (array $payload, ?string $now = null) => $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge($payload, $this->geo()));
+
+        Carbon::setTestNow('2026-10-12 08:00:00'); // seksi pagi
+        $post(['kode' => 'cek_absen', 'mode' => 'centang'])->assertRedirect();
+        Carbon::setTestNow('2026-10-12 10:00:00');
+        $post(['kode' => 'cek_absen', 'mode' => 'tambah', 'nama_guru' => 'Guru Satu', 'keterangan_absen' => 'Sakit'])->assertRedirect();
+        $post(['kode' => 'cek_absen', 'mode' => 'tambah', 'nama_guru' => 'Guru Dua', 'keterangan_absen' => 'Izin'])->assertRedirect();
+
+        Carbon::setTestNow('2026-10-12 10:05:00');
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.hapus'), ['kode' => 'cek_absen', 'index' => 0])
+            ->assertRedirect();
+
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)->first();
+        $entries = $laporan->item('cek_absen')['entries'] ?? [];
+        $this->assertCount(1, $entries);
+        $this->assertSame('Guru Dua', $entries[0]['nama_guru']);
+        $this->assertTrue($laporan->isItemDone('cek_absen'));
+
+        // Hapus entry terakhir → item kembali belum-done agar bisa diproses ulang.
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.hapus'), ['kode' => 'cek_absen', 'index' => 0])
+            ->assertRedirect();
+
+        $laporan = $laporan->fresh();
+        $this->assertNull($laporan->item('cek_absen'));
+        $this->assertFalse($laporan->isItemDone('cek_absen'));
+        Carbon::setTestNow();
+    }
+
+    public function test_hapus_entry_setelah_submitted_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
+
+        Carbon::setTestNow('2026-10-12 08:00:00');
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge(
+                ['kode' => 'cek_absen', 'mode' => 'centang'],
+                $this->geo()
+            ))->assertRedirect();
+
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)->first();
+        $laporan->status = LaporanPiket::STATUS_SUBMITTED;
+        $laporan->save();
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.hapus'), ['kode' => 'cek_absen', 'index' => 0]);
+
+        $res->assertStatus(422);
+        $this->assertStringContainsString('sudah dikirim', $res->json('errors.laporan.0'));
+        Carbon::setTestNow();
+    }
+
+    public function test_hapus_entry_index_invalid_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
+        Carbon::setTestNow('2026-10-12 08:00:00');
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.hapus'), ['kode' => 'insiden', 'index' => 9]);
+
+        $res->assertStatus(422);
+        $this->assertStringContainsString('Belum ada laporan', $res->json('errors.laporan.0'));
+        Carbon::setTestNow();
+    }
+
     public function test_validasi_silang_guru_hadir_jadi_perlu_cek(): void
     {
         $pegawai = $this->makePegawai();
