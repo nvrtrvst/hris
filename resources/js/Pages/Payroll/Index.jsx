@@ -185,6 +185,28 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                         </div>
                     )}
 
+                    {/* Mass Delete Draft Payroll */}
+                    {isAdmin && (
+                        <div className="card p-4 mb-4">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <h4 className="text-sm font-bold text-primary">Hapus Draft</h4>
+                                    <p className="mt-1 text-xs text-text-secondary">Hapus semua data draft periode ini</p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        if (confirm(`Yakin hapus semua draft slip gaji periode ${filterPeriode}?`)) {
+                                            router.delete(route('penggajian.destroyPeriod'), { preserveState: true, preserveScroll: true, body: { periode_bulan: filterPeriode } });
+                                        }
+                                    }}
+                                    className="btn-secondary btn-sm flex items-center gap-1.5"
+                                >
+                                    Hapus Semua Draft
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     {/* Table */}
                     <div className={`card p-0 overflow-hidden transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
                         <div className="overflow-x-auto">
