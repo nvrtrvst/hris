@@ -46,9 +46,9 @@ class LaporanDetailHarianTest extends TestCase
         $this->guruKosong = $this->makePegawai('Guru Tanpa Presensi', $jabatan);
 
         // Slot mengajar Senin 08:00-09:40 + slot piket Senin 07:00-16:00.
-        Jadwal::create(['pegawai_id' => $this->guru->id, 'unit_sekolah_id' => $this->unit->id, 'hari' => 'Senin', 'jam_mulai' => '08:00', 'jam_selesai' => '09:40', 'jenis_jadwal' => 'mengajar', 'kelas_label' => '7A', 'tahun_ajaran' => '2023/2024', 'semester' => 'ganjil']);
-        Jadwal::create(['pegawai_id' => $this->guruKosong->id, 'unit_sekolah_id' => $this->unit->id, 'hari' => 'Senin', 'jam_mulai' => '08:00', 'jam_selesai' => '09:40', 'jenis_jadwal' => 'mengajar', 'kelas_label' => '7B', 'tahun_ajaran' => '2023/2024', 'semester' => 'ganjil']);
-        Jadwal::create(['pegawai_id' => $this->guruKosong->id, 'unit_sekolah_id' => $this->unit->id, 'hari' => 'Senin', 'jam_mulai' => '07:00', 'jam_selesai' => '16:00', 'jenis_jadwal' => 'piket', 'tahun_ajaran' => '2023/2024', 'semester' => 'ganjil']);
+        Jadwal::create(['pegawai_id' => $this->guru->id, 'unit_sekolah_id' => $this->unit->id, 'hari' => 'Senin', 'jam_mulai' => '08:00', 'jam_selesai' => '09:40', 'jenis_jadwal' => 'mengajar', 'kelas_label' => '7A', 'tahun_ajaran' => '2023/2024']);
+        Jadwal::create(['pegawai_id' => $this->guruKosong->id, 'unit_sekolah_id' => $this->unit->id, 'hari' => 'Senin', 'jam_mulai' => '08:00', 'jam_selesai' => '09:40', 'jenis_jadwal' => 'mengajar', 'kelas_label' => '7B', 'tahun_ajaran' => '2023/2024']);
+        Jadwal::create(['pegawai_id' => $this->guruKosong->id, 'unit_sekolah_id' => $this->unit->id, 'hari' => 'Senin', 'jam_mulai' => '07:00', 'jam_selesai' => '16:00', 'jenis_jadwal' => 'piket', 'tahun_ajaran' => '2023/2024']);
 
         // Guru Slid: Senin telat masuk kantor + slide mengajar (terekam).
         Presensi::create([
