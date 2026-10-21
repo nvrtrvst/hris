@@ -4,12 +4,11 @@ import { Head, useForm, router, Link } from '@inertiajs/react';
 import { AlertTriangle, Coins, Grid3X3, Loader2, Pencil, Plus, Save, Search, Trash2, Users as UsersIcon } from 'lucide-react';
 import Modal from '@/Components/Modal';
 import { formatRupiah } from '@/Utils/format';
-import { avatarTone, initials } from '@/Utils/avatar';
 
 const inputClass = 'input-field';
 const selectClass = 'select-field';
-const aksiClass = 'btn-secondary btn-sm inline-flex min-h-[44px] items-center gap-1.5';
-const aksiHapusClass = 'btn-danger btn-sm inline-flex min-h-[44px] items-center gap-1.5';
+const aksiClass = 'btn-secondary btn-sm inline-flex h-11 w-11 items-center justify-center';
+const aksiHapusClass = 'btn-danger btn-sm inline-flex h-11 w-11 items-center justify-center';
 const CONTROL_TAGS = ['input', 'select', 'textarea'];
 
 // Field mengasosiasikan label ke kontrol pertama di dalamnya (htmlFor + aria-describedby)
@@ -41,29 +40,17 @@ const Field = ({ id, label, required, error, hint, children, className = '' }) =
 };
 
 // Label & deskripsi jenis perhitungan, satu sumber, dipakai form + tabel.
-// Tone memakai token kontrak: slate netral, primary brand, emerald sukses,
-// sky info, amber perhatian, accent khusus lembur.
+// Satu tone netral untuk semua jenis (audit 001 #9): pembeda cukup dari label teks,
+// bukan warna; jadi palet halaman tetap dalam 3 peran warna.
 const JENIS_META = {
-    fixed: { label: 'Fixed', desc: 'Nominal pasti per bulan', tone: 'border-border bg-surface text-text-secondary' },
-    persentase: { label: 'Persentase', desc: '% dari gaji pokok', tone: 'border-primary-200 bg-primary-50 text-primary-700' },
-    dinamis_kehadiran: { label: 'Dinamis Kehadiran', desc: 'Berubah sesuai absensi', tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-    dinamis_jam_mengajar: { label: 'Honor Jam Mengajar', desc: 'Dihitung dari JTM', tone: 'border-sky-200 bg-sky-50 text-sky-700' },
-    dinamis_masa_bakti: { label: 'Masa Bakti', desc: 'Otomatis dari skala', tone: 'border-amber-200 bg-amber-50 text-amber-700' },
-    dinamis_lembur: { label: 'Lembur', desc: 'Dihitung dari jam lembur', tone: 'border-accent-200 bg-accent-50 text-accent-700' },
-    dinamis_jabatan: { label: 'Tunjangan Jabatan', desc: 'Jumlah nominal semua jabatan pegawai', tone: 'border-slate-300 bg-slate-100 text-slate-800' },
+    fixed: { label: 'Fixed', desc: 'Nominal pasti per bulan' },
+    persentase: { label: 'Persentase', desc: '% dari gaji pokok' },
+    dinamis_kehadiran: { label: 'Dinamis Kehadiran', desc: 'Berubah sesuai absensi' },
+    dinamis_jam_mengajar: { label: 'Honor Jam Mengajar', desc: 'Dihitung dari JTM' },
+    dinamis_masa_bakti: { label: 'Masa Bakti', desc: 'Otomatis dari skala' },
+    dinamis_lembur: { label: 'Lembur', desc: 'Dihitung dari jam lembur' },
+    dinamis_jabatan: { label: 'Tunjangan Jabatan', desc: 'Jumlah nominal semua jabatan pegawai' },
 };
-
-const StatPill = ({ label, value, cls }) => (
-    <div className="card flex items-center gap-3 p-4">
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${cls.bg}`}>
-            <cls.Icon className={`h-5 w-5 ${cls.fg}`} />
-        </span>
-        <div className="min-w-0">
-            <p className="text-xl font-extrabold leading-none text-text-primary tabular-nums">{value}</p>
-            <p className="mt-1 truncate text-xs font-semibold uppercase tracking-wide text-text-secondary">{label}</p>
-        </div>
-    </div>
-);
 
 export default function Komponen({ auth, komponens, units, jabatans = [], jabatanMappings = {} }) {
     const [isEditing, setIsEditing] = useState(false);
@@ -202,21 +189,19 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                         </div>
                     </div>
 
-                    {/* Stats ringkas */}
-                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                        <StatPill label="Total Komponen" value={stats.total} cls={{ Icon: Coins, bg: 'bg-primary/10', fg: 'text-primary' }} />
-                        <StatPill label="Pendapatan" value={stats.pendapatan} cls={{ Icon: Plus, bg: 'bg-emerald-100', fg: 'text-emerald-600' }} />
-                        <StatPill label="Potongan" value={stats.potongan} cls={{ Icon: Trash2, bg: 'bg-rose-100', fg: 'text-rose-600' }} />
-                        <StatPill label="Aktif" value={stats.aktif} cls={{ Icon: Save, bg: 'bg-sky-100', fg: 'text-sky-600' }} />
-                    </div>
+                    {/* Ringkasan satu baris (audit 001 #4): angka sudah terlihat di tabel,
+                        kartu metrik hanya menfonduang tempat tanpa memandu keputusan. */}
+                    <p className="text-xs font-semibold text-text-secondary">
+                        {stats.total} komponen · {stats.pendapatan} pendapatan · {stats.potongan} potongan · {stats.aktif} aktif
+                    </p>
 
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
                         {/* Form */}
                         <div id="komponen-form" className="w-full scroll-mt-6 lg:w-1/3 lg:sticky lg:top-6">
                             <div className="card overflow-hidden">
                                 <div className="flex items-center justify-between border-b border-border bg-surface px-5 py-3.5">
-                                    <h3 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-primary">
-                                        <Coins className="h-4 w-4" />
+                                    <h3 className="flex items-center gap-2 text-sm font-extrabold text-primary">
+                                        <Coins className="h-4 w-4" aria-hidden="true" />
                                         {isEditing ? 'Edit Komponen' : 'Tambah Komponen'}
                                     </h3>
                                     {isEditing && (
@@ -386,7 +371,7 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                                     </h3>
                                     <div className="flex flex-wrap items-center gap-2">
                                         {/* Segmented filter tipe */}
-                                        <div className="flex rounded-lg border border-border bg-white p-0.5" role="group" aria-label="Filter tipe komponen">
+                                        <div className="flex rounded-lg border border-border bg-surface p-0.5" role="group" aria-label="Filter tipe komponen">
                                             {[{ k: '', label: `Semua (${tipeCounts['']})` }, { k: 'pendapatan', label: `+ Pendapatan (${tipeCounts.pendapatan})` }, { k: 'potongan', label: `- Potongan (${tipeCounts.potongan})` }].map((t) => (
                                                 <button
                                                     key={t.k}
@@ -420,11 +405,11 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                                         </caption>
                                         <thead className="sticky top-0 z-10 bg-surface">
                                             <tr>
-                                                <th scope="col" className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-secondary sm:px-6">Nama</th>
-                                                <th scope="col" className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-secondary sm:px-6">Kategori</th>
-                                                <th scope="col" className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-secondary sm:px-6">Nilai Default</th>
-                                                <th scope="col" className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-secondary sm:px-6">Status</th>
-                                                <th scope="col" className="px-4 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-text-secondary sm:px-6">Aksi</th>
+                                                <th scope="col" className="px-4 py-3.5 text-left text-xs font-semibold text-text-secondary sm:px-6">Nama</th>
+                                                <th scope="col" className="px-4 py-3.5 text-left text-xs font-semibold text-text-secondary sm:px-6">Kategori</th>
+                                                <th scope="col" className="px-4 py-3.5 text-left text-xs font-semibold text-text-secondary sm:px-6">Nilai Default</th>
+                                                <th scope="col" className="px-4 py-3.5 text-left text-xs font-semibold text-text-secondary sm:px-6">Status</th>
+                                                <th scope="col" className="px-4 py-3.5 text-right text-xs font-semibold text-text-secondary sm:px-6">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-border bg-white">
@@ -445,58 +430,58 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                                                 </tr>
                                             ) : filtered.length > 0 ? filtered.map((k) => (
                                                 <tr key={k.id} className="transition-colors hover:bg-surface">
-                                                    <td className="whitespace-nowrap px-4 py-4 sm:px-6">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${avatarTone(k.nama)}`} aria-hidden="true">
-                                                                {initials(k.nama)}
-                                                            </span>
-                                                            <div className="min-w-0">
-                                                                <p className="truncate text-sm font-bold text-text-primary">{k.nama}</p>
-                                                                <div className="mt-1 flex flex-wrap gap-1">
-                                                                    {k.kode && <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-text-secondary">{k.kode}</span>}
-                                                                    {k.applies_to_status_kepegawaian && <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">{k.applies_to_status_kepegawaian === 'tetap' ? 'Tetap (GTYS/PTY)' : 'Non-Tetap'}</span>}
-                                                                    {k.syarat_bayar_jam_mengajar && <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">{k.syarat_bayar_jam_mengajar === 'hanya_hadir' ? 'Bayar Hadir' : 'Bayar Semua'}</span>}
-                                                                    {k.unit_sekolah_id && <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">Unit Tertentu</span>}
-                                                                    {k.is_taxable == 1 && <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-text-secondary">Taxable</span>}
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                                    <td className="whitespace-nowrap px-4 py-3.5 sm:px-6">
+                                                        <p className="text-sm font-bold text-text-primary">{k.nama}</p>
+                                                        {k.kode && <p className="mt-0.5 text-[11px] text-text-secondary">{k.kode}</p>}
                                                     </td>
-                                                    <td className="whitespace-nowrap px-4 py-4 sm:px-6">
-                                                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${k.tipe === 'pendapatan' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
-                                                            {k.tipe === 'pendapatan' ? '+' : '-'} {k.tipe}
+                                                    <td className="px-4 py-3.5 sm:px-6">
+                                                        {/* Satu badge berwarna hanya untuk tipe (audit 001 #1):
+                                                            pendapatan = emerald, potongan = netral dengan marker minus. */}
+                                                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${k.tipe === 'pendapatan' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-border bg-surface text-text-secondary'}`}>
+                                                            {k.tipe === 'pendapatan' ? '+ Pendapatan' : '- Potongan'}
                                                         </span>
-                                                        <div className="mt-1 flex items-center gap-1.5">
-                                                            <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${JENIS_META[k.jenis]?.tone || 'border-slate-200 bg-slate-50 text-slate-600'}`}>
-                                                                {JENIS_META[k.jenis]?.label || k.jenis}
-                                                            </span>
-                                                        </div>
+                                                        <p className="mt-1 text-xs font-medium text-text-primary">{JENIS_META[k.jenis]?.label || k.jenis}</p>
+                                                        {(() => {
+                                                            // Atribut opsional jadi satu baris teks kecil (audit 001 #2),
+                                                            // hanya yang di-set: bukan lima pill berwarna.
+                                                            const attr = [
+                                                                k.applies_to_status_kepegawaian === 'tetap' ? 'Tetap (GTYS/PTY)' : k.applies_to_status_kepegawaian ? 'Non-Tetap' : null,
+                                                                k.syarat_bayar_jam_mengajar === 'hanya_hadir' ? 'Bayar Hadir' : k.syarat_bayar_jam_mengajar ? 'Bayar Semua Jadwal' : null,
+                                                                k.unit_sekolah_id ? 'Unit khusus' : null,
+                                                                k.is_taxable == 1 ? 'Taxable' : null,
+                                                            ].filter(Boolean);
+                                                            return attr.length > 0 && <p className="text-[11px] text-text-secondary">{attr.join(' · ')}</p>;
+                                                        })()}
                                                     </td>
-                                                    <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-text-secondary tabular-nums sm:px-6">
+                                                    <td className="whitespace-nowrap px-4 py-3.5 text-sm font-medium text-text-secondary tabular-nums sm:px-6">
                                                         {k.nilai_default !== null && k.nilai_default !== '' && k.nilai_default != 0
                                                             ? (k.jenis === 'persentase' ? `${k.nilai_default}%` : formatRupiah(k.nilai_default))
                                                             : <span className="text-xs italic text-text-muted">Default / per pegawai</span>}
                                                     </td>
-                                                    <td className="whitespace-nowrap px-4 py-4 sm:px-6">
-                                                        <div className="flex flex-col gap-1">
-                                                            <span className={`inline-flex w-max rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${k.is_active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
-                                                                {k.is_active ? 'Aktif' : 'Nonaktif'}
-                                                            </span>
-                                                            <span className={`inline-flex w-max rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${k.tampil_di_matrix ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
-                                                                {k.tampil_di_matrix ? `Matrix (Urutan ${k.urutan})` : 'Sembunyi dari Matrix'}
-                                                            </span>
-                                                        </div>
+                                                    <td className="whitespace-nowrap px-4 py-3.5 sm:px-6">
+                                                        {/* Titik status (audit 001 #8): aktif/nonaktif cukup dot + teks,
+                                                            info matrix sekunder satu baris teks, du dua tidak bertumpuk. */}
+                                                        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${k.is_active ? 'text-emerald-700' : 'text-text-secondary'}`}>
+                                                            <span className={`h-2 w-2 rounded-full ${k.is_active ? 'bg-emerald-500' : 'bg-slate-300'}`} aria-hidden="true" />
+                                                            {k.is_active ? 'Aktif' : 'Nonaktif'}
+                                                        </span>
+                                                        <p className="text-[11px] text-text-secondary">
+                                                            {k.tampil_di_matrix ? `Matrix · urutan ${k.urutan}` : 'Di luar Matrix'}
+                                                        </p>
                                                     </td>
-                                                    <td className="whitespace-nowrap px-4 py-4 text-right sm:px-6">
+                                                    <td className="whitespace-nowrap px-4 py-3.5 text-right sm:px-6">
                                                         <div className="inline-flex items-center gap-2">
                                                             <Link href={route('komponen-gaji.pegawai.index', k.id)} title="Atur nominal khusus per pegawai" className={aksiClass}>
-                                                                <UsersIcon className="h-4 w-4" aria-hidden="true" /> Pegawai
+                                                                <UsersIcon className="h-4 w-4" aria-hidden="true" />
+                                                                <span className="sr-only">Pegawai: atur nominal khusus {k.nama}</span>
                                                             </Link>
                                                             <button type="button" onClick={() => handleEdit(k)} className={aksiClass} title="Edit komponen ini">
-                                                                <Pencil className="h-4 w-4" aria-hidden="true" /> Edit
+                                                                <Pencil className="h-4 w-4" aria-hidden="true" />
+                                                                <span className="sr-only">Edit {k.nama}</span>
                                                             </button>
                                                             <button type="button" onClick={() => setKonfirmasiHapus(k)} className={aksiHapusClass} title="Hapus komponen ini">
-                                                                <Trash2 className="h-4 w-4" aria-hidden="true" /> Hapus
+                                                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                                                <span className="sr-only">Hapus {k.nama}</span>
                                                             </button>
                                                         </div>
                                                     </td>
