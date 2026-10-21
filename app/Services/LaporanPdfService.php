@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\PdfTooLargeException;
+use App\Exports\LaporanDetailHarianExport;
 use App\Exports\LaporanLemburanExport;
 use App\Exports\LaporanPenggajianExport;
 use App\Exports\LaporanPresensiExport;
@@ -45,6 +46,7 @@ class LaporanPdfService
             'rekap_mengajar' => new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
             'rekap_kehadiran' => new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
             'rekap_kehadiran_harian' => new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
+            'detail_harian' => new LaporanDetailHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
         };
 
         // Hitung dulu, map belakangan — hindari build array besar sebelum guard.
@@ -94,6 +96,7 @@ class LaporanPdfService
             'rekap_mengajar' => 'LAPORAN REKAPITULASI PRESENSI MENGAJAR',
             'rekap_kehadiran' => 'LAPORAN REKAPITULASI KEHADIRAN',
             'rekap_kehadiran_harian' => 'LAPORAN REKAPITULASI KEHADIRAN HARIAN',
+            'detail_harian' => 'DETAIL PRESENSI HARIAN PEGAWAI',
         };
 
         $filename = match ($type) {
@@ -103,6 +106,7 @@ class LaporanPdfService
             'rekap_mengajar' => 'Laporan_Rekap_Mengajar',
             'rekap_kehadiran' => 'Laporan_Rekap_Kehadiran',
             'rekap_kehadiran_harian' => 'Laporan_Rekap_Kehadiran_Harian',
+            'detail_harian' => 'Laporan_Detail_Presensi_Harian',
         };
 
         $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);

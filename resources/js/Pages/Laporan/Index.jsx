@@ -4,6 +4,7 @@ import { Head, Link } from '@inertiajs/react';
 import { Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users, X } from 'lucide-react';
 import axios from 'axios';
 import ComboSelect from '@/Components/ComboSelect';
+import HarianDetail from '@/Pages/Laporan/Partials/Preview/HarianDetail';
 import { fmtJp } from '@/Utils/waktuPresensi';
 
 const fieldId = (label) => label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -162,11 +163,11 @@ export default function LaporanIndex({ auth, units }) {
 
     const handleDownload = () => {
         setError('');
-        if (filter.report_type === 'rekap_kehadiran_harian') {
+        if (['rekap_kehadiran_harian', 'detail_harian'].includes(filter.report_type)) {
             const s = new Date(filter.start_date + 'T00:00:00');
             const e = new Date(filter.end_date + 'T00:00:00');
             if ((e - s) / 86400000 > 30) {
-                setError('Rekap Kehadiran Harian maksimal 31 hari per generate. Pecah periode menjadi beberapa generate.');
+                setError('Laporan ini maksimal 31 hari per generate. Pecah periode menjadi beberapa generate.');
                 return;
             }
         }
@@ -178,6 +179,7 @@ export default function LaporanIndex({ auth, units }) {
         if (filter.report_type === 'rekap_mengajar') url = route('laporan.rekap-mengajar');
         if (filter.report_type === 'rekap_kehadiran') url = route('laporan.rekap-kehadiran');
         if (filter.report_type === 'rekap_kehadiran_harian') url = route('laporan.rekap-kehadiran-harian');
+        if (filter.report_type === 'detail_harian') url = route('laporan.detail-harian');
 
         const params = new URLSearchParams();
         params.append('type', filter.report_type);
@@ -350,6 +352,7 @@ export default function LaporanIndex({ auth, units }) {
                                         <option value="presensi">Laporan Presensi</option>
                                         <option value="rekap_kehadiran">Rekap Kehadiran</option>
                                         <option value="rekap_kehadiran_harian">Rekap Kehadiran Harian (per Tanggal)</option>
+                                        <option value="detail_harian">Detail Presensi Harian (Informatif)</option>
                                         <option value="rekap_mengajar">Rekap Presensi Mengajar</option>
                                         <option value="rekap_presensi_harian">Rekap Presensi Harian</option>
                                         <option value="penggajian">Laporan Rekap Gaji</option>
@@ -905,7 +908,16 @@ export default function LaporanIndex({ auth, units }) {
                             </div>
                             )}
 
-                            {!['rekap_kehadiran', 'rekap_kehadiran_harian'].includes(activePreview.report_type) && !(activePreview.report_type === 'rekap_mengajar' && viewMode === 'kalender') && (
+                            {activePreview.report_type === 'detail_harian' && previewData.detail && (
+                                <div>
+                                    <div className="px-4 py-2 text-xs text-text-muted bg-surface border-b border-border italic">
+                                        Chip: ✓ terekam · ✗ terekam sudah lewat (deklarasi masalah) · I izin · • menunggu approval. Klik tanggal untuk buka/tutup.
+                                    </div>
+                                    <HarianDetail days={previewData.detail} summary={previewData.summary} />
+                                </div>
+                            )}
+
+                            {!['rekap_kehadiran', 'rekap_kehadiran_harian', 'detail_harian'].includes(activePreview.report_type) && !(activePreview.report_type === 'rekap_mengajar' && viewMode === 'kalender') && (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface">
