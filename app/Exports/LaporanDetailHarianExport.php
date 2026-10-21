@@ -182,8 +182,12 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
                     $pulangRow = $masukRow;
                 }
 
+                // Hari "selesai" = hari lampau, atau hari ini yang slot terakhirnya sudah lewat.
+                $endJam = $slots->max('jam_selesai');
+                $dayDone = $isPast || ($isToday && $endJam !== null && Carbon::parse($endJam)->lt(now()));
+
                 [$masukStatus, $masukJam, $pulangJam, $pulangState] = $this->resolveMasukPulang(
-                    $masukRow, $pulangRow, $izinType, $isHoliday, $isPast, $isToday,
+                    $masukRow, $pulangRow, $izinType, $isHoliday, $isPast, $dayDone,
                     $dayRows->isNotEmpty() || $slots->isNotEmpty(),
                 );
 
@@ -260,11 +264,11 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
      * Resolve status masuk & pulang kantor.
      * Pola: bila ada kantor row, status dari row (telat → Telat, hadir → Tepat),
      * izin → label, libur → Libur, hari kerja lampau tanpa record → Alpa,
-     * masih/future → '' (netral).
+     * masih belum selesai → '' (netral, tampil "-").
      *
      * @return array{0: string, 1: ?string, 2: ?string, 3: string}
      */
-    private function resolveMasukPulang($masukRow, $pulangRow, ?string $izinType, bool $isHoliday, bool $isPast, bool $isToday, bool $hasAnyRow): array
+    private function resolveMasukPulang($masukRow, $pulangRow, ?string $izinType, bool $isHoliday, bool $isPast, bool $dayDone, bool $hasAnyRow): array
     {
         if ($masukRow !== null) {
             $status = $masukRow->status;
@@ -272,7 +276,7 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
 
             if ($pulangRow && $pulangRow->jam_keluar) {
                 $pulangState = 'tercatat';
-            } elseif ($isToday || $isPast) {
+            } elseif ($isPast || $dayDone) {
                 $pulangState = 'belum';
             } else {
                 $pulangState = '';
