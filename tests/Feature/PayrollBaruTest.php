@@ -154,7 +154,7 @@ class PayrollBaruTest extends TestCase
 
         $this->actingAs($this->admin, 'web_admin')
             ->post(route('penggajian.run.init'), ['month' => '06', 'year' => '2026', 'unit_sekolah_id' => $this->unit->id])
-            ->assertRedirect(route('penggajian.run.worksheet', ['month' => '06', 'year' => '2026']));
+            ->assertRedirect(route('penggajian.run.worksheet', ['month' => '06', 'year' => '2026', 'unit' => $this->unit->id]));
 
         $ids = Penggajian::where('periode_bulan', '06-2026')->where('status', 'draft')->pluck('pegawai_id')->all();
         $this->assertContains($guruA->id, $ids, 'Pegawai unit terpilih ikut di-generate');
