@@ -285,6 +285,7 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('laporan/rekap-mengajar', [LaporanController::class, 'exportRekapMengajar'])->name('laporan.rekap-mengajar');
     Route::get('laporan/rekap-kehadiran', [LaporanController::class, 'exportRekapKehadiran'])->name('laporan.rekap-kehadiran');
     Route::get('laporan/rekap-kehadiran-harian', [LaporanController::class, 'exportRekapKehadiranHarian'])->name('laporan.rekap-kehadiran-harian');
+    Route::get('laporan/detail-harian', [LaporanController::class, 'exportDetailHarian'])->name('laporan.detail-harian');
     Route::get('laporan/rekap-detail', [LaporanController::class, 'rekapDetail'])->name('laporan.rekap-detail');
     Route::get('laporan/rekap-mengajar-detail', [LaporanController::class, 'rekapMengajarDetail'])->name('laporan.rekap-mengajar-detail');
 
