@@ -20,13 +20,14 @@ const MASUK_PILL = {
 
 const CHIP_STYLE = {
     ok: 'bg-success-light text-success ring-1 ring-success/30',
+    telat: 'bg-warning-light text-warning ring-1 ring-warning/30',
     miss: 'bg-danger-light text-danger ring-1 ring-danger/30',
     izin: 'bg-info-light text-info ring-1 ring-info/30',
     late: 'bg-warning-light text-warning ring-1 ring-warning/30',
     '': NEUTRAL,
 };
 
-const CHIP_MARK = { ok: '✓', miss: '✗', izin: 'I', late: '•', '': '·' };
+const CHIP_MARK = { ok: '✓', telat: 'T', miss: '✗', izin: 'I', late: '•', '': '·' };
 
 const masukLabel = (row) => {
     const jam = row.masuk_jam ? ' ' + row.masuk_jam : '';

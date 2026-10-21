@@ -50,7 +50,7 @@ class LaporanDetailHarianTest extends TestCase
         Jadwal::create(['pegawai_id' => $this->guruKosong->id, 'unit_sekolah_id' => $this->unit->id, 'hari' => 'Senin', 'jam_mulai' => '08:00', 'jam_selesai' => '09:40', 'jenis_jadwal' => 'mengajar', 'kelas_label' => '7B', 'tahun_ajaran' => '2023/2024', 'semester' => 1]);
         Jadwal::create(['pegawai_id' => $this->guruKosong->id, 'unit_sekolah_id' => $this->unit->id, 'hari' => 'Senin', 'jam_mulai' => '07:00', 'jam_selesai' => '16:00', 'jenis_jadwal' => 'piket', 'tahun_ajaran' => '2023/2024', 'semester' => 1]);
 
-        // Guru Slid: Senin telat masuk kantor + slide mengajar (terekam).
+        // Guru Slid: Senin telat masuk kantor + slide mengajar (terekam, 08:05 > 08:00 = telat).
         Presensi::create([
             'pegawai_id' => $this->guru->id, 'unit_sekolah_id' => $this->unit->id, 'tanggal' => self::MONDAY,
             'tipe_presensi' => 'kantor', 'jam_masuk' => '07:41:00',
@@ -59,7 +59,7 @@ class LaporanDetailHarianTest extends TestCase
         Presensi::create([
             'pegawai_id' => $this->guru->id, 'unit_sekolah_id' => $this->unit->id, 'jadwal_id' => $jadwal->id, 'tanggal' => self::MONDAY,
             'tipe_presensi' => 'mengajar', 'jam_masuk' => '08:05:00', 'jam_keluar' => '09:40:00',
-        ])->forceFill(['status' => 'hadir'])->save();
+        ])->forceFill(['status' => 'telat'])->save();
 
         // Guru Slid: Rabu izin disetujui.
         PengajuanIzin::create([
@@ -123,7 +123,7 @@ class LaporanDetailHarianTest extends TestCase
         $this->assertSame('belum', $row['pulang_state']); // hari past, masuk terekam tapi belum absen keluar.
         $mengajar = collect($row['aktivitas'])->firstWhere('jenis', 'mengajar');
         $this->assertNotNull($mengajar);
-        $this->assertSame('ok', $mengajar['state']);
+        $this->assertSame('telat', $mengajar['state'], 'Sesi slide telat → chip Telat, bukan Hadir');
         $this->assertSame('08:05', $mengajar['jam']);
     }
 
@@ -155,5 +155,10 @@ class LaporanDetailHarianTest extends TestCase
         $row = $res->json('data')[0] ?? [];
         $this->assertCount(7, $row, 'Header lengkap = 7 kolom');
         $this->assertIsString($row[6], 'Kolom aktivitas harus string');
+        $this->assertStringContainsString('Telat', $row[6], 'Sesi telat diberi tag Telat');
+
+        $missRow = collect($res->json('data'))->firstWhere(0, 'Guru Tanpa Presensi');
+        $this->assertStringContainsString('Tak Slide', $missRow[6]);
+        $this->assertStringContainsString("\n", $missRow[6], '1 aktivitas per baris (multiline cell: mengajar + piket)');
     }
 }
