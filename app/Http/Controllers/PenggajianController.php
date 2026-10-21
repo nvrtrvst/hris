@@ -333,7 +333,12 @@ class PenggajianController extends Controller
             }
             DB::commit();
 
-            return redirect()->route('penggajian.run.worksheet', ['month' => $month, 'year' => $year]);
+            $worksheetParams = ['month' => $month, 'year' => $year];
+            if ($unitTerpilih !== null) {
+                $worksheetParams['unit'] = $unitTerpilih;
+            }
+
+            return redirect()->route('penggajian.run.worksheet', $worksheetParams);
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -341,12 +346,17 @@ class PenggajianController extends Controller
         }
     }
 
-    public function worksheet($month, $year)
+    public function worksheet($month, $year, Request $request)
     {
         $periode = $month.'-'.$year;
+        $unit = $request->query('unit');
 
-        // Cek apakah ada draft untuk periode ini
-        $drafts = Penggajian::where('periode_bulan', $periode)->where('status', 'draft')->count();
+        // Cek apakah ada draft untuk periode ini (scope unit bila dipilih).
+        $drafts = Penggajian::where('periode_bulan', $periode)->where('status', 'draft')
+            ->when($unit, fn ($q) => $q->whereHas('pegawai', fn ($p) => $p->whereHas(
+                'units', fn ($u) => $u->where('unit_sekolah.id', (int) $unit)
+            )))
+            ->count();
         if ($drafts === 0) {
             return redirect()->route('penggajian.run')->withErrors(['error' => 'Draft belum di-generate untuk periode ini.']);
         }
@@ -355,16 +365,25 @@ class PenggajianController extends Controller
             'month' => $month,
             'year' => $year,
             'periode' => $periode,
+            'unit' => $unit !== null ? (int) $unit : null,
         ]);
     }
 
-    public function getWorksheetData($month, $year)
+    public function getWorksheetData($month, $year, Request $request)
     {
         $periode = $month.'-'.$year;
 
         $query = Penggajian::with(['pegawai.units:id,nama,singkatan', 'details'])
             ->where('periode_bulan', $periode)
             ->where('status', 'draft');
+
+        // Per-unit run: hanya draft pegawai unit terpilih.
+        $unit = $request->query('unit');
+        if ($unit) {
+            $query->whereHas('pegawai', fn ($p) => $p->whereHas(
+                'units', fn ($u) => $u->where('unit_sekolah.id', (int) $unit)
+            ));
+        }
 
         $user = auth()->user();
         if ($user && ! $user->can('view_all_units')) {
