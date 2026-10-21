@@ -144,6 +144,61 @@ class PegawaiFotoUpdateTest extends TestCase
         Storage::disk('presensi')->assertMissing($pathLama);
     }
 
+    public function test_upload_mengikuti_config_presensi_disk_bukan_hardcode(): void
+    {
+        // Produksi bisa mengarahkan presensi_disk ke s3/MinIO. Upload HARUS
+        // menulis ke disk itu, bukan hardcode 'presensi' (oops: foto 404).
+        Storage::fake('s3');
+        config(['filesystems.presensi_disk' => 's3']);
+        $foto = UploadedFile::fake()->image('foto-s3.jpg', 200, 200);
+
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->post(route('pegawai.update', $this->pegawai->id), $this->payloadUtama() + [
+                '_method' => 'PUT',
+                'foto' => $foto,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->pegawai->refresh();
+        Storage::disk('s3')->assertExists($this->pegawai->foto);
+        Storage::disk('presensi')->assertMissing($this->pegawai->foto); // tak menggantung
+    }
+
+    public function test_served_foto_sendiri_via_route_presensi_photo(): void
+    {
+        Storage::fake('presensi');
+        $foto = UploadedFile::fake()->image('foto-route.png', 200, 200);
+
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->post(route('pegawai.update', $this->pegawai->id), $this->payloadUtama() + [
+                '_method' => 'PUT',
+                'foto' => $foto,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->pegawai->refresh();
+
+        // Pegawai sendiri (sisi mobile) buka foto lewat /presensi/photo/...
+        $user = $this->pegawai->user;
+        $this->actingAs($user, 'web_mobile')
+            ->get(route('presensi.photo', ['path' => $this->pegawai->foto]))
+            ->assertOk();
+    }
+
+    public function test_foto_legacy_di_disk_presensi_tetap_terbaca_saat_disk_config_arakah_s3(): void
+    {
+        // Formulasa di produksi: file ESTRA sudah ditulis ke disk 'presensi' lokal,
+        // sedangkan presensi_disk di .env diarahkan s3. Route harus fallback.
+        Storage::fake('s3');
+        Storage::fake('presensi');
+        config(['filesystems.presensi_disk' => 's3']);
+        Storage::disk('presensi')->put('pegawai_fotos/legacy.png', 'fake-image');
+
+        $this->actingAs($this->superadmin, 'web_admin')
+            ->get(route('presensi.photo', ['path' => 'pegawai_fotos/legacy.png']))
+            ->assertOk();
+    }
+
     /**
      * Payload minimal untuk lolos semua field required di PegawaiController::update.
      */

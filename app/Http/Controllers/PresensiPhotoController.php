@@ -69,6 +69,16 @@ class PresensiPhotoController extends Controller
         }
 
         if (! Storage::disk($disk)->exists($fullPath)) {
+            // Fallback legacy: file yang ditulis sebelum store ikut config
+            // selalu masuk hardcode disk 'presensi' (lokal). Produksi yang membaca
+            // presensi_disk= s3/MinIO harus tetap bisa melihat file lama ini.
+            if ($disk !== 'presensi' && Storage::disk('presensi')->exists($fullPath)) {
+                $response = Storage::disk('presensi')->response($fullPath);
+                $response->headers->set('Cache-Control', 'no-store, private');
+
+                return $response;
+            }
+
             abort(404);
         }
 

@@ -572,10 +572,15 @@ class PegawaiController extends Controller
         $fotoLama = $pegawai->foto;
         $fotoBaru = null;
 
+        // Disk untuk foto pegawai HARUS ikut config, bukan hardcode — reader
+        // (PresensiPhotoController) membaca filesystems.presensi_disk. Produksi
+        // bisa mengarahkan ke s3/MinIO; mismatch = foto 404 walau upload sukses.
+        $fotoDisk = config('filesystems.presensi_disk', 'presensi');
+
         if ($request->hasFile('foto')) {
             // Store file baru DULU, baru hapus yang lama setelah update sukses —
             // kalau update gagal, foto lama tidak hilang & tidak ada file menggantung.
-            $path = $request->file('foto')->store('pegawai_fotos', 'presensi');
+            $path = $request->file('foto')->store('pegawai_fotos', $fotoDisk);
             $fotoBaru = $path;
             $dataToUpdate['foto'] = $path;
         } elseif ($request->boolean('hapus_foto')) {
@@ -586,13 +591,13 @@ class PegawaiController extends Controller
             $pegawai->update($dataToUpdate);
         } catch (\Throwable $e) {
             if ($fotoBaru) {
-                Storage::disk('presensi')->delete($fotoBaru);
+                Storage::disk($fotoDisk)->delete($fotoBaru);
             }
             throw $e;
         }
 
         if ($fotoLama && ($fotoBaru || $request->boolean('hapus_foto'))) {
-            Storage::disk('presensi')->delete($fotoLama);
+            Storage::disk($fotoDisk)->delete($fotoLama);
         }
 
         // Sinkronisasi penugasan unit + jabatan. Satu unit boleh punya
