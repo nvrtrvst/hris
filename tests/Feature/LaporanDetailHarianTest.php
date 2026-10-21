@@ -161,4 +161,23 @@ class LaporanDetailHarianTest extends TestCase
         $this->assertStringContainsString('Tidak Presensi', $missRow[6]);
         $this->assertStringContainsString("\n", $missRow[6], '1 aktivitas per baris (multiline cell: mengajar + piket)');
     }
+
+    public function test_pulang_hari_ini_belum_dituntut_sebelum_jam_selesai(): void
+    {
+        Jadwal::create(['pegawai_id' => $this->guruKosong->id, 'unit_sekolah_id' => $this->unit->id, 'hari' => 'Rabu', 'jam_mulai' => '08:00', 'jam_selesai' => '09:00', 'jenis_jadwal' => 'mengajar', 'kelas_label' => '7B', 'tahun_ajaran' => '2023/2024', 'semester' => 1]);
+        Presensi::create([
+            'pegawai_id' => $this->guruKosong->id, 'unit_sekolah_id' => $this->unit->id, 'tanggal' => self::WEDNESDAY,
+            'tipe_presensi' => 'kantor', 'jam_masuk' => '08:05:00',
+        ])->forceFill(['status' => 'hadir'])->save();
+
+        // Sebelum jam slot terakhir → pulang netral (tampil "-"), bukan "Tidak Presensi Pulang".
+        $this->travelTo(Carbon::parse(self::WEDNESDAY.' 08:30:00'));
+        $row = $this->rowByNama($this->preview(self::WEDNESDAY, self::WEDNESDAY)->json('detail'), 'Guru Tanpa Presensi', self::WEDNESDAY);
+        $this->assertSame('', $row['pulang_state']);
+
+        // Setelah jam slot terakhir lewat tanpa absen keluar → "Tidak Presensi Pulang".
+        $this->travelTo(Carbon::parse(self::WEDNESDAY.' 10:00:00'));
+        $row = $this->rowByNama($this->preview(self::WEDNESDAY, self::WEDNESDAY)->json('detail'), 'Guru Tanpa Presensi', self::WEDNESDAY);
+        $this->assertSame('belum', $row['pulang_state']);
+    }
 }
