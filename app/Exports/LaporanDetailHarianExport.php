@@ -25,7 +25,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
  * Detail Presensi Harian (informatif): 1 baris = 1 pegawai × 1 tanggal.
  * Kolom kunci: Jam Masuk + status (Tepat/Telat/Izin/...), Pulang Kantor
  * (jam / belum / -), dan aktivitas per sesi (mengajar/piket/lembur/
- * tugas luar) dengan tag Hadir/Tak Slide/Izin/Pending.
+ * aktivitas (mengajar/piket/lembur/tugas luar) dengan tag Hadir/Telat/Tidak Presensi/Izin/Pending/Belum Mulai.
  */
 class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
@@ -350,10 +350,10 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
         };
     }
 
-    /** Aktivitas → string Excel/PDF, ASCII-safe, 1 aktivitas per baris (tag Hadir/Telat/Tak Slide/Izin/Pending). */
+    /** Aktivitas → string Excel/PDF, ASCII-safe, 1 aktivitas per baris (tag Hadir/Telat/Tidak Presensi/Izin/Pending/Belum Mulai). */
     public function aktivitasText(array $aktivitas, string $sep = "\n"): string
     {
-        $tags = ['ok' => 'Hadir', 'telat' => 'Telat', 'miss' => 'Tak Slide', 'izin' => 'Izin', 'late' => 'Pending'];
+        $tags = ['ok' => 'Hadir', 'telat' => 'Telat', 'miss' => 'Tidak Presensi', 'izin' => 'Izin', 'late' => 'Pending', '' => 'Belum Mulai'];
 
         return implode($sep, array_map(function ($a) use ($tags) {
             $tag = $tags[$a['state']] ?? '';
@@ -455,7 +455,7 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells("A5:{$lastCol}5");
-                $sheet->setCellValue('A5', 'Aktivitas: tag (Hadir/Tak Slide/Izin/Pending). Telat = masuk kantor lewat jam, sisanya tampil jam masuk saja. "Tidak Presensi Pulang" = belum absen keluar.');
+                $sheet->setCellValue('A5', 'Aktivitas: tag (Hadir/Telat/Tidak Presensi/Izin/Pending/Belum Mulai). Sesi yang jamnya belum terlewati tampil "Belum Mulai".');
                 $sheet->getStyle('A5')->getFont()->setSize(9)->setColor(new Color('FF6B7280'));
                 $sheet->getStyle('A5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
