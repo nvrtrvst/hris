@@ -234,8 +234,6 @@ Route::middleware('auth:web_admin')->group(function () {
 
     Route::delete('penggajian/destroy-period', [PenggajianController::class, 'destroyPeriod'])
         ->name('penggajian.destroy-period');
-        ->middleware('throttle:30,1')
-        ->name('penggajian.destroy_period');
     Route::delete('penggajian/{id}', [PenggajianController::class, 'destroy'])
         ->middleware('throttle:60,1')
         ->name('penggajian.destroy');
