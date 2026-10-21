@@ -40,7 +40,7 @@ function SectionCard({ Icon, title, description, children }) {
 
 export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, statusKepegawaian, pendidikanTerakhir, atasanCandidates = [], lokalis = [], pegawai_lokasis = [], lokasi_pilihan = 'primary' }) {
     const canViewSensitive = auth.permissions?.includes('view_sensitive_data');
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, transform, post, processing, errors } = useForm({
         nik: canViewSensitive ? pegawai.nik_plain ?? pegawai.nik : '',
         nuptk: pegawai.nuptk || '',
         nama_lengkap: pegawai.nama_lengkap,
@@ -152,9 +152,14 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
         return pendidikanTerakhir || [];
     }, [pendidikanTerakhir, pegawai.pendidikan_terakhir]);
 
+    // PHP tidak parse multipart body pada HTTP PUT, jadi put() dengan foto
+    // selalu diterima Laravel dengan body kosong (semua field required gagal).
+    // Kirim POST dengan _method=PUT (method spoofing) agar multipart tetap terparse.
+    transform((request) => ({ ...request, _method: 'PUT' }));
+
     const submit = (e) => {
         e.preventDefault();
-        put(route('pegawai.update', pegawai.id));
+        post(route('pegawai.update', pegawai.id));
     };
 
     return (
