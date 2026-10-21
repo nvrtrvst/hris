@@ -297,18 +297,22 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
 
     /**
      * Chip status per slot jadwal.
-     * Return [state ok|miss|izin|late|'', jam label].
+     * Return [state ok|telat|miss|izin|late|'', jam label].
      */
     private function resolveSlot($slot, Collection $sesiRows, ?string $izinType, $masukRow, bool $isPast, bool $isToday): array
     {
         $row = $sesiRows->firstWhere('jadwal_id', $slot->id);
         if ($row) {
-            return ['ok', $row->jam_masuk ? substr($row->jam_masuk, 0, 5) : substr($row->jam_selesai, 0, 5)];
+            $state = $row->status === 'telat' ? 'telat' : 'ok';
+
+            return [$state, $row->jam_masuk ? substr($row->jam_masuk, 0, 5) : substr($row->jam_selesai, 0, 5)];
         }
 
         // Piket: absen kantor hari itu dianggap menutup slot piket.
         if ($slot->jenis_jadwal === 'piket' && $masukRow !== null) {
-            return ['ok', $masukRow->jam_masuk ? substr($masukRow->jam_masuk, 0, 5) : null];
+            $state = $masukRow->status === 'telat' ? 'telat' : 'ok';
+
+            return [$state, $masukRow->jam_masuk ? substr($masukRow->jam_masuk, 0, 5) : null];
         }
 
         if ($izinType) {
@@ -346,12 +350,12 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
         };
     }
 
-    /** Aktivitas → string Excel/PDF, ASCII-safe (DomPDF tidak punya glyph ✓/✗). */
-    public function aktivitasText(array $aktivitas): string
+    /** Aktivitas → string Excel/PDF, ASCII-safe, 1 aktivitas per baris (tag Hadir/Telat/Tak Slide/Izin/Pending). */
+    public function aktivitasText(array $aktivitas, string $sep = "\n"): string
     {
-        $tags = ['ok' => 'Hadir', 'miss' => 'Tak Slide', 'izin' => 'Izin', 'late' => 'Pending'];
+        $tags = ['ok' => 'Hadir', 'telat' => 'Telat', 'miss' => 'Tak Slide', 'izin' => 'Izin', 'late' => 'Pending'];
 
-        return implode('; ', array_map(function ($a) use ($tags) {
+        return implode($sep, array_map(function ($a) use ($tags) {
             $tag = $tags[$a['state']] ?? '';
 
             return trim($a['label'].($a['jam'] ? ' ('.$a['jam'].')' : '').($tag ? ' - '.$tag : '')) ?: '-';
