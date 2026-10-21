@@ -37,7 +37,7 @@ const keyOf = (d) => `${d.tipe}::${d.nama_komponen}`;
 const pegawaiInitials = (nama = '') =>
     nama.split(' ').map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
-export default function RunPayrollWorksheet({ auth, month, year, periode }) {
+export default function RunPayrollWorksheet({ auth, month, year, periode, unit = null }) {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState('');
@@ -53,7 +53,7 @@ export default function RunPayrollWorksheet({ auth, month, year, periode }) {
     const [adHocError, setAdHocError] = useState('');
 
     useEffect(() => {
-        axios.get(route('penggajian.run.worksheet_data', { month, year }))
+        axios.get(route('penggajian.run.worksheet_data', unit ? { month, year, unit } : { month, year }))
             .then((res) => {
                 setRows(res.data);
                 setLoading(false);
@@ -62,7 +62,7 @@ export default function RunPayrollWorksheet({ auth, month, year, periode }) {
                 setLoadError('Gagal memuat data draft. Periksa koneksi lalu muat ulang halaman.');
                 setLoading(false);
             });
-    }, [month, year]);
+    }, [month, year, unit]);
 
     // ── Kolom: dedupe (tipe, nama) urutan stabil dari data ──
     const columns = useMemo(() => {

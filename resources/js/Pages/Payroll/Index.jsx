@@ -84,8 +84,8 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
             header={<h2 className="page-title">Sistem Penggajian (Payroll)</h2>}
         >
             <Head title="Penggajian" />
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="bg-surface min-h-screen">
+                <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
                     {/* Flash */}
                     {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
                     {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
@@ -234,20 +234,22 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                                                 </td>
                                                 <td className="px-4 py-3.5 whitespace-nowrap text-right">
                                                     <div className="flex items-center justify-end gap-1.5">
-                                                        {isAdminUnit && p.status === 'draft' && (
+                                                        {isAdmin && p.status === 'draft' && (
                                                             <>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        if (confirm(`Finalisasi slip gaji ${nama} (${p.periode_bulan})?`)) {
-                                                                            router.post(route('penggajian.finalize', p.id), {}, { preserveState: true });
-                                                                        }
-                                                                    }}
-                                                                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
-                                                                    title="Finalisasi slip gaji ini"
-                                                                >
-                                                                    <Lock className="h-3 w-3" /> Finalisasi
-                                                                </button>
+                                                                {isAdminUnit && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            if (confirm(`Finalisasi slip gaji ${nama} (${p.periode_bulan})?`)) {
+                                                                                router.post(route('penggajian.finalize', p.id), {}, { preserveState: true });
+                                                                            }
+                                                                        }}
+                                                                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
+                                                                        title="Finalisasi slip gaji ini"
+                                                                    >
+                                                                        <Lock className="h-3 w-3" /> Finalisasi
+                                                                    </button>
+                                                                )}
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => {
