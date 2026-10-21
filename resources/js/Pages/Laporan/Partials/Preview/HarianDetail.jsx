@@ -120,7 +120,7 @@ function DaySection({ day, open, onToggle }) {
                     <span className="flex flex-wrap items-center gap-2 text-xs">
                         <span className="rounded-full bg-warning-light px-2 py-0.5 font-medium text-warning">Telat {telat}</span>
                         <span className="rounded-full bg-danger-light px-2 py-0.5 font-medium text-danger">Belum pulang {belum}</span>
-                        <span className="rounded-full bg-danger-light px-2 py-0.5 font-medium text-danger">Tak slide {takSlide}</span>
+                        <span className="rounded-full bg-danger-light px-2 py-0.5 font-medium text-danger">Tidak presensi {takSlide}</span>
                         <span className="text-text-muted">{day.rows.length} pegawai</span>
                     </span>
                 )}
@@ -173,7 +173,7 @@ function SummaryFooter({ summary }) {
         <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-xl border border-border bg-surface px-4 py-2.5 text-xs text-text-secondary">
             <span>Telat: <b>{summary.telat}</b></span>
             <span>Belum pulang: <b>{summary.belumPulang}</b></span>
-            <span>Tak slide: <b>{summary.takSlide}</b></span>
+            <span>Tidak presensi: <b>{summary.takSlide}</b></span>
             <span>Izin/Sakit/Cuti: <b>{summary.izinCount}</b></span>
         </div>
     );

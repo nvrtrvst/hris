@@ -158,7 +158,7 @@ class LaporanDetailHarianTest extends TestCase
         $this->assertStringContainsString('Telat', $row[6], 'Sesi telat diberi tag Telat');
 
         $missRow = collect($res->json('data'))->firstWhere(0, 'Guru Tanpa Presensi');
-        $this->assertStringContainsString('Tak Slide', $missRow[6]);
+        $this->assertStringContainsString('Tidak Presensi', $missRow[6]);
         $this->assertStringContainsString("\n", $missRow[6], '1 aktivitas per baris (multiline cell: mengajar + piket)');
     }
 }
