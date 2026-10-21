@@ -248,6 +248,15 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
         const firstItem = mg.items[0];
         const lastItem = mg.items[mg.items.length - 1];
         const timeRange = `${firstItem.jadwal?.jam_mulai?.substring(0, 5) || '?'}–${lastItem.jadwal?.jam_selesai?.substring(0, 5) || '?'}`;
+        // Durasi jam, bukan jumlah baris (reza-style slot 4 jam = 1 baris jadwal
+        // tapi 6 JP payroll dgn durasi_jp 40 — tampil "(1 JP)" membingungkan).
+        const totalJam = mg.items.reduce((acc, c) => {
+            if (!c.jadwal?.jam_mulai || !c.jadwal?.jam_selesai) return acc;
+            const [h1, m1] = c.jadwal.jam_mulai.split(':').map(Number);
+            const [h2, m2] = c.jadwal.jam_selesai.split(':').map(Number);
+            return acc + Math.max(0, (h2 - h1) * 60 + (m2 - m1));
+        }, 0);
+        const durasiLabel = (totalJam / 60).toLocaleString('id-ID', { maximumFractionDigits: 1 });
 
         rows.push(
             <tr key={mkey} className="bg-surface/40 hover:bg-surface/60 transition-colors">
@@ -266,7 +275,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                     <div className="text-xs leading-tight">
                         <span className="font-semibold text-primary">{mg.nama}</span>
                         <div className="text-text-secondary">{mg.kelas || '—'}</div>
-                        <div className="font-mono text-[11px] text-text-secondary">{timeRange} ({mg.items.length} JP)</div>
+                        <div className="font-mono text-[11px] text-text-secondary">{timeRange} ({durasiLabel} jam)</div>
                     </div>
                 </td>
                 <td className="px-4 py-2.5 whitespace-nowrap" colSpan="7"></td>
