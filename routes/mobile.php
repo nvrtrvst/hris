@@ -101,6 +101,8 @@ Route::middleware('auth:web_mobile')->group(function () {
     Route::get('/piket/riwayat', [MobileController::class, 'piketRiwayat'])->name('presensi.piket.riwayat');
     Route::post('/piket/item', [MobileController::class, 'storePiketItem'])
         ->middleware('throttle:60,1')->name('presensi.piket.item');
+    Route::post('/piket/item/hapus', [MobileController::class, 'deletePiketItem'])
+        ->middleware('throttle:60,1')->name('presensi.piket.hapus');
     Route::post('/piket/submit', [MobileController::class, 'submitPiket'])
         ->middleware('throttle:10,1')->name('presensi.piket.submit');
 
