@@ -79,7 +79,7 @@ function groupConsecutiveJadwals(jadwals) {
 
 const pad = (n) => String(n).padStart(2, '0');
 
-export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null, jamIzinPulangCepat = null, libur = false, alasanLibur = null }) {
+export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null, jamIzinPulangCepat = null, libur = false, alasanLibur = null, piketGate = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
@@ -196,6 +196,9 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_luar && p.jam_masuk), [presensiHariIni]);
     const tugasLuarDone = useMemo(() => presensiHariIni.some((p) => p.is_tugas_luar && p.jam_masuk && p.jam_keluar), [presensiHariIni]);
     const isDinasLuarFlow = tugasLuarOpen || (isTugasLuar && !tugasLuarRecord);
+    // Blokir absen pulang reguler selama laporan piket belum terkirim (backend
+    // memvalidasi ulang). Tugas luar & lembur tetap bebas.
+    const piketBlokir = Boolean(piketGate?.blokir) && !isDinasLuarFlow;
 
     // Multi-lokasi: cek semua assigned lokasi pegawai (sinkron backend resolveGeofenceLocation).
     const geofenceLocations = useMemo(() => {
@@ -537,6 +540,13 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 </div>
             )}
 
+            {phase === FOTO_SORE && piketBlokir && (
+                <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-semibold text-sky-800">
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>Selesaikan & kirim laporan piket dulu{piketGate?.progress ? ` (${piketGate.progress})` : ''} di menu Piket sebelum absen pulang.</span>
+                </div>
+            )}
+
             {libur && (
                 <div role="note" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
@@ -667,10 +677,15 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                                 <>
                                                     <SlideToConfirm
                                                         onConfirm={() => handleSlideGroup(g, 'keluar')}
-                                                        disabled={slideLoading !== null || !geofence?.inside}
+                                                        disabled={slideLoading !== null || !geofence?.inside || piketBlokir}
                                                         confirmed={false}
                                                         label="Selesai Mengajar"
                                                     />
+                                                    {piketBlokir && (
+                                                        <p className="mt-1.5 text-[11px] font-semibold text-sky-700">
+                                                            Selesaikan & kirim laporan piket dulu{piketGate?.progress ? ` (${piketGate.progress})` : ''}.
+                                                        </p>
+                                                    )}
                                                     {!geofence?.inside && (
                                                         <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
                                                             <MapPin className="h-3 w-3 shrink-0" />
@@ -887,7 +902,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             <button
                 type="button"
                 onClick={() => handleSubmitFoto(isDinasLuarFlow ? (tugasLuarOpen ? 'keluar' : 'masuk') : (phase === FOTO_PAGI ? 'masuk' : 'keluar'))}
-                disabled={isSubmitting || !capturedPhoto || !currentPosition || (!geofence?.inside && !isDinasLuarFlow) || (isDinasLuarFlow && !tugasLuarRecord && !tujuan.trim()) || allRecordsComplete}
+                disabled={isSubmitting || !capturedPhoto || !currentPosition || (!geofence?.inside && !isDinasLuarFlow) || (isDinasLuarFlow && !tugasLuarRecord && !tujuan.trim()) || allRecordsComplete || (piketBlokir && phase === FOTO_SORE)}
                 className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isDinasLuarFlow ? 'bg-sky-500' : 'bg-primary'}`}
             >
                 {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isDinasLuarFlow ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : `Kirim ${phase === FOTO_PAGI ? 'foto pagi' : 'foto sore'}`}

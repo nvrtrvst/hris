@@ -446,6 +446,110 @@ class LaporanPiketTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_keluar_reguler_ditahan_sebelum_laporan_piket_terkirim(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
+        Carbon::setTestNow('2026-10-12 14:00:00'); // Sore bisa pulang, tapi laporan belum ada.
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.store'), array_merge(
+                ['tipe' => 'keluar', 'foto' => $this->fotoBase64()],
+                $this->geo()
+            ));
+
+        $res->assertStatus(422);
+        $this->assertStringContainsString('Laporan piket belum terkirim', $res->json('errors.piket.0'));
+        $this->assertStringContainsString('0/5', $res->json('errors.piket.0'));
+        Carbon::setTestNow();
+    }
+
+    public function test_keluar_reguler_dibuka_setelah_laporan_piket_terkirim(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
+        $post = fn (string $now, array $payload) => $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge($payload, $this->geo()));
+
+        Carbon::setTestNow('2026-10-12 08:00:00');
+        $post('', ['kode' => 'gerbang', 'mode' => 'centang', 'terlambat_count' => 1])->assertRedirect();
+        $post('', ['kode' => 'cek_absen', 'mode' => 'centang'])->assertRedirect();
+
+        Carbon::setTestNow('2026-10-12 10:00:00'); // seksi KBM
+        $post('', ['kode' => 'kelas_kosong', 'mode' => 'nihil'])->assertRedirect();
+        $post('', ['kode' => 'buku', 'mode' => 'centang'])->assertRedirect();
+        $post('', ['kode' => 'insiden', 'mode' => 'nihil'])->assertRedirect();
+
+        Carbon::setTestNow('2026-10-12 14:00:00'); // seksi sore
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.submit'))
+            ->assertRedirect();
+
+        // Keluar sengaja setelah jam pulang kantor unit (15:00) agar pemeriksaan
+        // jam pulang kantor lolos — target test: gate piket sudah tidak menahan.
+        Carbon::setTestNow('2026-10-12 15:30:00');
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.store'), array_merge(
+                ['tipe' => 'keluar', 'foto' => $this->fotoBase64()],
+                $this->geo()
+            ));
+        $res->assertOk()->assertJson(['success' => true]);
+        Carbon::setTestNow();
+
+        $this->assertDatabaseHas('presensi', [
+            'pegawai_id' => $pegawai->id,
+            'tipe_presensi' => 'kantor',
+        ]);
+    }
+
+    public function test_keluar_lembur_dan_tugas_luar_tak_tertahan_piket(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        Carbon::setTestNow('2026-10-12 14:00:00');
+
+        // Lembur: gate dilewati → error berikutnya (belum absen masuk), bukan piket.
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.store'), array_merge(
+                ['tipe' => 'keluar', 'is_lembur' => true, 'foto' => $this->fotoBase64()],
+                $this->geo()
+            ));
+        $res->assertStatus(422);
+        $this->assertStringNotContainsString('piket', (string) json_encode($res->json()));
+
+        // Tugas luar: sama.
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.store'), array_merge(
+                ['tipe' => 'keluar', 'is_tugas_luar' => true, 'tujuan' => 'Meeting', 'foto' => $this->fotoBase64()],
+                $this->geo()
+            ));
+        $res->assertStatus(422);
+        $this->assertStringNotContainsString('piket', (string) json_encode($res->json()));
+        Carbon::setTestNow();
+    }
+
+    public function test_keluar_tetap_ditahan_pegawai_piket(): void
+    {
+        $pegawai = $this->makePegawai('Guru Tetap');
+        $pegawai->status_kepegawaian = 'guru_tetap_yayasan';
+        $pegawai->save();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
+        Carbon::setTestNow('2026-10-12 14:00:00');
+
+        $res = $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.tetap'), array_merge(
+                ['tipe' => 'keluar', 'foto' => $this->fotoBase64()],
+                $this->geo()
+            ));
+
+        $res->assertStatus(422);
+        $this->assertStringContainsString('Laporan piket belum terkirim', $res->json('errors.piket.0'));
+        Carbon::setTestNow();
+    }
+
     public function test_tambah_guru_absen_sore_diterima(): void
     {
         $pegawai = $this->makePegawai();
