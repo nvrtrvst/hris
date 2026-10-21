@@ -44,7 +44,7 @@ const masukLabel = (row) => {
 
 const pulangLabel = (row) => {
     if (row.pulang_state === 'tercatat') return row.pulang_jam;
-    if (row.pulang_state === 'belum') return 'Belum absen keluar';
+    if (row.pulang_state === 'belum') return 'Tidak Presensi Pulang';
     return '-';
 };
 

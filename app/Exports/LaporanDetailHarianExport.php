@@ -25,7 +25,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
  * Detail Presensi Harian (informatif): 1 baris = 1 pegawai × 1 tanggal.
  * Kolom kunci: Jam Masuk + status (Tepat/Telat/Izin/...), Pulang Kantor
  * (jam / belum / -), dan aktivitas per sesi (mengajar/piket/lembur/
- * tugas luar) dengan tanda ✓/✗.
+ * tugas luar) dengan tag Hadir/Tak Slide/Izin/Pending.
  */
 class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
@@ -317,10 +317,10 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
 
         $jamSelesai = substr($slot->jam_selesai, 0, 5);
         if ($isPast || ($isToday && Carbon::parse($jamSelesai)->lt(now()))) {
-            return ['miss', substr($slot->jam_mulai, 0, 5).'–'.$jamSelesai];
+            return ['miss', substr($slot->jam_mulai, 0, 5).'-'.$jamSelesai];
         }
 
-        return ['', substr($slot->jam_mulai, 0, 5).'–'.$jamSelesai];
+        return ['', substr($slot->jam_mulai, 0, 5).'-'.$jamSelesai];
     }
 
     private function slotLabel(Jadwal $slot): string
@@ -328,14 +328,14 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
         $mapel = $slot->pegawaiMapel?->mataPelajaran?->nama;
         $kelas = $slot->kelas_label ?: null;
 
-        return $mapel ? trim(($mapel.($kelas ? ' • '.$kelas : ''))) : 'Mengajar';
+        return $mapel ? trim($mapel.($kelas ? ' - '.$kelas : '')) : 'Mengajar';
     }
 
-    /** Label status masuk untuk Excel & FE. */
+    /** Label status masuk untuk Excel & PDF: telat ditandai, tepat = jam saja. */
     public static function statusLabel(string $status, ?string $jam): string
     {
         return match ($status) {
-            'hadir' => 'Tepat ('.$jam.')',
+            'hadir' => $jam ?: '-',
             'telat' => 'Telat ('.$jam.')',
             'sakit' => 'Sakit',
             'izin' => 'Izin',
@@ -346,15 +346,16 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
         };
     }
 
-    /** Aktivitas → string Excel: "✓ Mengajar 08:00–11:00; ✗ Piket". */
+    /** Aktivitas → string Excel/PDF, ASCII-safe (DomPDF tidak punya glyph ✓/✗). */
     public function aktivitasText(array $aktivitas): string
     {
-        $marks = ['ok' => '✓', 'miss' => '✗', 'izin' => '◈', 'late' => '◔', '' => '·'];
+        $tags = ['ok' => 'Hadir', 'miss' => 'Tak Slide', 'izin' => 'Izin', 'late' => 'Pending'];
 
-        return implode('; ', array_map(
-            fn ($a) => ($marks[$a['state']] ?? '·').' '.$a['label'].($a['jam'] ? ' '.$a['jam'] : ''),
-            $aktivitas
-        ));
+        return implode('; ', array_map(function ($a) use ($tags) {
+            $tag = $tags[$a['state']] ?? '';
+
+            return trim($a['label'].($a['jam'] ? ' ('.$a['jam'].')' : '').($tag ? ' - '.$tag : '')) ?: '-';
+        }, $aktivitas));
     }
 
     public function collection(): Collection
@@ -402,7 +403,7 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
             Carbon::parse($r['tanggal'])->format('d/m/Y'),
             $r['hari'],
             self::statusLabel($r['masuk_status'], $r['masuk_jam']),
-            $r['pulang_jam'] ?: ($r['pulang_state'] === 'belum' ? 'Belum absen keluar' : '-'),
+            $r['pulang_jam'] ?: ($r['pulang_state'] === 'belum' ? 'Tidak Presensi Pulang' : '-'),
             $aktivitasText !== '' ? $aktivitasText : '-',
         ];
 
@@ -450,7 +451,7 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells("A5:{$lastCol}5");
-                $sheet->setCellValue('A5', 'Aktivitas: ✓ terekam, ✗ terekam sefalnya (alpa), ◈ izin, ◔ menunggu approval. Tepat = masuk kantor sesuai jam, Telat = ags masuk kantor rambu lembut.');
+                $sheet->setCellValue('A5', 'Aktivitas: tag (Hadir/Tak Slide/Izin/Pending). Telat = masuk kantor lewat jam, sisanya tampil jam masuk saja. "Tidak Presensi Pulang" = belum absen keluar.');
                 $sheet->getStyle('A5')->getFont()->setSize(9)->setColor(new Color('FF6B7280'));
                 $sheet->getStyle('A5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
@@ -462,6 +463,10 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
                     ],
                 ]);
                 $sheet->freezePane('A7');
+
+                // Kolom aktivitas panjang — wrap biar rapih, bukan overflow.
+                $lastRow = 6 + ($this->rows?->count() ?? 0);
+                $sheet->getStyle("G7:G{$lastRow}")->getAlignment()->setWrapText(true);
             },
         ];
     }
