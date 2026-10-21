@@ -144,6 +144,34 @@ class PayrollBaruTest extends TestCase
         return [$gajian, $gajian->details()->pluck('nominal', 'nama_komponen')->all()];
     }
 
+    public function test_generate_per_unit(): void
+    {
+        $unitB = UnitSekolah::create(['nama' => 'TK Per Unit', 'singkatan' => 'TKPU', 'latitude' => -6.2, 'longitude' => 106.8, 'radius_meter' => 100]);
+        $guruA = $this->makePegawai('guru_tetap_yayasan', 'Guru Unit A', 21);
+        $guruB = $this->makePegawai('guru_tetap_yayasan', 'Guru Unit B', 22);
+        $guruB->units()->detach($this->unit->id);
+        $guruB->units()->attach($unitB->id, ['jabatan_id' => Jabatan::first()->id, 'is_primary' => true]);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('penggajian.run.init'), ['month' => '06', 'year' => '2026', 'unit_sekolah_id' => $this->unit->id])
+            ->assertRedirect(route('penggajian.run.worksheet', ['month' => '06', 'year' => '2026']));
+
+        $ids = Penggajian::where('periode_bulan', '06-2026')->where('status', 'draft')->pluck('pegawai_id')->all();
+        $this->assertContains($guruA->id, $ids, 'Pegawai unit terpilih ikut di-generate');
+        $this->assertNotContains($guruB->id, $ids, 'Pegawai unit lain tidak ikut');
+    }
+
+    public function test_generate_unit_diluar_scope_admin_unit_ditolak(): void
+    {
+        $unitB = UnitSekolah::create(['nama' => 'TK Lain', 'singkatan' => 'TKL', 'latitude' => -6.2, 'longitude' => 106.8, 'radius_meter' => 100]);
+        $adminUnit = User::factory()->create(['role' => 'admin_unit', 'unit_sekolah_id' => $this->unit->id]);
+        $adminUnit->assignRole('admin_unit');
+
+        $this->actingAs($adminUnit, 'web_admin')
+            ->post(route('penggajian.run.init'), ['month' => '06', 'year' => '2026', 'unit_sekolah_id' => $unitB->id])
+            ->assertForbidden();
+    }
+
     public function test_guru_dibayar_per_jp_tanpa_potongan_kehadiran(): void
     {
         $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru JP', 1);
