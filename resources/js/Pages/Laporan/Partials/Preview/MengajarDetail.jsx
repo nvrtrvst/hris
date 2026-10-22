@@ -120,7 +120,6 @@ function PegawaiRow({ row }) {
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs tabular-nums">
                     <span className="text-text-secondary">Seharusnya: <b className="text-text-primary">{row.planned_text}</b></span>
                     <span className="text-text-secondary">Masuk: <b className={row.masuk_text === '-' ? 'text-text-muted' : 'text-success'}>{row.masuk_text}</b></span>
-                    <span className="text-text-secondary">Kurang: <b className={row.kurang_text === '-' ? 'text-text-muted' : 'text-danger'}>{row.kurang_text}</b></span>
                 </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -149,7 +148,6 @@ function SummaryFooter({ summary }) {
         <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-xl border border-border bg-surface px-4 py-2.5 text-xs text-text-secondary">
             <span>Seharusnya: <b>{summary.plannedJp} JP</b></span>
             <span>Masuk: <b>{summary.masukJp} JP</b></span>
-            <span className="text-danger">Kurang: <b>{summary.kurangJp} JP</b> (kurang {summary.kurangMin}m total)</span>
             <span>Telat: <b className="text-warning">{summary.sesiTelat}</b> sesi</span>
             <span className="text-danger">Tidak presensi: <b>{summary.sesiMiss}</b> sesi</span>
             <span>Izin: <b>{summary.izinCount}</b> hari</span>
