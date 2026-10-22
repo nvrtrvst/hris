@@ -29,7 +29,7 @@ const KpiCard = ({ label, value, accent }) => (
 );
 
 export default function RekapDetail({ auth, pegawai, detail, summary, periode }) {
-    const persen = summary.hariKerja > 0 ? Math.round(((summary.hadir + summary.telat) / summary.hariKerja) * 100) : 0;
+    const persen = summary.hariKerja > 0 ? Math.min(100, Math.round(((summary.hadir + summary.telat) / summary.hariKerja) * 100)) : 0;
 
     return (
         <AuthenticatedLayout

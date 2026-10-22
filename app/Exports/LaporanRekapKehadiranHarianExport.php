@@ -203,7 +203,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
     {
         $hariKerja = $d['hariKerja'];
         $persen = $hariKerja > 0
-            ? round((($d['hadir'] + $d['telat']) / $hariKerja) * 100)
+            ? min(100, round((($d['hadir'] + $d['telat']) / $hariKerja) * 100))
             : 0;
 
         $pegawai = $d['pegawai'];
