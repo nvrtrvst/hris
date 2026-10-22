@@ -1293,7 +1293,7 @@ class RouteSmokeTest extends TestCase
         if (in_array($name, [
             'penggajian.export-bank',
             'penggajian.destroy',
-            'penggajian.destroy_period',
+            'penggajian.destroy-period',
             'penggajian.run.worksheet_finalize',
         ], true)) {
             return $this->payrollOperator;
@@ -1533,7 +1533,7 @@ class RouteSmokeTest extends TestCase
                     'nominal' => 2000000,
                 ]],
             ],
-            'penggajian.destroy_period' => [
+            'penggajian.destroy-period' => [
                 'periode_bulan' => now()->addMonth()->format('m-Y'),
             ],
             'pengajuan-izin.reject' => ['alasan_penolakan' => 'Berkas tidak lengkap'],
