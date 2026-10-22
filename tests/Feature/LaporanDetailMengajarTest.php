@@ -180,12 +180,12 @@ class LaporanDetailMengajarTest extends TestCase
         $this->assertSame(2, $summary['sesiMiss']);
         $this->assertSame(1, $summary['izinCount']);
 
-        // Excel: 9 kolom, detail sesi multiline dengan durasi kurang.
+        // Excel: 8 kolom (tanpa kolom "Kurang"), detail sesi multiline dengan durasi kurang.
         $telatRow = collect($res->json('data'))->firstWhere(0, 'Guru Telat');
-        $this->assertCount(9, $telatRow);
+        $this->assertCount(8, $telatRow);
         $this->assertSame('3 JP (2j)', $telatRow[5], 'Kolom Seharusnya');
-        $this->assertStringContainsString('Telat (kurang 5m)', $telatRow[8]);
-        $this->assertStringContainsString("\n", $telatRow[8], '1 sesi per baris');
+        $this->assertStringContainsString('Telat (kurang 5m)', $telatRow[7]);
+        $this->assertStringContainsString("\n", $telatRow[7], '1 sesi per baris');
     }
 
     public function test_maksimal_31_hari_per_generate(): void

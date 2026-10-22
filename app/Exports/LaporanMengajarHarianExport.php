@@ -365,7 +365,6 @@ class LaporanMengajarHarianExport implements FromCollection, ShouldAutoSize, Wit
             $r['izin'] ? $r['izin'] : '-',
             $this->jpLabel($r['planned_jp']).' ('.$this->durasiText($r['planned_min']).')',
             $r['masuk_min'] > 0 ? $this->jpLabel($r['masuk_jp']).' ('.$this->durasiText($r['masuk_min']).')' : '-',
-            $r['kurang_min'] > 0 ? 'Kurang '.$this->durasiText($r['kurang_min']) : '-',
             $detail !== '' ? $detail : '-',
         ];
 
@@ -376,7 +375,7 @@ class LaporanMengajarHarianExport implements FromCollection, ShouldAutoSize, Wit
     {
         return [
             'Nama Pegawai', 'Unit', 'Tanggal', 'Hari',
-            'Status Izin', 'Seharusnya', 'Masuk (Terekam)', 'Kurang',
+            'Status Izin', 'Seharusnya', 'Masuk (Terekam)',
             'Detail Mengajar/Piket',
         ];
     }
