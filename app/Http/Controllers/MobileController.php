@@ -1250,15 +1250,17 @@ class MobileController extends Controller
             'pos_awal_captured_at' => 'nullable|date',
             'motion_samples' => 'nullable|json',
             'is_tugas_luar' => 'nullable|boolean',
+            'is_lembur' => 'nullable|boolean',
             'tujuan' => 'nullable|string|max:255',
             'keterangan' => 'nullable|string|max:1000',
         ]);
 
-        $isTugasLuar = (bool) $request->input('is_tugas_luar', false);
+        $isLembur = (bool) $request->input('is_lembur', false);
+        $isTugasLuar = (bool) $request->input('is_tugas_luar', false) && ! $isLembur;
         if ($isTugasLuar && ! $request->filled('tujuan')) {
             return response()->json(['success' => false, 'message' => 'Tujuan tugas luar wajib diisi.', 'errors' => ['tujuan' => 'Tujuan tugas luar wajib diisi.']], 422);
         }
-        if ($request->tipe === 'keluar' && ! $isTugasLuar) {
+        if ($request->tipe === 'keluar' && ! $isTugasLuar && ! $isLembur) {
             $tahanPiket = $this->pesanPiketBelumBeres($pegawai);
             if ($tahanPiket !== null) {
                 throw ValidationException::withMessages(['piket' => $tahanPiket]);
@@ -1266,8 +1268,8 @@ class MobileController extends Controller
         }
 
         // Presensi kantor tetap diblokir di hari unit tidak beroperasi / hari
-        // libur. Mode tugas luar dikecualikan.
-        if (! $isTugasLuar) {
+        // libur. Mode tugas luar & lembur dikecualikan.
+        if (! $isTugasLuar && ! $isLembur) {
             $adaJadwalHariIni = $pegawai->jadwals()->where('hari', HariKerja::hariIndo())->exists();
             $alasanTidakAktif = HariKerja::alasanTidakBisaPresensi($pegawai, Carbon::now(), null, $adaJadwalHariIni);
             if ($alasanTidakAktif) {
@@ -1346,8 +1348,8 @@ class MobileController extends Controller
         $now = Carbon::now();
 
         $overlayData = [
-            'label' => $isTugasLuar ? 'TUGAS LUAR' : 'ABSEN TETAP',
-            'is_lembur' => false,
+            'label' => $isLembur ? 'BUKTI LEMBUR' : ($isTugasLuar ? 'TUGAS LUAR' : 'ABSEN TETAP'),
+            'is_lembur' => $isLembur,
             'pegawai' => $pegawai->nama_lengkap,
             'unit' => $unit->nama,
             'time' => $now->format('H:i:s').' WIB',
@@ -1376,13 +1378,13 @@ class MobileController extends Controller
                 null, // $jadwal — presensi kantor tanpa jadwal
                 $unit,
                 $distance,
-                false, // $isLembur
+                $isLembur,
                 $accuracy,
                 $speed,
                 $capturedAt,
                 $lokasiPerluReview,
                 $posisiMencurigakan,
-                $isTugasLuar ? 'tugas_luar' : 'kantor',
+                $isLembur ? 'lembur' : ($isTugasLuar ? 'tugas_luar' : 'kantor'),
                 '',
                 $spoofData,
                 $isTugasLuar,
