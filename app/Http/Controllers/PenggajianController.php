@@ -562,7 +562,14 @@ class PenggajianController extends Controller
 
     public function destroy($id)
     {
-        $this->authorizePayrollModification();
+        $user = auth()->user();
+
+        // Superadmin (view_all_units) melewati authorizePayrollModification,
+        // tetapi tetap wajib punya akses pegawai.
+        // Admin Unit dan Pegawai lain tetap terlentang penuh.
+        if (! $user->can('view_all_units')) {
+            $this->authorizePayrollModification();
+        }
 
         $penggajian = Penggajian::with('pegawai')->findOrFail($id);
 

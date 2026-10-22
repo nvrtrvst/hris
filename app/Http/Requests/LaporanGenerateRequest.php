@@ -33,7 +33,7 @@ class LaporanGenerateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => 'required|in:presensi,penggajian,lemburan,rekap_mengajar,rekap_kehadiran,rekap_kehadiran_harian,detail_harian',
+            'type' => 'required|in:presensi,penggajian,lemburan,rekap_mengajar,rekap_kehadiran,rekap_kehadiran_harian,detail_harian,mengajar_harian',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
@@ -51,7 +51,7 @@ class LaporanGenerateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'type.in' => 'Tipe laporan harus salah satu dari: presensi, penggajian, lemburan, rekap_mengajar, rekap_kehadiran, rekap_kehadiran_harian, detail_harian',
+            'type.in' => 'Tipe laporan harus salah satu dari: presensi, penggajian, lemburan, rekap_mengajar, rekap_kehadiran, rekap_kehadiran_harian, detail_harian, mengajar_harian',
             'start_date.required' => 'Tanggal awal harus diisi',
             'end_date.required' => 'Tanggal akhir harus diisi',
             'end_date.after_or_equal' => 'Tanggal akhir harus sama atau setelah tanggal awal',
@@ -71,7 +71,7 @@ class LaporanGenerateRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            if (! in_array($this->input('type'), ['rekap_kehadiran_harian', 'detail_harian'])) {
+            if (! in_array($this->input('type'), ['rekap_kehadiran_harian', 'detail_harian', 'mengajar_harian'])) {
                 return;
             }
             if (! $this->filled('start_date') || ! $this->filled('end_date')) {

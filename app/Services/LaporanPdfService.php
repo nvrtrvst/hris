@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\PdfTooLargeException;
 use App\Exports\LaporanDetailHarianExport;
 use App\Exports\LaporanLemburanExport;
+use App\Exports\LaporanMengajarHarianExport;
 use App\Exports\LaporanPenggajianExport;
 use App\Exports\LaporanPresensiExport;
 use App\Exports\LaporanRekapKehadiranExport;
@@ -47,6 +48,7 @@ class LaporanPdfService
             'rekap_kehadiran' => new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
             'rekap_kehadiran_harian' => new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
             'detail_harian' => new LaporanDetailHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
+            'mengajar_harian' => new LaporanMengajarHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
         };
 
         // Hitung dulu, map belakangan — hindari build array besar sebelum guard.
@@ -97,6 +99,7 @@ class LaporanPdfService
             'rekap_kehadiran' => 'LAPORAN REKAPITULASI KEHADIRAN',
             'rekap_kehadiran_harian' => 'LAPORAN REKAPITULASI KEHADIRAN HARIAN',
             'detail_harian' => 'DETAIL PRESENSI HARIAN PEGAWAI',
+            'mengajar_harian' => 'DETAIL MENGAJAR HARIAN PEGAWAI (MENGAJAR & PIKET)',
         };
 
         $filename = match ($type) {
@@ -107,6 +110,7 @@ class LaporanPdfService
             'rekap_kehadiran' => 'Laporan_Rekap_Kehadiran',
             'rekap_kehadiran_harian' => 'Laporan_Rekap_Kehadiran_Harian',
             'detail_harian' => 'Laporan_Detail_Presensi_Harian',
+            'mengajar_harian' => 'Laporan_Detail_Mengajar_Harian',
         };
 
         $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
