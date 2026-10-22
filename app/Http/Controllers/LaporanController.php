@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\PdfTooLargeException;
 use App\Exports\LaporanDetailHarianExport;
 use App\Exports\LaporanLemburanExport;
+use App\Exports\LaporanMengajarHarianExport;
 use App\Exports\LaporanPenggajianExport;
 use App\Exports\LaporanPresensiExport;
 use App\Exports\LaporanRekapKehadiranExport;
@@ -75,6 +76,8 @@ class LaporanController extends Controller
             $export = new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search, $status);
         } elseif ($validated['type'] === 'detail_harian') {
             $export = new LaporanDetailHarianExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search);
+        } elseif ($validated['type'] === 'mengajar_harian') {
+            $export = new LaporanMengajarHarianExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search);
         }
 
         if (! $export) {
@@ -119,6 +122,12 @@ class LaporanController extends Controller
 
         // Detail Presensi Harian: rows flat (pegawai × tanggal) + summary.
         if ($validated['type'] === 'detail_harian') {
+            $payload['detail'] = $export->detailData($data);
+            $payload['summary'] = $export->summaryData($data);
+        }
+
+        // Detail Mengajar Harian: rows flat + perhitungan jam sesi.
+        if ($validated['type'] === 'mengajar_harian') {
             $payload['detail'] = $export->detailData($data);
             $payload['summary'] = $export->summaryData($data);
         }
@@ -183,6 +192,18 @@ class LaporanController extends Controller
         return Excel::download(
             new LaporanDetailHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
             'Laporan_Detail_Presensi_Harian_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
+        );
+    }
+
+    public function exportMengajarHarian(LaporanGenerateRequest $request)
+    {
+        $validated = $request->validated();
+        $unitId = $this->resolveEffectiveUnitId($validated['unit_sekolah_id'] ?? null);
+        $unitSlug = $this->resolveUnitSlug($unitId);
+
+        return Excel::download(
+            new LaporanMengajarHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
+            'Laporan_Detail_Mengajar_Harian_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
 
