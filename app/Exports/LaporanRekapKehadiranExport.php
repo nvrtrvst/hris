@@ -82,6 +82,13 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         // 2. Dedup passive vs active per pegawai per date.
         $byPegawai = $rows->groupBy('pegawai_id')->map(fn ($pegawaiRows) => self::dedupStatusPerTanggal($pegawaiRows));
 
+        // 2b. Hanya status pada hari kerja (Senin–Jumat) yang masuk rekap —
+        // presensi Sabtu/Minggu (mis. data lama sebelum blokir absen akhir
+        // pekan) membuat pembilang melebihi hariKerja → persen > 100%.
+        $byPegawai = $byPegawai->map(fn ($deduped) => $deduped
+            ->filter(fn ($p) => Carbon::parse($p->tanggal)->isWeekday())
+            ->values());
+
         // 3. Build pegawai map (eager-load info).
         $pegawaiIds = $byPegawai->keys()->all();
         $pegawaiMap = Pegawai::whereIn('id', $pegawaiIds)
@@ -191,7 +198,10 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
 
     public static function buildHolidayWeekdayMap(array $unitIds, Carbon $start, Carbon $end): array
     {
-        $rows = HariLibur::whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
+        // whereDate (bukan whereBetween): aman utk DATE (prod MySQL) dan
+        // DATETIME/TEXT (sqlite dev/test) — string '...-01' membuang tanggal batas.
+        $rows = HariLibur::whereDate('tanggal', '>=', $start->toDateString())
+            ->whereDate('tanggal', '<=', $end->toDateString())
             ->where(function ($q) use ($unitIds) {
                 $q->whereNull('unit_sekolah_id');
                 if ($unitIds) {
@@ -231,7 +241,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         $rekap = $this->rekap ?? collect();
         $total = $rekap->count();
         $avgPersen = $total > 0
-            ? round($rekap->sum(fn ($r) => $r['hariKerja'] > 0 ? (($r['hadir'] + $r['telat']) / $r['hariKerja']) * 100 : 0) / $total)
+            ? round($rekap->sum(fn ($r) => $r['hariKerja'] > 0 ? min(100, (($r['hadir'] + $r['telat']) / $r['hariKerja']) * 100) : 0) / $total)
             : 0;
 
         return [
@@ -244,7 +254,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
     {
         $hariKerja = $d['hariKerja'];
         $persen = $hariKerja > 0
-            ? round((($d['hadir'] + $d['telat']) / $hariKerja) * 100)
+            ? min(100, round((($d['hadir'] + $d['telat']) / $hariKerja) * 100))
             : 0;
 
         $pegawai = $d['pegawai'];
