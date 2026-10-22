@@ -98,6 +98,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     ));
     const [slideLoading, setSlideLoading] = useState(null);
     const [isTugasLuar, setIsTugasLuar] = useState(false);
+    const [isLembur, setIsLembur] = useState(false);
     const [tujuan, setTujuan] = useState('');
     const tujuanRef = useRef(null);
     const [tujuanKosong, setTujuanKosong] = useState(false);
@@ -196,9 +197,14 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const tugasLuarRecord = useMemo(() => presensiHariIni.find((p) => p.is_tugas_luar && p.jam_masuk), [presensiHariIni]);
     const tugasLuarDone = useMemo(() => presensiHariIni.some((p) => p.is_tugas_luar && p.jam_masuk && p.jam_keluar), [presensiHariIni]);
     const isDinasLuarFlow = tugasLuarOpen || (isTugasLuar && !tugasLuarRecord);
+    // Lembur pegawai tetap: buka kapan pun (termasuk hari libur/weekend) —
+    // backend mengecualikannya dari guard hari, radius tetap dicek.
+    const lemburRecord = useMemo(() => presensiHariIni.find((p) => p.is_lembur && p.jam_masuk), [presensiHariIni]);
+    const lemburOpen = useMemo(() => Boolean(lemburRecord && !lemburRecord.jam_keluar), [lemburRecord]);
+    const lemburAktif = isLembur || lemburOpen;
     // Blokir absen pulang reguler selama laporan piket belum terkirim (backend
     // memvalidasi ulang). Tugas luar & lembur tetap bebas.
-    const piketBlokir = Boolean(piketGate?.blokir) && !isDinasLuarFlow;
+    const piketBlokir = Boolean(piketGate?.blokir) && !isDinasLuarFlow && !lemburAktif;
 
     // Multi-lokasi: cek semua assigned lokasi pegawai (sinkron backend resolveGeofenceLocation).
     const geofenceLocations = useMemo(() => {
@@ -280,7 +286,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         }, 1000);
         getCurrentPosition();
 
-        if (phase === FOTO_PAGI || phase === FOTO_SORE || isTugasLuar) {
+        if (phase === FOTO_PAGI || phase === FOTO_SORE || isTugasLuar || lemburAktif) {
             startCamera();
         }
 
@@ -290,7 +296,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             clearGeolocation();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [phase, isTugasLuar]);
+    }, [phase, isTugasLuar, lemburAktif]);
 
     useEffect(() => {
         if (showLive && videoRef.current && streamRef.current) {
@@ -314,7 +320,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             return;
         }
         setTujuanKosong(false);
-        if (!isTugasLuar && geoBlocked) { setError(`Anda di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m).`); return; }
+        if (!lemburAktif && !isTugasLuar && geoBlocked) { setError(`Anda di luar radius ${geofence.name} (${Math.round(geofence.distance)}m / batas ${geofence.radius}m).`); return; }
 
         setIsSubmitting(true);
         const now = new Date().toISOString();
@@ -322,8 +328,9 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
             foto: capturedPhoto,
             tipe,
-            is_tugas_luar: isDinasLuarFlow,
-            tujuan: isDinasLuarFlow ? (tugasLuarRecord?.tujuan || tujuan) : null,
+            is_tugas_luar: !lemburAktif && isDinasLuarFlow,
+            is_lembur: lemburAktif,
+            tujuan: (!lemburAktif && isDinasLuarFlow) ? (tugasLuarRecord?.tujuan || tujuan) : null,
             keterangan: null,
             latitude: currentPosition?.latitude ?? null,
             longitude: currentPosition?.longitude ?? null,
@@ -377,7 +384,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             if (data.success) {
                 setSuccessMessage(data.message || `${tipe === 'masuk' ? 'Foto pagi' : 'Foto sore'} berhasil.`);
                 clearCamera();
-                if (tipe === 'keluar') {
+                if (tipe === 'keluar' && !lemburAktif) {
                     setTimeout(() => { if (typeof window !== 'undefined') window.location.assign(route('presensi.dashboard')); }, 1500);
                 } else {
                     setTimeout(() => { if (typeof window !== 'undefined') window.location.reload(); }, 1500);
@@ -393,7 +400,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         } finally {
             setIsSubmitting(false);
         }
-    }, [capturedPhoto, currentPosition, geoBlocked, geofence, posA, posAwal, motionSamples]);
+    }, [capturedPhoto, currentPosition, geoBlocked, geofence, posA, posAwal, motionSamples, lemburAktif, isDinasLuarFlow, tugasLuarRecord]);
 
     // Slide grup: backend mencatat seluruh grup (1-slide-to-cover) dalam 1 request —
     // response berisi cover_count/covered_jadwal_ids untuk sinkron UI.
@@ -550,7 +557,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             {libur && (
                 <div role="note" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-                    <span>{alasanLibur || 'Hari ini unit tidak beroperasi.'} Presensi kantor dinonaktifkan; mode tugas luar tetap dapat digunakan.</span>
+                    <span>{alasanLibur || 'Hari ini unit tidak beroperasi.'} Presensi kantor dinonaktifkan; mode tugas luar dan lembur tetap dapat digunakan.</span>
                 </div>
             )}
 
@@ -565,13 +572,37 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                     </span>
                 </Card>
             ) : (
-                <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
-                    <div>
-                        <p className="text-sm font-bold text-slate-900">Mode tugas luar</p>
-                        <p className="mt-0.5 text-xs text-slate-500">Dikecualikan dari cek radius, perlu tujuan</p>
-                    </div>
-                    <Toggle checked={isTugasLuar} onChange={() => setIsTugasLuar((prev) => !prev)} tone="sky" />
-                </Card>
+                !lemburAktif && (
+                    <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
+                        <div>
+                            <p className="text-sm font-bold text-slate-900">Mode tugas luar</p>
+                            <p className="mt-0.5 text-xs text-slate-500">Dikecualikan dari cek radius, perlu tujuan</p>
+                        </div>
+                        <Toggle checked={isTugasLuar} onChange={() => { setIsTugasLuar((prev) => !prev); setIsLembur(false); }} tone="sky" />
+                    </Card>
+                )
+            )}
+
+            {!tugasLuarRecord && !isTugasLuar && (
+                lemburRecord ? (
+                    <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
+                        <div>
+                            <p className="text-sm font-bold text-slate-900">{lemburOpen ? 'Lembur berlangsung' : 'Lembur selesai'}</p>
+                            <p className="mt-0.5 text-xs text-slate-500">Menunggu approval admin, masuk hitungan payroll</p>
+                        </div>
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${lemburOpen ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            {lemburOpen ? 'PENDING' : 'Selesai'}
+                        </span>
+                    </Card>
+                ) : (
+                    <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
+                        <div>
+                            <p className="text-sm font-bold text-slate-900">Mode lembur</p>
+                            <p className="mt-0.5 text-xs text-slate-500">Di dalam radius unit, saat libur pun bisa</p>
+                        </div>
+                        <Toggle checked={isLembur} onChange={() => { setIsLembur((prev) => !prev); setIsTugasLuar(false); }} tone="amber" />
+                    </Card>
+                )
             )}
 
             {isTugasLuar && !tugasLuarRecord && adaGrupAktifBelumSlide && (
@@ -579,6 +610,15 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>
                         Tugas luar aktif di tengah jam mengajar. JP yang belum di-slide tidak akan tercatat hadir. Presensi mengajar tersimpan sampai terakhir di-slide.
+                    </span>
+                </div>
+            )}
+
+            {lemburAktif && adaGrupAktifBelumSlide && (
+                <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                        Lembur aktif di tengah jam mengajar. JP yang belum di-slide tidak akan tercatat hadir — slide dulu jadwalnya sebelum lembur.
                     </span>
                 </div>
             )}
@@ -720,7 +760,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 </section>
             )}
 
-            {(phase === FOTO_PAGI || phase === FOTO_SORE || isTugasLuar) && (
+            {(phase === FOTO_PAGI || phase === FOTO_SORE || isTugasLuar || lemburAktif) && (
                 <>
                     <div className="mb-4 grid grid-cols-2 gap-2" aria-label="Status verifikasi">
                         <div className={`flex min-h-14 items-center gap-2.5 rounded-xl border px-3 py-2.5 ${geoReady && geofence.inside ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : geoBlocked ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white text-slate-600'}`}>
@@ -901,11 +941,11 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
 
             <button
                 type="button"
-                onClick={() => handleSubmitFoto(isDinasLuarFlow ? (tugasLuarOpen ? 'keluar' : 'masuk') : (phase === FOTO_PAGI ? 'masuk' : 'keluar'))}
-                disabled={isSubmitting || !capturedPhoto || !currentPosition || (!geofence?.inside && !isDinasLuarFlow) || (isDinasLuarFlow && !tugasLuarRecord && !tujuan.trim()) || allRecordsComplete || (piketBlokir && phase === FOTO_SORE)}
-                className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isDinasLuarFlow ? 'bg-sky-500' : 'bg-primary'}`}
+                onClick={() => handleSubmitFoto(lemburAktif ? (lemburOpen ? 'keluar' : 'masuk') : isDinasLuarFlow ? (tugasLuarOpen ? 'keluar' : 'masuk') : (phase === FOTO_PAGI ? 'masuk' : 'keluar'))}
+                disabled={isSubmitting || !capturedPhoto || !currentPosition || (lemburAktif ? !geofence?.inside : (!geofence?.inside && !isDinasLuarFlow)) || (isDinasLuarFlow && !lemburAktif && !tugasLuarRecord && !tujuan.trim()) || (allRecordsComplete && !lemburAktif) || (piketBlokir && phase === FOTO_SORE)}
+                className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${lemburAktif ? 'bg-amber-500' : isDinasLuarFlow ? 'bg-sky-500' : 'bg-primary'}`}
             >
-                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isDinasLuarFlow ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : `Kirim ${phase === FOTO_PAGI ? 'foto pagi' : 'foto sore'}`}
+                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : lemburAktif ? `Kirim presensi ${lemburOpen ? 'keluar lembur' : 'masuk lembur'}` : isDinasLuarFlow ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : `Kirim ${phase === FOTO_PAGI ? 'foto pagi' : 'foto sore'}`}
                     </button>
                 </>
             )}
@@ -938,7 +978,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 </div>
             )}
 
-            {phase === SELESAI && (
+            {phase === SELESAI && !lemburAktif && (
                 <div className="flex flex-col items-center py-12 text-center">
                     <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
                         <CheckCircle className="h-8 w-8" />

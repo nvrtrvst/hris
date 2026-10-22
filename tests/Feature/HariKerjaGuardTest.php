@@ -6,6 +6,7 @@ use App\Models\HariLibur;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\Pegawai;
+use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Carbon\Carbon;
@@ -285,6 +286,36 @@ class HariKerjaGuardTest extends TestCase
             ->postJson(route('presensi.absen.tetap'), $this->payloadAbsen(['is_tugas_luar' => true, 'tujuan' => 'Dinas luar']))
             ->assertOk()
             ->assertJson(['success' => true]);
+    }
+
+    public function test_absen_tetap_lembur_bisa_di_minggu_dari_masuk_sampai_keluar(): void
+    {
+        $unit = $this->makeUnit();
+        $pegawai = $this->makePegawai($unit);
+        Carbon::setTestNow('2026-10-18 07:00:00'); // Minggu — unit tidak beroperasi.
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.tetap'), $this->payloadAbsen(['tipe' => 'masuk', 'is_lembur' => true]))
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $presensi = Presensi::where('pegawai_id', $pegawai->id)->whereDate('tanggal', '2026-10-18')->first();
+        $this->assertNotNull($presensi, 'Presensi lembur tersimpan');
+        $this->assertTrue((bool) $presensi->is_lembur);
+        $this->assertSame('pending', $presensi->lembur_status);
+        $this->assertSame('hadir', $presensi->status);
+        $this->assertNull($presensi->jadwal_id, 'Lembur tanpa jadwal');
+
+        Carbon::setTestNow('2026-10-18 09:00:00');
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.tetap'), $this->payloadAbsen(['tipe' => 'keluar', 'is_lembur' => true]))
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $presensi->refresh();
+        $this->assertNotNull($presensi->jam_keluar, 'Presensi lembur terekam jam keluar');
+        $this->assertSame('pending', $presensi->lembur_status);
     }
 
     // ---------- Admin ----------
