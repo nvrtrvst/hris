@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Head } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Card, Empty } from '@/Components/MobileUI';
+import { Card, Empty, LemburStatusBadge } from '@/Components/MobileUI';
 import { fmtDetik, batasHadir } from '@/Utils/waktuPresensi';
 import { ArrowRight, Calendar, Clock3, WifiOff, X, CheckCircle, XCircle, AlertTriangle, Users, MapPin } from 'lucide-react';
 
@@ -280,7 +280,7 @@ function BawahanPresensiCard({ bawahanPresensi }) {
                                         <p className="font-mono text-[10px] text-slate-600">→ {masuk.jam_keluar}</p>
                                     )}
                                     {lembur.length > 0 && (
-                                        <span className="inline-flex items-center rounded border border-accent-200 bg-accent-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent-700">Lembur</span>
+                                        <LemburStatusBadge status={lembur[0].lembur_status} />
                                     )}
                                 </div>
                             </div>

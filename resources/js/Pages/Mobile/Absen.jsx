@@ -6,7 +6,7 @@ import { fmtDetik, batasHadir } from '@/Utils/waktuPresensi';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '@/Constants/AppConstants';
 import { Head, Link, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Card, Toggle } from '@/Components/MobileUI';
+import { Card, Toggle, LemburStatusBadge } from '@/Components/MobileUI';
 import TetapPresensi from '@/Pages/Mobile/Partials/TetapPresensi';
 import BuktiKegiatan from '@/Pages/Mobile/Partials/BuktiKegiatan';
 import { useCamera } from '@/Hooks/useCamera';
@@ -744,7 +744,10 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     <p className="text-sm font-bold text-slate-900">Mode lembur</p>
                     <p className="mt-0.5 text-xs text-slate-500">Tanpa jadwal, perlu persetujuan admin</p>
                 </div>
-                <Toggle checked={isLembur} onChange={toggleLembur} tone="amber" />
+                <div className="flex items-center gap-2">
+                    {lemburRecord && <LemburStatusBadge status={lemburRecord.lembur_status} />}
+                    <Toggle checked={isLembur} onChange={toggleLembur} tone="amber" />
+                </div>
             </Card>
 
             <Card press={false} className="mt-3 flex items-center justify-between py-3.5">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Constants\PresensiMessages;
+use App\Helpers\NotificationHelper;
 use App\Helpers\PayrollLockHelper;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Jobs\ProcessPresensiFoto;
@@ -13,6 +14,7 @@ use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
+use App\Notifications\StatusLembur;
 use App\Services\GeocodingService;
 use App\Services\ImageUploadService;
 use App\Traits\CalculatesDistance;
@@ -1208,7 +1210,7 @@ class PresensiController extends Controller
         // Transaction + lockForUpdate: cegah race dua admin approve/reject bersamaan
         // (TOCTOU antara check status dan update).
         DB::transaction(function () use ($id, $user) {
-            $presensi = Presensi::with('pegawai')
+            $presensi = Presensi::with(['pegawai.units', 'pegawai.user'])
                 ->lockForUpdate()
                 ->findOrFail($id);
 
@@ -1224,12 +1226,26 @@ class PresensiController extends Controller
                 throw ValidationException::withMessages(['error' => 'Periode penggajian sudah dikunci.']);
             }
 
+            // Durasi lembur harus lengkap (sudah absen keluar) agar bisa dibatasi
+            // junit.max_lembur_jam — tanpa jam_keluar durasi tak bisa dipercaya.
+            if (! $presensi->jam_keluar) {
+                throw ValidationException::withMessages(['error' => 'Belum ada absen keluar lembur. Approve setelah pegawai mengisi absen keluar lembur.']);
+            }
+
+            $durasiJam = round((strtotime($presensi->jam_keluar) - strtotime($presensi->jam_masuk)) / 3600, 2);
+            $maxJam = $presensi->pegawai->primaryUnit()?->max_lembur_jam;
+            if ($maxJam !== null && $durasiJam > (float) $maxJam) {
+                throw ValidationException::withMessages(['error' => "Jumlah jam lembur ({$durasiJam} jam) melebihi batas unit ({$maxJam} jam)."]);
+            }
+
             // lembur_status ada di $guarded → update([...]) silent drop.
             // Set langsung + save() agar perubahan benar-benar tersimpan.
             $presensi->lembur_status = 'disetujui';
             $presensi->save();
 
             AuditPresensi::log($presensi->id, 'approve_lembur', 'lembur_status', 'pending', 'disetujui');
+
+            NotificationHelper::sendSafely($presensi->pegawai?->user, new StatusLembur($presensi->withoutRelations(), 'disetujui'));
         });
 
         return redirect()->back()->with('message', 'Lembur berhasil disetujui.');
@@ -1243,7 +1259,7 @@ class PresensiController extends Controller
         }
 
         DB::transaction(function () use ($id, $user) {
-            $presensi = Presensi::with('pegawai')
+            $presensi = Presensi::with('pegawai.user')
                 ->lockForUpdate()
                 ->findOrFail($id);
 
@@ -1263,6 +1279,8 @@ class PresensiController extends Controller
             $presensi->save();
 
             AuditPresensi::log($presensi->id, 'reject_lembur', 'lembur_status', 'pending', 'ditolak');
+
+            NotificationHelper::sendSafely($presensi->pegawai?->user, new StatusLembur($presensi->withoutRelations(), 'ditolak'));
         });
 
         return redirect()->back()->with('message', 'Lembur ditolak.');

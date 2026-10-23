@@ -7,8 +7,10 @@ use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
+use App\Notifications\StatusLembur;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class LemburApprovalTest extends TestCase
@@ -26,7 +28,9 @@ class LemburApprovalTest extends TestCase
         ]);
 
         $jabatan = Jabatan::create(['nama' => 'Guru']);
+        $loginUser = User::factory()->create();
         $pegawai = Pegawai::create([
+            'user_id' => $loginUser->id,
             'nik' => '1234567890123456',
             'nama_lengkap' => 'Pegawai Uji',
             'tempat_lahir' => 'Bandung', 'tanggal_lahir' => '1992-03-03',
@@ -52,11 +56,12 @@ class LemburApprovalTest extends TestCase
         $super = User::factory()->create(['role' => 'superadmin']);
         $super->assignRole('superadmin');
 
-        return [$presensi, $super];
+        return [$presensi, $super, $unit];
     }
 
     public function test_approve_lembur_persists(): void
     {
+        Notification::fake();
         [$presensi, $super] = $this->boot();
 
         $this->actingAs($super, 'web_admin')
@@ -64,10 +69,22 @@ class LemburApprovalTest extends TestCase
             ->assertRedirect();
 
         $this->assertSame('disetujui', $presensi->fresh()->lembur_status);
+
+        // Notifikasi status lembur ke pegawai.
+        Notification::assertSentTo(
+            $presensi->pegawai->user,
+            function (StatusLembur $n, array $ch) use ($presensi) {
+                return $n->statusBaru === 'disetujui'
+                    && $n->durasiJam() === 3.0
+                    && $n->presensi->id === $presensi->id
+                    && in_array('database', $ch);
+            }
+        );
     }
 
     public function test_reject_lembur_persists(): void
     {
+        Notification::fake();
         [$presensi, $super] = $this->boot();
 
         $this->actingAs($super, 'web_admin')
@@ -75,5 +92,43 @@ class LemburApprovalTest extends TestCase
             ->assertRedirect();
 
         $this->assertSame('ditolak', $presensi->fresh()->lembur_status);
+        Notification::assertSentTo($presensi->pegawai->user, fn (StatusLembur $n) => $n->statusBaru === 'ditolak');
+    }
+
+    public function test_approve_ditolak_jika_belum_absen_keluar(): void
+    {
+        [$presensi, $super] = $this->boot();
+        $presensi->forceFill(['jam_keluar' => null])->save();
+
+        $this->actingAs($super, 'web_admin')
+            ->post(route('presensi.approveLembur', $presensi->id))
+            ->assertSessionHasErrors('error');
+
+        $this->assertSame('pending', $presensi->fresh()->lembur_status);
+    }
+
+    public function test_approve_ditolak_jika_lewati_batas_jam_unit(): void
+    {
+        [$presensi, $super, $unit] = $this->boot();
+        $unit->forceFill(['max_lembur_jam' => 2])->save();
+
+        // 17:00–20:00 = 3 jam > 2 jam.
+        $this->actingAs($super, 'web_admin')
+            ->post(route('presensi.approveLembur', $presensi->id))
+            ->assertSessionHasErrors('error');
+
+        $this->assertSame('pending', $presensi->fresh()->lembur_status);
+    }
+
+    public function test_approve_lolos_jika_dalam_batas_jam_unit(): void
+    {
+        [$presensi, $super, $unit] = $this->boot();
+        $unit->forceFill(['max_lembur_jam' => 3])->save();
+
+        $this->actingAs($super, 'web_admin')
+            ->post(route('presensi.approveLembur', $presensi->id))
+            ->assertRedirect();
+
+        $this->assertSame('disetujui', $presensi->fresh()->lembur_status);
     }
 }

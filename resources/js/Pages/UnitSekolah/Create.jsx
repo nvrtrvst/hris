@@ -16,6 +16,7 @@ export default function Create({ auth }) {
         toleransi_slide_menit: 15,
         wajib_pulang_mengajar: 0,
         pulang_sebelum_menit: 20,
+        max_lembur_jam: null,
         max_jam_minggu: 30,
         jam_masuk_kantor: '07:30',
         jam_pulang_kantor: '15:00',

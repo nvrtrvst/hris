@@ -48,6 +48,21 @@ export function Badge({ children, tone = 'slate', icon: Icon, className = '' }) 
     );
 }
 
+const lemburStatusMap = {
+    pending: { tone: 'amber', label: 'Lembur Menunggu' },
+    disetujui: { tone: 'emerald', label: 'Lembur Disetujui' },
+    ditolak: { tone: 'rose', label: 'Lembur Ditolak' },
+};
+
+export function LemburStatusBadge({ status, className }) {
+    const s = lemburStatusMap[status] || lemburStatusMap.pending;
+    return (
+        <Badge tone={s.tone} className={className}>
+            {s.label}
+        </Badge>
+    );
+}
+
 export function FAB({ onClick, href, icon: Icon, label }) {
     const inner = (
         <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-white shadow-[0_8px_18px_-8px_rgba(15,61,62,0.65)] transition-transform active:scale-95">

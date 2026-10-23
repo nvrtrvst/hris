@@ -552,6 +552,15 @@ class Pegawai extends Model
         return $this->units()->where('unit_sekolah.id', $unitId)->exists();
     }
 
+    /**
+     * Unit utama pegawai (pivot is_primary), fallback ke unit pertama.
+     */
+    public function primaryUnit(): ?UnitSekolah
+    {
+        return $this->units->first(fn ($u) => ! empty($u->pivot->is_primary))
+            ?? $this->units()->first();
+    }
+
     public function isDataComplete(): bool
     {
         $required = [
