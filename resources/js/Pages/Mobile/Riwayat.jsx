@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { fmtDetik, batasHadir, fmtJp, hitungJp, splitJadwalKeJp } from '@/Utils/waktuPresensi';
-import { Card, SectionTitle, Badge, Empty } from '@/Components/MobileUI';
+import { Card, SectionTitle, Badge, Empty, LemburStatusBadge } from '@/Components/MobileUI';
 import { parseISO, format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { History, CalendarDays, Clock, MapPin, CheckCircle2, AlertTriangle, FileText, XCircle, Ban, ChevronDown, AlarmClock } from 'lucide-react';
@@ -288,7 +288,10 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                                                     </p>
                                                 )}
                                             </div>
-                                            <Badge tone={badge.tone} icon={badge.icon}>{badge.label}</Badge>
+                                            <div className="flex shrink-0 flex-col items-end gap-1.5">
+                                                <Badge tone={badge.tone} icon={badge.icon}>{badge.label}</Badge>
+                                                {p.is_lembur && <LemburStatusBadge status={p.lembur_status} />}
+                                            </div>
                                         </div>
                                         <div className="mt-2.5 grid grid-cols-2 gap-2">
                                             <FotoBukti url={p.foto_masuk_url} jam={fmtDetik(p.jam_masuk)} label="Masuk" status={p.foto_masuk_status} />

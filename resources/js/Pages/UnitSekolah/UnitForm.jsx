@@ -178,6 +178,14 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                             onChange={(e) => setData('pulang_sebelum_menit', e.target.value)} className={inputClass} />
                     </Field>
                 </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field label="Batas Jam Lembur (Per Hari)" error={errors.max_lembur_jam}
+                        hint="Maksimal durasi lembur yang boleh di-disetujui admin (0.5-24). Kosong = tanpa batas.">
+                        <input type="number" min="0.5" max="24" step="0.5" value={data.max_lembur_jam ?? ''}
+                            onChange={(e) => setData('max_lembur_jam', e.target.value)} className={inputClass} placeholder="Tanpa batas" />
+                    </Field>
+                </div>
             </SectionCard>
 
             {/* Bobot Kehadiran (Rekap & Payroll) */}

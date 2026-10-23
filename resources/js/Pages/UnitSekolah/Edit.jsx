@@ -17,6 +17,7 @@ export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = []
         toleransi_slide_menit: unit.toleransi_slide_menit ?? 15,
         wajib_pulang_mengajar: unit.wajib_pulang_mengajar ? 1 : 0,
         pulang_sebelum_menit: unit.pulang_sebelum_menit ?? 20,
+        max_lembur_jam: unit.max_lembur_jam ?? '',
         max_jam_minggu: unit.max_jam_minggu ?? 30,
         jam_masuk_kantor: unit.jam_masuk_kantor?.slice(0, 5) || '07:30',
         jam_pulang_kantor: unit.jam_pulang_kantor?.slice(0, 5) || '15:00',

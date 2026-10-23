@@ -22,7 +22,7 @@ function getNotificationRoute(n) {
     if (type === 'pulang_cepat_baru' || type === 'status_pulang_cepat') {
         return { name: 'presensi.pulang-cepat.index', params: null };
     }
-    if (type === 'pulang_awal_baru') {
+    if (type === 'pulang_awal_baru' || type === 'status_lembur') {
         return { name: 'presensi.riwayat', params: null };
     }
     if (type === 'announcement') {
