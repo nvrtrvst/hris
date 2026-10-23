@@ -78,11 +78,12 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                     </div>
 
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-8">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-9">
                         <KpiCard label="% Kehadiran" value={`${persen}%`} accent />
                         <KpiCard label="Hadir" value={summary.hadir} />
                         <KpiCard label="Telat" value={summary.telat} />
-                        <KpiCard label="Sakit" value={summary.sakit} />
+                        <KpiCard label="Sakit dgn Surat" value={summary.sakit_surat ?? summary.sakit} />
+                        <KpiCard label="Sakit tanpa Surat" value={summary.sakit_tanpa_surat ?? 0} />
                         <KpiCard label="Izin" value={summary.izin} />
                         <KpiCard label="Cuti" value={summary.cuti} />
                         <KpiCard label="Alpa" value={summary.alpa} />

@@ -132,6 +132,8 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 'hadir' => $hadir,
                 'telat' => $telat,
                 'sakit' => $sakit,
+                'sakit_surat' => $split['surat'],
+                'sakit_tanpa_surat' => $split['tanpa'],
                 'izin' => $izin,
                 'cuti' => $cuti,
                 // Alpa = hari kerja tanpa record (sama dengan rumus payroll):
@@ -276,7 +278,8 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $d['hadir'],
             $d['telat'],
-            $d['sakit'],
+            $d['sakit_surat'],
+            $d['sakit_tanpa_surat'],
             $d['izin'],
             $d['cuti'],
             $d['alpa'],
@@ -293,7 +296,8 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             'Jenis',
             'Hadir',
             'Telat',
-            'Sakit',
+            'Sakit (dgn Surat)',
+            'Sakit (tanpa Surat)',
             'Izin',
             'Cuti',
             'Alpa',
@@ -312,7 +316,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $lastCol = 'K';
+                $lastCol = 'L';
 
                 $kopUnit = $this->unit_id ? UnitSekolah::find($this->unit_id) : UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
                 $namaUnit = $kopUnit?->nama ?? 'Semua Unit Sekolah';
