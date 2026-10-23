@@ -1224,7 +1224,10 @@ class PresensiController extends Controller
                 throw ValidationException::withMessages(['error' => 'Periode penggajian sudah dikunci.']);
             }
 
-            $presensi->update(['lembur_status' => 'disetujui']);
+            // lembur_status ada di $guarded → update([...]) silent drop.
+            // Set langsung + save() agar perubahan benar-benar tersimpan.
+            $presensi->lembur_status = 'disetujui';
+            $presensi->save();
 
             AuditPresensi::log($presensi->id, 'approve_lembur', 'lembur_status', 'pending', 'disetujui');
         });
@@ -1256,7 +1259,8 @@ class PresensiController extends Controller
                 throw ValidationException::withMessages(['error' => 'Periode penggajian sudah dikunci.']);
             }
 
-            $presensi->update(['lembur_status' => 'ditolak']);
+            $presensi->lembur_status = 'ditolak';
+            $presensi->save();
 
             AuditPresensi::log($presensi->id, 'reject_lembur', 'lembur_status', 'pending', 'ditolak');
         });

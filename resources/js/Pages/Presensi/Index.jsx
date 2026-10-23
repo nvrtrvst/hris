@@ -67,6 +67,34 @@ const LemburBadge = ({ status }) => {
     );
 };
 
+// Tombol Setuju/Tolak lembur. Backend cek view_presensi + scope unit;
+// pimpinan read-only jadi tidak ikut approve.
+const bolehApproveLembur = (auth) =>
+    Boolean(auth?.permissions?.includes('view_presensi')) && !(auth?.roles || []).includes('pimpinan');
+
+const LemburActions = ({ p, auth }) => {
+    if (!p || p.lembur_status !== 'pending' || !bolehApproveLembur(auth)) return null;
+
+    return (
+        <div className="mt-1.5 flex gap-1">
+            <button
+                type="button"
+                onClick={() => router.post(route('presensi.approveLembur', p.id), {}, { preserveState: true })}
+                className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-emerald-600"
+            >
+                Setuju
+            </button>
+            <button
+                type="button"
+                onClick={() => router.post(route('presensi.rejectLembur', p.id), {}, { preserveState: true })}
+                className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-600"
+            >
+                Tolak
+            </button>
+        </div>
+    );
+};
+
 const TugasLuarBadge = ({ status, onClick }) => {
     const map = {
         pending: 'bg-sky-50 text-sky-700 border-sky-200',
@@ -197,7 +225,12 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                     ) : <span className="text-[11px] text-text-muted">tanpa foto</span>}
                 </td>
                 <td className="px-4 py-3.5 whitespace-nowrap">
-                    {c.is_lembur ? <LemburBadge status={c.lembur_status} /> : <span className="text-xs text-text-secondary">—</span>}
+                    {c.is_lembur ? (
+                        <div>
+                            <LemburBadge status={c.lembur_status} />
+                            <LemburActions p={c} auth={auth} />
+                        </div>
+                    ) : <span className="text-xs text-text-secondary">—</span>}
                 </td>
                 <td className="px-4 py-3.5 whitespace-nowrap">
                     {c.is_tugas_luar ? (
@@ -315,7 +348,12 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                             <span className="text-[11px] text-text-muted">tanpa foto</span>
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap">
-                            {c.is_lembur ? <LemburBadge status={c.lembur_status} /> : <span className="text-xs text-text-secondary">—</span>}
+                            {c.is_lembur ? (
+                        <div>
+                            <LemburBadge status={c.lembur_status} />
+                            <LemburActions p={c} auth={auth} />
+                        </div>
+                    ) : <span className="text-xs text-text-secondary">—</span>}
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap">
                             <span className="text-xs text-text-secondary">—</span>
@@ -464,7 +502,12 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         </div>
                     </td>
                     <td className="hidden lg:table-cell px-4 py-3.5 whitespace-nowrap">
-                        {lembur ? <LemburBadge status={lembur.lembur_status} /> : <span className="text-xs text-text-secondary">—</span>}
+                        {lembur ? (
+                            <div>
+                                <LemburBadge status={lembur.lembur_status} />
+                                <LemburActions p={lembur} auth={auth} />
+                            </div>
+                        ) : <span className="text-xs text-text-secondary">—</span>}
                     </td>
                     <td className="hidden lg:table-cell px-4 py-3.5 whitespace-nowrap">
                         {tugasLuar ? (
@@ -1236,22 +1279,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                         {p.is_lembur ? (
                                                             <div>
                                                                 <LemburBadge status={p.lembur_status} />
-                                                                {p.lembur_status === 'pending' && auth.permissions?.includes('manage_master_data') && (
-                                                                    <div className="mt-1.5 flex gap-1">
-                                                                        <button
-                                                                            onClick={() => router.post(route('presensi.approveLembur', p.id), {}, { preserveState: true })}
-                                                                            className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-emerald-600"
-                                                                        >
-                                                                            Setuju
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => router.post(route('presensi.rejectLembur', p.id), {}, { preserveState: true })}
-                                                                            className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-600"
-                                                                        >
-                                                                            Tolak
-                                                                        </button>
-                                                                    </div>
-                                                                )}
+                                                                <LemburActions p={p} auth={auth} />
                                                             </div>
                                                         ) : <span className="text-xs text-text-secondary">—</span>}
                                                     </td>
