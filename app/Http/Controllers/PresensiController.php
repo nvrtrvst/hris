@@ -298,6 +298,76 @@ class PresensiController extends Controller
     }
 
     /**
+     * Menu lembur: daftar pengajuan lembur terpisah dari tabel presensi utama.
+     * Default rentang = kemarin. Aksi approve/reject tetap via
+     * presensi.approveLembur / rejectLembur; modal detail pakai presensi.review.
+     */
+    public function lemburIndex(Request $request)
+    {
+        $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+            'lembur_status' => 'nullable|in:pending,disetujui,ditolak',
+            'unit_id' => 'nullable|integer',
+            'search' => 'nullable|string|max:100',
+        ]);
+
+        $user = auth()->user();
+        $query = Presensi::with(['unitSekolah:id,nama', 'pegawai:id,nama_lengkap'])
+            ->where('is_lembur', true);
+
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $query->whereHas('pegawai', fn ($q) => $q->forUnit($user->unit_sekolah_id));
+        }
+
+        // Default: kemarin saja, biar admin langsung lihat pengajuan semalam.
+        $startDate = $request->start_date ?: Carbon::yesterday()->toDateString();
+        $endDate = $request->end_date ?: $startDate;
+
+        $query->whereDate('tanggal', '>=', $startDate)
+            ->whereDate('tanggal', '<=', $endDate);
+
+        // Count chip dihitung sebelum filter status/unit/search (scope + tanggal saja).
+        $counts = (clone $query)->toBase()
+            ->selectRaw("COALESCE(lembur_status, 'pending') as status_lembur, COUNT(*) as total")
+            ->groupBy('status_lembur')
+            ->pluck('total', 'status_lembur');
+
+        if ($request->lembur_status) {
+            $query->where('lembur_status', $request->lembur_status);
+        }
+
+        if ($request->unit_id && $user->can('view_all_units')) {
+            $query->whereHas('pegawai', fn ($q) => $q->whereHas(
+                'units',
+                fn ($u) => $u->where('unit_sekolah.id', $request->unit_id)
+            ));
+        }
+
+        if ($request->search) {
+            $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', '%'.$request->search.'%'));
+        }
+
+        $lemburs = $query
+            ->orderByDesc('tanggal')
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->withQueryString();
+
+        $units = [];
+        if ($user->can('view_all_units')) {
+            $units = UnitSekolah::orderBy('nama')->get(['id', 'nama']);
+        }
+
+        return inertia('Lembur/Index', [
+            'lemburs' => $lemburs,
+            'counts' => $counts,
+            'filters' => $request->only(['start_date', 'end_date', 'lembur_status', 'unit_id', 'search']),
+            'units' => $units,
+        ]);
+    }
+
+    /**
      * Ringkasan presensi untuk kartu statistik halaman index.
      * Satu query agregat (group by status) + dua count ringan.
      */
