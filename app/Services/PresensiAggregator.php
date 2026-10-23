@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Constants\BobotKehadiran;
+use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -33,6 +35,7 @@ class PresensiAggregator
      * @return array{
      *     attendance: Collection,
      *     sakit_prorata: Collection,
+     *     sakit_split: Collection,
      *     present_days: Collection,
      *     lembur: Collection,
      *     attended_jadwal: Collection,
@@ -50,6 +53,7 @@ class PresensiAggregator
         return [
             'attendance' => $this->attendanceByPegawai($presensiRows, $unitScope),
             'sakit_prorata' => $this->sakitProrata($presensiRows),
+            'sakit_split' => $this->sakitSplitByPegawai($presensiRows, $pegawaiIds, $periodeStart, $attendanceCutoff),
             'present_days' => $this->presentDaysByPegawai($presensiRows, $unitScope),
             'kantor_days' => $this->kantorDaysByPegawai($presensiRows, $unitScope),
             'active_dates' => $this->activeDatesByPegawai($presensiRows),
@@ -98,6 +102,46 @@ class PresensiAggregator
             ->mapWithKeys(fn ($pegawaiRows, $id) => [$id => (float) $this->dedupPassiveByActiveDate($pegawaiRows)
                 ->where('status', 'sakit')
                 ->sum('persentase_bayar_jam')]);
+    }
+
+    /**
+     * Split hari sakit per pegawai: yang tanggalnya dalam range pengajuan izin
+     * sakit disetujui berflag surat dokter vs sisanya. Dedup pasif-aktif sama
+     * dengan attendanceByPegawai. Dipakai bobot kehadiran payroll/rekap.
+     */
+    private function sakitSplitByPegawai(Collection $rows, Collection $pegawaiIds, Carbon $periodeStart, Carbon $attendanceCutoff): Collection
+    {
+        $suratRanges = PengajuanIzin::whereIn('pegawai_id', $pegawaiIds->all())
+            ->where('status', 'disetujui')
+            ->where('jenis_izin', 'sakit')
+            ->where('dengan_surat_dokter', true)
+            ->whereDate('tanggal_mulai', '<=', $attendanceCutoff->toDateString())
+            ->whereDate('tanggal_selesai', '>=', $periodeStart->toDateString())
+            ->get(['pegawai_id', 'tanggal_mulai', 'tanggal_selesai'])
+            ->groupBy('pegawai_id')
+            ->map(function ($items) {
+                $ranges = [];
+                foreach ($items as $r) {
+                    $ranges[] = [Carbon::parse($r->tanggal_mulai)->toDateString(), Carbon::parse($r->tanggal_selesai)->toDateString()];
+                }
+
+                return $ranges;
+            });
+
+        return $rows
+            ->filter(fn ($p) => ! $p->is_lembur && $p->status === 'sakit')
+            ->groupBy('pegawai_id')
+            ->mapWithKeys(function ($pegawaiRows, $id) use ($suratRanges) {
+                $dates = $this->dedupPassiveByActiveDate($pegawaiRows)
+                    ->where('status', 'sakit')
+                    ->pluck('tanggal')
+                    ->map(fn ($t) => $t->format('Y-m-d'))
+                    ->unique()
+                    ->values();
+
+                return [$id => BobotKehadiran::splitSakitSurat($dates, $suratRanges->get($id, [])
+                )];
+            });
     }
 
     /**

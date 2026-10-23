@@ -122,6 +122,7 @@ class MobileIzinController extends Controller
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'alasan' => 'required|string',
             'bukti_foto' => ['required_if:jenis_izin,sakit', 'nullable', 'string', 'max:'.PresensiMessages::MAX_FOTO_BASE64, 'regex:/^data:image\/\w+;base64,/'],
+            'dengan_surat_dokter' => ['nullable', 'boolean'],
         ], [
             'bukti_foto.required_if' => 'Bukti wajib diunggah untuk pengajuan sakit.',
         ]);
@@ -170,10 +171,11 @@ class MobileIzinController extends Controller
             'tanggal_mulai' => $request->tanggal_mulai,
             'tanggal_selesai' => $request->tanggal_selesai,
             'alasan' => $request->alasan,
+            'dengan_surat_dokter' => $request->boolean('dengan_surat_dokter') && $request->jenis_izin === 'sakit',
             'status' => 'pending',
         ]);
 
-        if ($request->bukti_foto) {
+        if ($request->bukti_foto || ($request->jenis_izin === 'sakit' && $request->boolean('dengan_surat_dokter'))) {
             $imageName = app(ImageUploadService::class)->storeBase64(
                 $request->bukti_foto,
                 'izin',

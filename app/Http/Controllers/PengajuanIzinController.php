@@ -130,6 +130,7 @@ class PengajuanIzinController extends Controller
             'catatan_approval' => 'nullable|string|max:500',
             'dihitung_hadir_kcd' => 'nullable|boolean',
             'dihitung_setengah' => 'nullable|boolean',
+            'dengan_surat_dokter' => 'nullable|boolean',
         ]);
 
         $pengajuan = DB::transaction(function () use ($id, $user, $request) {
@@ -140,6 +141,11 @@ class PengajuanIzinController extends Controller
             // (bukan filled) agar nilai false ikut tersimpan.
             if ($request->exists('dihitung_setengah')) {
                 $pengajuan->dihitung_setengah = $request->boolean('dihitung_setengah');
+            }
+
+            // Flag surat dokter (sakit): verifikasi admin menimpa klaim pegawai.
+            if ($request->exists('dengan_surat_dokter')) {
+                $pengajuan->dengan_surat_dokter = $request->boolean('dengan_surat_dokter');
             }
 
             if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {

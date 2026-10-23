@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Constants\BobotKehadiran;
 use App\Models\HariLibur;
 use App\Models\Pegawai;
 use App\Models\Presensi;
@@ -35,7 +36,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
 
     protected $status;
 
-    /** @var Collection<int, array{pegawai: Pegawai, hadir: int, telat: int, sakit: int, izin: int, cuti: int, alpa: int, hariKerja: int}> */
+    /** @var Collection<int, array{pegawai: Pegawai, hadir: int, telat: int, sakit: int, izin: int, cuti: int, alpa: int, hariKerja: int, persen: int}> */
     protected $rekap;
 
     public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $search = null, $status = null)
@@ -106,8 +107,11 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         // 5. Uniform working days: Senin-Jumat − libur (sama untuk semua pegawai).
         $hariKerja = self::computeUniformWorkingDays($start, $end, $holidayMap);
 
+        // 5b. Range pengajuan sakit berflag surat dokter — untuk split bobot.
+        $sakitSuratRanges = BobotKehadiran::sakitSuratRanges($byPegawai->keys()->all(), $start, $end);
+
         // 6. Assemble final rekap.
-        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja) {
+        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja, $sakitSuratRanges) {
             $counts = $deduped->groupBy('status')->map(fn ($g) => $g->count())->all();
             $hadir = $counts['hadir'] ?? 0;
             $telat = $counts['telat'] ?? 0;
@@ -115,8 +119,16 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             $izin = $counts['izin'] ?? 0;
             $cuti = $counts['cuti'] ?? 0;
 
+            $sakitDates = $deduped->where('status', 'sakit')
+                ->map(fn ($p) => $p->tanggal instanceof \DateTimeInterface ? $p->tanggal->format('Y-m-d') : (string) $p->tanggal);
+            $split = BobotKehadiran::splitSakitSurat($sakitDates, $sakitSuratRanges->get($pegawaiId, []));
+
+            $pegawai = $pegawaiMap->get($pegawaiId);
+            $bobot = $pegawai?->unitUtama()?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;
+            $hadirEq = BobotKehadiran::hadirEq($hadir, $telat, $split['surat'], $split['tanpa'], $izin, 0, $cuti, $bobot);
+
             return [
-                'pegawai' => $pegawaiMap->get($pegawaiId),
+                'pegawai' => $pegawai,
                 'hadir' => $hadir,
                 'telat' => $telat,
                 'sakit' => $sakit,
@@ -126,6 +138,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 // termasuk pegawai yang tidak absen sama sekali, bukan hanya status alpa manual.
                 'alpa' => max(0, $hariKerja - $hadir - $telat - $sakit - $izin - $cuti),
                 'hariKerja' => $hariKerja,
+                'persen' => BobotKehadiran::persenBerbobot($hadirEq, $hariKerja),
             ];
         })->sortBy(fn ($r) => mb_strtolower($r['pegawai']?->nama_lengkap ?? ''))->values();
 
@@ -241,7 +254,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         $rekap = $this->rekap ?? collect();
         $total = $rekap->count();
         $avgPersen = $total > 0
-            ? round($rekap->sum(fn ($r) => $r['hariKerja'] > 0 ? min(100, (($r['hadir'] + $r['telat']) / $r['hariKerja']) * 100) : 0) / $total)
+            ? (int) round($rekap->sum(fn ($r) => $r['persen']) / $total)
             : 0;
 
         return [
@@ -253,9 +266,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
     public function map($d): array
     {
         $hariKerja = $d['hariKerja'];
-        $persen = $hariKerja > 0
-            ? min(100, round((($d['hadir'] + $d['telat']) / $hariKerja) * 100))
-            : 0;
+        $persen = $hariKerja > 0 ? min(100, $d['persen']) : 0;
 
         $pegawai = $d['pegawai'];
 
@@ -323,7 +334,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells("A5:{$lastCol}5");
-                $sheet->setCellValue('A5', '% Kehadiran = (Hadir + Telat) / Hari Kerja × 100 — Sakit, Izin, Cuti tidak dihitung sebagai hadir. Alpa = Hari Kerja − (Hadir + Telat + Sakit + Izin + Cuti), termasuk hari tanpa record.');
+                $sheet->setCellValue('A5', '% Kehadiran berbobot = (Hadir + Telat + Sakit/Izin/Cuti berbobot per unit) / Hari Kerja × 100 — Sakit dengan surat dokter dibayar penuh (bobot 1.0 default); Alpa = Hari Kerja − (Hadir + Telat + Sakit + Izin + Cuti), termasuk hari tanpa record.');
                 $sheet->getStyle('A5')->getFont()->setItalic(true)->setSize(9)->setColor(new Color('FF6B7280'));
                 $sheet->getStyle('A5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 

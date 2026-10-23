@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from '@inertiajs/react';
-import { Image, Loader2, MapPin, Save, School, Settings2, Timer } from 'lucide-react';
+import { Image, Loader2, MapPin, Percent, Save, School, Settings2, Timer } from 'lucide-react';
 import LeafletPicker from '@/Components/LeafletPicker';
 import { validateUpload } from '@/Utils/file';
 
@@ -176,6 +176,43 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                         hint="Tombol &quot;Selesai Mengajar&quot; muncul N menit sebelum sesi berakhir. Default 20.">
                         <input type="number" min="1" max="120" value={data.pulang_sebelum_menit ?? 20}
                             onChange={(e) => setData('pulang_sebelum_menit', e.target.value)} className={inputClass} />
+                    </Field>
+                </div>
+            </SectionCard>
+
+            {/* Bobot Kehadiran (Rekap & Payroll) */}
+            <SectionCard Icon={Percent} title="Bobot Kehadiran"
+                description="Persentase hari yang dihitung sebagai hadir di Rekap Kehadiran & Payroll. Kosong = default.">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <Field label="Sakit dgn Surat Dokter" error={errors.bobot_sakit_surat}
+                        hint="Default 1.0 (hari penuh).">
+                        <input type="number" min="0" max="1" step="0.25" value={data.bobot_sakit_surat ?? ''}
+                            onChange={(e) => setData('bobot_sakit_surat', e.target.value)} className={inputClass} placeholder="1.0" />
+                    </Field>
+                    <Field label="Sakit tanpa Surat Dokter" error={errors.bobot_sakit_tanpa_surat}
+                        hint="Default 0.5 (setengah hari).">
+                        <input type="number" min="0" max="1" step="0.25" value={data.bobot_sakit_tanpa_surat ?? ''}
+                            onChange={(e) => setData('bobot_sakit_tanpa_surat', e.target.value)} className={inputClass} placeholder="0.5" />
+                    </Field>
+                    <Field label="Izin" error={errors.bobot_izin}
+                        hint="Default 0.5 (setengah hari).">
+                        <input type="number" min="0" max="1" step="0.25" value={data.bobot_izin ?? ''}
+                            onChange={(e) => setData('bobot_izin', e.target.value)} className={inputClass} placeholder="0.5" />
+                    </Field>
+                    <Field label="Izin ½ Hari (Tugas)" error={errors.bobot_izin_setengah}
+                        hint="Default 0.5. Untuk izin berflag &quot;dihitung setengah&quot; oleh admin.">
+                        <input type="number" min="0" max="1" step="0.25" value={data.bobot_izin_setengah ?? ''}
+                            onChange={(e) => setData('bobot_izin_setengah', e.target.value)} className={inputClass} placeholder="0.5" />
+                    </Field>
+                    <Field label="Cuti" error={errors.bobot_cuti}
+                        hint="Default 1.0 (hari penuh).">
+                        <input type="number" min="0" max="1" step="0.25" value={data.bobot_cuti ?? ''}
+                            onChange={(e) => setData('bobot_cuti', e.target.value)} className={inputClass} placeholder="1.0" />
+                    </Field>
+                    <Field label="Alpa" error={errors.bobot_alpa}
+                        hint="Default 0 (tidak dihitung). Tampil di kolom bobot rekap; potongan alpa tetap hari utuh.">
+                        <input type="number" min="0" max="1" step="0.25" value={data.bobot_alpa ?? ''}
+                            onChange={(e) => setData('bobot_alpa', e.target.value)} className={inputClass} placeholder="0" />
                     </Field>
                 </div>
             </SectionCard>

@@ -26,6 +26,12 @@ export default function Create({ auth }) {
         web: '',
         telepon: '',
         alamat: '',
+        bobot_sakit_surat: null,
+        bobot_sakit_tanpa_surat: null,
+        bobot_izin: null,
+        bobot_izin_setengah: null,
+        bobot_cuti: null,
+        bobot_alpa: null,
     });
 
     const handleSubmit = (e) => {

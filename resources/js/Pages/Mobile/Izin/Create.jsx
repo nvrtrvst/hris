@@ -36,6 +36,7 @@ export default function Create({ pegawai }) {
         tanggal_selesai: '',
         alasan: '',
         bukti_foto: null,
+        dengan_surat_dokter: false,
     });
 
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -103,6 +104,21 @@ export default function Create({ pegawai }) {
                         );
                     })}
                 </div>
+
+                {data.jenis_izin === 'sakit' && (
+                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
+                        <input
+                            type="checkbox"
+                            checked={data.dengan_surat_dokter}
+                            onChange={(e) => setData('dengan_surat_dokter', e.target.checked)}
+                            className="mt-0.5 h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm">
+                            <span className="font-bold text-primary">Ada surat dokter.</span>
+                            <span className="text-slate-600"> Saya melampirkan bukti surat dokter (hari sakit dibayar penuh).</span>
+                        </span>
+                    </label>
+                )}
 
                 {data.jenis_izin === 'cuti' && (
                     <div className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3">

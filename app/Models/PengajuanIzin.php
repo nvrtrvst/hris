@@ -21,6 +21,7 @@ class PengajuanIzin extends Model
         'catatan_approval',
         'dihitung_hadir_kcd',
         'dihitung_setengah',
+        'dengan_surat_dokter',
     ];
 
     protected $guarded = [
@@ -42,6 +43,7 @@ class PengajuanIzin extends Model
         'approved_at_l1' => 'datetime',
         'approved_at_l2' => 'datetime',
         'dihitung_setengah' => 'boolean',
+        'dengan_surat_dokter' => 'boolean',
     ];
 
     protected $appends = ['bukti_foto_url'];
