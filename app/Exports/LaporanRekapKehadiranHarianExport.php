@@ -127,10 +127,23 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja, $holidayDates, $dates, $sakitSuratRanges) {
             $cells = [];
             $counts = ['hadir' => 0, 'telat' => 0, 'sakit' => 0, 'izin' => 0, 'cuti' => 0, 'alpa' => 0];
+            $inSuratRange = function (string $d) use ($sakitSuratRanges, $pegawaiId): bool {
+                foreach ($sakitSuratRanges->get($pegawaiId, []) as $r) {
+                    if ($d >= $r[0] && $d <= $r[1]) {
+                        return true;
+                    }
+                }
+
+                return false;
+            };
 
             foreach ($deduped as $p) {
                 $tanggal = $p->tanggal instanceof \DateTimeInterface ? $p->tanggal->format('Y-m-d') : (string) $p->tanggal;
-                $cells[$tanggal] = self::LETTERS[$p->status] ?? '-';
+                if ($p->status === 'sakit' && $inSuratRange($tanggal)) {
+                    $cells[$tanggal] = 'S*';
+                } else {
+                    $cells[$tanggal] = self::LETTERS[$p->status] ?? '-';
+                }
                 if (isset($counts[$p->status])) {
                     $counts[$p->status]++;
                 }
@@ -159,6 +172,8 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                 'hadir' => $counts['hadir'],
                 'telat' => $counts['telat'],
                 'sakit' => $counts['sakit'],
+                'sakit_surat' => $split['surat'],
+                'sakit_tanpa_surat' => $split['tanpa'],
                 'izin' => $counts['izin'],
                 'cuti' => $counts['cuti'],
                 'alpa' => max(0, $hariKerja - $counts['hadir'] - $counts['telat'] - $counts['sakit'] - $counts['izin'] - $counts['cuti']),
@@ -227,7 +242,8 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         }
         $row[] = $d['hadir'];
         $row[] = $d['telat'];
-        $row[] = $d['sakit'];
+        $row[] = $d['sakit_surat'];
+        $row[] = $d['sakit_tanpa_surat'];
         $row[] = $d['izin'];
         $row[] = $d['cuti'];
         $row[] = $d['alpa'];
@@ -245,7 +261,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         }
 
         return array_merge($heads, [
-            'Hadir', 'Telat', 'Sakit', 'Izin', 'Cuti', 'Alpa',
+            'Hadir', 'Telat', 'Sakit (dgn Surat)', 'Sakit (tanpa Surat)', 'Izin', 'Cuti', 'Alpa',
             'Hari Kerja', '% Kehadiran',
         ]);
     }
@@ -260,7 +276,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         $dates = $this->dates;
         $rekap = $this->rekap ?? collect();
         $dateCount = count($dates);
-        $lastCol = Coordinate::stringFromColumnIndex(3 + $dateCount + 8);
+        $lastCol = Coordinate::stringFromColumnIndex(3 + $dateCount + 9);
 
         return [
             AfterSheet::class => function (AfterSheet $event) use ($lastCol, $dates, $rekap, $dateCount) {
@@ -286,7 +302,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells("A5:{$lastCol}5");
-                $sheet->setCellValue('A5', 'Sel = status 1 pegawai per tanggal (H Hadir, T Telat, S Sakit, I Izin, C Cuti, A Alpa/Tidak Hadir, L Libur). % Kehadiran berbobot = (Hadir + Telat + Sakit/Izin/Cuti berbobot per unit) / Hari Kerja × 100 — Sakit dengan surat dokter dibayar penuh (bobot 1.0 default).');
+                $sheet->setCellValue('A5', 'Sel = status 1 pegawai per tanggal (H Hadir, T Telat, S Sakit tanpa surat, S* Sakit dengan surat dokter, I Izin, C Cuti, A Alpa/Tidak Hadir, L Libur). % Kehadiran berbobot = (Hadir + Telat + Sakit/Izin/Cuti berbobot per unit) / Hari Kerja × 100 — Sakit dengan surat dokter dibayar penuh (bobot 1.0 default).');
                 $sheet->getStyle('A5')->getFont()->setSize(9)->setColor(new Color('FF6B7280'));
                 $sheet->getStyle('A5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 

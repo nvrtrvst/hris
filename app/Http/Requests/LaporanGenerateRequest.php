@@ -41,6 +41,7 @@ class LaporanGenerateRequest extends FormRequest
             'tipe_filter' => 'nullable|in:kantor,mengajar',
             'status_filter' => 'nullable|in:hadir,telat,sakit,izin,cuti,alpa',
             'jadwal_filter' => 'nullable|in:mengajar,piket,ekskul,shift_satpam,shift_kebersihan,lainnya',
+            'lembur_status' => 'nullable|in:semua,pending,disetujui,ditolak',
             'search' => 'nullable|string|max:100',
         ];
     }
@@ -60,6 +61,7 @@ class LaporanGenerateRequest extends FormRequest
             'tipe_filter.in' => 'Tipe presensi harus salah satu dari: kantor, mengajar',
             'status_filter.in' => 'Status harus salah satu dari: hadir, telat, sakit, izin, cuti, alpa',
             'jadwal_filter.in' => 'Jenis jadwal harus salah satu dari: mengajar, piket, ekskul, shift_satpam, shift_kebersihan, lainnya',
+            'lembur_status.in' => 'Status lembur harus salah satu dari: semua, pending, disetujui, ditolak',
             'search.max' => 'Kata kunci pencarian maksimal 100 karakter',
         ];
     }

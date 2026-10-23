@@ -122,6 +122,7 @@ export default function LaporanIndex({ auth, units }) {
         tipe_filter: '',
         status_filter: '',
         jadwal_filter: '',
+        lembur_status: '',
         search: ''
     });
 
@@ -146,6 +147,7 @@ export default function LaporanIndex({ auth, units }) {
                     tipe_filter: filter.tipe_filter,
                     status_filter: filter.status_filter,
                     jadwal_filter: filter.jadwal_filter,
+                    lembur_status: filter.report_type === 'lemburan' ? filter.lembur_status : '',
                     search: filter.search
                 }
             });
@@ -201,6 +203,9 @@ export default function LaporanIndex({ auth, units }) {
         }
         if (filter.jadwal_filter) {
             params.append('jadwal_filter', filter.jadwal_filter);
+        }
+        if (filter.report_type === 'lemburan' && filter.lembur_status) {
+            params.append('lembur_status', filter.lembur_status);
         }
         if (filter.search) {
             params.append('search', filter.search);
@@ -276,6 +281,9 @@ export default function LaporanIndex({ auth, units }) {
             }
             if (filter.jadwal_filter) {
                 params.append('jadwal_filter', filter.jadwal_filter);
+            }
+            if (filter.report_type === 'lemburan' && filter.lembur_status) {
+                params.append('lembur_status', filter.lembur_status);
             }
             if (filter.search) {
                 params.append('search', filter.search);
@@ -506,6 +514,24 @@ export default function LaporanIndex({ auth, units }) {
                                             <option value="izin">Izin</option>
                                             <option value="cuti">Cuti</option>
                                             <option value="alpa">Alpa / Tidak Hadir</option>
+                                        </select>
+                                    </div>
+                                </Field>
+                            )}
+                            {filter.report_type === 'lemburan' && (
+                                <Field label="Status Lembur (Opsional)">
+                                    <div className="relative">
+                                        <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                        <select
+                                            id={fieldId('Status Lembur (Opsional)')}
+                                            className="select-field pl-9"
+                                            value={filter.lembur_status}
+                                            onChange={(e) => setFilter({ ...filter, lembur_status: e.target.value })}
+                                        >
+                                            <option value="">Semua Status Lembur</option>
+                                            <option value="disetujui">Disetujui</option>
+                                            <option value="pending">Menunggu</option>
+                                            <option value="ditolak">Ditolak</option>
                                         </select>
                                     </div>
                                 </Field>

@@ -43,7 +43,7 @@ class LaporanPdfService
         $export = match ($type) {
             'presensi' => new LaporanPresensiExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['tipe_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null, $validated['jadwal_filter'] ?? null),
             'penggajian' => new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
-            'lemburan' => new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
+            'lemburan' => new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null, $validated['lembur_status'] ?? 'semua'),
             'rekap_mengajar' => new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
             'rekap_kehadiran' => new LaporanRekapKehadiranExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),
             'rekap_kehadiran_harian' => new LaporanRekapKehadiranHarianExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null, $validated['status_filter'] ?? null),

@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Exports\LaporanRekapKehadiranExport;
+use App\Exports\LaporanRekapKehadiranHarianExport;
 use App\Models\HariLibur;
 use App\Models\Jabatan;
 use App\Models\Pegawai;
+use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
@@ -64,6 +66,18 @@ class LaporanRekapKehadiranExportTest extends TestCase
         ])->forceFill(['status' => $status])->save();
     }
 
+    private function izinSakit(string $mulai, string $selesai, bool $denganSurat): void
+    {
+        PengajuanIzin::create([
+            'pegawai_id' => $this->pegawai->id,
+            'jenis_izin' => 'sakit',
+            'tanggal_mulai' => $mulai,
+            'tanggal_selesai' => $selesai,
+            'alasan' => 'Demam',
+            'dengan_surat_dokter' => $denganSurat,
+        ])->forceFill(['status' => 'disetujui'])->save();
+    }
+
     public function test_presensi_sabtu_tidak_masuk_rekap_dan_persen_tidak_melesat(): void
     {
         // Minggu 2 Jun s.d. Jumat 21 Jun 2024: 15 hari kerja Sen–Jum.
@@ -111,5 +125,58 @@ class LaporanRekapKehadiranExportTest extends TestCase
 
         $summary = $export->summaryData();
         $this->assertEquals(100, $summary['avgKehadiran']);
+    }
+
+    public function test_rekap_bulanan_split_kolom_sakit_surat_dan_tanpa_surat(): void
+    {
+        // Sen–Rab 10–12 Jun 2024: sakit 3 hari; 2 hari ada surat (10–11), 1 hari tanpa (12).
+        foreach (['2024-06-10', '2024-06-11', '2024-06-12'] as $d) {
+            Presensi::create([
+                'pegawai_id' => $this->pegawai->id,
+                'unit_sekolah_id' => $this->unit->id,
+                'tanggal' => $d,
+                'tipe_presensi' => 'kantor',
+            ])->forceFill(['status' => 'sakit'])->save();
+        }
+        $this->izinSakit('2024-06-10', '2024-06-11', true);
+        $this->izinSakit('2024-06-12', '2024-06-12', false);
+
+        $export = new LaporanRekapKehadiranExport('2024-06-10', '2024-06-12', $this->unit->id, null, null, null);
+        $row = $export->collection()->first();
+        $this->assertSame(3, $row['sakit']);
+        $this->assertSame(2, $row['sakit_surat']);
+        $this->assertSame(1, $row['sakit_tanpa_surat']);
+
+        $this->assertContains('Sakit (dgn Surat)', $export->headings());
+        $this->assertContains('Sakit (tanpa Surat)', $export->headings());
+        $map = $export->map($row);
+        $this->assertSame(2, $map[5], 'Kolom 6 = sakit dgn surat');
+        $this->assertSame(1, $map[6], 'Kolom 7 = sakit tanpa surat');
+    }
+
+    public function test_rekap_harian_sel_s_asterisk_untuk_sakit_ber_surat(): void
+    {
+        Presensi::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2024-06-10',
+            'tipe_presensi' => 'kantor',
+        ])->forceFill(['status' => 'sakit'])->save();
+        Presensi::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2024-06-11',
+            'tipe_presensi' => 'kantor',
+        ])->forceFill(['status' => 'sakit'])->save();
+        $this->izinSakit('2024-06-10', '2024-06-10', true);
+
+        $export = new LaporanRekapKehadiranHarianExport('2024-06-10', '2024-06-11', $this->unit->id, null, null, null);
+        $row = $export->collection()->first();
+        $this->assertSame('S*', $row['cells']['2024-06-10'], 'Sakit dgn surat = S*');
+        $this->assertSame('S', $row['cells']['2024-06-11'], 'Sakit tanpa surat = S');
+        $this->assertSame(1, $row['sakit_surat']);
+        $this->assertSame(1, $row['sakit_tanpa_surat']);
+        $this->assertContains('Sakit (dgn Surat)', $export->headings());
+        $this->assertContains('Sakit (tanpa Surat)', $export->headings());
     }
 }

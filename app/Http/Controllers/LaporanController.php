@@ -68,7 +68,7 @@ class LaporanController extends Controller
         } elseif ($validated['type'] === 'penggajian') {
             $export = new LaporanPenggajianExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search);
         } elseif ($validated['type'] === 'lemburan') {
-            $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search);
+            $export = new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search, $validated['lembur_status'] ?? 'semua');
         } elseif ($validated['type'] === 'rekap_mengajar') {
             $export = new LaporanRekapMengajarExport($validated['start_date'], $validated['end_date'], $unitId, $jenis, $search);
         } elseif ($validated['type'] === 'rekap_kehadiran') {
@@ -227,7 +227,7 @@ class LaporanController extends Controller
         $unitSlug = $this->resolveUnitSlug($unitId);
 
         return Excel::download(
-            new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null),
+            new LaporanLemburanExport($validated['start_date'], $validated['end_date'], $unitId, $validated['jenis_filter'] ?? null, $validated['search'] ?? null, $validated['lembur_status'] ?? 'semua'),
             'Laporan_Lemburan_Potongan_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.xlsx'
         );
     }
@@ -324,6 +324,8 @@ class LaporanController extends Controller
         $sakitDates = $rows->where('status', 'sakit')
             ->map(fn ($p) => $p->tanggal->format('Y-m-d'));
         $split = BobotKehadiran::splitSakitSurat($sakitDates, BobotKehadiran::sakitSuratRanges([$pegawai->id], $start, $end)->get($pegawai->id, []));
+        $summary['sakit_surat'] = $split['surat'];
+        $summary['sakit_tanpa_surat'] = $split['tanpa'];
         $bobot = $pegawai->unitUtama()?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;
         $summary['persen'] = BobotKehadiran::persenBerbobot(
             BobotKehadiran::hadirEq($summary['hadir'], $summary['telat'], $split['surat'], $split['tanpa'], $summary['izin'], 0, $summary['cuti'], $bobot),
