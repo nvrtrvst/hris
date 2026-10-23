@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\BobotKehadiran;
 use App\Exports\TransferBankExport;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Models\HariLibur;
@@ -215,6 +216,7 @@ class PenggajianController extends Controller
 
         $attendanceByPegawai = $presensiAgg['attendance'];
         $sakitProrata = $presensiAgg['sakit_prorata'];
+        $sakitSplitByPegawai = $presensiAgg['sakit_split'];
         $presentDaysByPegawai = $presensiAgg['present_days'];
         $kantorDaysByPegawai = $presensiAgg['kantor_days'];
         $activeDatesByPegawai = $presensiAgg['active_dates'];
@@ -260,7 +262,7 @@ class PenggajianController extends Controller
                 }
 
                 $pegawaiKomponens = $pegawai->komponenGaji->keyBy('id');
-                $counts = $this->computeAttendance($pegawai, $attendanceByPegawai, $periodeStart, $attendanceCutoff, $holidayMap, $setengahCountByPegawai);
+                $counts = $this->computeAttendance($pegawai, $attendanceByPegawai, $periodeStart, $attendanceCutoff, $holidayMap, $setengahCountByPegawai, $sakitSplitByPegawai);
 
                 $totalPendapatan = '0.00';
                 $totalPotongan = '0.00';
@@ -693,9 +695,12 @@ class PenggajianController extends Controller
      * @param  Carbon  $periodeStart  Awal periode penggajian
      * @param  Carbon  $attendanceCutoff  Batas cut-off presensi
      * @param  array  $holidayMap  Map hari libur (buildHolidayWeekdayMap) untuk exclude libur
+     * @param  Collection|null  $setengahCountByPegawai  Map hari ½ per pegawai
+     * @param  Collection|null  $sakitSplitByPegawai  Map pegawai => [surat, tanpa_surat] (PresensiAggregator)
+     * @return array<string,int|float> hadir/telat/alpa/sakit/izin/cuti/setengah (int), hadir_eq (weighted float), working_days
      * @return array<string,int> ['hadir'=>X, 'telat'=>Y, 'alpa'=>Z, 'sakit'=>A, 'izin'=>B, 'cuti'=>C]
      */
-    protected function computeAttendance(Pegawai $pegawai, $attendanceByPegawai, Carbon $periodeStart, Carbon $attendanceCutoff, array $holidayMap = [], $setengahCountByPegawai = null): array
+    protected function computeAttendance(Pegawai $pegawai, $attendanceByPegawai, Carbon $periodeStart, Carbon $attendanceCutoff, array $holidayMap = [], $setengahCountByPegawai = null, $sakitSplitByPegawai = null): array
     {
         $pAtt = $attendanceByPegawai->get($pegawai->id, collect());
         $countHadir = (int) $pAtt->where('status', 'hadir')->sum('total');
@@ -745,29 +750,29 @@ class PenggajianController extends Controller
         $countAlpa = $countAlpaManual + max(0, $workingDays - $presentOrLeave);
         $setengah = (int) ($setengahCountByPegawai[$pegawai->id] ?? 0);
 
+        // Bobot kehadiran (unit utama ?? default). Sakit dibagi surat-dokter.
+        // $setengah diasumsikan subset izin → pisah agar tidak dobel bobot.
+        $bobot = $pegawai->unitUtama()?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;
+        $sakitSurat = min($countSakit, (int) ($sakitSplitByPegawai?->get($pegawai->id)['surat'] ?? 0));
+        $sakitTanpa = $countSakit - $sakitSurat;
+        $hadirEq = BobotKehadiran::hadirEq(
+            $countHadir, $countTelat, $sakitSurat, $sakitTanpa, $countIzin, $setengah, $countCuti, $bobot
+        );
+        // Alpa bobotnya diperuntukkan rekap display; rate payroll tetap 0 (tidak masuk numerator).
+
         return [
             'hadir' => $countHadir,
             'telat' => $countTelat,
             'alpa' => $countAlpa,
             'sakit' => $countSakit,
+            'sakit_surat' => $sakitSurat,
+            'sakit_tanpa_surat' => $sakitTanpa,
             'izin' => $countIzin,
             'cuti' => $countCuti,
             'setengah' => $setengah,
+            'hadir_eq' => $hadirEq,
             'working_days' => $workingDays,
         ];
-    }
-
-    /**
-     * Rate kehadiran: hari penuh (hadir/telat/sakit/cuti) + ½ hari izin-tugas,
-     * dibagi hari kerja. Tanpa hari kerja terjadwal → penuh (tak ada yang bisa alpa).
-     */
-    protected function attendanceRate(array $counts, int $setengah, int $workingDays): float
-    {
-        if ($workingDays <= 0) {
-            return 1.0;
-        }
-
-        return ($counts['hadir'] + $counts['telat'] + $counts['sakit'] + $counts['cuti'] + 0.5 * $setengah) / $workingDays;
     }
 
     /**
@@ -814,7 +819,7 @@ class PenggajianController extends Controller
 
         $setengah = (int) ($counts['setengah'] ?? 0);
         $workingDays = (int) ($counts['working_days'] ?? 0);
-        $hadirEq = $counts['hadir'] + $counts['telat'] + $counts['sakit'] + $counts['cuti'] + 0.5 * $setengah;
+        $hadirEq = (float) ($counts['hadir_eq'] ?? ($counts['hadir'] + $counts['telat'] + $counts['sakit'] + $counts['cuti'] + 0.5 * $setengah));
         $hariNol = max(0, $workingDays - $hadirEq);
         if ($hariNol <= 0 || $workingDays <= 0) {
             return;
@@ -978,10 +983,13 @@ class PenggajianController extends Controller
             } elseif ($this->isKehadiranType($komponen, 'kehadiran_alpa', ['alpa'])) {
                 $nominal = $rate * $counts['alpa'];
             } elseif ($this->isKehadiranType($komponen, 'kehadiran_sakit', ['sakit'])) {
-                $multiplier = ($sakitProrata && $counts['sakit'] > 0 && $sakitProrata->has($pegawai->id))
+                // Potongan/honor sakit hanya atas hari TANPA surat dokter
+                // (dengan surat dianggap tetap bayaran penuh via bobot).
+                $sakitTanpa = (int) ($counts['sakit_tanpa_surat'] ?? $counts['sakit']);
+                $multiplier = ($sakitProrata && $sakitTanpa > 0 && $sakitProrata->has($pegawai->id))
                     ? min(1, (int) $sakitProrata[$pegawai->id] / ($counts['sakit'] * 100))
                     : 1;
-                $nominal = $rate * $counts['sakit'] * $multiplier;
+                $nominal = $rate * $sakitTanpa * $multiplier;
             } elseif ($this->isKehadiranType($komponen, 'kehadiran_izin', ['izin'])) {
                 $nominal = $rate * $counts['izin'];
             } elseif ($this->isKehadiranType($komponen, 'kehadiran_cuti', ['cuti'])) {

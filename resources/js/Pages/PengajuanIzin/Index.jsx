@@ -48,6 +48,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         catatan_approval: '',
         dihitung_hadir_kcd: false,
         dihitung_setengah: false,
+        dengan_surat_dokter: false,
     });
 
     const openModal = (item, type) => {
@@ -56,6 +57,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         reset();
         setData('catatan_approval', '');
         setData('dihitung_setengah', !!item.dihitung_setengah);
+        setData('dengan_surat_dokter', !!item.dengan_surat_dokter);
     };
 
     const closeModal = () => {
@@ -64,6 +66,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         reset();
         setData('catatan_approval', '');
         setData('dihitung_setengah', false);
+        setData('dengan_surat_dokter', false);
     };
 
     const submitAction = (e) => {
@@ -679,6 +682,19 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                                 Ada tugas, hitung ½ hari <span className="text-text-muted">(izin disertai tugas dinas: kehadiran 0,5/hari untuk payroll)</span>
                                             </span>
                                         </label>
+                                        {selectedItem.jenis_izin === 'sakit' && (
+                                            <label className="mt-2 flex items-start gap-2.5 rounded-card border border-border bg-surface p-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={data.dengan_surat_dokter}
+                                                    onChange={e => setData('dengan_surat_dokter', e.target.checked)}
+                                                    className="mt-0.5 h-4 w-4 accent-[#0F3D3E]"
+                                                />
+                                                <span className="text-sm text-text-secondary">
+                                                    Sakit dengan surat dokter <span className="text-text-muted">(hari sakit dibayar penuh di payroll &amp; rekap kehadiran)</span>
+                                                </span>
+                                            </label>
+                                        )}
                                     </>
                                 )}
 

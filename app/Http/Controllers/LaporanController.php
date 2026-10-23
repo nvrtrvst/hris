@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\BobotKehadiran;
 use App\Exceptions\PdfTooLargeException;
 use App\Exports\LaporanDetailHarianExport;
 use App\Exports\LaporanLemburanExport;
@@ -317,6 +318,17 @@ class LaporanController extends Controller
 
         $summary['alpa'] = max(0, $hariKerja - $summary['hadir'] - $summary['telat'] - $summary['sakit'] - $summary['izin'] - $summary['cuti']);
         $summary['hariKerja'] = $hariKerja;
+
+        // Persen berbobot (sama dengan rekap agregat): sakit surat-tanpa-surat
+        // dibelah via pengajuan izin sakit berflag surat dokter.
+        $sakitDates = $rows->where('status', 'sakit')
+            ->map(fn ($p) => $p->tanggal->format('Y-m-d'));
+        $split = BobotKehadiran::splitSakitSurat($sakitDates, BobotKehadiran::sakitSuratRanges([$pegawai->id], $start, $end)->get($pegawai->id, []));
+        $bobot = $pegawai->unitUtama()?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;
+        $summary['persen'] = BobotKehadiran::persenBerbobot(
+            BobotKehadiran::hadirEq($summary['hadir'], $summary['telat'], $split['surat'], $split['tanpa'], $summary['izin'], 0, $summary['cuti'], $bobot),
+            $hariKerja
+        );
 
         $periode = [
             'start_date' => $request->start_date,

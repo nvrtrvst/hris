@@ -28,6 +28,12 @@ export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = []
         telepon: unit.telepon ?? '',
         alamat: unit.alamat ?? '',
         tembusan_jabatan_ids: (tembusan || []).map(String),
+        bobot_sakit_surat: unit.bobot_sakit_surat ?? '',
+        bobot_sakit_tanpa_surat: unit.bobot_sakit_tanpa_surat ?? '',
+        bobot_izin: unit.bobot_izin ?? '',
+        bobot_izin_setengah: unit.bobot_izin_setengah ?? '',
+        bobot_cuti: unit.bobot_cuti ?? '',
+        bobot_alpa: unit.bobot_alpa ?? '',
     });
 
     const [showLokasiForm, setShowLokasiForm] = React.useState(false);

@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Constants\BobotKehadiran;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
@@ -121,8 +122,9 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         $hariKerja = LaporanRekapKehadiranExport::computeUniformWorkingDays($start, $end, $holidayMap);
         $holidayDates = array_flip($holidayMap['dates'] ?? []);
         $dates = $this->dates;
+        $sakitSuratRanges = BobotKehadiran::sakitSuratRanges($byPegawai->keys()->all(), $start, $end);
 
-        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja, $holidayDates, $dates) {
+        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja, $holidayDates, $dates, $sakitSuratRanges) {
             $cells = [];
             $counts = ['hadir' => 0, 'telat' => 0, 'sakit' => 0, 'izin' => 0, 'cuti' => 0, 'alpa' => 0];
 
@@ -143,8 +145,16 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                 $cells[$ds] = (Carbon::parse($ds)->isWeekend() || isset($holidayDates[$ds])) ? 'L' : 'A';
             }
 
+            $sakitDates = collect($deduped)->where('status', 'sakit')
+                ->map(fn ($p) => $p->tanggal instanceof \DateTimeInterface ? $p->tanggal->format('Y-m-d') : (string) $p->tanggal);
+            $split = BobotKehadiran::splitSakitSurat($sakitDates, $sakitSuratRanges->get($pegawaiId, []));
+
+            $pegawai = $pegawaiMap->get($pegawaiId);
+            $bobot = $pegawai?->unitUtama()?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;
+            $hadirEq = BobotKehadiran::hadirEq($counts['hadir'], $counts['telat'], $split['surat'], $split['tanpa'], $counts['izin'], 0, $counts['cuti'], $bobot);
+
             return [
-                'pegawai' => $pegawaiMap->get($pegawaiId),
+                'pegawai' => $pegawai,
                 'cells' => $cells,
                 'hadir' => $counts['hadir'],
                 'telat' => $counts['telat'],
@@ -153,6 +163,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                 'cuti' => $counts['cuti'],
                 'alpa' => max(0, $hariKerja - $counts['hadir'] - $counts['telat'] - $counts['sakit'] - $counts['izin'] - $counts['cuti']),
                 'hariKerja' => $hariKerja,
+                'persen' => BobotKehadiran::persenBerbobot($hadirEq, $hariKerja),
             ];
         })->sortBy(fn ($r) => mb_strtolower($r['pegawai']?->nama_lengkap ?? ''))->values();
 
@@ -190,7 +201,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         $rekap = $this->rekap ?? collect();
         $total = $rekap->count();
         $avgPersen = $total > 0
-            ? round($rekap->sum(fn ($r) => $r['hariKerja'] > 0 ? (($r['hadir'] + $r['telat']) / $r['hariKerja']) * 100 : 0) / $total)
+            ? (int) round($rekap->sum(fn ($r) => $r['persen']) / $total)
             : 0;
 
         return [
@@ -202,9 +213,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
     public function map($d): array
     {
         $hariKerja = $d['hariKerja'];
-        $persen = $hariKerja > 0
-            ? min(100, round((($d['hadir'] + $d['telat']) / $hariKerja) * 100))
-            : 0;
+        $persen = $hariKerja > 0 ? min(100, $d['persen']) : 0;
 
         $pegawai = $d['pegawai'];
 
@@ -277,7 +286,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
                 $sheet->mergeCells("A5:{$lastCol}5");
-                $sheet->setCellValue('A5', 'Sel = status 1 pegawai per tanggal (H Hadir, T Telat, S Sakit, I Izin, C Cuti, A Alpa/Tidak Hadir, L Libur). % Kehadiran = (Hadir + Telat) / Hari Kerja × 100.');
+                $sheet->setCellValue('A5', 'Sel = status 1 pegawai per tanggal (H Hadir, T Telat, S Sakit, I Izin, C Cuti, A Alpa/Tidak Hadir, L Libur). % Kehadiran berbobot = (Hadir + Telat + Sakit/Izin/Cuti berbobot per unit) / Hari Kerja × 100 — Sakit dengan surat dokter dibayar penuh (bobot 1.0 default).');
                 $sheet->getStyle('A5')->getFont()->setSize(9)->setColor(new Color('FF6B7280'));
                 $sheet->getStyle('A5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 

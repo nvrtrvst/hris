@@ -691,7 +691,7 @@ export default function LaporanIndex({ auth, units }) {
                                 return (
                                     <div className="overflow-x-auto">
                                         <div className="px-4 py-2 text-xs text-text-muted bg-surface border-b border-border italic">
-                                            % Kehadiran = (Hadir + Telat) / Hari Kerja &times; 100. 1 sel = 1 status per tanggal.
+                                            % Kehadiran berbobot = (Hadir + Telat + Sakit/Izin/Cuti berbobot per unit) / Hari Kerja &times; 100. Sakit dengan surat dokter dibayar penuh. 1 sel = 1 status per tanggal.
                                         </div>
                                         <table className="min-w-full divide-y divide-border">
                                             <thead className="bg-surface">
@@ -839,7 +839,7 @@ export default function LaporanIndex({ auth, units }) {
                             {activePreview.report_type === 'rekap_kehadiran' && (
                             <div className="overflow-x-auto">
                                 <div className="px-4 py-2 text-xs text-text-muted bg-surface border-b border-border italic">
-                                    % Kehadiran = (Hadir + Telat) / Hari Kerja &times; 100. Sakit, Izin, Cuti, Alpa tidak dihitung sebagai hadir.
+                                    % Kehadiran berbobot = (Hadir + Telat + Sakit/Izin/Cuti berbobot per unit) / Hari Kerja &times; 100. Sakit dengan surat dokter dibayar penuh; Alpa = Hari Kerja &minus; (Hadir + Telat + Sakit + Izin + Cuti).
                                 </div>
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface">
