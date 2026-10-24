@@ -30,7 +30,10 @@ return new class extends Migration
                 ['pegawai_id', 'unit_sekolah_id', 'jabatan_id', 'periode_mulai', 'periode_selesai'],
                 'kpi_eval_pegawai_unit_jabatan_periode_unique',
             );
-            $table->index(['unit_sekolah_id', 'periode_mulai', 'periode_selesai', 'status']);
+            $table->index(
+                ['unit_sekolah_id', 'periode_mulai', 'periode_selesai', 'status'],
+                'kpi_eval_unit_periode_status_index',
+            );
         });
 
         Schema::create('kpi_evaluation_items', function (Blueprint $table) {
