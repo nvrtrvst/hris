@@ -58,7 +58,7 @@ jobs:
         run: npm run build
 
       - name: Run Tests
-        run: php artisan test --verbose --stop-on-failure
+        run: php artisan test --debug --stop-on-failure
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
