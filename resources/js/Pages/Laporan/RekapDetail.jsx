@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, User, Calendar, Building2 } from 'lucide-react';
+import { ArrowLeft, User, Calendar, GraduationCap, Hash } from 'lucide-react';
 
 const STATUS_STYLES = {
     hadir: 'bg-success-light text-success ring-success/30',
@@ -21,13 +21,6 @@ const StatusBadge = ({ status }) => {
     );
 };
 
-const KpiCard = ({ label, value, accent }) => (
-    <div className={`rounded-xl border border-border p-4 ${accent ? 'bg-primary/5 ring-1 ring-primary/30' : 'bg-surface'}`}>
-        <p className="text-xs font-medium text-text-muted">{label}</p>
-        <p className={`mt-1 text-2xl font-extrabold ${accent ? 'text-primary' : 'text-text-primary'}`}>{value}</p>
-    </div>
-);
-
 export default function RekapDetail({ auth, pegawai, detail, summary, periode }) {
     const persen = summary.persen ?? (summary.hariKerja > 0 ? Math.min(100, Math.round(((summary.hadir + summary.telat) / summary.hariKerja) * 100)) : 0);
 
@@ -42,11 +35,11 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
                     {/* Back button */}
                     <button
-                        onClick={() => router.get(route('laporan.index'))}
+                        onClick={() => (window.history.length > 1 ? window.history.back() : router.get(route('laporan.index')))}
                         className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-muted hover:text-primary transition-colors"
                     >
                         <ArrowLeft className="h-4 w-4" />
-                        Kembali ke Laporan
+                        Kembali ke laporan
                     </button>
 
                     {/* Header */}
@@ -59,12 +52,12 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                                 <h2 className="text-xl font-extrabold text-text-primary">{pegawai.nama}</h2>
                                 <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-text-muted">
                                     <span className="inline-flex items-center gap-1">
-                                        <Building2 className="h-3.5 w-3.5" />
+                                        <GraduationCap className="h-3.5 w-3.5" />
                                         {pegawai.jenis}
                                     </span>
                                     {pegawai.nuptk && (
                                         <span className="inline-flex items-center gap-1">
-                                            <User className="h-3.5 w-3.5" />
+                                            <Hash className="h-3.5 w-3.5" />
                                             {pegawai.nuptk}
                                         </span>
                                     )}
@@ -77,17 +70,24 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                         </div>
                     </div>
 
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-9">
-                        <KpiCard label="% Kehadiran" value={`${persen}%`} accent />
-                        <KpiCard label="Hadir" value={summary.hadir} />
-                        <KpiCard label="Telat" value={summary.telat} />
-                        <KpiCard label="Sakit dgn Surat" value={summary.sakit_surat ?? summary.sakit} />
-                        <KpiCard label="Sakit tanpa Surat" value={summary.sakit_tanpa_surat ?? 0} />
-                        <KpiCard label="Izin" value={summary.izin} />
-                        <KpiCard label="Cuti" value={summary.cuti} />
-                        <KpiCard label="Alpa" value={summary.alpa} />
-                        <KpiCard label="Hari Kerja" value={summary.hariKerja} />
+                    {/* Ringkasan: satu angka utama + rincian */}
+                    <div className="card p-5">
+                        <div className="flex flex-wrap items-end justify-between gap-4">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">% Kehadiran berbobot</p>
+                                <p className="mt-1 text-4xl font-extrabold tabular-nums text-primary">{persen}%</p>
+                                <p className="mt-1 text-xs text-text-muted">dari {summary.hariKerja} hari kerja</p>
+                            </div>
+                            <dl className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm sm:grid-cols-3">
+                                <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Hadir</dt><dd className="font-bold tabular-nums text-text-primary">{summary.hadir}</dd></div>
+                                <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Telat</dt><dd className="font-bold tabular-nums text-warning">{summary.telat}</dd></div>
+                                <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Alpa</dt><dd className="font-bold tabular-nums text-danger">{summary.alpa}</dd></div>
+                                <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Sakit (surat)</dt><dd className="font-bold tabular-nums text-text-primary">{summary.sakit_surat ?? summary.sakit}</dd></div>
+                                <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Sakit (tanpa surat)</dt><dd className="font-bold tabular-nums text-text-primary">{summary.sakit_tanpa_surat ?? 0}</dd></div>
+                                <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Izin</dt><dd className="font-bold tabular-nums text-info">{summary.izin}</dd></div>
+                                <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Cuti</dt><dd className="font-bold tabular-nums text-info">{summary.cuti}</dd></div>
+                            </dl>
+                        </div>
                     </div>
 
                     {/* Detail Table */}

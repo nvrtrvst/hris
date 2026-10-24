@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import Modal from '@/Components/Modal';
 import { CheckCircle2, ChevronDown } from 'lucide-react';
 
 const STATUS_BADGE = {
@@ -107,14 +108,13 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
     });
     const [openId, setOpenId] = useState(null);
     const [unlockingId, setUnlockingId] = useState(null);
+    const [konfirmasi, setKonfirmasi] = useState(null);
 
     const bukaJalur = (lap) => {
-        if (!window.confirm(`Buka jalur telat untuk laporan piket ${lap.pegawai?.nama_lengkap || ''} tgl ${lap.tanggal}? Item seksi Pagi bisa dicatat setelah jendela pagi.`)) {
-            return;
-        }
         setUnlockingId(lap.id);
         router.post(route('laporan.piket.unlock', lap.id), {}, {
             preserveScroll: true,
+            onSuccess: () => setKonfirmasi(null),
             onFinish: () => setUnlockingId(null),
         });
     };
@@ -173,6 +173,13 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
                     <div className="page-card card-table">
                         <div className="px-5 py-4 border-b border-border">
                             <h3 className="section-title">Laporan masuk ({laporan.length})</h3>
+                            {laporan.length > 0 && (
+                                <p className="mt-0.5 text-xs font-semibold text-text-muted">
+                                    Terkirim {laporan.filter((lap) => lap.status === 'submitted').length}
+                                    {' · '}Belum lengkap {laporan.filter((lap) => lap.status !== 'submitted').length}
+                                    {laporan.some((lap) => lap.perlu_cek > 0) && <span className="text-danger">{' · '}Perlu cek {laporan.filter((lap) => lap.perlu_cek > 0).length}</span>}
+                                </p>
+                            )}
                         </div>
                         {laporan.length === 0 ? (
                             <p className="px-5 py-6 text-sm text-text-muted">Tidak ada laporan pada periode ini. Ubah filter atau periode.</p>
@@ -219,7 +226,7 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
                                                             {lap.status !== 'submitted' && auth?.permissions?.includes('view_presensi') && !lap.unlocked_at && (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => bukaJalur(lap)}
+                                                                    onClick={() => setKonfirmasi(lap)}
                                                                     disabled={unlockingId === lap.id}
                                                                     aria-label={`Buka jalur telat laporan piket ${lap.pegawai?.nama_lengkap || lap.tanggal}`}
                                                                     className="rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 disabled:opacity-50"
@@ -279,6 +286,27 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
                     </p>
                 </div>
             </div>
+
+            <Modal show={konfirmasi !== null} onClose={() => setKonfirmasi(null)} maxWidth="lg">
+                {konfirmasi && (
+                    <div className="p-6">
+                        <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning-light px-4 py-3">
+                            <div>
+                                <p className="font-bold text-text-primary">Buka jalur telat?</p>
+                                <p className="mt-1 text-sm text-text-secondary">
+                                    Laporan piket <strong>{konfirmasi.pegawai?.nama_lengkap || '-'}</strong> tanggal <strong>{konfirmasi.tanggal}</strong> akan menerima item seksi Pagi meski jendela pagi sudah lewat.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mt-4 flex justify-end gap-2">
+                            <button type="button" onClick={() => setKonfirmasi(null)} className="btn-secondary">Batal</button>
+                            <button type="button" disabled={unlockingId === konfirmasi.id} onClick={() => bukaJalur(konfirmasi)} className="btn-primary disabled:opacity-50">
+                                {unlockingId === konfirmasi.id ? 'Membuka…' : 'Buka jalur telat'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </AuthenticatedLayout>
     );
 }
