@@ -332,19 +332,16 @@ class MobileController extends Controller
             return response()->json(['success' => true, 'kelas' => []])->header('Cache-Control', 'no-store');
         }
 
-        $response = KeuanganClient::request('kelas-by-unit', [
-            'unit' => $unit->nama ?: $unit->singkatan,
-        ]);
+        $kelas = KeuanganClient::kelasByUnit($unit->nama ?: $unit->singkatan);
 
-        if (! $response?->successful()) {
-            return response()->json(['success' => false, 'kelas' => [], 'message' => 'Data kelas belum tersedia.'], 502)->header('Cache-Control', 'no-store');
+        if ($kelas === null) {
+            return response()->json(['success' => false, 'kelas' => [], 'message' => 'Data kelas belum tersedia.'], 502)->header('Cache-Control: no-store');
         }
 
         return response()->json([
             'success' => true,
-            'school_name' => $response->json('data.schoolName'),
-            'kelas' => $response->json('data.classes') ?? [],
-        ])->header('Cache-Control', 'no-store');
+            'kelas' => $kelas,
+        ])->header('Cache-Control: no-store');
     }
 
     // Proxy ke API internal app keuangan untuk mengambil daftar siswa per kelas.

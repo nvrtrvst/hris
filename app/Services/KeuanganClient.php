@@ -38,4 +38,21 @@ class KeuanganClient
             return null;
         }
     }
+
+    /**
+     * Daftar kelas aktif satu unit dari aplikasi keuangan.
+     * Null = integrasi gagal / belum dikonfigurasi.
+     *
+     * @return array<int, array{id:mixed,grade?:string,name?:string,section?:string,major_name?:string}>|null
+     */
+    public static function kelasByUnit(string $unitNama): ?array
+    {
+        $response = self::request('kelas-by-unit', ['unit' => $unitNama]);
+
+        if (! $response?->successful()) {
+            return null;
+        }
+
+        return $response->json('data.classes') ?? [];
+    }
 }
