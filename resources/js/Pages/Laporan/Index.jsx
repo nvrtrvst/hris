@@ -214,6 +214,43 @@ export default function LaporanIndex({ auth, units }) {
         window.location.href = `${url}?${params.toString()}`;
     };
 
+    const cetakDaftarHadir = async () => {
+        setError('');
+        setPdfLoading(true);
+        try {
+            const url = route('presensi.rekap-pdf');
+            const params = new URLSearchParams();
+            params.append('start_date', filter.start_date);
+            params.append('end_date', filter.end_date);
+            if (filter.unit_sekolah_id) params.append('unit_id', filter.unit_sekolah_id);
+            if (filter.jenis_filter) params.append('jenis_filter', filter.jenis_filter);
+            if (filter.search) params.append('search', filter.search);
+
+            const res = await fetch(`${url}?${params.toString()}`);
+            if (!res.ok) {
+                let msg = 'PDF gagal dibuat. Coba lagi atau hubungi administrator.';
+                try {
+                    const body = await res.json();
+                    msg = body.message || body.error || msg;
+                } catch { /* non-JSON */ }
+                setError(msg);
+                return;
+            }
+            const blob = await res.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `Rekap_Presensi_Harian_${filter.start_date}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(a.href);
+        } catch {
+            setError('Koneksi terputus saat membuat PDF. Coba perkecil rentang tanggal atau gunakan Export Excel.');
+        } finally {
+            setPdfLoading(false);
+        }
+    };
+
     const handleDownloadPdf = async () => {
         setError('');
         if (!filter.start_date) {
@@ -227,41 +264,6 @@ export default function LaporanIndex({ auth, units }) {
 
         setPdfLoading(true);
         try {
-            // Rekap Presensi Harian punya route terpisah
-            if (filter.report_type === 'rekap_presensi_harian') {
-                const url = route('presensi.rekap-pdf');
-                const params = new URLSearchParams();
-                params.append('start_date', filter.start_date);
-                params.append('end_date', filter.end_date);
-                if (filter.unit_sekolah_id) params.append('unit_id', filter.unit_sekolah_id);
-                if (filter.jenis_filter) params.append('jenis_filter', filter.jenis_filter);
-                if (filter.search) params.append('search', filter.search);
-
-                try {
-                    const res = await fetch(`${url}?${params.toString()}`);
-                    if (!res.ok) {
-                        let msg = 'PDF gagal dibuat. Coba lagi atau hubungi administrator.';
-                        try {
-                            const body = await res.json();
-                            msg = body.message || body.error || msg;
-                        } catch { /* non-JSON */ }
-                        setError(msg);
-                        return;
-                    }
-                    const blob = await res.blob();
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = `Rekap_Presensi_Harian_${filter.start_date}.pdf`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    URL.revokeObjectURL(a.href);
-                } catch {
-                    setError('Koneksi terputus saat membuat PDF. Coba perkecil rentang tanggal atau gunakan Export Excel.');
-                }
-                return;
-            }
-
             const url = route('laporan.pdf');
             const params = new URLSearchParams();
             params.append('type', filter.report_type);
@@ -332,6 +334,17 @@ export default function LaporanIndex({ auth, units }) {
         rekap_presensi_harian: 'Rekap Presensi Harian',
     };
 
+    const REPORT_HINTS = {
+        presensi: 'Baris per presensi (kantor/mengajar) — untuk audit detail.',
+        rekap_kehadiran: 'Satu baris per pegawai: hadir, telat, izin, sakit, cuti, alpa + % berbobot.',
+        rekap_kehadiran_harian: 'Matriks pegawai × tanggal. Maksimal 31 hari per laporan.',
+        detail_harian: 'Kronologi per hari: masuk, pulang, dan sesi mengajar/piket. Maksimal 31 hari.',
+        mengajar_harian: 'Sesi mengajar/piket per hari: jam terekam vs seharusnya. Maksimal 31 hari.',
+        rekap_mengajar: 'JP terjadwal vs hadir per guru, plus kalender mingguan.',
+        penggajian: 'Rekap gaji per pegawai pada periode.',
+        lemburan: 'Detail lembur + potongan, bisa difilter status persetujuan.',
+    };
+
     return (
         <AuthenticatedLayout
             user={auth.user}
@@ -362,17 +375,23 @@ export default function LaporanIndex({ auth, units }) {
                                         value={filter.report_type}
                                         onChange={(e) => setFilter({ ...filter, report_type: e.target.value, tipe_filter: e.target.value === 'presensi' ? filter.tipe_filter : '', status_filter: ['presensi', 'rekap_kehadiran', 'rekap_kehadiran_harian'].includes(e.target.value) ? filter.status_filter : '' })}
                                     >
-                                        <option value="presensi">Laporan Presensi</option>
-                                        <option value="rekap_kehadiran">Rekap Kehadiran</option>
-                                        <option value="rekap_kehadiran_harian">Rekap Kehadiran Harian (per Tanggal)</option>
-                                        <option value="detail_harian">Detail Presensi Harian (Informatif)</option>
-                                        <option value="mengajar_harian">Detail Mengajar Harian (Informatif)</option>
-                                        <option value="rekap_mengajar">Rekap Presensi Mengajar</option>
-                                        <option value="rekap_presensi_harian">Rekap Presensi Harian</option>
-                                        <option value="penggajian">Laporan Rekap Gaji</option>
-                                        <option value="lemburan">Laporan Detail Lembur & Potongan</option>
+                                        <optgroup label="Harian (detail)">
+                                            <option value="detail_harian">Detail presensi harian</option>
+                                            <option value="mengajar_harian">Detail mengajar harian</option>
+                                        </optgroup>
+                                        <optgroup label="Rekap periode">
+                                            <option value="rekap_kehadiran">Rekap kehadiran</option>
+                                            <option value="rekap_kehadiran_harian">Rekap kehadiran harian (matriks)</option>
+                                            <option value="rekap_mengajar">Rekap mengajar</option>
+                                            <option value="presensi">Daftar presensi (audit)</option>
+                                        </optgroup>
+                                        <optgroup label="Payroll">
+                                            <option value="penggajian">Rekap gaji</option>
+                                            <option value="lemburan">Detail lembur & potongan</option>
+                                        </optgroup>
                                     </select>
                                 </div>
+                                <p className="mt-1.5 text-xs leading-relaxed text-text-muted">{REPORT_HINTS[filter.report_type] || 'Pilih jenis laporan untuk melihat keterangannya.'}</p>
                             </Field>
                             <Field label="Tanggal Mulai">
                                 <div className="relative">
@@ -555,20 +574,19 @@ export default function LaporanIndex({ auth, units }) {
                             </div>
                         )}
 
-                        <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center">
-                            {filter.report_type !== 'rekap_presensi_harian' && (
-                                <button onClick={handlePreview} disabled={loading} className="btn-primary inline-flex items-center gap-2">
-                                    {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat…</> : <><Search className="h-4 w-4" /> Tampilkan Data</>}
-                                </button>
-                            )}
-                            {filter.report_type === 'rekap_presensi_harian' && (
-                                <p className="text-xs text-text-muted italic">Jenis ini langsung menghasilkan PDF (tanpa pratinjau). Atur filter, lalu klik &quot;Download PDF&quot;.</p>
-                            )}
+                        <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:flex-wrap sm:items-center">
+                            <button onClick={handlePreview} disabled={loading} className="btn-primary inline-flex items-center gap-2">
+                                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat…</> : <><Search className="h-4 w-4" /> Tampilkan</>}
+                            </button>
                             <button onClick={handleDownload} disabled={loading} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60">
-                                <Download className="h-4 w-4" /> Download Excel
+                                <Download className="h-4 w-4" /> Excel
                             </button>
                             <button onClick={handleDownloadPdf} disabled={loading || pdfLoading} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60">
-                                {pdfLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Membuat PDF…</> : <><FileText className="h-4 w-4" /> Download PDF</>}
+                                {pdfLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Membuat PDF…</> : <><FileText className="h-4 w-4" /> PDF</>}
+                            </button>
+                            <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
+                            <button onClick={cetakDaftarHadir} disabled={pdfLoading} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline disabled:opacity-60">
+                                <FileText className="h-4 w-4" /> Cetak daftar hadir (PDF)
                             </button>
                         </div>
                     </div>
@@ -592,6 +610,11 @@ export default function LaporanIndex({ auth, units }) {
                                     <p className="mt-0.5 text-xs text-text-muted">
                                         Periode: {activePreview.start_date} s/d {activePreview.end_date}
                                     </p>
+                                    {previewData.total > previewData.data.length && (
+                                        <p className="mt-1 text-xs font-semibold text-warning">
+                                            Pratinjau {previewData.data.length} dari {previewData.total} baris — unduh Excel untuk data lengkap.
+                                        </p>
+                                    )}
                                 </div>
                                 {activePreview.report_type === 'rekap_mengajar' && previewData.calendar && (
                                     <div className="inline-flex rounded-xl border border-border bg-surface p-1">
@@ -797,14 +820,18 @@ export default function LaporanIndex({ auth, units }) {
                                 ].filter((x) => x.val > 0);
                                 return (
                                     <div className="space-y-4 px-6 py-5">
-                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                                            <KpiCard label="Total Presensi" value={s.total} />
+                                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                             <KpiCard label="% Kehadiran" value={`${s.persen}%`} accent />
                                             <KpiCard label="Hadir" value={s.hadir} />
-                                            <KpiCard label="Telat" value={s.telat} />
-                                            <KpiCard label="Izin/Sakit/Cuti" value={s.izin + s.sakit + s.cuti} />
                                             <KpiCard label="Alpa" value={s.alpa} />
                                         </div>
+                                        <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold text-text-secondary">
+                                            <span>{s.total} baris presensi</span>
+                                            <span className="text-warning">Telat {s.telat}</span>
+                                            <span className="text-info">Izin {s.izin}</span>
+                                            <span className="text-info">Sakit {s.sakit}</span>
+                                            <span className="text-info">Cuti {s.cuti}</span>
+                                        </p>
                                         <div>
                                             <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-text-muted">
                                                 <span>Distribusi Status Kehadiran</span>
@@ -841,14 +868,16 @@ export default function LaporanIndex({ auth, units }) {
                                 const s = previewData.summary;
                                 return (
                                     <div className="px-6 py-5">
-                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                                            <KpiCard label="Total Pegawai" value={s.totalPegawai} />
-                                            <KpiCard label="Rata-rata Kehadiran" value={`${s.avgKehadiran}%`} accent />
-                                            <KpiCard label="JP Terjadwal" value={fmtJp(s.totalTerjadwal)} />
-                                            <KpiCard label="Hadir" value={fmtJp(s.totalHadir)} />
-                                            <KpiCard label="Telat" value={fmtJp(s.totalTelat)} />
-                                            <KpiCard label="Alpa" value={fmtJp(s.totalAlpa)} />
+                                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                            <KpiCard label="Rata-rata kehadiran JP" value={`${s.avgKehadiran}%`} accent />
+                                            <KpiCard label="Guru dalam laporan" value={s.totalPegawai} />
                                         </div>
+                                        <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold text-text-secondary">
+                                            <span>JP terjadwal {fmtJp(s.totalTerjadwal)}</span>
+                                            <span className="text-success">Hadir {fmtJp(s.totalHadir)}</span>
+                                            <span className="text-warning">Telat {fmtJp(s.totalTelat)}</span>
+                                            <span className="text-danger">Alpa {fmtJp(s.totalAlpa)}</span>
+                                        </p>
                                     </div>
                                 );
                             })()}

@@ -19,13 +19,6 @@ const StatusBadge = ({ status }) => {
     );
 };
 
-const KpiCard = ({ label, value, accent }) => (
-    <div className={`rounded-xl border border-border p-4 ${accent ? 'bg-primary/5 ring-1 ring-primary/30' : 'bg-surface'}`}>
-        <p className="text-xs font-medium text-text-muted">{label}</p>
-        <p className={`mt-1 text-2xl font-extrabold ${accent ? 'text-primary' : 'text-text-primary'}`}>{value}</p>
-    </div>
-);
-
 export default function RekapMengajarDetail({ auth, pegawai, detail, summary, periode }) {
     const persen = summary.terjadwal > 0
         ? Math.round(((summary.hadir + summary.telat) / summary.terjadwal) * 100)
@@ -42,11 +35,11 @@ export default function RekapMengajarDetail({ auth, pegawai, detail, summary, pe
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
                     {/* Back button */}
                     <button
-                        onClick={() => router.get(route('laporan.index'))}
+                        onClick={() => (window.history.length > 1 ? window.history.back() : router.get(route('laporan.index')))}
                         className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-muted hover:text-primary transition-colors"
                     >
                         <ArrowLeft className="h-4 w-4" />
-                        Kembali ke Laporan
+                        Kembali ke laporan
                     </button>
 
                     {/* Header */}
@@ -83,13 +76,21 @@ export default function RekapMengajarDetail({ auth, pegawai, detail, summary, pe
                         </div>
                     </div>
 
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                        <KpiCard label="% Kehadiran" value={`${persen}%`} accent />
-                        <KpiCard label="Total JP" value={fmtJp(summary.terjadwal)} />
-                        <KpiCard label="Hadir" value={fmtJp(summary.hadir)} />
-                        <KpiCard label="Telat" value={fmtJp(summary.telat)} />
-                        <KpiCard label="Alpa" value={fmtJp(summary.alpa)} />
+                    {/* Ringkasan: satu angka utama + rincian JP */}
+                    <div className="card p-5">
+                        <div className="flex flex-wrap items-end justify-between gap-4">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Kehadiran JP</p>
+                                <p className="mt-1 text-4xl font-extrabold tabular-nums text-primary">{persen}%</p>
+                                <p className="mt-1 text-xs text-text-muted">{fmtJp(summary.hadir + summary.telat)} dari {fmtJp(summary.terjadwal)} JP terjadwal</p>
+                            </div>
+                            <dl className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm sm:grid-cols-3">
+                                <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Hadir</dt><dd className="font-bold tabular-nums text-success">{fmtJp(summary.hadir)}</dd></div>
+                                <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Telat</dt><dd className="font-bold tabular-nums text-warning">{fmtJp(summary.telat)}</dd></div>
+                                <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Alpa</dt><dd className="font-bold tabular-nums text-danger">{fmtJp(summary.alpa)}</dd></div>
+                                <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Sesi tercatat</dt><dd className="font-bold tabular-nums text-text-primary">{detail.length}</dd></div>
+                            </dl>
+                        </div>
                     </div>
 
                     {/* Detail Table */}
