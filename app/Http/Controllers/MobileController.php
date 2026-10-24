@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Constants\PresensiMessages;
 use App\Jobs\ProcessPresensiFoto;
+use App\Models\AbsenSiswaSesi;
 use App\Models\Announcement;
 use App\Models\HariLibur;
 use App\Models\Jadwal;
@@ -17,19 +18,18 @@ use App\Models\TugasLuar;
 use App\Models\UnitLokasi;
 use App\Services\AttestationService;
 use App\Services\GeocodingService;
+use App\Services\KeuanganClient;
 use App\Services\SpoofDetector;
 use App\Support\HariKerja;
 use App\Traits\CalculatesDistance;
 use App\Traits\ResolvesPegawai;
 use Carbon\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -332,7 +332,7 @@ class MobileController extends Controller
             return response()->json(['success' => true, 'kelas' => []])->header('Cache-Control', 'no-store');
         }
 
-        $response = $this->keuanganRequest('kelas-by-unit', [
+        $response = KeuanganClient::request('kelas-by-unit', [
             'unit' => $unit->nama ?: $unit->singkatan,
         ]);
 
@@ -355,7 +355,7 @@ class MobileController extends Controller
         [$jadwal, $unit] = $this->resolveOwnedJadwal((int) $validated['jadwal_id']);
         $class = $this->resolveClassPayload($jadwal, $validated);
 
-        $response = $this->keuanganRequest('siswa-by-class', [
+        $response = KeuanganClient::request('siswa-by-class', [
             'unit' => $unit->nama ?: $unit->singkatan,
             ...$class,
         ]);
@@ -421,32 +421,6 @@ class MobileController extends Controller
             'jurusan' => trim($validated['jurusan'] ?? ''),
             'class_id' => trim($validated['class_id'] ?? ''),
         ];
-    }
-
-    private function keuanganRequest(string $endpoint, array $payload, bool $post = false)
-    {
-        $base = rtrim((string) config('keuangan.url'), '/');
-        $key = (string) config('keuangan.key');
-        if ($base === '' || $key === '' || $key === 'change-me-in-production') {
-            Log::error('Integrasi keuangan belum dikonfigurasi.');
-
-            return null;
-        }
-
-        $request = Http::acceptJson()
-            ->withHeaders(['x-internal-key' => $key])
-            ->connectTimeout(2)
-            ->timeout($post ? 15 : 8);
-
-        try {
-            return $post
-                ? $request->post($base.'/api/integration/'.$endpoint, $payload)
-                : $request->get($base.'/api/integration/'.$endpoint, $payload);
-        } catch (ConnectionException) {
-            Log::warning('Aplikasi keuangan tidak dapat dihubungi.', ['endpoint' => $endpoint]);
-
-            return null;
-        }
     }
 
     public function absen()
@@ -1851,6 +1825,25 @@ class MobileController extends Controller
             ->orderBy('nama_lengkap')
             ->get(['id', 'nama_lengkap']);
 
+        // Absen siswa yang sudah tersimpan hari ini (prefill/edit).
+        $absensiSiswa = AbsenSiswaSesi::with(['details' => fn ($q) => $q->orderBy('nama_snapshot')])
+            ->where('unit_sekolah_id', $unitId)
+            ->where('tanggal', $today)
+            ->orderBy('class_label')
+            ->get()
+            ->map(fn ($s) => [
+                'class_id' => $s->class_id,
+                'class_label' => $s->class_label,
+                'done_at' => $s->done_at?->format('H:i'),
+                'details' => $s->details->map(fn ($d) => [
+                    'nis' => $d->nis,
+                    'nama' => $d->nama_snapshot,
+                    'status' => $d->status,
+                    'keterangan' => $d->keterangan,
+                ])->values(),
+            ])
+            ->values();
+
         // Slot mengajar yang kosong hari ini di unit ini — sumber dropdown
         // "pilih kelas kosong" (kelas + mapel + guru dari data). Hanya slot
         // yang benar terisi (jam_masuk tercatat) yang disingkirkan; baris
@@ -1905,6 +1898,7 @@ class MobileController extends Controller
             'guruUnit' => $guruUnit,
             'slotKosong' => $slotKosong,
             'mapelUnit' => $mapelUnit,
+            'absensiSiswa' => $absensiSiswa,
         ]);
     }
 
@@ -1920,7 +1914,7 @@ class MobileController extends Controller
         $this->assertSudahMasuk($pegawai->id);
 
         $request->validate([
-            'kode' => 'required|in:gerbang,cek_absen,kelas_kosong,buku,insiden',
+            'kode' => 'required|in:gerbang,cek_absen,kelas_kosong,buku,insiden,absen_siswa',
             'mode' => 'nullable|in:centang,tambah,nihil',
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
@@ -1960,6 +1954,8 @@ class MobileController extends Controller
         $seksi = LaporanPiket::ITEM_SEKSI[$kode];
         $boleh = match (true) {
             $kode === LaporanPiket::ITEM_CEK_ABSEN && $mode === 'tambah' => true,
+            // Absen siswa dibuka sejak pagi sampai submit (bisa diisi saat KBM).
+            $kode === LaporanPiket::ITEM_ABSEN_SISWA => $now >= $windows['pagi'][0],
             $seksi === LaporanPiket::SEKSI_PAGI => $now >= $windows['pagi'][0] && ($now <= $windows['pagi'][1] || $unlocked),
             default => $now >= $windows['kbm'][0],
         };
@@ -2013,6 +2009,7 @@ class MobileController extends Controller
                 LaporanPiket::ITEM_CEK_ABSEN => $items[$kode] = $this->applyCekAbsen($items[$kode] ?? null, $mode, $request, $stamp),
                 LaporanPiket::ITEM_KELAS_KOSONG => $items[$kode] = $this->applyKelasKosong($items[$kode] ?? null, $mode, $request, $stamp, $today, $slot->unit_sekolah_id),
                 LaporanPiket::ITEM_INSIDEN => $items[$kode] = $this->applyInsiden($items[$kode] ?? null, $mode, $request, $stamp),
+                LaporanPiket::ITEM_ABSEN_SISWA => $items[$kode] = $this->applyAbsenSiswa($slot, $mode, $stamp, $today),
             };
 
             $laporan->items = $items;
@@ -2020,6 +2017,88 @@ class MobileController extends Controller
         });
 
         return back()->with('message', 'Tercatat.');
+    }
+
+    /**
+     * Simpan absen siswa satu kelas oleh guru piket. Sesi unik per
+     * (unit, tanggal, class_id) -> kirim ulang = ganti detail (edit).
+     * Item checklist ditandai lewat storePiketItem(kode=absen_siswa).
+     */
+    public function storeAbsenSiswa(Request $request)
+    {
+        $pegawai = $this->getPegawai();
+        $this->assertTidakSedangIzin($pegawai);
+        $this->assertSudahMasuk($pegawai->id);
+
+        $validated = $request->validate([
+            'class_id' => 'required|string|max:50',
+            'class_label' => 'required|string|max:100',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'accuracy' => 'required|numeric|min:0',
+            'siswa' => 'required|array|min:1|max:200',
+            'siswa.*.nis' => 'required|string|max:30|distinct',
+            'siswa.*.nama' => 'required|string|max:150',
+            'siswa.*.status' => 'required|in:hadir,telat,izin,sakit,alpa',
+            'siswa.*.keterangan' => 'nullable|string|max:255',
+        ]);
+
+        $today = Carbon::today()->toDateString();
+        $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
+        $this->checkPiketGeofence(
+            $slot,
+            (float) $validated['latitude'],
+            (float) $validated['longitude'],
+            (float) $validated['accuracy']
+        );
+
+        foreach ($validated['siswa'] as $i => $s) {
+            if (in_array($s['status'], ['izin', 'sakit'], true) && trim((string) ($s['keterangan'] ?? '')) === '') {
+                throw ValidationException::withMessages([
+                    "siswa.$i.keterangan" => 'Keterangan wajib untuk siswa izin/sakit.',
+                ]);
+            }
+        }
+
+        DB::transaction(function () use ($pegawai, $slot, $today, $validated) {
+            $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
+                ->where('tanggal', $today)
+                ->lockForUpdate()
+                ->first();
+            if ($laporan?->status === LaporanPiket::STATUS_SUBMITTED) {
+                throw ValidationException::withMessages(['laporan' => 'Laporan sudah dikirim.']);
+            }
+
+            $sesi = AbsenSiswaSesi::where('unit_sekolah_id', $slot->unit_sekolah_id)
+                ->where('tanggal', $today)
+                ->where('class_id', $validated['class_id'])
+                ->lockForUpdate()
+                ->first()
+                ?? new AbsenSiswaSesi([
+                    'unit_sekolah_id' => $slot->unit_sekolah_id,
+                    'tanggal' => $today,
+                    'class_id' => $validated['class_id'],
+                ]);
+
+            $sesi->fill([
+                'pegawai_id' => $pegawai->id,
+                'laporan_piket_id' => $laporan?->id,
+                'class_label' => $validated['class_label'],
+                'done_at' => Carbon::now(),
+            ])->save();
+
+            $sesi->details()->delete();
+            foreach ($validated['siswa'] as $s) {
+                $sesi->details()->create([
+                    'nis' => trim($s['nis']),
+                    'nama_snapshot' => trim($s['nama']),
+                    'status' => $s['status'],
+                    'keterangan' => trim((string) ($s['keterangan'] ?? '')) ?: null,
+                ]);
+            }
+        });
+
+        return back()->with('message', 'Absen siswa tersimpan.');
     }
 
     /**
@@ -2412,6 +2491,27 @@ class MobileController extends Controller
         unset($item['nihil']);
 
         return $item + $stamp;
+    }
+
+    private function applyAbsenSiswa(Jadwal $slot, string $mode, array $stamp, string $today): array
+    {
+        $count = AbsenSiswaSesi::where('unit_sekolah_id', $slot->unit_sekolah_id)
+            ->where('tanggal', $today)
+            ->count();
+
+        if ($mode === 'nihil') {
+            if ($count > 0) {
+                throw ValidationException::withMessages(['absen_siswa' => 'Sudah ada absen siswa hari ini, tidak bisa tandai nihil.']);
+            }
+
+            return ['nihil' => true, 'sesi_count' => 0] + $stamp;
+        }
+
+        if ($count === 0) {
+            throw ValidationException::withMessages(['absen_siswa' => 'Simpan absen minimal satu kelas dulu.']);
+        }
+
+        return ['sesi_count' => $count] + $stamp;
     }
 
     /**

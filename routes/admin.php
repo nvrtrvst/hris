@@ -70,6 +70,9 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('lembur', [PresensiController::class, 'lemburIndex'])
         ->middleware('can:view_presensi')
         ->name('lembur.index');
+    Route::get('absen-siswa', [PresensiController::class, 'absenSiswaRekap'])
+        ->middleware('can:view_presensi')
+        ->name('absen-siswa.index');
     Route::get('presensi/belum-presensi/pdf', [PresensiController::class, 'exportBelumPresensiPdf'])
         ->middleware('throttle:30,1')
         ->name('presensi.belum-presensi-pdf');

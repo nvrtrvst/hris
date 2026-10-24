@@ -121,6 +121,7 @@ class RouteSmokeTest extends TestCase
         'jadwal.edit' => 'Jadwal/Edit',
         'presensi.index' => 'Presensi/Index',
         'lembur.index' => 'Lembur/Index',
+        'absen-siswa.index' => 'AbsenSiswa/Index',
         'presensi.create' => 'Presensi/Create',
         'penggajian.index' => 'Payroll/Index',
         'penggajian.run' => 'Payroll/Run/Index',

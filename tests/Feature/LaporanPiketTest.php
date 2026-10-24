@@ -419,6 +419,7 @@ class LaporanPiketTest extends TestCase
         $post('kelas', ['kode' => 'kelas_kosong', 'mode' => 'nihil'])->assertRedirect();
         $post('buku', ['kode' => 'buku', 'mode' => 'centang'])->assertRedirect();
         $post('insiden', ['kode' => 'insiden', 'mode' => 'nihil'])->assertRedirect();
+        $post('siswa', ['kode' => 'absen_siswa', 'mode' => 'nihil'])->assertRedirect();
 
         Carbon::setTestNow('2026-10-12 14:00:00'); // seksi sore
         $this->actingAs($pegawai->user, 'web_mobile')
@@ -461,7 +462,7 @@ class LaporanPiketTest extends TestCase
 
         $res->assertStatus(422);
         $this->assertStringContainsString('Laporan piket belum terkirim', $res->json('errors.piket.0'));
-        $this->assertStringContainsString('0/5', $res->json('errors.piket.0'));
+        $this->assertStringContainsString('0/6', $res->json('errors.piket.0'));
         Carbon::setTestNow();
     }
 
@@ -481,6 +482,7 @@ class LaporanPiketTest extends TestCase
         $post('', ['kode' => 'kelas_kosong', 'mode' => 'nihil'])->assertRedirect();
         $post('', ['kode' => 'buku', 'mode' => 'centang'])->assertRedirect();
         $post('', ['kode' => 'insiden', 'mode' => 'nihil'])->assertRedirect();
+        $post('', ['kode' => 'absen_siswa', 'mode' => 'nihil'])->assertRedirect();
 
         Carbon::setTestNow('2026-10-12 14:00:00'); // seksi sore
         $this->actingAs($pegawai->user, 'web_mobile')

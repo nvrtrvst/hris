@@ -7,6 +7,7 @@ use App\Helpers\NotificationHelper;
 use App\Helpers\PayrollLockHelper;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Jobs\ProcessPresensiFoto;
+use App\Models\AbsenSiswaSesi;
 use App\Models\AuditPresensi;
 use App\Models\HariLibur;
 use App\Models\Jadwal;
@@ -363,6 +364,74 @@ class PresensiController extends Controller
             'lemburs' => $lemburs,
             'counts' => $counts,
             'filters' => $request->only(['start_date', 'end_date', 'lembur_status', 'unit_id', 'search']),
+            'units' => $units,
+        ]);
+    }
+
+    /**
+     * Rekap absen siswa per kelas (harian). Hanya sesi yang sudah diabsen
+     * yang tampil — kelas tanpa sesi tidak dideteksi (butuh daftar kelas
+     * live dari aplikasi keuangan).
+     */
+    public function absenSiswaRekap(Request $request)
+    {
+        $request->validate([
+            'tanggal' => 'nullable|date',
+            'unit_id' => 'nullable|integer',
+        ]);
+
+        $user = auth()->user();
+        $tanggal = $request->tanggal ?: Carbon::today()->toDateString();
+
+        $query = AbsenSiswaSesi::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama', 'details'])
+            ->whereDate('tanggal', $tanggal);
+
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $query->where('unit_sekolah_id', $user->unit_sekolah_id);
+        } elseif ($request->unit_id) {
+            $query->where('unit_sekolah_id', $request->unit_id);
+        }
+
+        $sesi = $query
+            ->orderBy('class_label')
+            ->get()
+            ->map(function (AbsenSiswaSesi $s) {
+                $counts = $s->details->countBy('status');
+
+                return [
+                    'id' => $s->id,
+                    'class_id' => $s->class_id,
+                    'class_label' => $s->class_label,
+                    'unit' => $s->unitSekolah?->nama,
+                    'pegawai' => $s->pegawai?->nama_lengkap,
+                    'done_at' => $s->done_at?->format('H:i'),
+                    'counts' => [
+                        'hadir' => $counts->get('hadir', 0),
+                        'telat' => $counts->get('telat', 0),
+                        'izin' => $counts->get('izin', 0),
+                        'sakit' => $counts->get('sakit', 0),
+                        'alpa' => $counts->get('alpa', 0),
+                    ],
+                    'total' => $s->details->count(),
+                    'non_hadir' => $s->details
+                        ->where('status', '!=', 'hadir')
+                        ->map(fn ($d) => [
+                            'nama' => $d->nama_snapshot,
+                            'nis' => $d->nis,
+                            'status' => $d->status,
+                            'keterangan' => $d->keterangan,
+                        ])
+                        ->values(),
+                ];
+            });
+
+        $units = $user->can('view_all_units')
+            ? UnitSekolah::orderBy('nama')->get(['id', 'nama'])
+            : [];
+
+        return inertia('AbsenSiswa/Index', [
+            'sesi' => $sesi,
+            'filters' => ['tanggal' => $tanggal, 'unit_id' => $request->unit_id],
             'units' => $units,
         ]);
     }
