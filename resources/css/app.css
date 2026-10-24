@@ -517,3 +517,14 @@
         display: none !important;
     }
 }
+@layer utilities {
+    /* Strip horizontal (statistik mobile) — scroll tetap jalan tanpa bar. */
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+}

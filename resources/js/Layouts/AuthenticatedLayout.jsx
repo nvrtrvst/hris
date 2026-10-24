@@ -7,10 +7,13 @@ import { Link, usePage } from '@inertiajs/react';
 import FlashToast from '@/Components/FlashToast';
 import { Bell, Megaphone } from 'lucide-react';
 
+const ACTIVE_ICON = 'text-accent';
+
 export default function AuthenticatedLayout({ user: userProp, header, children }) {
     const { auth } = usePage().props;
     const user = userProp ?? auth.user;
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
+    const [drawerGroups, setDrawerGroups] = useState({});
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const { url } = usePage();
     const [expandedGroups, setExpandedGroups] = useState({
@@ -33,6 +36,55 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
         : auth.roles?.includes('admin_unit')
             ? 'admin_unit'
             : 'pegawai';
+
+    const bottomNavItems = [];
+    if (permissions.includes('view_dashboard')) {
+        bottomNavItems.push({
+            name: 'Dashboard',
+            href: route('dashboard'),
+            active: () => Boolean(route().current('dashboard*')),
+            icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+        });
+    }
+    if (permissions.includes('view_presensi')) {
+        bottomNavItems.push({
+            name: 'Presensi',
+            href: route('presensi.index'),
+            active: () => Boolean(route().current('presensi.*') || route().current('lembur.*') || route().current('absen-siswa.*')),
+            icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+        });
+    }
+    if (permissions.includes('view_jadwal')) {
+        bottomNavItems.push({
+            name: 'Jadwal',
+            href: route('jadwal.index'),
+            active: () => Boolean(route().current('jadwal.*')),
+            icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+        });
+    }
+    if (permissions.includes('view_dashboard') || permissions.includes('view_payroll') || auth.is_payroll_operator) {
+        bottomNavItems.push({
+            name: 'Laporan',
+            href: route('laporan.index'),
+            active: () => Boolean(route().current('laporan.*')),
+            icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+        });
+    }
+    const showBottomNav = bottomNavItems.length >= 2;
+
+    useEffect(() => {
+        setShowingNavigationDropdown(false);
+    }, [url]);
+
+    useEffect(() => {
+        if (!showingNavigationDropdown) return undefined;
+        const previous = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = previous;
+        };
+    }, [showingNavigationDropdown]);
 
     const menuGroups = [];
 
@@ -200,50 +252,64 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
             </aside>
 
             {/* Mobile Header */}
-            <div className="md:hidden bg-primary text-white flex items-center justify-between h-14 px-4 fixed top-0 w-full z-40 shadow-card print:hidden">
-                <Link href={route('dashboard')} className="flex items-center gap-2">
-                    <div className="bg-white/10 p-1.5 rounded-lg">
-                        <ApplicationLogo className="w-5 h-5 text-accent" />
-                    </div>
-                    <span className="text-base font-semibold">HRIS <span className="text-accent">Yayasan</span></span>
-                </Link>
-                <div className="flex items-center gap-1">
-                    <Link href={route('notifications.index')} className="relative p-2 rounded-lg hover:bg-white/10 transition-colors" title="Notifikasi">
-                        <Bell className="h-5 w-5" />
-                        {auth?.unread_notifications > 0 && (
-                            <span className="absolute -right-0.5 -top-0.5 flex min-h-[16px] min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold leading-none text-white ring-2 ring-primary">
-                                {auth?.unread_notifications > 99 ? '99+' : auth?.unread_notifications}
-                            </span>
-                        )}
+            <div className="md:hidden fixed inset-x-0 top-0 z-40 bg-primary pt-[env(safe-area-inset-top)] text-white shadow-card print:hidden">
+                <div className="flex h-14 items-center justify-between px-3">
+                    <Link href={route('dashboard')} className="flex min-w-0 items-center gap-2">
+                        <div className="rounded-lg bg-white/10 p-1.5">
+                            <ApplicationLogo className="h-5 w-5 text-accent" />
+                        </div>
+                        <span className="truncate text-sm font-semibold">HRIS <span className="text-accent">Yayasan</span></span>
                     </Link>
-                    <button onClick={() => setShowingNavigationDropdown(!showingNavigationDropdown)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            {showingNavigationDropdown ? (
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            ) : (
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                    <div className="flex shrink-0 items-center gap-2">
+                        <Link href={route('notifications.index')} className="relative flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-white/10 transition-colors" aria-label="Notifikasi" title="Notifikasi">
+                            <Bell className="h-5 w-5" />
+                            {auth?.unread_notifications > 0 && (
+                                <span className="absolute right-1 top-1 flex min-h-[16px] min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold leading-none text-white ring-2 ring-primary">
+                                    {auth?.unread_notifications > 99 ? '99+' : auth?.unread_notifications}
+                                </span>
                             )}
-                        </svg>
-                    </button>
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => setShowingNavigationDropdown(!showingNavigationDropdown)}
+                            aria-expanded={showingNavigationDropdown}
+                            aria-controls="mobile-menu"
+                            className="flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-xs font-bold hover:bg-white/10 transition-colors"
+                        >
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                {showingNavigationDropdown ? (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                ) : (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                                )}
+                            </svg>
+                            Menu
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {/* Mobile Drawer */}
             {showingNavigationDropdown && (
-                <div className="md:hidden fixed inset-0 bg-black/40 z-30" onClick={() => setShowingNavigationDropdown(false)} />
+                <div className="md:hidden fixed inset-0 z-20 bg-black/40" onClick={() => setShowingNavigationDropdown(false)} role="presentation" />
             )}
-            <div className={`md:hidden fixed inset-y-0 left-0 w-72 bg-primary z-40 pt-14 transform transition-transform duration-300 ease-in-out print:hidden overflow-y-auto ${showingNavigationDropdown ? 'translate-x-0' : '-translate-x-full'}`}>
-                <div className="p-4 space-y-1">
+            <div
+                id="mobile-menu"
+                className={`md:hidden fixed inset-y-0 left-0 z-30 w-[min(18rem,calc(100vw-3rem))] overflow-y-auto overscroll-contain bg-primary pb-[env(safe-area-inset-bottom)] pt-[calc(3.5rem+env(safe-area-inset-top))] transform transition-transform duration-300 ease-in-out print:hidden ${showingNavigationDropdown ? 'translate-x-0' : '-translate-x-full'}`}
+            >
+                <div className="p-3 space-y-1">
                     {displayGroups.map((group, groupIndex) => {
-                        const isExpanded = expandedGroups[group.title];
+                        const isExpanded = drawerGroups[group.title] ?? false;
                         return (
-                            <div key={groupIndex} className="mb-4">
+                            <div key={groupIndex} className="mb-3">
                                 <button
-                                    onClick={() => toggleGroup(group.title)}
-                                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+                                    type="button"
+                                    onClick={() => setDrawerGroups((prev) => ({ ...prev, [group.title]: !isExpanded }))}
+                                    aria-expanded={isExpanded}
+                                    className="flex min-h-11 w-full items-center justify-between rounded-lg px-3 hover:bg-white/5 transition-colors"
                                 >
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.12em]">{group.title}</span>
-                                    <svg className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400">{group.title}</span>
+                                    <svg className={`h-3.5 w-3.5 text-gray-400 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
@@ -252,7 +318,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                                         const isActive = url.startsWith(new URL(menu.href).pathname);
                                         return (
                                             <Link key={i} href={menu.href}
-                                                className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${isActive
+                                                className={`flex min-h-11 items-center px-3 rounded-lg text-sm font-medium transition-all duration-150 ${isActive
                                                     ? 'bg-white/15 text-white font-semibold shadow-sm'
                                                     : 'text-gray-300 hover:bg-white/5 hover:text-white'
                                                     }`}
@@ -274,9 +340,9 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
             </div>
 
             {/* Main Content */}
-            <div className={`flex-1 transition-all duration-300 min-h-screen flex flex-col print:!ml-0 md:pt-0 pt-14 ${isSidebarOpen ? 'md:ml-[220px]' : 'md:ml-[72px]'}`}>
-                {/* Top Header Bar */}
-                <header className="bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-border sticky top-0 z-20 flex items-center h-16 print:hidden">
+            <div className={`flex-1 transition-all duration-300 min-h-screen flex flex-col print:!ml-0 md:pt-0 pt-[calc(3.5rem+env(safe-area-inset-top))] ${showBottomNav ? 'pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0' : ''} ${isSidebarOpen ? 'md:ml-[220px]' : 'md:ml-[72px]'}`}>
+                {/* Top Header Bar (desktop) */}
+                <header className="hidden md:flex bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-border sticky top-0 z-20 items-center h-16 print:hidden">
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                         className="hidden md:flex ml-4 p-2 text-text-muted hover:bg-gray-100 rounded-lg transition-colors"
@@ -309,9 +375,37 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
 
                 {/* Page Content */}
                 <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in-up">
+                    {header && <div className="mb-4 md:hidden">{header}</div>}
                     {children}
                 </main>
             </div>
+
+            {showBottomNav && (
+                <nav
+                    aria-label="Navigasi utama"
+                    className="md:hidden fixed inset-x-0 bottom-0 z-30 border-t border-border bg-white pb-[env(safe-area-inset-bottom)] print:hidden"
+                >
+                    <div className="flex items-stretch justify-around">
+                        {bottomNavItems.map((item) => {
+                            const active = item.active();
+                            return (
+                                <Link
+                                    key={item.name}
+                                    href={item.href}
+                                    aria-current={active ? 'page' : undefined}
+                                    className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-semibold transition-colors ${active ? 'text-primary' : 'text-text-secondary'}`}
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" d={item.icon} />
+                                    </svg>
+                                    {item.name}
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </nav>
+            )}
+
             <FlashToast />
         </div>
     );

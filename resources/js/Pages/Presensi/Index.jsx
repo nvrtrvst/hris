@@ -32,6 +32,29 @@ import {
     X,
 } from 'lucide-react';
 
+const ChipFilter = ({ label, value, onChange, options }) => (
+    <div className="flex flex-col gap-1">
+        <span className="text-[11px] font-semibold text-text-secondary">{label}</span>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={label}>
+            {options.map((opt) => {
+                const active = value === opt.value;
+
+                return (
+                    <button
+                        key={opt.value || 'semua'}
+                        type="button"
+                        onClick={() => onChange(opt.value)}
+                        aria-pressed={active}
+                        className={`min-h-11 rounded-full border px-3 text-[11px] font-bold transition-colors ${active ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text-secondary'}`}
+                    >
+                        {opt.label}
+                    </button>
+                );
+            })}
+        </div>
+    </div>
+);
+
 const STATUS_META = {
     hadir: { label: 'Hadir', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
     telat: { label: 'Terlambat', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
@@ -262,10 +285,10 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                     <td className="px-4 py-3.5 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-1.5">
                             {c.lokasi_perlu_review && (
-                                <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
+                                <button onClick={() => openReview(c)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-amber-600 transition-colors hover:bg-amber-50 md:min-h-0 md:min-w-0 md:p-1.5" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
                             )}
                             {auth.permissions?.includes('manage_master_data') && (
-                                <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                                <button onClick={() => openAudit(c)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
                             )}
                         </div>
                     </td>
@@ -382,9 +405,9 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                                     {!c.is_sintetis && (
                                         <>
                                             {c.lokasi_perlu_review && (
-                                                <button onClick={() => openReview(c)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
+                                                <button onClick={() => openReview(c)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-amber-600 transition-colors hover:bg-amber-50 md:min-h-0 md:min-w-0 md:p-1.5" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
                                             )}
-                                            <button onClick={() => openAudit(c)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                                            <button onClick={() => openAudit(c)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
                                         </>
                                     )}
                                 </div>
@@ -546,7 +569,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         <td className="px-4 py-3.5 whitespace-nowrap text-right">
                             <div className="flex items-center justify-end gap-1.5">
                                 {!parent.is_sintetis && (
-                                    <button onClick={() => openAudit(parent)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
+                                    <button onClick={() => openAudit(parent)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
                                 )}
                             </div>
                         </td>
@@ -719,8 +742,20 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [auditPegawai, setAuditPegawai] = React.useState('');
     const [reviewModal, setReviewModal] = React.useState({ show: false, loading: false, data: null });
     const [tugasLuarModal, setTugasLuarModal] = React.useState({ show: false, loading: false, data: null });
+    const [filterSheetOpen, setFilterSheetOpen] = React.useState(false);
 
     const hasFilter = Boolean(search || statusFilter || jadwalFilter || jenisFilter || unitId || lemburFilter || lokasiFilter || suspiciousFilter || startDate || endDate);
+    const activeFilterCount = [statusFilter, unitId, jenisFilter, jadwalFilter, lemburFilter, lokasiFilter, suspiciousFilter].filter(Boolean).length;
+
+    React.useEffect(() => {
+        if (!filterSheetOpen) return undefined;
+        const previous = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = previous;
+        };
+    }, [filterSheetOpen]);
 
     // Default: Hari Ini jika tidak ada filter tanggal dari URL
     React.useEffect(() => {
@@ -935,9 +970,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
                     {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
 
-                    {/* Stats */}
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                        {statsCards.map((card) => <div key={card.label} className="min-h-[88px]"><StatCard {...card} onClick={() => applyStatFilter(card.filter)} /></div>)}
+                    {/* Stats: strip horizontal di mobile, grid di desktop */}
+                    <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 lg:grid-cols-5">
+                        {statsCards.map((card) => <div key={card.label} className="min-h-[88px] w-[168px] shrink-0 snap-start md:w-auto md:min-w-0"><StatCard {...card} onClick={() => applyStatFilter(card.filter)} /></div>)}
                     </div>
 
                     {/* Kepsek view mode toggle */}
@@ -958,10 +993,48 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         </div>
                     )}
 
-                    {/* Filter bar */}
-                    <div className="card p-5">
+                    {/* Baris ringkas mobile: pencarian + tombol filter */}
+                    <div className="flex items-center gap-2 md:hidden">
+                        {isAdmin && (
+                            <div className="relative flex-1">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Cari nama pegawai…"
+                                    className="input-field h-11 w-full pl-9 text-xs"
+                                    aria-label="Cari nama pegawai"
+                                />
+                            </div>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setFilterSheetOpen(true)}
+                            className="flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary"
+                            aria-expanded={filterSheetOpen}
+                        >
+                            <Filter className="h-4 w-4" />
+                            Filter{activeFilterCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-white">{activeFilterCount}</span>}
+                        </button>
+                    </div>
+
+                    {filterSheetOpen && (
+                        <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setFilterSheetOpen(false)} role="presentation" />
+                    )}
+
+                    {/* Filter bar: sheet di mobile, kartu biasa di desktop */}
+                    <div
+                        className={`card p-5 ${filterSheetOpen ? 'fixed inset-x-0 bottom-0 z-50 max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-2xl rounded-b-none !border-b-0 pb-[calc(1.25rem+env(safe-area-inset-bottom))]' : 'hidden'} md:static md:block md:max-h-none md:overflow-visible md:rounded-card md:border-b md:pb-5`}
+                    >
+                        <div className="mb-3 flex items-center justify-between md:hidden">
+                            <p className="text-sm font-bold text-text-primary">Filter presensi</p>
+                            <button type="button" onClick={() => setFilterSheetOpen(false)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary" aria-label="Tutup filter">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
                         {/* Row 1: Search + Quick Filters */}
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                             {isAdmin && (
                                 <div className="relative">
                                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
@@ -992,32 +1065,36 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                 </label>
                             )}
                             {isAdmin && (
-                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
-                                    <span>Jenis</span>
-                                    <select className={filterSelect} value={jenisFilter} onChange={(e) => setJenisFilter(e.target.value)} aria-label="Filter jenis">
-                                        <option value="">Semua Jenis</option>
-                                        <option value="pendidik">Pendidik (Guru)</option>
-                                        <option value="kependidikan">Tenaga Kependidikan</option>
-                                    </select>
-                                </label>
+                                <ChipFilter
+                                    label="Jenis"
+                                    value={jenisFilter}
+                                    onChange={setJenisFilter}
+                                    options={[
+                                        { value: '', label: 'Semua' },
+                                        { value: 'pendidik', label: 'Pendidik' },
+                                        { value: 'kependidikan', label: 'Tenaga Kependidikan' },
+                                    ]}
+                                />
                             )}
 
                             {/* Row 2: Extended Filters (admin only) */}
                             {isAdmin && (
                                 <>
-                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
-                                    <span>Jadwal</span>
-                                    <select className={filterSelect} value={jadwalFilter} onChange={(e) => {
-                                        setJadwalFilter(e.target.value);
-                                        if (e.target.value === 'sedang_berlangsung') {
+                                <ChipFilter
+                                    label="Jadwal"
+                                    value={jadwalFilter}
+                                    onChange={(value) => {
+                                        setJadwalFilter(value);
+                                        if (value === 'sedang_berlangsung') {
                                             setStartDate('');
                                             setEndDate('');
                                         }
-                                    }} aria-label="Filter jadwal">
-                                        <option value="">Semua Jadwal</option>
-                                        <option value="sedang_berlangsung">Sedang Berlangsung</option>
-                                    </select>
-                                </label>
+                                    }}
+                                    options={[
+                                        { value: '', label: 'Semua' },
+                                        { value: 'sedang_berlangsung', label: 'Sedang berlangsung' },
+                                    ]}
+                                />
                                 <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
                                     <span>Lembur</span>
                                     <select className={filterSelect} value={lemburFilter} onChange={(e) => setLemburFilter(e.target.value)} aria-label="Filter lembur">
@@ -1028,22 +1105,26 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         <option value="lembur_ditolak">Lembur Ditolak</option>
                                     </select>
                                 </label>
-                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
-                                    <span>Lokasi</span>
-                                    <select className={filterSelect} value={lokasiFilter} onChange={(e) => setLokasiFilter(e.target.value)} aria-label="Filter lokasi">
-                                        <option value="">Semua Lokasi</option>
-                                        <option value="review_semua">Perlu Review (Semua)</option>
-                                        <option value="perlu_review">Perlu Review GPS</option>
-                                        <option value="pulang_awal">Pulang Awal</option>
-                                    </select>
-                                </label>
-                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
-                                    <span>GPS</span>
-                                    <select className={filterSelect} value={suspiciousFilter} onChange={(e) => setSuspiciousFilter(e.target.value)} aria-label="Filter GPS">
-                                        <option value="">Semua GPS</option>
-                                        <option value="1">Posisi Mencurigakan</option>
-                                    </select>
-                                </label>
+                                <ChipFilter
+                                    label="Lokasi"
+                                    value={lokasiFilter}
+                                    onChange={setLokasiFilter}
+                                    options={[
+                                        { value: '', label: 'Semua' },
+                                        { value: 'review_semua', label: 'Perlu review' },
+                                        { value: 'perlu_review', label: 'GPS' },
+                                        { value: 'pulang_awal', label: 'Pulang awal' },
+                                    ]}
+                                />
+                                <ChipFilter
+                                    label="GPS"
+                                    value={suspiciousFilter}
+                                    onChange={setSuspiciousFilter}
+                                    options={[
+                                        { value: '', label: 'Semua' },
+                                        { value: '1', label: 'Posisi mencurigakan' },
+                                    ]}
+                                />
                             </>
                             )}
                         </div>
@@ -1094,11 +1175,11 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     </button>
                                 )}
                                 {hasFilter && (
-                                    <button type="button" onClick={resetFilters} className="btn-secondary h-11 flex items-center gap-1.5 px-4">
+                                    <button type="button" onClick={() => { resetFilters(); setFilterSheetOpen(false); }} className="btn-secondary h-11 flex items-center gap-1.5 px-4">
                                         <RotateCcw className="h-3.5 w-3.5" /> Reset
                                     </button>
                                 )}
-                                <button type="button" onClick={() => applyFilters()} disabled={processing} className="btn-primary h-11 flex items-center gap-1.5 px-4">
+                                <button type="button" onClick={() => { applyFilters(); setFilterSheetOpen(false); }} disabled={processing} className="btn-primary h-11 flex items-center gap-1.5 px-4">
                                     {processing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Filter className="h-3.5 w-3.5" />}
                                     Terapkan
                                 </button>
@@ -1222,7 +1303,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                     <td className="hidden sm:table-cell px-4 py-3.5 whitespace-nowrap">
                                                         {p.jadwal ? (
                                                             <div className="text-xs leading-tight">
-                                                                <div className="flex items-center gap-2">
+                            <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center justify-end gap-2 border-t border-border/60 bg-white px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 md:static md:mx-0 md:mb-0 md:border-0 md:bg-transparent md:px-0 md:pb-0 md:pt-0">
+
                                                                     <span className="font-semibold text-primary">{p.jadwal.mata_pelajaran?.nama || 'Jadwal'}</span>
                                                                     <JadwalStatusBadge p={p} now={now} />
                                                                 </div>
@@ -1306,11 +1388,11 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                     <td className="px-4 py-3.5 whitespace-nowrap text-right">
                                                         <div className="flex items-center justify-end gap-1.5">
                                                             {flagReview && (
-                                                                <button onClick={() => openReview(p)} className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50" title="Detail review anti-spoof">
+                                                                <button onClick={() => openReview(p)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-amber-600 transition-colors hover:bg-amber-50 md:min-h-0 md:min-w-0 md:p-1.5" title="Detail review anti-spoof">
                                                                     <ShieldAlert className="h-4 w-4" />
                                                                 </button>
                                                             )}
-                                                            <button onClick={() => openAudit(p)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Riwayat perubahan">
+                                                            <button onClick={() => openAudit(p)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5" title="Riwayat perubahan">
                                                                 <History className="h-4 w-4" />
                                                             </button>
                                                             {p.jarak_masuk_meter != null && (
@@ -1482,7 +1564,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         {auditPegawai && <p className="mt-0.5 text-sm text-text-secondary">{auditPegawai}</p>}
                                     </div>
                                 </div>
-                                <button onClick={() => setAuditModal({ show: false, loading: false, data: [], presensi: null })} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary">
+                                <button onClick={() => setAuditModal({ show: false, loading: false, data: [], presensi: null })} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5">
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
@@ -1598,7 +1680,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         {reviewModal.data && <p className="mt-0.5 text-sm text-text-secondary">{reviewModal.data.pegawai_nama} • {reviewModal.data.tanggal}</p>}
                                     </div>
                                 </div>
-                                <button onClick={() => setReviewModal({ show: false, loading: false, data: null })} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary">
+                                <button onClick={() => setReviewModal({ show: false, loading: false, data: null })} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5">
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
@@ -1772,7 +1854,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         {tugasLuarModal.data && <p className="mt-0.5 text-sm text-text-secondary">{tugasLuarModal.data.pegawai_nama} · {tugasLuarModal.data.tanggal}</p>}
                                     </div>
                                 </div>
-                                <button onClick={() => setTugasLuarModal({ show: false, loading: false, data: null })} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary">
+                                <button onClick={() => setTugasLuarModal({ show: false, loading: false, data: null })} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5">
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
