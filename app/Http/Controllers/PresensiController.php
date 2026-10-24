@@ -18,6 +18,7 @@ use App\Models\UnitSekolah;
 use App\Notifications\StatusLembur;
 use App\Services\GeocodingService;
 use App\Services\ImageUploadService;
+use App\Services\KeuanganClient;
 use App\Traits\CalculatesDistance;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -369,9 +370,9 @@ class PresensiController extends Controller
     }
 
     /**
-     * Rekap absen siswa per kelas (harian). Hanya sesi yang sudah diabsen
-     * yang tampil — kelas tanpa sesi tidak dideteksi (butuh daftar kelas
-     * live dari aplikasi keuangan).
+     * Rekap absen siswa per kelas (harian). Sesi tersimpan + daftar kelas
+     * yang belum diabsen (dari aplikasi keuangan). Integrasi gagal = rekap
+     * tetap tampil tanpa daftar belum-diabsen.
      */
     public function absenSiswaRekap(Request $request)
     {
@@ -383,47 +384,78 @@ class PresensiController extends Controller
         $user = auth()->user();
         $tanggal = $request->tanggal ?: Carbon::today()->toDateString();
 
-        $query = AbsenSiswaSesi::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama', 'details'])
-            ->whereDate('tanggal', $tanggal);
-
+        $unitQuery = UnitSekolah::query();
         if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $query->where('unit_sekolah_id', $user->unit_sekolah_id);
+            $unitQuery->whereKey($user->unit_sekolah_id);
         } elseif ($request->unit_id) {
-            $query->where('unit_sekolah_id', $request->unit_id);
+            $unitQuery->whereKey($request->unit_id);
         }
+        $unitList = $unitQuery->orderBy('nama')->get(['id', 'nama']);
 
-        $sesi = $query
+        $rows = AbsenSiswaSesi::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama', 'details'])
+            ->whereDate('tanggal', $tanggal)
+            ->whereIn('unit_sekolah_id', $unitList->pluck('id'))
             ->orderBy('class_label')
-            ->get()
-            ->map(function (AbsenSiswaSesi $s) {
-                $counts = $s->details->countBy('status');
+            ->get();
 
-                return [
-                    'id' => $s->id,
-                    'class_id' => $s->class_id,
-                    'class_label' => $s->class_label,
-                    'unit' => $s->unitSekolah?->nama,
-                    'pegawai' => $s->pegawai?->nama_lengkap,
-                    'done_at' => $s->done_at?->format('H:i'),
-                    'counts' => [
-                        'hadir' => $counts->get('hadir', 0),
-                        'telat' => $counts->get('telat', 0),
-                        'izin' => $counts->get('izin', 0),
-                        'sakit' => $counts->get('sakit', 0),
-                        'alpa' => $counts->get('alpa', 0),
-                    ],
-                    'total' => $s->details->count(),
-                    'non_hadir' => $s->details
-                        ->where('status', '!=', 'hadir')
-                        ->map(fn ($d) => [
-                            'nama' => $d->nama_snapshot,
-                            'nis' => $d->nis,
-                            'status' => $d->status,
-                            'keterangan' => $d->keterangan,
-                        ])
-                        ->values(),
-                ];
-            });
+        $diabsen = $rows->groupBy('unit_sekolah_id')
+            ->map(fn ($grup) => $grup->pluck('class_id')->map(fn ($id) => (string) $id)->all());
+
+        $sesi = $rows->map(function (AbsenSiswaSesi $s) {
+            $counts = $s->details->countBy('status');
+
+            return [
+                'id' => $s->id,
+                'class_id' => $s->class_id,
+                'class_label' => $s->class_label,
+                'unit' => $s->unitSekolah?->nama,
+                'pegawai' => $s->pegawai?->nama_lengkap,
+                'done_at' => $s->done_at?->format('H:i'),
+                'counts' => [
+                    'hadir' => $counts->get('hadir', 0),
+                    'telat' => $counts->get('telat', 0),
+                    'izin' => $counts->get('izin', 0),
+                    'sakit' => $counts->get('sakit', 0),
+                    'alpa' => $counts->get('alpa', 0),
+                ],
+                'total' => $s->details->count(),
+                'non_hadir' => $s->details
+                    ->where('status', '!=', 'hadir')
+                    ->map(fn ($d) => [
+                        'nama' => $d->nama_snapshot,
+                        'nis' => $d->nis,
+                        'status' => $d->status,
+                        'keterangan' => $d->keterangan,
+                    ])
+                    ->values(),
+            ];
+        });
+
+        // ponytail: satu panggilan keuangan per unit, sequential. Pindah ke
+        // Http::pool bila jumlah unit besar dan halaman terasa lambat.
+        $belum = collect();
+        $integrasiOk = true;
+        foreach ($unitList as $unit) {
+            $kelas = KeuanganClient::kelasByUnit($unit->nama ?: $unit->singkatan);
+            if ($kelas === null) {
+                $integrasiOk = false;
+
+                continue;
+            }
+
+            $sudah = $diabsen->get($unit->id, []);
+            foreach ($kelas as $c) {
+                if (in_array((string) ($c['id'] ?? ''), $sudah, true)) {
+                    continue;
+                }
+                $label = trim(implode(' ', array_filter([$c['grade'] ?? null, $c['name'] ?? null, $c['section'] ?? null])));
+                $belum->push([
+                    'class_id' => (string) ($c['id'] ?? ''),
+                    'class_label' => $label !== '' ? $label : '-',
+                    'unit' => $unit->nama,
+                ]);
+            }
+        }
 
         $units = $user->can('view_all_units')
             ? UnitSekolah::orderBy('nama')->get(['id', 'nama'])
@@ -431,6 +463,8 @@ class PresensiController extends Controller
 
         return inertia('AbsenSiswa/Index', [
             'sesi' => $sesi,
+            'belum_diabsen' => $belum->sortBy('class_label')->values(),
+            'integrasi_ok' => $integrasiOk,
             'filters' => ['tanggal' => $tanggal, 'unit_id' => $request->unit_id],
             'units' => $units,
         ]);

@@ -14,6 +14,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class AbsenSiswaTest extends TestCase
@@ -274,5 +275,73 @@ class AbsenSiswaTest extends TestCase
         $this->actingAs($user, 'web_admin')
             ->get(route('absen-siswa.index'))
             ->assertForbidden();
+    }
+
+    public function test_rekap_mendeteksi_kelas_belum_diabsen(): void
+    {
+        config(['keuangan.url' => 'http://keuangan.test', 'keuangan.key' => 'test-key']);
+
+        $unitB = UnitSekolah::create([
+            'nama' => 'Unit B', 'singkatan' => 'UB',
+            'latitude' => -6.21, 'longitude' => 106.81,
+            'radius_meter' => 100, 'durasi_jp' => 45, 'toleransi_menit' => 0,
+        ]);
+        $pegawai = $this->makePegawai();
+        Carbon::setTestNow();
+
+        $sesiA = AbsenSiswaSesi::create([
+            'unit_sekolah_id' => $this->unit->id, 'pegawai_id' => $pegawai->id,
+            'tanggal' => '2026-10-12', 'class_id' => '200', 'class_label' => 'VII A',
+        ]);
+        $sesiA->details()->create(['nis' => '001', 'nama_snapshot' => 'Ani', 'status' => 'hadir']);
+
+        // Keuangan: Unit A (SMP Test) punya kelas 200+201, Unit B punya kelas 300.
+        Http::fake(function ($request) {
+            $classes = $request['unit'] === 'Unit B'
+                ? [['id' => 300, 'grade' => 'VIII', 'name' => 'B', 'section' => '']]
+                : [['id' => 200, 'grade' => 'VII', 'name' => 'A', 'section' => ''], ['id' => 201, 'grade' => 'VII', 'name' => 'B', 'section' => '']];
+
+            return Http::response(['data' => ['classes' => $classes]]);
+        });
+
+        $super = User::factory()->create();
+        $super->assignRole('superadmin');
+
+        $this->actingAs($super, 'web_admin')
+            ->get(route('absen-siswa.index', ['tanggal' => '2026-10-12']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('AbsenSiswa/Index')
+                ->where('integrasi_ok', true)
+                ->has('sesi', 1)
+                ->has('belum_diabsen', 2)
+                ->where('belum_diabsen.0.class_id', '201')
+                ->where('belum_diabsen.0.unit', 'SMP Test')
+                ->where('belum_diabsen.1.class_id', '300'));
+    }
+
+    public function test_rekap_integrasi_gagal_tetap_tampil(): void
+    {
+        $pegawai = $this->makePegawai();
+        Carbon::setTestNow();
+
+        $sesi = AbsenSiswaSesi::create([
+            'unit_sekolah_id' => $this->unit->id, 'pegawai_id' => $pegawai->id,
+            'tanggal' => '2026-10-12', 'class_id' => '200', 'class_label' => 'VII A',
+        ]);
+        $sesi->details()->create(['nis' => '001', 'nama_snapshot' => 'Ani', 'status' => 'hadir']);
+
+        // Keuangan tidak dikonfigurasi di lingkungan test -> klien null.
+        $super = User::factory()->create();
+        $super->assignRole('superadmin');
+
+        $this->actingAs($super, 'web_admin')
+            ->get(route('absen-siswa.index', ['tanggal' => '2026-10-12']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('AbsenSiswa/Index')
+                ->where('integrasi_ok', false)
+                ->has('sesi', 1)
+                ->has('belum_diabsen', 0));
     }
 }

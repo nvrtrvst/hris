@@ -31,7 +31,7 @@ const fmtTanggal = (d) => {
     }
 };
 
-export default function Index({ auth, sesi = [], filters = {}, units = [] }) {
+export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_ok = true, filters = {}, units = [] }) {
     const [tanggal, setTanggal] = React.useState(filters.tanggal || format(new Date(), 'yyyy-MM-dd'));
     const [unitId, setUnitId] = React.useState(filters.unit_id || '');
     const [cari, setCari] = React.useState('');
@@ -90,7 +90,10 @@ export default function Index({ auth, sesi = [], filters = {}, units = [] }) {
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
                         <div className="rounded-xl border border-border bg-white p-3">
                             <p className="text-[11px] font-bold text-text-secondary">Kelas diabsen</p>
-                            <p className="mt-1 text-xl font-bold tabular-nums text-text-primary">{sesi.length}</p>
+                            <p className="mt-1 text-xl font-bold tabular-nums text-text-primary">
+                                {sesi.length}
+                                <span className="text-sm font-semibold text-text-secondary"> / {sesi.length + belum_diabsen.length}</span>
+                            </p>
                         </div>
                         <div className="rounded-xl border border-border bg-white p-3">
                             <p className="text-[11px] font-bold text-text-secondary">Siswa</p>
@@ -107,6 +110,12 @@ export default function Index({ auth, sesi = [], filters = {}, units = [] }) {
                     <p className="text-xs font-semibold text-text-secondary">
                         {fmtTanggal(tanggal)} · kehadiran {persenHadir}%
                     </p>
+
+                    {!integrasi_ok && (
+                        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                            Data kelas dari aplikasi keuangan tidak tersedia — daftar "belum diabsen" disembunyikan.
+                        </div>
+                    )}
 
                     {tampil.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-border bg-white px-4 py-10 text-center">
@@ -159,6 +168,20 @@ export default function Index({ auth, sesi = [], filters = {}, units = [] }) {
                                     </p>
                                 </div>
                             ))}
+                        </div>
+                    )}
+
+                    {belum_diabsen.length > 0 && (
+                        <div>
+                            <h3 className="mb-3 text-sm font-bold text-text-secondary">Belum diabsen ({belum_diabsen.length})</h3>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                                {belum_diabsen.map((b) => (
+                                    <div key={`${b.unit}-${b.class_id}`} className="rounded-xl border border-dashed border-border bg-white px-3 py-2.5">
+                                        <p className="truncate text-sm font-bold text-text-primary">{b.class_label}</p>
+                                        <p className="text-xs text-text-secondary">{b.unit}</p>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>
