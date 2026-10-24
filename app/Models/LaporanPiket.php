@@ -29,6 +29,8 @@ class LaporanPiket extends Model
 
     public const ITEM_INSIDEN = 'insiden';
 
+    public const ITEM_ABSEN_SISWA = 'absen_siswa';
+
     /** Label item untuk pesan error. */
     public const ITEM_LABEL = [
         self::ITEM_GERBANG => 'Jaga gerbang',
@@ -36,6 +38,7 @@ class LaporanPiket extends Model
         self::ITEM_KELAS_KOSONG => 'Kelas kosong',
         self::ITEM_BUKU => 'Buku piket',
         self::ITEM_INSIDEN => 'Insiden',
+        self::ITEM_ABSEN_SISWA => 'Absen siswa',
     ];
 
     /** Kode item yang wajib selesai sebelum laporan bisa dikirim. */
@@ -45,6 +48,7 @@ class LaporanPiket extends Model
         self::ITEM_KELAS_KOSONG,
         self::ITEM_BUKU,
         self::ITEM_INSIDEN,
+        self::ITEM_ABSEN_SISWA,
     ];
 
     /** Seksi pemilik tiap item (cek_absen boleh tambah entry sepanjang hari). */
@@ -54,6 +58,7 @@ class LaporanPiket extends Model
         self::ITEM_KELAS_KOSONG => self::SEKSI_KBM,
         self::ITEM_BUKU => self::SEKSI_KBM,
         self::ITEM_INSIDEN => self::SEKSI_KBM,
+        self::ITEM_ABSEN_SISWA => self::SEKSI_PAGI,
     ];
 
     protected $fillable = [

@@ -52,7 +52,258 @@ function SeksiHead({ icon: Icon, title, win, state }) {
     );
 }
 
-export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKosong = [], mapelUnit = [] }) {
+const STATUS_SISWA = {
+    hadir: { label: 'H', cls: 'bg-emerald-500 text-white border-emerald-500' },
+    telat: { label: 'T', cls: 'bg-amber-500 text-white border-amber-500' },
+    izin: { label: 'I', cls: 'bg-sky-500 text-white border-sky-500' },
+    sakit: { label: 'S', cls: 'bg-purple-500 text-white border-purple-500' },
+    alpa: { label: 'A', cls: 'bg-rose-500 text-white border-rose-500' },
+};
+const URUT_STATUS = ['hadir', 'telat', 'izin', 'sakit', 'alpa'];
+
+const labelKelas = (c) => `${c.grade ?? ''} ${c.name ?? ''}${c.section ? ` ${c.section}` : ''}`.trim();
+
+// Ringkas status tersimpan: "H 20 · I 1 · S 2".
+const ringkasStatus = (details = []) => {
+    const hitung = details.reduce((acc, d) => ({ ...acc, [d.status]: (acc[d.status] ?? 0) + 1 }), {});
+
+    return URUT_STATUS.filter((s) => hitung[s]).map((s) => `${STATUS_SISWA[s].label} ${hitung[s]}`).join(' · ');
+};
+
+function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitted }) {
+    const [daftarKelas, setDaftarKelas] = useState([]);
+    const [loadingKelas, setLoadingKelas] = useState(false);
+    const [selected, setSelected] = useState(null);
+    const [siswa, setSiswa] = useState([]);
+    const [loadingSiswa, setLoadingSiswa] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [err, setErr] = useState('');
+
+    const muatKelas = () => {
+        if (daftarKelas.length > 0 || loadingKelas) return;
+        setLoadingKelas(true);
+        setErr('');
+        fetch(`${route('presensi.jadwal.kelas')}?jadwal_id=${encodeURIComponent(jadwalId)}`)
+            .then(async (r) => {
+                const d = await r.json();
+                if (!r.ok || !d.success) throw new Error(d.message || 'Gagal memuat daftar kelas.');
+                return d;
+            })
+            .then((d) => setDaftarKelas(d.kelas || []))
+            .catch((e) => setErr(e.message))
+            .finally(() => setLoadingKelas(false));
+    };
+
+    const pilihKelas = (c) => {
+        setSelected(c);
+        setSiswa([]);
+        setLoadingSiswa(true);
+        setErr('');
+        const params = new URLSearchParams({
+            jadwal_id: String(jadwalId),
+            tingkat: String(c.grade ?? ''),
+            kelas: c.name ?? '',
+            jurusan: c.major_name ?? '',
+            class_id: c.id ?? '',
+        });
+        const tersimpan = sesiTersimpan.find((s) => String(s.class_id) === String(c.id));
+        const sebelumnya = new Map((tersimpan?.details ?? []).map((d) => [d.nis, d]));
+
+        fetch(`${route('presensi.jadwal.siswa')}?${params.toString()}`)
+            .then(async (r) => {
+                const d = await r.json();
+                if (!r.ok || !d.success) throw new Error(d.message || 'Gagal memuat data siswa.');
+                return d;
+            })
+            .then((d) => setSiswa((d.siswa || []).map((s) => ({
+                nis: s.nis,
+                nama: s.nama,
+                status: sebelumnya.get(s.nis)?.status ?? 'hadir',
+                keterangan: sebelumnya.get(s.nis)?.keterangan ?? '',
+            }))))
+            .catch((e) => setErr(e.message))
+            .finally(() => setLoadingSiswa(false));
+    };
+
+    const ubahStatus = (nis, status) => {
+        setSiswa((prev) => prev.map((s) => (s.nis === nis ? { ...s, status } : s)));
+    };
+
+    const ubahKeterangan = (nis, keterangan) => {
+        setSiswa((prev) => prev.map((s) => (s.nis === nis ? { ...s, keterangan } : s)));
+    };
+
+    const semuaHadir = () => setSiswa((prev) => prev.map((s) => ({ ...s, status: 'hadir', keterangan: '' })));
+
+    const simpan = async () => {
+        const tanpaAlasan = siswa.find((s) => ['izin', 'sakit'].includes(s.status) && !s.keterangan.trim());
+        if (tanpaAlasan) {
+            setErr(`Keterangan wajib untuk ${tanpaAlasan.nama} (${tanpaAlasan.status}).`);
+            return;
+        }
+
+        setErr('');
+        setSaving(true);
+        try {
+            const pos = await getPos();
+            const payload = {
+                class_id: String(selected.id),
+                class_label: labelKelas(selected),
+                siswa: siswa.map((s) => ({ nis: s.nis, nama: s.nama, status: s.status, keterangan: s.keterangan })),
+                ...pos,
+            };
+            router.post(route('presensi.piket.absen-siswa'), payload, {
+                preserveScroll: true,
+                onSuccess: () => router.post(route('presensi.piket.item'), { kode: 'absen_siswa', mode: 'centang', ...pos }, { preserveScroll: true }),
+                onFinish: () => setSaving(false),
+            });
+        } catch (e) {
+            setErr(e.message);
+            setSaving(false);
+        }
+    };
+
+    const nihil = async () => {
+        setErr('');
+        setSaving(true);
+        try {
+            const pos = await getPos();
+            router.post(route('presensi.piket.item'), { kode: 'absen_siswa', mode: 'nihil', ...pos }, {
+                preserveScroll: true,
+                onFinish: () => setSaving(false),
+            });
+        } catch (e) {
+            setErr(e.message);
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="border-t border-slate-100 pt-3">
+            <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-bold text-slate-800">Absen siswa</p>
+                {doneItem && <Badge tone="emerald" icon={CheckCircle2}>{doneItem.done_at?.substring(0, 5)}</Badge>}
+            </div>
+
+            {!boleh && !doneItem && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Dibuka sejak pagi.</p>
+            )}
+
+            {sesiTersimpan.length > 0 && (
+                <ul className="mt-2 space-y-1.5">
+                    {sesiTersimpan.map((s) => (
+                        <li key={s.class_id} className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="min-w-0 truncate font-bold">{s.class_label}</span>
+                                {!submitted && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            muatKelas();
+                                            setSelected({ id: s.class_id, name: s.class_label, grade: '', section: '' });
+                                            setSiswa(s.details.map((d) => ({ nis: d.nis, nama: d.nama, status: d.status, keterangan: d.keterangan ?? '' })));
+                                            setErr('');
+                                        }}
+                                        className="shrink-0 rounded-lg bg-white px-2 py-1 font-bold text-primary ring-1 ring-slate-200 active:scale-95"
+                                    >
+                                        Edit
+                                    </button>
+                                )}
+                            </div>
+                            <p className="mt-0.5 text-slate-500">{ringkasStatus(s.details)} · {s.done_at}</p>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            {err && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{err}</p>}
+
+            {!submitted && boleh && !selected && (
+                <div className="mt-2 space-y-2">
+                    <button type="button" onClick={muatKelas} className="min-h-12 w-full rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95">
+                        {loadingKelas ? 'Memuat kelas...' : sesiTersimpan.length > 0 ? 'Absen kelas lain' : 'Pilih kelas'}
+                    </button>
+                    {daftarKelas.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2">
+                            {daftarKelas.map((c) => (
+                                <button key={c.id} type="button" onClick={() => pilihKelas(c)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-slate-700 active:scale-95">
+                                    {labelKelas(c)}
+                                    {c.major_name && <span className="mt-0.5 block text-[11px] font-normal text-slate-500">{c.major_name}</span>}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {!doneItem && (
+                        <button type="button" disabled={saving} onClick={nihil} className="min-h-11 w-full rounded-xl bg-white px-4 text-xs font-bold text-slate-600 ring-1 ring-slate-200 active:scale-95 disabled:opacity-50">
+                            Tidak ada kelas hari ini (Nihil)
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {!submitted && boleh && selected && (
+                <div className="mt-2 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-bold text-slate-700">{selected.name}</p>
+                        <div className="flex gap-1">
+                            <button type="button" onClick={semuaHadir} className="rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-primary ring-1 ring-slate-200 active:scale-95">Semua hadir</button>
+                            <button type="button" onClick={() => { setSelected(null); setSiswa([]); setErr(''); }} className="rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-slate-500 ring-1 ring-slate-200 active:scale-95">Batal</button>
+                        </div>
+                    </div>
+
+                    {loadingSiswa ? (
+                        <p className="py-4 text-center text-xs text-slate-500">Memuat siswa...</p>
+                    ) : siswa.length === 0 ? (
+                        <p className="py-4 text-center text-xs text-slate-500">Tidak ada data siswa untuk kelas ini.</p>
+                    ) : (
+                        <ul className="max-h-[45dvh] space-y-1.5 overflow-y-auto pr-0.5">
+                            {siswa.map((s) => (
+                                <li key={s.nis} className="rounded-xl bg-slate-50 px-3 py-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <p className="truncate text-xs font-bold text-slate-800">{s.nama}</p>
+                                            <p className="text-[11px] text-slate-500">NIS {s.nis}</p>
+                                        </div>
+                                        <div className="flex shrink-0 gap-1">
+                                            {URUT_STATUS.map((st) => (
+                                                <button
+                                                    key={st}
+                                                    type="button"
+                                                    aria-label={`${s.nama}: ${st}`}
+                                                    aria-pressed={s.status === st}
+                                                    onClick={() => ubahStatus(s.nis, st)}
+                                                    className={`h-7 w-7 rounded-full border text-[11px] font-bold transition ${s.status === st ? STATUS_SISWA[st].cls : 'border-slate-200 bg-white text-slate-500'}`}
+                                                >
+                                                    {STATUS_SISWA[st].label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {['izin', 'sakit'].includes(s.status) && (
+                                        <input
+                                            value={s.keterangan}
+                                            onChange={(e) => ubahKeterangan(s.nis, e.target.value)}
+                                            placeholder="Keterangan (wajib)"
+                                            maxLength={255}
+                                            aria-label={`Keterangan ${s.nama}`}
+                                            className="mt-1.5 block w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs focus:border-emerald-500 focus:ring-emerald-500"
+                                        />
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
+                    <button type="button" disabled={saving || loadingSiswa || siswa.length === 0} onClick={simpan} className="min-h-12 w-full rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
+                        {saving ? 'Menyimpan...' : 'Simpan absen siswa'}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKosong = [], mapelUnit = [], absensiSiswa = [] }) {
     const { auth, flash = {}, errors = {} } = usePage().props;
     const now = useNowEveryMinute();
     const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -196,7 +447,7 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
             ) : (
                 <div className="space-y-4">
                     <section aria-label="Tugas pagi">
-                        <SeksiHead icon={DoorOpen} title="Pagi" win={windows.pagi} state={done('gerbang') && done('cek_absen') ? 'done' : pagiOpen ? 'open' : 'locked'} />
+                        <SeksiHead icon={DoorOpen} title="Pagi" win={windows.pagi} state={done('gerbang') && done('cek_absen') && done('absen_siswa') ? 'done' : pagiOpen ? 'open' : 'locked'} />
                         {!inWin(windows.pagi) && pagiOpen && !submitted && (
                             <p className="mb-2 rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800">Admin membuka jalur telat — item Pagi bisa dicatat sampai laporan dikirim.</p>
                         )}
@@ -246,6 +497,14 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                                     </div>
                                 )}
                             </div>
+
+                            <AbsenSiswaCard
+                                jadwalId={slot.id}
+                                sesiTersimpan={absensiSiswa}
+                                doneItem={items.absen_siswa}
+                                boleh={hhmm >= windows.pagi[0]}
+                                submitted={submitted}
+                            />
                         </Card>
                     </section>
 
