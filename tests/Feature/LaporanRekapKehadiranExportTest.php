@@ -179,4 +179,56 @@ class LaporanRekapKehadiranExportTest extends TestCase
         $this->assertContains('Sakit (dgn Surat)', $export->headings());
         $this->assertContains('Sakit (tanpa Surat)', $export->headings());
     }
+
+    public function test_rekap_mencakup_pegawai_aktif_tanpa_record_presensi(): void
+    {
+        $export = new LaporanRekapKehadiranExport('2026-10-12', '2026-10-16', $this->unit->id, null, null, null);
+
+        $this->assertCount(1, $export->collection());
+        $row = $export->collection()->first();
+        $this->assertSame(0, $row['hadir']);
+        $this->assertSame(5, $row['hariKerja']);
+        $this->assertSame(5, $row['alpa']);
+        $this->assertSame(0, $row['persen']);
+    }
+
+    public function test_hari_libur_khusus_unit_dikurangi_dari_denominator(): void
+    {
+        HariLibur::create(['nama' => 'Libur Unit', 'tanggal' => '2026-10-16', 'unit_sekolah_id' => $this->unit->id]);
+        foreach (['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15'] as $date) {
+            $this->hadirKantor($date);
+        }
+
+        $export = new LaporanRekapKehadiranExport('2026-10-12', '2026-10-16', $this->unit->id, null, null, null);
+        $row = $export->collection()->first();
+
+        $this->assertSame(4, $row['hariKerja']);
+        $this->assertSame(0, $row['alpa']);
+        $this->assertSame(100, $row['persen']);
+    }
+
+    public function test_matriks_harian_menampilkan_pegawai_aktif_tanpa_record_sebagai_alpa(): void
+    {
+        $export = new LaporanRekapKehadiranHarianExport('2026-10-12', '2026-10-12', $this->unit->id, null, null, null);
+
+        $this->assertCount(1, $export->collection());
+        $row = $export->collection()->first();
+        $this->assertSame('A', $row['cells']['2026-10-12']);
+        $this->assertSame(1, $row['alpa']);
+    }
+
+    public function test_matriks_harian_menghormati_libur_khusus_unit(): void
+    {
+        HariLibur::create(['nama' => 'Libur Unit', 'tanggal' => '2026-10-16', 'unit_sekolah_id' => $this->unit->id]);
+        foreach (['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15'] as $date) {
+            $this->hadirKantor($date);
+        }
+
+        $export = new LaporanRekapKehadiranHarianExport('2026-10-12', '2026-10-16', $this->unit->id, null, null, null);
+        $row = $export->collection()->first();
+
+        $this->assertSame('L', $row['cells']['2026-10-16']);
+        $this->assertSame(4, $row['hariKerja']);
+        $this->assertSame(0, $row['alpa']);
+    }
 }

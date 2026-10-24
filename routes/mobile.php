@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ClientErrorController;
+use App\Http\Controllers\KpiController;
 use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileGajiController;
@@ -52,6 +53,16 @@ Route::middleware('auth:web_mobile')->group(function () {
     // Gaji Mobile (F1)
     Route::get('/gaji', [MobileGajiController::class, 'index'])->name('presensi.gaji.index');
     Route::get('/gaji/{id}', [MobileGajiController::class, 'show'])->name('presensi.gaji.show');
+    Route::get('/kpi', [KpiController::class, 'myKpi'])->middleware('can:view_kpi_self')->name('presensi.kpi');
+    Route::post('/kpi/evaluations/{evaluation}/response', [KpiController::class, 'respondToEvaluation'])
+        ->whereNumber('evaluation')
+        ->middleware(['can:view_kpi_self', 'throttle:30,1'])
+        ->name('presensi.kpi.respond');
+    Route::get('/kpi', [KpiController::class, 'myKpi'])->middleware('can:view_kpi_self')->name('presensi.kpi');
+    Route::post('/kpi/evaluations/{evaluation}/response', [KpiController::class, 'respondToEvaluation'])
+        ->whereNumber('evaluation')
+        ->middleware(['can:view_kpi_self', 'throttle:30,1'])
+        ->name('presensi.kpi.respond');
 
     // Notifikasi Mobile (F2)
     Route::get('/notifikasi', [NotificationController::class, 'indexMobile'])->name('presensi.notifikasi.index');

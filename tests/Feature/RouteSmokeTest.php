@@ -7,6 +7,8 @@ use App\Models\HariLibur;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
+use App\Models\KpiEvaluation;
+use App\Models\KpiTemplate;
 use App\Models\LaporanPiket;
 use App\Models\MataPelajaran;
 use App\Models\PayrollReferenceType;
@@ -14,6 +16,7 @@ use App\Models\PayrollReferenceValue;
 use App\Models\Pegawai;
 use App\Models\PegawaiDokumen;
 use App\Models\PegawaiMapel;
+use App\Models\PegawaiUnit;
 use App\Models\PengajuanIzin;
 use App\Models\PengajuanKoreksi;
 use App\Models\PengajuanPulangCepat;
@@ -26,6 +29,7 @@ use App\Models\TugasLuar;
 use App\Models\UnitLokasi;
 use App\Models\UnitSekolah;
 use App\Models\User;
+use Database\Seeders\KpiTemplateSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -122,6 +126,9 @@ class RouteSmokeTest extends TestCase
         'presensi.index' => 'Presensi/Index',
         'lembur.index' => 'Lembur/Index',
         'absen-siswa.index' => 'AbsenSiswa/Index',
+        'kpi.index' => 'Kpi/Index',
+        'kpi.templates.index' => 'Kpi/Templates',
+        'kpi.evaluations.edit' => 'Kpi/Evaluate',
         'presensi.create' => 'Presensi/Create',
         'penggajian.index' => 'Payroll/Index',
         'penggajian.run' => 'Payroll/Run/Index',
@@ -164,6 +171,7 @@ class RouteSmokeTest extends TestCase
         'presensi.riwayat' => 'Mobile/Riwayat',
         'presensi.pengumuman' => 'Mobile/Pengumuman',
         'presensi.gaji.index' => 'Mobile/Gaji/Index',
+        'presensi.kpi' => 'Mobile/Kpi',
         'presensi.gaji.show' => 'Mobile/Gaji/Show',
         'presensi.notifikasi.index' => 'Mobile/Notifikasi',
         'presensi.izin.index' => 'Mobile/Izin/Index',
@@ -528,6 +536,8 @@ class RouteSmokeTest extends TestCase
     private PengajuanIzin $pengajuanApprove;
 
     private PengajuanIzin $pengajuanReject;
+
+    private KpiEvaluation $kpiEvaluation;
 
     protected function setUp(): void
     {
@@ -903,6 +913,17 @@ class RouteSmokeTest extends TestCase
 
         $this->pengajuanApprove = $this->makePengajuan();
         $this->pengajuanReject = $this->makePengajuan();
+        $this->seed(KpiTemplateSeeder::class);
+        $this->kpiEvaluation = KpiEvaluation::create([
+            'pegawai_id' => $this->pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'jabatan_id' => $this->jabatan->id,
+            'kpi_template_id' => KpiTemplate::where('jabatan_id', $this->jabatan->id)->whereNull('unit_sekolah_id')->value('id'),
+            'periode_mulai' => now()->startOfMonth()->toDateString(),
+            'periode_selesai' => now()->endOfMonth()->toDateString(),
+            'status' => 'draft',
+            'dinilai_oleh' => $this->superadmin->id,
+        ]);
     }
 
     /** Pengajuan izin pending untuk route approve/reject (status guarded → forceFill). */
@@ -1676,6 +1697,9 @@ class RouteSmokeTest extends TestCase
             'reminder' => in_array($routeName, ['reminders.destroy', 'reminders.send'], true) ? $this->disposableReminder->id : $this->reminder->id,
             'lokasi' => $this->lokasi->id,
             'koreksi' => $this->koreksi->id,
+            'assignment' => PegawaiUnit::where('pegawai_id', $this->pegawai->id)->firstOrFail()->id,
+            'evaluation' => $this->kpiEvaluation->id,
+            'template' => KpiTemplate::where('jabatan_id', $this->jabatan->id)->whereNull('unit_sekolah_id')->value('id'),
             default => throw new \RuntimeException("Param route tak dikenal: {$param} @ {$routeName}"),
         };
     }

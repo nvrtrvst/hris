@@ -4,7 +4,7 @@ import { initPush, disablePush, sendTestPush } from '@/push';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
-import { Bell, CalendarDays, Clock, CreditCard, FileText, Home, LogOut, Megaphone, User } from 'lucide-react';
+import { BarChart3, Bell, CalendarDays, Clock, CreditCard, FileText, Home, LogOut, Megaphone, User } from 'lucide-react';
 
 const navItems = [
     { route: 'presensi.dashboard', label: 'Beranda', match: () => route().current('presensi.dashboard'), icon: Home },
@@ -100,6 +100,10 @@ export default function MobileLayout({ user, header, children }) {
                                 <CreditCard className="mr-2 h-4 w-4" />
                                 Slip Gaji
                             </Dropdown.Link>
+                            {auth?.permissions?.includes('view_kpi_self') && <Dropdown.Link href={route('presensi.kpi')} className="flex items-center">
+                                <BarChart3 className="mr-2 h-4 w-4" />
+                                KPI Saya
+                            </Dropdown.Link>}
                             <Dropdown.Link href={route('presensi.pengumuman')} className="flex items-center">
                                 <Megaphone className="w-4 h-4 mr-2" />
                                 Pengumuman

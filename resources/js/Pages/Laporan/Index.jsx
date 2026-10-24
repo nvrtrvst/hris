@@ -342,9 +342,12 @@ export default function LaporanIndex({ auth, units }) {
             <div className="py-8 bg-surface min-h-screen">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
                     {/* Header */}
-                    <div>
-                        <h2 className="text-xl font-extrabold text-text-primary">Ekspor & Pratinjau Laporan</h2>
-                        <p className="text-sm text-text-muted">Pilih jenis laporan, atur periode, lalu pratinjau atau unduh ke Excel.</p>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h2 className="text-xl font-extrabold text-text-primary">Ekspor & Pratinjau Laporan</h2>
+                            <p className="text-sm text-text-muted">Pilih jenis laporan, atur periode, lalu pratinjau atau unduh ke Excel.</p>
+                        </div>
+                        {auth.permissions?.includes('view_kpi') && <Link href={route('kpi.index')} className="btn-secondary">Laporan KPI Pegawai</Link>}
                     </div>
 
                     {/* Filter Card */}
@@ -785,7 +788,7 @@ export default function LaporanIndex({ auth, units }) {
                             })()}
 
                             {activePreview.report_type === 'presensi' && (() => {
-                                const s = computePresensiSummary(previewData.data, previewData.headings);
+                                const s = previewData.summary || computePresensiSummary(previewData.data, previewData.headings);
                                 const segs = [
                                     { key: 'hadir', label: 'Hadir', val: s.hadir, color: 'bg-success' },
                                     { key: 'telat', label: 'Telat', val: s.telat, color: 'bg-warning' },
