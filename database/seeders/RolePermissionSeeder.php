@@ -31,6 +31,10 @@ class RolePermissionSeeder extends Seeder
             'view_presensi',
             'view_izin',
             'view_payroll',
+            'view_kpi',
+            'view_kpi_self',
+            'evaluate_kpi',
+            'manage_kpi_templates',
             'view_laporan_kcd',
             'manage_master_data', // unit sekolah, komponen gaji, dll
             'manage_reminders', // kirim reminder/notifikasi push ke pegawai
@@ -58,6 +62,8 @@ class RolePermissionSeeder extends Seeder
             'manage_jadwal',
             'view_presensi',
             'view_izin',
+            'view_kpi',
+            'evaluate_kpi',
             'manage_reminders',
             'view_laporan_kcd',
             // Payroll TIDAK lagi di role admin_unit — dialihkan ke jabatan
@@ -66,7 +72,7 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         $rolePegawai = Role::firstOrCreate(['name' => 'pegawai', 'guard_name' => 'web']);
-        $rolePegawai->syncPermissions([]);
+        $rolePegawai->syncPermissions(['view_kpi_self']);
 
         // Role PEMBACA / pengawas (read-only): Kepala Sekolah, Kepala TU, Ketua
         // Yayasan, atau peran lain (mis. HR) yang butuh memantau data bawahan
@@ -80,6 +86,8 @@ class RolePermissionSeeder extends Seeder
             // trait ScopesPimpinan (hanya bawahan langsung, bukan semua unit).
             'view_presensi',
             'view_jadwal',
+            'view_kpi',
+            'evaluate_kpi',
             'manage_reminders',
         ]);
     }

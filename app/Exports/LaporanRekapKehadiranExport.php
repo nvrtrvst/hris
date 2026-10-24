@@ -80,15 +80,26 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
 
         $rows = $query->get(['pegawai_id', 'tanggal', 'status', 'jadwal_id', 'unit_sekolah_id']);
 
+        // Sertakan pegawai aktif dalam scope walau belum memiliki record presensi.
+        $roster = Pegawai::query()->where('status_aktif', 'aktif')->whereHas('units');
+        if ($this->unit_id) {
+            $roster->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $this->unit_id));
+        }
+        if ($this->jenis === 'pendidik') {
+            $roster->guru();
+        } elseif ($this->jenis === 'kependidikan') {
+            $roster->nonGuru();
+        }
+        if ($this->search !== null && $this->search !== '') {
+            $roster->where('nama_lengkap', 'like', '%'.$this->search.'%');
+        }
+        $rosterIds = $roster->pluck('id');
+
         // 2. Dedup passive vs active per pegawai per date.
         $byPegawai = $rows->groupBy('pegawai_id')->map(fn ($pegawaiRows) => self::dedupStatusPerTanggal($pegawaiRows));
-
-        // 2b. Hanya status pada hari kerja (Senin–Jumat) yang masuk rekap —
-        // presensi Sabtu/Minggu (mis. data lama sebelum blokir absen akhir
-        // pekan) membuat pembilang melebihi hariKerja → persen > 100%.
-        $byPegawai = $byPegawai->map(fn ($deduped) => $deduped
-            ->filter(fn ($p) => Carbon::parse($p->tanggal)->isWeekday())
-            ->values());
+        foreach ($rosterIds as $pegawaiId) {
+            $byPegawai[$pegawaiId] ??= collect();
+        }
 
         // 3. Build pegawai map (eager-load info).
         $pegawaiIds = $byPegawai->keys()->all();
@@ -101,17 +112,30 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         $unitIds = array_unique(array_merge(
             $this->unit_id ? [$this->unit_id] : [],
             $rows->pluck('unit_sekolah_id')->filter()->unique()->all(),
+            $pegawaiMap->flatMap(fn ($pegawai) => $pegawai->units->pluck('id'))->unique()->all(),
         ));
         $holidayMap = self::buildHolidayWeekdayMap($unitIds, $start, $end);
 
-        // 5. Uniform working days: Senin-Jumat − libur (sama untuk semua pegawai).
-        $hariKerja = self::computeUniformWorkingDays($start, $end, $holidayMap);
+        // Status akhir pekan di luar hari kerja unit tidak dihitung. Record
+        // pada hari libur tetap terlihat; hari libur dikeluarkan dari denominator.
+        $byPegawai = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap) {
+            $pegawai = $pegawaiMap->get($pegawaiId);
+            $unit = $this->unit_id ? $pegawai?->units->firstWhere('id', $this->unit_id) : $pegawai?->unitUtama();
+            $workingDays = $unit ? Pegawai::hariKerjaUnit($unit) : ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+
+            return $deduped->filter(function ($presensi) use ($workingDays) {
+                $date = Carbon::parse($presensi->tanggal);
+                $day = $date->locale('id')->translatedFormat('l');
+
+                return in_array($day, $workingDays, true);
+            })->values();
+        });
 
         // 5b. Range pengajuan sakit berflag surat dokter — untuk split bobot.
         $sakitSuratRanges = BobotKehadiran::sakitSuratRanges($byPegawai->keys()->all(), $start, $end);
 
         // 6. Assemble final rekap.
-        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja, $sakitSuratRanges) {
+        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $start, $end, $holidayMap, $sakitSuratRanges) {
             $counts = $deduped->groupBy('status')->map(fn ($g) => $g->count())->all();
             $hadir = $counts['hadir'] ?? 0;
             $telat = $counts['telat'] ?? 0;
@@ -124,7 +148,17 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             $split = BobotKehadiran::splitSakitSurat($sakitDates, $sakitSuratRanges->get($pegawaiId, []));
 
             $pegawai = $pegawaiMap->get($pegawaiId);
-            $bobot = $pegawai?->unitUtama()?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;
+            $unit = $this->unit_id
+                ? $pegawai?->units->firstWhere('id', $this->unit_id)
+                : $pegawai?->unitUtama();
+            $hariKerja = self::computeUniformWorkingDays(
+                $start,
+                $end,
+                $holidayMap,
+                $unit?->id ? (int) $unit->id : null,
+                $unit ? Pegawai::hariKerjaUnit($unit) : null,
+            );
+            $bobot = $unit?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;
             $hadirEq = BobotKehadiran::hadirEq($hadir, $telat, $split['surat'], $split['tanpa'], $izin, 0, $cuti, $bobot);
 
             return [
@@ -179,13 +213,15 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
     }
 
     /**
-     * Uniform working days: Senin-Jumat dalam range − libur.
-     * Sama untuk semua pegawai — bukan per jadwal.
+     * Working days sesuai hari operasi unit (default Senin–Jumat), dikurangi libur nasional/unit.
      */
-    public static function computeUniformWorkingDays(Carbon $start, Carbon $end, array $holidayMap): int
+    public static function computeUniformWorkingDays(Carbon $start, Carbon $end, array $holidayMap, ?int $unitId = null, ?array $workingDays = null): int
     {
-        $weekdays = [1, 2, 3, 4, 5]; // Senin–Jumat
         $hariMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        $dayNumbers = array_flip($hariMap);
+        $weekdays = $workingDays
+            ? array_values(array_intersect_key($dayNumbers, array_flip($workingDays)))
+            : [1, 2, 3, 4, 5];
 
         $totalDays = $start->diffInDays($end) + 1;
         $count = 0;
@@ -203,7 +239,9 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             }
 
             $hari = $hariMap[$target];
-            $exclude = (int) ($holidayMap['national'][$hari] ?? 0);
+            $exclude = (int) ($unitId !== null
+                ? ($holidayMap['effective'][$unitId][$hari] ?? $holidayMap['national'][$hari] ?? 0)
+                : ($holidayMap['national'][$hari] ?? 0));
 
             $count += max(0, $hits - $exclude);
         }
@@ -228,19 +266,41 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         $idMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         $national = [];
         $units = [];
+        $nationalDates = [];
+        $unitDates = [];
         $dates = [];
         foreach ($rows as $h) {
             $wd = $idMap[(int) Carbon::parse($h->tanggal)->dayOfWeek];
-            $dates[] = Carbon::parse($h->tanggal)->toDateString();
+            $date = Carbon::parse($h->tanggal)->toDateString();
+            $dates[] = $date;
             if ($h->unit_sekolah_id === null) {
                 $national[$wd] = ($national[$wd] ?? 0) + 1;
+                $nationalDates[$date] = $wd;
             } else {
                 $units[$h->unit_sekolah_id][$wd] = ($units[$h->unit_sekolah_id][$wd] ?? 0) + 1;
+                $unitDates[$h->unit_sekolah_id][$date] = $wd;
+            }
+        }
+
+        $effective = [];
+        $unitHolidayDates = [];
+        foreach ($unitIds as $unitId) {
+            $unitHolidayDates[$unitId] = array_keys($nationalDates + ($unitDates[$unitId] ?? []));
+            foreach (($nationalDates + ($unitDates[$unitId] ?? [])) as $weekday) {
+                $effective[$unitId][$weekday] = ($effective[$unitId][$weekday] ?? 0) + 1;
             }
         }
 
         // 'dates' dipakai matriks harian untuk menandai sel libur per tanggal.
-        return ['national' => $national, 'units' => $units, 'dates' => array_values(array_unique($dates))];
+        return [
+            'national' => $national,
+            'units' => $units,
+            'effective' => $effective,
+            'national_dates' => $nationalDates,
+            'unit_dates' => $unitDates,
+            'unit_holiday_dates' => $unitHolidayDates,
+            'dates' => array_values(array_unique($dates)),
+        ];
     }
 
     public function collection(): Collection

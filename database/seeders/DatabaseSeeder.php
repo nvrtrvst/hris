@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             // Master data
             UnitSekolahSeeder::class,
             JabatanSeeder::class,
+            KpiTemplateSeeder::class,
             MataPelajaranSeeder::class,
             PayrollReferenceTypeSeeder::class,
             KomponenGajiSeeder::class,

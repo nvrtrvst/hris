@@ -100,6 +100,24 @@ class LaporanController extends Controller
             'total' => $total,
         ];
 
+        if ($validated['type'] === 'presensi') {
+            $counts = $all->countBy('status');
+            $hadir = $counts->get('hadir', 0);
+            $telat = $counts->get('telat', 0);
+            $hadirTelat = $hadir + $telat;
+            $payload['summary'] = [
+                'total' => $total,
+                'hadir' => $hadir,
+                'telat' => $telat,
+                'izin' => $counts->get('izin', 0),
+                'sakit' => $counts->get('sakit', 0),
+                'cuti' => $counts->get('cuti', 0),
+                'alpa' => $counts->get('alpa', 0),
+                'present' => $hadirTelat,
+                'persen' => $total > 0 ? (int) round($hadirTelat * 100 / $total) : 0,
+            ];
+        }
+
         // Khusus rekap mengajar: sertakan data kalender (guru × tanggal)
         // untuk tampilan grid mingguan di frontend.
         if ($validated['type'] === 'rekap_mengajar') {
@@ -310,11 +328,22 @@ class LaporanController extends Controller
         ];
 
         // Alpa = hari kerja tanpa record — rumus sama dengan rekap agregat & payroll.
-        $unitIds = $rows->pluck('unit_sekolah_id')->filter()->unique()->all();
+        $unitId = $pegawai->unitUtama()?->id;
+        $unitIds = array_values(array_unique(array_filter(array_merge(
+            $unitId ? [$unitId] : [],
+            $rows->pluck('unit_sekolah_id')->filter()->unique()->all(),
+        ))));
         $start = Carbon::parse($request->start_date);
         $end = Carbon::parse($request->end_date);
         $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap($unitIds, $start, $end);
-        $hariKerja = LaporanRekapKehadiranExport::computeUniformWorkingDays($start, $end, $holidayMap);
+        $unitUtama = $pegawai->unitUtama();
+        $hariKerja = LaporanRekapKehadiranExport::computeUniformWorkingDays(
+            $start,
+            $end,
+            $holidayMap,
+            $unitId ? (int) $unitId : null,
+            $unitUtama ? Pegawai::hariKerjaUnit($unitUtama) : null,
+        );
 
         $summary['alpa'] = max(0, $hariKerja - $summary['hadir'] - $summary['telat'] - $summary['sakit'] - $summary['izin'] - $summary['cuti']);
         $summary['hariKerja'] = $hariKerja;

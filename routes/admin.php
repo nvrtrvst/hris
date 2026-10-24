@@ -7,6 +7,7 @@ use App\Http\Controllers\HariLiburController;
 use App\Http\Controllers\JabatanController;
 use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\KomponenGajiController;
+use App\Http\Controllers\KpiController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\NotificationController;
@@ -281,6 +282,29 @@ Route::middleware('auth:web_admin')->group(function () {
         ->name('pulang-cepat.cetak');
 
     // Laporan
+    Route::get('kpi', [KpiController::class, 'index'])->name('kpi.index');
+    Route::get('kpi/templates', [KpiController::class, 'templates'])
+        ->middleware('can:manage_kpi_templates')
+        ->name('kpi.templates.index');
+    Route::put('kpi/templates/{template}', [KpiController::class, 'updateTemplate'])
+        ->middleware(['can:manage_kpi_templates', 'throttle:30,1'])
+        ->name('kpi.templates.update');
+    Route::post('kpi/templates/overrides', [KpiController::class, 'createUnitOverride'])
+        ->middleware(['can:manage_kpi_templates', 'throttle:30,1'])
+        ->name('kpi.templates.override');
+    Route::get('kpi/assignments/{assignment}/evaluation', [KpiController::class, 'editEvaluation'])
+        ->whereNumber('assignment')
+        ->name('kpi.evaluations.edit');
+    Route::post('kpi/evaluations', [KpiController::class, 'storeEvaluation'])
+        ->middleware(['can:evaluate_kpi', 'throttle:30,1'])
+        ->name('kpi.evaluations.store');
+    Route::post('kpi/evaluations/{evaluation}/reopen', [KpiController::class, 'reopenEvaluation'])
+        ->whereNumber('evaluation')
+        ->middleware(['can:manage_kpi_templates', 'throttle:30,1'])
+        ->name('kpi.evaluations.reopen');
+    Route::post('kpi/evaluations/{evaluation}/response', [KpiController::class, 'respondToEvaluation'])
+        ->middleware(['can:view_kpi_self', 'throttle:30,1'])
+        ->name('kpi.evaluations.respond');
     Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
     Route::get('laporan/preview', [LaporanController::class, 'preview'])->name('laporan.preview');
     Route::get('laporan/presensi', [LaporanController::class, 'exportPresensi'])->name('laporan.presensi');

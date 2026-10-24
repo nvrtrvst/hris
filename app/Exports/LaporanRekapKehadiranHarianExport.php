@@ -106,8 +106,25 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
 
         $rows = $query->get(['pegawai_id', 'tanggal', 'status', 'jadwal_id', 'unit_sekolah_id']);
 
+        $roster = Pegawai::query()->where('status_aktif', 'aktif')->whereHas('units');
+        if ($this->unit_id) {
+            $roster->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $this->unit_id));
+        }
+        if ($this->jenis === 'pendidik') {
+            $roster->guru();
+        } elseif ($this->jenis === 'kependidikan') {
+            $roster->nonGuru();
+        }
+        if ($this->search !== null && $this->search !== '') {
+            $roster->where('nama_lengkap', 'like', '%'.$this->search.'%');
+        }
+        $rosterIds = $roster->pluck('id');
+
         // 1 pegawai per tanggal = 1 status (aturan sama dengan rekap agregat).
         $byPegawai = $rows->groupBy('pegawai_id')->map(fn ($pegawaiRows) => LaporanRekapKehadiranExport::dedupStatusPerTanggal($pegawaiRows));
+        foreach ($rosterIds as $pegawaiId) {
+            $byPegawai[$pegawaiId] ??= collect();
+        }
 
         $pegawaiMap = Pegawai::whereIn('id', $byPegawai->keys()->all())
             ->with(['jabatans', 'units'])
@@ -117,14 +134,45 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         $unitIds = array_unique(array_merge(
             $this->unit_id ? [$this->unit_id] : [],
             $rows->pluck('unit_sekolah_id')->filter()->unique()->all(),
+            $pegawaiMap->flatMap(fn ($pegawai) => $pegawai->units->pluck('id'))->unique()->all(),
         ));
         $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap($unitIds, $start, $end);
-        $hariKerja = LaporanRekapKehadiranExport::computeUniformWorkingDays($start, $end, $holidayMap);
-        $holidayDates = array_flip($holidayMap['dates'] ?? []);
         $dates = $this->dates;
         $sakitSuratRanges = BobotKehadiran::sakitSuratRanges($byPegawai->keys()->all(), $start, $end);
 
-        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $hariKerja, $holidayDates, $dates, $sakitSuratRanges) {
+        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $start, $end, $holidayMap, $dates, $sakitSuratRanges) {
+            $pegawai = $pegawaiMap->get($pegawaiId);
+            $unit = $this->unit_id
+                ? $pegawai?->units->firstWhere('id', $this->unit_id)
+                : $pegawai?->unitUtama();
+            $unitId = $unit?->id;
+            $workingDays = $unit ? Pegawai::hariKerjaUnit($unit) : ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+            $holidayDates = array_flip($unitId !== null
+                ? ($holidayMap['unit_holiday_dates'][$unitId] ?? array_keys($holidayMap['national_dates'] ?? []))
+                : array_keys($holidayMap['national_dates'] ?? []));
+            $hariKerja = LaporanRekapKehadiranExport::computeUniformWorkingDays(
+                $start,
+                $end,
+                $holidayMap,
+                $unitId ? (int) $unitId : null,
+                $workingDays,
+            );
+            $workDateSet = [];
+            $recordDateSet = [];
+            foreach ($dates as $date) {
+                $dayName = Carbon::parse($date)->locale('id')->translatedFormat('l');
+                if (in_array($dayName, $workingDays, true)) {
+                    $recordDateSet[$date] = true;
+                }
+                if (in_array($dayName, $workingDays, true) && ! isset($holidayDates[$date])) {
+                    $workDateSet[$date] = true;
+                }
+            }
+            $deduped = $deduped->filter(function ($presensi) use ($recordDateSet) {
+                $date = Carbon::parse($presensi->tanggal)->toDateString();
+
+                return isset($recordDateSet[$date]);
+            })->values();
             $cells = [];
             $counts = ['hadir' => 0, 'telat' => 0, 'sakit' => 0, 'izin' => 0, 'cuti' => 0, 'alpa' => 0];
             $inSuratRange = function (string $d) use ($sakitSuratRanges, $pegawaiId): bool {
@@ -155,15 +203,15 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                 if (isset($cells[$ds])) {
                     continue;
                 }
-                $cells[$ds] = (Carbon::parse($ds)->isWeekend() || isset($holidayDates[$ds])) ? 'L' : 'A';
+                $dayName = Carbon::parse($ds)->locale('id')->translatedFormat('l');
+                $cells[$ds] = ! in_array($dayName, $workingDays, true) || isset($holidayDates[$ds]) ? 'L' : 'A';
             }
 
             $sakitDates = collect($deduped)->where('status', 'sakit')
                 ->map(fn ($p) => $p->tanggal instanceof \DateTimeInterface ? $p->tanggal->format('Y-m-d') : (string) $p->tanggal);
             $split = BobotKehadiran::splitSakitSurat($sakitDates, $sakitSuratRanges->get($pegawaiId, []));
 
-            $pegawai = $pegawaiMap->get($pegawaiId);
-            $bobot = $pegawai?->unitUtama()?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;
+            $bobot = $unit?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;
             $hadirEq = BobotKehadiran::hadirEq($counts['hadir'], $counts['telat'], $split['surat'], $split['tanpa'], $counts['izin'], 0, $counts['cuti'], $bobot);
 
             return [

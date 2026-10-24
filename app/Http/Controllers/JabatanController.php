@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Jabatan;
+use App\Services\KpiTemplateDefaults;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -37,7 +38,8 @@ class JabatanController extends Controller
             'approver_l2_jabatan_id' => 'nullable|exists:jabatan,id|different:approver_l1_jabatan_id',
         ]);
 
-        Jabatan::create($validated);
+        $jabatan = Jabatan::create($validated);
+        app(KpiTemplateDefaults::class)->ensureForJabatan($jabatan);
 
         return redirect()->route('jabatan.index')
             ->with('message', 'Jabatan berhasil ditambahkan.');
