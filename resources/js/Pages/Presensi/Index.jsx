@@ -734,6 +734,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
     // Dipakai untuk mengembalikan fokus + viewport ke awal daftar setelah pindah halaman.
     const awalHasilRef = React.useRef(null);
+    const periodeRef = React.useRef(null);
     const halamanTerakhirRef = React.useRef(presensis.current_page);
 
     const [confirmStatus, setConfirmStatus] = React.useState(null);
@@ -1131,11 +1132,11 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                         {/* Row 3: Periode (preset + rentang custom) + Actions */}
                         <div className="mt-4 flex flex-col gap-4 border-t border-border/60 pt-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4" ref={periodeRef}>
                                 <span className="text-[11px] font-bold uppercase tracking-wider text-text-secondary">Periode</span>
 
-                                {/* Segmented preset control dengan state aktif */}
-                                <div className="inline-flex rounded-xl border border-border bg-surface p-1">
+                                {/* Preset periode: chip mobile sudah ada di atas baris tabel */}
+                                <div className="hidden rounded-xl border border-border bg-surface p-1 md:inline-flex">
                                     {[{ k: 'hari', label: 'Hari Ini' }, { k: '7hari', label: '7 Hari' }, { k: 'bulan', label: 'Bulan Ini' }].map((p) => {
                                         const active = activePreset === p.k;
                                         return (
@@ -1189,25 +1190,26 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                     {/* View mode + periode + Tugas Luar */}
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
                             <div className="inline-flex rounded-xl border border-border p-1">
                                 <button
                                     type="button"
                                     onClick={() => setViewMode('detail')}
-                                    className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${viewMode === 'detail' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
+                                    className={`min-h-11 rounded-lg px-3.5 text-xs font-bold transition-colors md:min-h-0 md:py-1.5 ${viewMode === 'detail' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
                                 >
                                     Detail
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setViewMode('ringkas')}
-                                    className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${viewMode === 'ringkas' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
+                                    className={`min-h-11 rounded-lg px-3.5 text-xs font-bold transition-colors md:min-h-0 md:py-1.5 ${viewMode === 'ringkas' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
                                 >
                                     Ringkas
                                 </button>
                             </div>
 
-                            <p className="flex items-center gap-2 text-xs font-medium text-text-secondary">
+                            {/* Desktop: ringkasan periode */}
+                            <p className="hidden items-center gap-2 text-xs font-medium text-text-secondary md:flex">
                                 <CalendarDays className="h-4 w-4 text-primary" />
                                 {jadwalFilter === 'sedang_berlangsung' ? (
                                     <span className="inline-flex items-center gap-1.5 text-amber-700">
@@ -1218,13 +1220,50 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     ? `${startDate || '…'} s/d ${endDate || '…'}`
                                     : 'Semua periode'}
                             </p>
+
+                            {/* Mobile: chip periode (44 px), menggantikan teks ringkasan */}
+                            <div className="flex w-full items-center gap-2 md:hidden" role="group" aria-label="Periode">
+                                <div className="no-scrollbar flex flex-1 gap-2 overflow-x-auto">
+                                    {[{ k: 'hari', label: 'Hari ini' }, { k: '7hari', label: '7 hari' }, { k: 'bulan', label: 'Bulan ini' }].map((p) => {
+                                        const active = activePreset === p.k;
+
+                                        return (
+                                            <button
+                                                key={p.k}
+                                                type="button"
+                                                onClick={() => { applyPreset(p.k); setFilterSheetOpen(false); }}
+                                                aria-pressed={active}
+                                                className={`min-h-11 shrink-0 rounded-full border px-3 text-[11px] font-bold transition-colors ${active ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text-secondary'}`}
+                                            >
+                                                {p.label}
+                                            </button>
+                                        );
+                                    })}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setFilterSheetOpen(true);
+                                            requestAnimationFrame(() => periodeRef.current?.scrollIntoView({ block: 'center' }));
+                                        }}
+                                        aria-pressed={Boolean((startDate || endDate) && !activePreset)}
+                                        className={`min-h-11 shrink-0 rounded-full border px-3 text-[11px] font-bold transition-colors ${(startDate || endDate) && !activePreset ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text-secondary'}`}
+                                    >
+                                        Rentang…
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         {isAdmin && (
-                            <Link href={route('tugas-luar.index')} className="btn-secondary btn-sm flex items-center gap-1.5">
+                            <Link href={route('tugas-luar.index')} className="btn-secondary flex min-h-11 items-center gap-1.5 md:min-h-0 md:py-1.5 md:text-xs">
                                 <CalendarDays className="h-3.5 w-3.5" /> Kelola Tugas Luar
                             </Link>
                         )}
                     </div>
+                    <p className="text-xs font-medium text-text-secondary md:hidden">
+                        {jadwalFilter === 'sedang_berlangsung'
+                            ? 'Kelas sedang berlangsung (hari ini)'
+                            : startDate || endDate ? `${startDate || '…'} s/d ${endDate || '…'}` : 'Semua periode'}
+                    </p>
 
                     {/* Target fokus + scroll saat berpindah halaman */}
                     <div ref={awalHasilRef} tabIndex={-1} className="scroll-mt-24 focus:outline-none" />
