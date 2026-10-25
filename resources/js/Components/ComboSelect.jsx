@@ -40,7 +40,7 @@ export default function ComboSelect({ id, label, value, onChange, options, place
                 </div>
                 <ComboboxOptions
                     anchor="bottom"
-                    className="z-50 mt-1 w-(--input-width) rounded-xl border border-border bg-white p-1 shadow-lg empty:invisible"
+                    className="z-50 mt-1 max-h-[60dvh] w-[var(--input-width)] overflow-y-auto overscroll-contain rounded-xl border border-border bg-white p-1 shadow-lg empty:invisible"
                 >
                     {optionList.length === 0 && (
                         <ComboboxOption disabled value="" className="px-3 py-2 text-sm text-text-secondary">
@@ -51,7 +51,7 @@ export default function ComboSelect({ id, label, value, onChange, options, place
                         <ComboboxOption
                             key={opt.value}
                             value={opt}
-                            className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm text-primary data-focus:bg-primary/10"
+                            className="flex min-h-11 cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm text-primary data-focus:bg-primary/10"
                         >
                             {opt.label}
                             {selected?.value === opt.value && (
