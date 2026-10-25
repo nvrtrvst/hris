@@ -233,7 +233,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                                 ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 8)}</span>
                         : <span className="text-sm text-text-secondary">—</span>}
                 </td>
-                <td className="px-4 py-3.5 whitespace-nowrap">
+                <td className="hidden px-4 py-3.5 whitespace-nowrap lg:table-cell">
                     {c.is_tugas_luar ? (
                         (c.foto_masuk_url || (c.foto_kegiatan_urls || []).length > 0) ? (
                             <div className="flex flex-wrap gap-1.5">
@@ -247,7 +247,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         ) : <span className="text-[11px] text-text-muted">tanpa foto</span>
                     ) : <span className="text-[11px] text-text-muted">tanpa foto</span>}
                 </td>
-                <td className="px-4 py-3.5 whitespace-nowrap">
+                <td className="hidden px-4 py-3.5 whitespace-nowrap lg:table-cell">
                     {c.is_lembur ? (
                         <div>
                             <LemburBadge status={c.lembur_status} />
@@ -255,7 +255,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         </div>
                     ) : <span className="text-xs text-text-secondary">—</span>}
                 </td>
-                <td className="px-4 py-3.5 whitespace-nowrap">
+                <td className="hidden px-4 py-3.5 whitespace-nowrap lg:table-cell">
                     {c.is_tugas_luar ? (
                         <div>
                             <TugasLuarBadge status={c.tugas_luar_status} onClick={() => openTugasLuar(c)} />
@@ -334,7 +334,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         <div className="font-mono text-[11px] text-text-secondary">{timeRange} ({durasiLabel} jam)</div>
                     </div>
                 </td>
-                <td className="px-4 py-2.5 whitespace-nowrap" colSpan="7"></td>
+                <td className="hidden px-0 py-0 md:table-cell lg:hidden" colSpan={5}></td><td className="hidden px-0 py-0 lg:table-cell" colSpan={7}></td>
             </tr>
         );
 
@@ -370,7 +370,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         <td className="px-4 py-3.5 whitespace-nowrap">
                             <span className="text-[11px] text-text-muted">tanpa foto</span>
                         </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap">
+                        <td className="hidden px-4 py-3.5 whitespace-nowrap lg:table-cell">
                             {c.is_lembur ? (
                         <div>
                             <LemburBadge status={c.lembur_status} />
@@ -579,6 +579,150 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
             </React.Fragment>
         );
     });
+};
+
+const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setConfirmStatus }) => {
+    const groups = React.useMemo(() => buildGroups(data), [data]);
+    const canManage = auth.permissions?.includes('manage_master_data');
+
+    if (groups.length === 0) {
+        return (
+            <div className="px-4 py-12 text-center md:hidden">
+                <CalendarDays className="mx-auto h-8 w-8 text-border" />
+                <p className="mt-3 text-sm font-bold text-primary">Belum ada data presensi</p>
+                <p className="mt-1 text-xs text-text-secondary">Coba ubah periode atau bersihkan filter.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="divide-y divide-border/60 md:hidden">
+            {groups.map((group) => {
+                const kantorRow = group.find((g) => g.tipe_presensi === 'kantor' && !g.is_lembur && !g.is_tugas_luar);
+                const parent = kantorRow || group.find((g) => !g.is_sintetis) || group[0];
+                const children = group.filter((g) => g !== parent);
+                const key = `${parent.pegawai_id}__${parent.tanggal}`;
+                const isOpen = Boolean(expanded[key]);
+                const lembur = group.find((g) => g.is_lembur);
+                const tugasLuar = group.find((g) => g.is_tugas_luar);
+                const nama = parent.pegawai?.nama_lengkap || '-';
+                const jabatan = parent.pegawai?.jabatans?.some((j) => j.is_guru)
+                    ? 'Guru'
+                    : (parent.pegawai?.jabatans?.map((j) => j.nama).filter(Boolean).join(', ') || '—');
+                const photos = [
+                    parent.foto_masuk_url ? { url: parent.foto_masuk_url, label: 'Foto masuk' } : null,
+                    parent.foto_keluar_url ? { url: parent.foto_keluar_url, label: 'Foto keluar' } : null,
+                    ...(parent.foto_kegiatan_urls || []).map((u, i) => ({ url: u, label: `Bukti kegiatan ${i + 1}` })),
+                ].filter(Boolean);
+
+                return (
+                    <article key={key} className={`px-4 py-3.5 ${kantorRow?.status === 'telat' ? 'bg-amber-50/60' : ''}`}>
+                        <div className="flex items-start gap-3">
+                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${avatarTone(nama)}`}>
+                                {initials(nama)}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-bold text-primary">{nama}</p>
+                                <p className="truncate text-[11px] text-text-secondary">{jabatan} · {parent.unit_sekolah?.nama || '—'}</p>
+                                <p className="text-[11px] text-text-muted">
+                                    {format(parseDate(parent.tanggal), 'd MMM yyyy', { locale: id })} · {format(parseDate(parent.tanggal), 'EEEE', { locale: id })}
+                                </p>
+                            </div>
+                            <div className="shrink-0">
+                                {parent.status === 'belum_presensi' ? (
+                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${STATUS_META.belum_presensi.badge}`}>Belum presensi</span>
+                                ) : canManage ? (
+                                    <select
+                                        className={`min-h-11 cursor-pointer rounded-lg border px-2 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[parent.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                                        value={parent.status}
+                                        aria-label={`Status ${nama}`}
+                                        onChange={(e) => setConfirmStatus({ id: parent.id, statusLama: parent.status, statusBaru: e.target.value })}
+                                    >
+                                        <option value="hadir">Hadir</option>
+                                        <option value="telat">Telat</option>
+                                        <option value="sakit">Sakit</option>
+                                        <option value="izin">Izin</option>
+                                        <option value="cuti">Cuti</option>
+                                        <option value="alpa">Alpa</option>
+                                    </select>
+                                ) : (
+                                    <StatusBadge status={parent.status} />
+                                )}
+                            </div>
+                        </div>
+
+                        <dl className="mt-2.5 grid grid-cols-2 gap-2">
+                            <div className="rounded-lg bg-surface px-3 py-2">
+                                <dt className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Masuk</dt>
+                                <dd className="font-mono text-sm font-bold text-primary">{parent.jam_masuk ? parent.jam_masuk.substring(0, 5) : '—'}</dd>
+                                {presensiLokasiLabel(parent, 'masuk') && <dd className="truncate text-[10px] lowercase text-slate-500">{presensiLokasiLabel(parent, 'masuk').toLowerCase()}</dd>}
+                            </div>
+                            <div className="rounded-lg bg-surface px-3 py-2">
+                                <dt className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Keluar</dt>
+                                <dd className="font-mono text-sm font-bold text-primary">{parent.jam_keluar ? parent.jam_keluar.substring(0, 5) : '—'}</dd>
+                                {presensiLokasiLabel(parent, 'keluar') && <dd className="truncate text-[10px] lowercase text-slate-500">{presensiLokasiLabel(parent, 'keluar').toLowerCase()}</dd>}
+                            </div>
+                        </dl>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            {photos.length > 0 ? photos.map((photo) => (
+                                <a
+                                    key={photo.url}
+                                    href={photo.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={photo.label}
+                                    className="block h-11 w-11 overflow-hidden rounded-lg border border-border active:opacity-80"
+                                >
+                                    <img src={photo.url} alt={photo.label} className="h-full w-full object-cover" loading="lazy" />
+                                </a>
+                            )) : <span className="text-[11px] text-text-muted">Tanpa foto</span>}
+                            {lembur && <LemburBadge status={lembur.lembur_status} />}
+                            {tugasLuar && <TugasLuarBadge status={tugasLuar.tugas_luar_status} onClick={() => openTugasLuar(tugasLuar)} />}
+                        </div>
+
+                        {children.length > 0 && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setExpanded((state) => ({ ...state, [key]: !state[key] }))}
+                                    aria-expanded={isOpen}
+                                    className="mt-2 flex min-h-11 w-full items-center justify-between rounded-lg border border-border px-3 text-xs font-bold text-text-secondary"
+                                >
+                                    Rincian {children.length} aktivitas
+                                    <span aria-hidden="true">{isOpen ? '▴' : '▾'}</span>
+                                </button>
+                                {isOpen && (
+                                    <ul className="mt-2 space-y-1.5">
+                                        {children.map((c) => (
+                                            <li key={c.id} className="rounded-lg bg-surface px-3 py-2">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-xs font-bold text-text-primary">
+                                                            {c.is_tugas_luar ? 'Tugas Luar' : (c.jadwal?.mata_pelajaran?.nama || 'Mengajar')}
+                                                        </p>
+                                                        <p className="truncate text-[11px] text-text-secondary">
+                                                            {c.is_tugas_luar ? (c.tujuan || c.keterangan || '—') : (c.jadwal?.kelas_label || '—')}
+                                                        </p>
+                                                    </div>
+                                                    <div className="shrink-0 text-right">
+                                                        <p className="font-mono text-[11px] text-text-secondary">
+                                                            {c.jam_masuk ? c.jam_masuk.substring(0, 5) : '—'}–{c.jam_keluar ? c.jam_keluar.substring(0, 5) : '—'}
+                                                        </p>
+                                                        <StatusBadge status={c.status} />
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </>
+                        )}
+                    </article>
+                );
+            })}
+        </div>
+    );
 };
 
 const StatusDistribution = ({ stats }) => {
@@ -1289,7 +1433,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     return isAdmin ? (
                         <div className="card p-0 overflow-hidden">
                             <StatusDistribution stats={s} />
-                            <div className="overflow-x-auto lg:max-h-[72vh] lg:overflow-y-auto">
+                            {viewMode === 'ringkas' && (
+                                <RingkasCards data={rows} auth={auth} expanded={expanded} setExpanded={setExpanded} openTugasLuar={openTugasLuar} setConfirmStatus={setConfirmStatus} />
+                            )}
+                            <div className={`overflow-x-auto lg:max-h-[72vh] lg:overflow-y-auto ${viewMode === 'ringkas' ? 'hidden md:block' : ''}`}>
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">
                                         <tr>
