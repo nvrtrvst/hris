@@ -303,8 +303,8 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                         {pegawai.status_aktif}
                                                     </span>
                                                     <div className="flex gap-1.5">
-                                                        <span className="btn-secondary btn-sm py-1 px-2"><Eye className="h-3 w-3" /> <span className="hidden xs:inline">Detail</span></span>
-                                                        <Link href={route('pegawai.edit', pegawai.id)} onClick={(e) => e.stopPropagation()} className="btn-secondary btn-sm py-1 px-2"><Pencil className="h-3 w-3" /> <span className="hidden xs:inline">Edit</span></Link>
+                                                        <span className="btn-secondary btn-sm py-1 px-2"><Eye className="h-3 w-3" /> <span className="hidden sm:inline">Detail</span></span>
+                                                        <Link href={route('pegawai.edit', pegawai.id)} onClick={(e) => e.stopPropagation()} className="btn-secondary btn-sm py-1 px-2"><Pencil className="h-3 w-3" /> <span className="hidden sm:inline">Edit</span></Link>
                                                     </div>
                                                 </div>
                                             </div>

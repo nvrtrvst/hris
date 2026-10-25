@@ -113,7 +113,7 @@ export default function ThreadChat({ pengajuanId, isLocked, currentUserId, comme
                                             {c.user?.name}
                                         </p>
                                     )}
-                                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{c.message}</p>
+                                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{c.message}</p>
                                     <p className={`text-[10px] mt-1 ${isMe ? 'text-white/60' : 'text-text-muted'}`}>
                                         {formatTime(c.created_at)}
                                     </p>
