@@ -43,7 +43,7 @@ export default function Show({ auth, penggajian }) {
                     </div>
 
                     <div className="card p-6 sm:p-10 print:shadow-none print:border-none">
-                        <div className="border-b-2 border-primary/30 pb-6 mb-8 flex justify-between items-end">
+                        <div className="mb-8 flex flex-col gap-3 border-b-2 border-primary/30 pb-6 sm:flex-row sm:items-end sm:justify-between">
                             <div>
                                 <h1 className="text-3xl font-extrabold text-text-primary tracking-tight">YAYASAN PENDIDIKAN</h1>
                                 <p className="text-text-muted mt-1">Jl. Pendidikan No. 1, Jakarta Selatan</p>
@@ -55,7 +55,7 @@ export default function Show({ auth, penggajian }) {
                         </div>
 
                         <div className="card p-6 rounded-card mb-10">
-                            <div className="grid grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                                 <div>
                                     <div className="overflow-x-auto"><table className="w-full text-sm">
                                         <tbody>

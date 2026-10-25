@@ -651,8 +651,8 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                             >
                                                 <div className="flex items-center justify-between gap-4">
                                                     <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-primary text-sm truncate">{pegawai.nama_lengkap}</span>
+                                                        <div className="flex min-w-0 items-center gap-2">
+                                                            <span className="truncate text-sm font-bold text-primary">{pegawai.nama_lengkap}</span>
                                                             <span className="text-xs text-text-muted shrink-0">{unitSingkatan(pegawai)}</span>
                                                             {jpBadge(pegawai.id)}
                                                         </div>
@@ -687,10 +687,10 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                             return Object.values(grouped).sort((a, b) => (
                                                                 DAYS.indexOf(a.hari) - DAYS.indexOf(b.hari) || a.jam_mulai.localeCompare(b.jam_mulai)
                                                             )).map((j, i) => (
-                                                                <div key={i} className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-surface text-xs">
+                                                                <div key={i} className="flex min-w-0 items-center gap-3 px-2 py-1.5 rounded hover:bg-surface text-xs">
                                                                     <span className="font-mono font-semibold text-primary w-24 shrink-0">{j.hari?.substring(0, 3)}, {j.jam_mulai?.substring(0, 5)}-{j.jam_selesai?.substring(0, 5)}</span>
-                                                                    <span className="font-medium text-text-primary truncate">{j.mata_pelajaran?.nama || '-'}</span>
-                                                                    <span className="text-text-muted truncate">{j.kelas_label || '-'}</span>
+                                                                    <span className="min-w-0 truncate font-medium text-text-primary">{j.mata_pelajaran?.nama || '-'}</span>
+                                                                    <span className="shrink-0 text-text-muted">{j.kelas_label || '-'}</span>
                                                                 </div>
                                                             ));
                                                         })()
@@ -725,8 +725,8 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                                 return (
                                     <div key={pegawai.id} className="card p-4">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="font-bold text-gray-900 text-sm">{pegawai.nama_lengkap}</div>
+                                        <div className="mb-3 flex min-w-0 items-center gap-2">
+                                            <div className="min-w-0 truncate text-sm font-bold text-gray-900">{pegawai.nama_lengkap}</div>
                                             <span className="text-[11px] text-gray-500">{unitSingkatan(pegawai)}</span>
                                             {jpBadge(pegawai.id)}
                                         </div>

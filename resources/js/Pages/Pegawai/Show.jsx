@@ -35,7 +35,7 @@ import {
 const InfoRow = ({ label, children }) => (
     <div>
         <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">{label}</p>
-        <div className="mt-0.5 text-sm font-medium text-text-primary">{children}</div>
+        <div className="mt-0.5 break-words text-sm font-medium text-text-primary">{children}</div>
     </div>
 );
 
