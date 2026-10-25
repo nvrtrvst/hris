@@ -1317,10 +1317,16 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                 </div>
 
                                 {/* Rentang manual */}
-                                <div className="flex items-center gap-2">
-                                    <input type="date" className="input-field text-xs h-11" value={startDate} onChange={(e) => setStartDate(e.target.value)} aria-label="Tanggal mulai" />
-                                    <span className="text-xs text-text-secondary">–</span>
-                                    <input type="date" className="input-field text-xs h-11" value={endDate} onChange={(e) => setEndDate(e.target.value)} aria-label="Tanggal selesai" />
+                                <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center sm:gap-2">
+                                    <label className="flex flex-col gap-1 sm:flex-row sm:items-center">
+                                        <span className="text-[11px] font-semibold text-text-muted sm:hidden">Dari</span>
+                                        <input type="date" className="input-field h-11 w-full text-xs sm:w-auto" value={startDate} onChange={(e) => setStartDate(e.target.value)} aria-label="Tanggal mulai" />
+                                    </label>
+                                    <span className="hidden text-xs text-text-secondary sm:inline">–</span>
+                                    <label className="flex flex-col gap-1 sm:flex-row sm:items-center">
+                                        <span className="text-[11px] font-semibold text-text-muted sm:hidden">Sampai</span>
+                                        <input type="date" className="input-field h-11 w-full text-xs sm:w-auto" value={endDate} onChange={(e) => setEndDate(e.target.value)} aria-label="Tanggal selesai" />
+                                    </label>
                                 </div>
                             </div>
 
