@@ -228,7 +228,7 @@ export default function ReferenceTypes({ auth, types, allowedSources, komponens 
 
                                 {/* Values table */}
                                 {expandedType === t.id && (
-                                    <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900">
+                                    <div className="overflow-x-auto px-6 py-4 bg-slate-50 dark:bg-slate-900">
                                         <p className="text-xs font-semibold text-text-muted mb-3">Nilai untuk type <span className="font-mono text-primary">{t.kode}</span></p>
                                         <table className="min-w-full text-sm mb-4">
                                             <thead>

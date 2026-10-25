@@ -195,7 +195,7 @@ export default function Index({ auth, holidays, units, years, filters }) {
                                         <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Nama</th>
                                         <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Tipe</th>
                                         <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Unit</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Keterangan</th>
+                                        <th className="hidden px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted lg:table-cell">Keterangan</th>
                                         <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-text-muted">Aksi</th>
                                     </tr>
                                 </thead>
@@ -219,7 +219,7 @@ export default function Index({ auth, holidays, units, years, filters }) {
                                             <td className="whitespace-nowrap px-6 py-4 text-sm text-text-secondary">
                                                 {h.unit_sekolah ? h.unit_sekolah.nama : <span className="font-semibold text-blue-700">Nasional</span>}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-text-muted">{h.keterangan || '-'}</td>
+                                            <td className="hidden px-6 py-4 text-sm text-text-muted lg:table-cell">{h.keterangan || '-'}</td>
                                             <td className="whitespace-nowrap px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-2">
                                                     <button type="button" onClick={() => openEdit(h)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary" title="Edit">

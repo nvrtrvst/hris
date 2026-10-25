@@ -116,7 +116,7 @@ export default function Index({ auth, jabatans, stats, flash }) {
                                     <tr>
                                         <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Nama Jabatan</th>
                                         <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Tipe</th>
-                                        <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Rantai Approval</th>
+                                        <th className="hidden px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted lg:table-cell">Rantai Approval</th>
                                         <th className="px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-text-muted">Pegawai</th>
                                         <th className="px-6 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-text-muted">Aksi</th>
                                     </tr>
@@ -148,7 +148,7 @@ export default function Index({ auth, jabatans, stats, flash }) {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="whitespace-nowrap px-6 py-4">
+                                            <td className="hidden whitespace-nowrap px-6 py-4 lg:table-cell">
                                                 <div className="flex flex-col gap-1">
                                                     <ApproverChip label="L1" name={j.approver_l1?.nama} />
                                                     <ApproverChip label="L2" name={j.approver_l2?.nama} />
