@@ -324,6 +324,19 @@ export default function RunPayrollWorksheet({ auth, month, year, periode, unit =
                         ))}
                     </div>
 
+                    {/* Mobile: tabel komponen terlalu lebar untuk HP */}
+                    <div className="card p-5 text-center md:hidden">
+                        <ClipboardList className="mx-auto h-8 w-8 text-primary/60" />
+                        <p className="mt-2 text-sm font-bold text-text-primary">Worksheet butuh layar lebar</p>
+                        <p className="mt-1 mx-auto max-w-xs text-xs text-text-muted">
+                            Tabel komponen gaji tidak muat di HP. Buka halaman ini di komputer/laptop untuk mengedit, atau kembali ke ringkasan periode.
+                        </p>
+                        <button type="button" onClick={() => window.history.back()} className="btn-secondary mt-4">
+                            Kembali
+                        </button>
+                    </div>
+
+                    <div className="hidden space-y-4 md:block">
                     {/* Toolbar */}
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                         <div>
@@ -494,6 +507,7 @@ export default function RunPayrollWorksheet({ auth, month, year, periode, unit =
                                 </div>
                             </>
                         )}
+                    </div>
                     </div>
 
                     {/* Summary footer */}

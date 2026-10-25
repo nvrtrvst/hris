@@ -85,7 +85,7 @@ const LemburBadge = ({ status }) => {
     };
 
     return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${map[status] || map.pending}`}>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${map[status] || map.pending}`}>
             <AlarmClock className="h-3 w-3" /> Lembur {status || 'Pending'}
         </span>
     );
@@ -104,14 +104,14 @@ const LemburActions = ({ p, auth }) => {
             <button
                 type="button"
                 onClick={() => router.post(route('presensi.approveLembur', p.id), {}, { preserveState: true })}
-                className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-emerald-600"
+                className="rounded-md bg-emerald-500 px-2 py-1 text-[11px] font-bold text-white transition-colors hover:bg-emerald-600"
             >
                 Setuju
             </button>
             <button
                 type="button"
                 onClick={() => router.post(route('presensi.rejectLembur', p.id), {}, { preserveState: true })}
-                className="rounded-md bg-rose-500 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-600"
+                className="rounded-md bg-rose-500 px-2 py-1 text-[11px] font-bold text-white transition-colors hover:bg-rose-600"
             >
                 Tolak
             </button>
@@ -130,7 +130,7 @@ const TugasLuarBadge = ({ status, onClick }) => {
         <button
             type="button"
             onClick={onClick}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-opacity hover:opacity-80 cursor-pointer ${map[status] || map.pending}`}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border transition-opacity hover:opacity-80 cursor-pointer ${map[status] || map.pending}`}
         >
             Tugas Luar {status || 'Pending'}
         </button>
@@ -143,7 +143,7 @@ const TugasLuarCell = ({ p, openTugasLuar }) => (
             <div>
                 <TugasLuarBadge status={p.tugas_luar_status} onClick={() => openTugasLuar(p)} />
                 {p.tujuan && (
-                    <p className="mt-1 max-w-[160px] whitespace-normal break-words text-[10px] leading-tight text-text-secondary">{p.tujuan}</p>
+                    <p className="mt-1 max-w-[160px] whitespace-normal break-words text-[11px] leading-tight text-text-secondary">{p.tujuan}</p>
                 )}
             </div>
         ) : <span className="text-xs text-text-secondary">—</span>}
@@ -204,7 +204,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
         rows.push(
             <tr key={c.id} className={`bg-surface/40 ${isLast ? 'border-b-2 border-border' : ''}`}>
                 <td className="px-4 py-3 whitespace-nowrap pl-12">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{c.is_tugas_luar ? 'Tugas Luar' : 'Mengajar'}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">{c.is_tugas_luar ? 'Tugas Luar' : 'Mengajar'}</span>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap"></td>
                 <td className="px-4 py-3 whitespace-nowrap">
@@ -260,7 +260,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                     {c.is_tugas_luar ? (
                         <div>
                             <TugasLuarBadge status={c.tugas_luar_status} onClick={() => openTugasLuar(c)} />
-                            {c.tujuan && <p className="mt-1 max-w-[160px] whitespace-normal break-words text-[10px] leading-tight text-text-secondary">{c.tujuan}</p>}
+                            {c.tujuan && <p className="mt-1 max-w-[160px] whitespace-normal break-words text-[11px] leading-tight text-text-secondary">{c.tujuan}</p>}
                         </div>
                     ) : <span className="text-xs text-text-secondary">—</span>}
                 </td>
@@ -345,7 +345,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                 rows.push(
                     <tr key={c.id} className={`${c.is_sintetis ? 'bg-slate-50/60 ' : 'bg-surface/30 '}${isLast ? 'border-b-2 border-border' : ''}`}>
                         <td className="px-4 py-3 whitespace-nowrap pl-16">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">JP</span>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">JP</span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap"></td>
                         <td className="px-4 py-3 whitespace-nowrap">
@@ -471,7 +471,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                                     {' • '}{parent.unit_sekolah?.nama || '—'}
                                 </div>
                                 {lokasiLabel(parent.pegawai) && (
-                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 max-w-[220px] 2xl:max-w-[280px] truncate">
+                                    <div className="flex items-center gap-1 text-[11px] text-slate-500 max-w-[220px] 2xl:max-w-[280px] truncate">
                                         <MapPin className="h-2.5 w-2.5 shrink-0" />
                                         <span className="truncate">{lokasiLabel(parent.pegawai)}</span>
                                     </div>
@@ -497,7 +497,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             <div className="flex flex-col">
                                 <span className="font-mono text-sm font-bold text-primary">{parent.jam_masuk.substring(0, 8)}</span>
                                 {presensiLokasiLabel(parent, 'masuk') ? (
-                                    <span className="text-[10px] lowercase text-slate-500" title={parent.foto_masuk && new Date(parent.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(parent, 'masuk').toLowerCase()}</span>
+                                    <span className="text-[11px] lowercase text-slate-500" title={parent.foto_masuk && new Date(parent.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(parent, 'masuk').toLowerCase()}</span>
                                 ) : null}
                             </div>
                         ) : <span className="text-sm text-text-secondary">—</span>}
@@ -507,7 +507,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             <div className="flex flex-col">
                                 <span className="font-mono text-sm font-bold text-primary">{parent.jam_keluar.substring(0, 8)}</span>
                                 {presensiLokasiLabel(parent, 'keluar') ? (
-                                    <span className="text-[10px] lowercase text-slate-500" title={parent.foto_keluar && new Date(parent.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(parent, 'keluar').toLowerCase()}</span>
+                                    <span className="text-[11px] lowercase text-slate-500" title={parent.foto_keluar && new Date(parent.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(parent, 'keluar').toLowerCase()}</span>
                                 ) : null}
                             </div>
                         ) : <span className="text-sm text-text-secondary">—</span>}
@@ -538,7 +538,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             <div>
                                 <TugasLuarBadge status={tugasLuar.tugas_luar_status} onClick={() => openTugasLuar(tugasLuar)} />
                                 {tugasLuar.tujuan && (
-                                    <p className="mt-1 max-w-[160px] whitespace-normal break-words text-[10px] leading-tight text-text-secondary">{tugasLuar.tujuan}</p>
+                                    <p className="mt-1 max-w-[160px] whitespace-normal break-words text-[11px] leading-tight text-text-secondary">{tugasLuar.tujuan}</p>
                                 )}
                             </div>
                         ) : <span className="text-xs text-text-secondary">—</span>}
@@ -631,7 +631,7 @@ const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setCon
                             </div>
                             <div className="shrink-0">
                                 {parent.status === 'belum_presensi' ? (
-                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold uppercase ${STATUS_META.belum_presensi.badge}`}>Belum presensi</span>
+                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-bold uppercase ${STATUS_META.belum_presensi.badge}`}>Belum presensi</span>
                                 ) : canManage ? (
                                     <select
                                         className={`min-h-11 cursor-pointer rounded-lg border px-2 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[parent.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
@@ -654,14 +654,14 @@ const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setCon
 
                         <dl className="mt-2.5 grid grid-cols-2 gap-2">
                             <div className="rounded-lg bg-surface px-3 py-2">
-                                <dt className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Masuk</dt>
+                                <dt className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Masuk</dt>
                                 <dd className="font-mono text-sm font-bold text-primary">{parent.jam_masuk ? parent.jam_masuk.substring(0, 5) : '—'}</dd>
-                                {presensiLokasiLabel(parent, 'masuk') && <dd className="truncate text-[10px] lowercase text-slate-500">{presensiLokasiLabel(parent, 'masuk').toLowerCase()}</dd>}
+                                {presensiLokasiLabel(parent, 'masuk') && <dd className="truncate text-[11px] lowercase text-slate-500">{presensiLokasiLabel(parent, 'masuk').toLowerCase()}</dd>}
                             </div>
                             <div className="rounded-lg bg-surface px-3 py-2">
-                                <dt className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Keluar</dt>
+                                <dt className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Keluar</dt>
                                 <dd className="font-mono text-sm font-bold text-primary">{parent.jam_keluar ? parent.jam_keluar.substring(0, 5) : '—'}</dd>
-                                {presensiLokasiLabel(parent, 'keluar') && <dd className="truncate text-[10px] lowercase text-slate-500">{presensiLokasiLabel(parent, 'keluar').toLowerCase()}</dd>}
+                                {presensiLokasiLabel(parent, 'keluar') && <dd className="truncate text-[11px] lowercase text-slate-500">{presensiLokasiLabel(parent, 'keluar').toLowerCase()}</dd>}
                             </div>
                         </dl>
 
@@ -821,7 +821,7 @@ const JadwalStatusBadge = ({ p, now }) => {
         if (!sudahLewat) return null;
 
         return (
-            <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-700">
+            <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-rose-700">
                 Terlewat
             </span>
         );
@@ -829,14 +829,14 @@ const JadwalStatusBadge = ({ p, now }) => {
 
     if (sudahLewat) {
         return (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-emerald-700">
                 Selesai
             </span>
         );
     }
 
     return (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-700">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
             Mengajar
         </span>
@@ -1176,7 +1176,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             aria-expanded={filterSheetOpen}
                         >
                             <Filter className="h-4 w-4" />
-                            Filter{activeFilterCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-white">{activeFilterCount}</span>}
+                            Filter{activeFilterCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[11px] font-bold text-white">{activeFilterCount}</span>}
                         </button>
                     </div>
 
@@ -1492,7 +1492,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                                     {' • '}{p.unit_sekolah?.nama || '—'}
                                                                 </div>
                                                                 {lokasiLabel(p.pegawai) && (
-                                                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 max-w-[220px] 2xl:max-w-[280px] truncate">
+                                                                    <div className="flex items-center gap-1 text-[11px] text-slate-500 max-w-[220px] 2xl:max-w-[280px] truncate">
                                                                         <MapPin className="h-2.5 w-2.5 shrink-0" />
                                                                         <span className="truncate">{lokasiLabel(p.pegawai)}</span>
                                                                     </div>
@@ -1526,9 +1526,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             <div className="flex flex-col">
                                                                 <span className="font-mono text-sm font-bold text-primary">{p.jam_masuk.substring(0, 8)}</span>
                                                                 {presensiLokasiLabel(p, 'masuk') ? (
-                                                                    <span className="text-[10px] lowercase text-slate-500" title={p.foto_masuk && new Date(p.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(p, 'masuk').toLowerCase()}</span>
+                                                                    <span className="text-[11px] lowercase text-slate-500" title={p.foto_masuk && new Date(p.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(p, 'masuk').toLowerCase()}</span>
                                                                 ) : p.jarak_masuk_meter != null ? (
-                                                                    <span className="text-[10px] text-text-secondary">{p.jarak_masuk_meter}m</span>
+                                                                    <span className="text-[11px] text-text-secondary">{p.jarak_masuk_meter}m</span>
                                                                 ) : null}
                                                             </div>
                                                         ) : <span className="text-sm text-text-secondary">—</span>}
@@ -1538,8 +1538,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             <div className="flex flex-col">
                                                                 <span className="font-mono text-sm font-bold text-primary">{p.jam_keluar.substring(0, 8)}</span>
                                                                 {presensiLokasiLabel(p, 'keluar') ? (
-                                                                    <span className="text-[10px] lowercase text-slate-500" title={p.foto_keluar && new Date(p.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(p, 'keluar').toLowerCase()}</span>
-                                                                ) : durasi ? <span className="text-[10px] font-semibold text-emerald-600">{durasi}</span> : null}
+                                                                    <span className="text-[11px] lowercase text-slate-500" title={p.foto_keluar && new Date(p.created_at) < new Date('2026-09-23T12:00:00') ? 'Foto overlay mungkin berbeda (data sebelum 23 Sep)' : undefined}>{presensiLokasiLabel(p, 'keluar').toLowerCase()}</span>
+                                                                ) : durasi ? <span className="text-[11px] font-semibold text-emerald-600">{durasi}</span> : null}
                                                             </div>
                                                         ) : <span className="text-sm text-text-secondary">—</span>}
                                                     </td>
@@ -1605,10 +1605,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                         </div>
                                                         {(p.lokasi_perlu_review || p.posisi_mencurigakan || p.is_pulang_awal) && (
                                                             <div className="mt-1 flex flex-wrap justify-end gap-1">
-                                                                {p.lokasi_perlu_review && <span className="inline-flex items-center gap-1 rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-rose-600"><AlertTriangle className="h-2.5 w-2.5" /> Review</span>}
-                                                                {p.posisi_mencurigakan && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-600">Suspek</span>}
+                                                                {p.lokasi_perlu_review && <span className="inline-flex items-center gap-1 rounded bg-rose-50 px-1.5 py-0.5 text-[11px] font-bold uppercase text-rose-600"><AlertTriangle className="h-2.5 w-2.5" /> Review</span>}
+                                                                {p.posisi_mencurigakan && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold uppercase text-amber-600">Suspek</span>}
                                                                 {p.is_pulang_awal && (
-                                                                    <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${p.pulang_awal_diizinkan ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
+                                                                    <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-bold uppercase ${p.pulang_awal_diizinkan ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
                                                                         <AlarmClock className="h-2.5 w-2.5" /> Pulang Awal {p.menit_pulang_awal}m{p.pulang_awal_diizinkan ? ' · Disetujui' : ''}
                                                                     </span>
                                                                 )}
@@ -1783,8 +1783,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                         <img src={f.url} alt={f.label} className="aspect-[3/4] w-full object-cover" loading="lazy" />
                                                     </a>
                                                     <div className="mt-1.5 flex items-center justify-between px-0.5">
-                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${f.tone}`}>{f.label}</span>
-                                                        {f.status && f.status !== 'success' && <span className="text-[10px] font-semibold text-warning">{f.status}{f.error ? ` — ${f.error}` : ''}</span>}
+                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${f.tone}`}>{f.label}</span>
+                                                        {f.status && f.status !== 'success' && <span className="text-[11px] font-semibold text-warning">{f.status}{f.error ? ` — ${f.error}` : ''}</span>}
                                                     </div>
                                                 </div>
                                             )
@@ -1934,8 +1934,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             </div>
                                                         )}
                                                         <div className="mt-1.5 flex items-center justify-between px-0.5">
-                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${f.tone}`}>{f.label}</span>
-                                                            {f.status && f.status !== 'success' && <span className="text-[10px] font-semibold text-warning">{f.status}{f.error ? ` — ${f.error}` : ''}</span>}
+                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${f.tone}`}>{f.label}</span>
+                                                            {f.status && f.status !== 'success' && <span className="text-[11px] font-semibold text-warning">{f.status}{f.error ? ` — ${f.error}` : ''}</span>}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -2130,7 +2130,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                         return url ? (
                                                             <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-border transition-shadow hover:ring-2 hover:ring-primary" title={item.keterangan || 'Bukti kegiatan'}>
                                                                 <img src={url} alt={`Kegiatan ${i + 1}`} className="aspect-[3/4] w-full object-cover" loading="lazy" />
-                                                                {item.keterangan && <p className="px-1.5 py-1 text-[10px] leading-tight text-text-secondary">{item.keterangan}</p>}
+                                                                {item.keterangan && <p className="px-1.5 py-1 text-[11px] leading-tight text-text-secondary">{item.keterangan}</p>}
                                                             </a>
                                                         ) : null;
                                                     })}

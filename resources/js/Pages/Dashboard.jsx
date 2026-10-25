@@ -75,7 +75,7 @@ const StatusBadge = ({ status }) => {
     const meta = STATUS_META[status] || { label: status || '·', badge: 'bg-slate-50 text-slate-600 border-slate-200' };
 
     return (
-        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${meta.badge}`}>
+        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${meta.badge}`}>
             {meta.label}
         </span>
     );
@@ -542,10 +542,10 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                     <span className="font-normal text-emerald-700"> ({j.jam_mulai?.substring(0, 5)}-{j.jam_selesai?.substring(0, 5)})</span>
                                                 </span>
                                                 <span className="inline-flex items-center gap-1.5">
-                                                    {!lap && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">Belum isi</span>}
-                                                    {lap && lap.status === 'submitted' && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Terkirim</span>}
-                                                    {lap && lap.status !== 'submitted' && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">{lap.done}/{lap.total}</span>}
-                                                    {lap && lap.perlu_cek > 0 && <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">Perlu cek {lap.perlu_cek}</span>}
+                                                    {!lap && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">Belum isi</span>}
+                                                    {lap && lap.status === 'submitted' && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">Terkirim</span>}
+                                                    {lap && lap.status !== 'submitted' && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">{lap.done}/{lap.total}</span>}
+                                                    {lap && lap.perlu_cek > 0 && <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-700">Perlu cek {lap.perlu_cek}</span>}
                                                 </span>
                                             </div>
                                             {review.length > 0 && (
@@ -685,22 +685,22 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                         <td className="px-4 py-3">
                                                             <span className="font-medium text-text-primary">{j.mata_pelajaran?.nama || j.jenis_jadwal || '-'}</span>
                                                             {j.jenis_jadwal === 'piket' ? (
-                                                                <span className="ml-1.5 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Piket</span>
+                                                                <span className="ml-1.5 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">Piket</span>
                                                             ) : j.jenis_jadwal !== 'mengajar' ? (
-                                                                <span className="ml-1.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{j.jenis_jadwal}</span>
+                                                                <span className="ml-1.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">{j.jenis_jadwal}</span>
                                                             ) : null}
                                                         </td>
                                                         <td className="hidden sm:table-cell px-4 py-3 text-text-secondary">{j.kelas_label || '-'}</td>
                                                         <td className="px-4 py-3 whitespace-nowrap">
                                                             {idx === 0 ? (
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold ${avatarTone(g.guru?.nama_lengkap)}`}>
+                                                                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold ${avatarTone(g.guru?.nama_lengkap)}`}>
                                                                         {initials(g.guru?.nama_lengkap)}
                                                                     </span>
                                                                     <div className="min-w-0">
                                                                         <span className="font-semibold text-text-primary">{g.guru?.nama_lengkap || '-'}</span>
                                                                         {(g.totalItems ?? g.items.length) > 1 && (
-                                                                            <span className="ml-1.5 rounded-full bg-primary/5 px-1.5 py-0.5 text-[10px] font-bold text-primary">{g.totalItems ?? g.items.length} JP</span>
+                                                                            <span className="ml-1.5 rounded-full bg-primary/5 px-1.5 py-0.5 text-[11px] font-bold text-primary">{g.totalItems ?? g.items.length} JP</span>
                                                                         )}
                                                                     </div>
                                                                 </div>
@@ -904,7 +904,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                 </div>
                                                 <div className="shrink-0 text-right">
                                                     <div className="text-xs font-semibold text-text-primary">{pegawai.kontrak_berakhir}</div>
-                                                    <span className={`mt-0.5 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${tone.badge}`}>
+                                                    <span className={`mt-0.5 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-bold ${tone.badge}`}>
                                                         {pegawai.sisa_hari <= 0 ? 'Lewat' : `Sisa ${tone.label}`}
                                                     </span>
                                                 </div>
@@ -949,7 +949,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                                                         {formatTgl(a.published_at)}{a.unit_nama ? ` · ${a.unit_nama}` : ' · Semua Unit'}
                                                     </div>
                                                 </div>
-                                                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${st.cls}`}>{st.label}</span>
+                                                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${st.cls}`}>{st.label}</span>
                                             </div>
                                         );
                                     })}

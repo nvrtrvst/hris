@@ -284,7 +284,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                         <p className="mt-0.5 text-[11px] text-text-secondary truncate">{pegawai.user?.email || pegawai.nuptk || '—'}</p>
                                                     </div>
                                                     <div className="flex shrink-0 items-center gap-1">
-                                                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${kep.badge}`}>{kep.label}</span>
+                                                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${kep.badge}`}>{kep.label}</span>
                                                     </div>
                                                 </div>
                                                 <div className="mt-2 flex items-center gap-1.5 text-[11px] text-text-secondary">
@@ -298,7 +298,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                     </div>
                                                 )}
                                                 <div className="mt-2 flex items-center justify-between">
-                                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${STATUS_AKTIF_BADGE(pegawai.status_aktif)}`}>
+                                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_AKTIF_BADGE(pegawai.status_aktif)}`}>
                                                         <span className={`h-1 w-1 rounded-full ${pegawai.status_aktif === 'aktif' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                                                         {pegawai.status_aktif}
                                                     </span>
@@ -368,15 +368,15 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                                                 <Building2 className="h-3 w-3 text-primary/60" />
                                                                                 {unit.nama}
                                                                             </div>
-                                                                            <div className="mt-0.5 text-[10px] text-text-secondary">{jabatan || '-'}</div>
+                                                                            <div className="mt-0.5 text-[11px] text-text-secondary">{jabatan || '-'}</div>
                                                                             {mapels.length > 0 && (
-                                                                                <div className="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-blue-600">
+                                                                                <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-blue-600">
                                                                                     <GraduationCap className="h-2.5 w-2.5" />
                                                                                     {mapels.map((m) => m.nama).join(', ')}
                                                                                 </div>
                                                                             )}
                                                                             {lokasiLabel(pegawai) && (
-                                                                                <div className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-500">
+                                                                                <div className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
                                                                                     <MapPin className="h-2.5 w-2.5 shrink-0" />
                                                                                     {lokasiLabel(pegawai)}
                                                                                 </div>
@@ -390,12 +390,12 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-3.5 whitespace-nowrap">
-                                                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${kep.badge}`}>
+                                                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${kep.badge}`}>
                                                             {kep.label}
                                                         </span>
                                                     </td>
                                                     <td className="px-4 py-3.5 whitespace-nowrap">
-                                                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${STATUS_AKTIF_BADGE(pegawai.status_aktif)}`}>
+                                                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${STATUS_AKTIF_BADGE(pegawai.status_aktif)}`}>
                                                             <span className={`h-1.5 w-1.5 rounded-full ${pegawai.status_aktif === 'aktif' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                                                             {pegawai.status_aktif}
                                                         </span>
