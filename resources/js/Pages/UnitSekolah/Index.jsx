@@ -52,8 +52,8 @@ export default function Index({ auth, units, stats }) {
                                     <thead className="bg-surface">
                                         <tr>
                                             <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Unit</th>
-                                            <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Geofence</th>
-                                            <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Pengaturan Presensi</th>
+                                            <th className="hidden px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted lg:table-cell">Geofence</th>
+                                            <th className="hidden px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted lg:table-cell">Pengaturan Presensi</th>
                                             <th className="px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-text-muted">Pegawai</th>
                                             <th className="px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-text-muted">Jadwal</th>
                                             <th className="px-6 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-text-muted">Aksi</th>
@@ -78,7 +78,7 @@ export default function Index({ auth, units, stats }) {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="whitespace-nowrap px-6 py-4">
+                                                <td className="hidden whitespace-nowrap px-6 py-4 lg:table-cell">
                                                     <p className="font-mono text-xs text-text-secondary">
                                                         {unit.latitude}, {unit.longitude}
                                                     </p>
@@ -86,7 +86,7 @@ export default function Index({ auth, units, stats }) {
                                                         <Ruler className="h-3 w-3" /> {unit.radius_meter} m
                                                     </span>
                                                 </td>
-                                                <td className="whitespace-nowrap px-6 py-4">
+                                                <td className="hidden whitespace-nowrap px-6 py-4 lg:table-cell">
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {unit.durasi_jp && <UnitBadge Icon={Clock3} label={`${unit.durasi_jp} mnt/JP`} />}
                                                         {unit.toleransi_menit > 0 && <UnitBadge Icon={MapPin} label={`Telat ${unit.toleransi_menit} mnt`} />}

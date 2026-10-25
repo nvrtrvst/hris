@@ -57,7 +57,7 @@ export default function Show({ auth, penggajian }) {
                         <div className="card p-6 rounded-card mb-10">
                             <div className="grid grid-cols-2 gap-8">
                                 <div>
-                                    <table className="w-full text-sm">
+                                    <div className="overflow-x-auto"><table className="w-full text-sm">
                                         <tbody>
                                             <tr>
                                                 <td className="py-1 text-text-secondary w-32">Nama Lengkap</td>
@@ -72,10 +72,10 @@ export default function Show({ auth, penggajian }) {
                                                 <td className="py-1 font-bold text-text-primary uppercase">: {penggajian.pegawai.statusRef?.label || penggajian.pegawai.status_kepegawaian}</td>
                                             </tr>
                                         </tbody>
-                                    </table>
+                                    </table></div>
                                 </div>
                                 <div>
-                                    <table className="w-full text-sm">
+                                    <div className="overflow-x-auto"><table className="w-full text-sm">
                                         <tbody>
                                             <tr>
                                                 <td className="py-1 text-text-secondary w-32">Unit Utama</td>
@@ -90,7 +90,7 @@ export default function Show({ auth, penggajian }) {
                                                 <td className="py-1 font-bold text-text-primary">: {new Date(penggajian.tanggal_generate).toLocaleDateString('id-ID')}</td>
                                             </tr>
                                         </tbody>
-                                    </table>
+                                    </table></div>
                                 </div>
                             </div>
                         </div>
@@ -98,7 +98,7 @@ export default function Show({ auth, penggajian }) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-8">
                             <div>
                                 <h3 className="text-lg font-bold text-success border-b-2 border-success/20 pb-2 mb-4 uppercase tracking-wider">Pendapatan</h3>
-                                <table className="w-full text-sm">
+                                <div className="overflow-x-auto"><table className="w-full text-sm">
                                     <tbody>
                                         {pendapatan.map(p => (
                                             <tr key={p.id}>
@@ -113,12 +113,12 @@ export default function Show({ auth, penggajian }) {
                                             <td className="py-3 text-right font-bold text-success text-base">{formatRupiah(penggajian.total_pendapatan)}</td>
                                         </tr>
                                     </tfoot>
-                                </table>
+                                </table></div>
                             </div>
 
                             <div>
                                 <h3 className="text-lg font-bold text-danger border-b-2 border-danger/20 pb-2 mb-4 uppercase tracking-wider">Potongan</h3>
-                                <table className="w-full text-sm">
+                                <div className="overflow-x-auto"><table className="w-full text-sm">
                                     <tbody>
                                         {potongan.length > 0 ? potongan.map(p => (
                                             <tr key={p.id}>
@@ -137,7 +137,7 @@ export default function Show({ auth, penggajian }) {
                                             <td className="py-3 text-right font-bold text-danger text-base">{formatRupiah(penggajian.total_potongan)}</td>
                                         </tr>
                                     </tfoot>
-                                </table>
+                                </table></div>
                             </div>
                         </div>
 

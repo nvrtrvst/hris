@@ -90,7 +90,7 @@ export default function Index({ auth, users, filters, stats, flash }) {
                                     <tr>
                                         <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Nama / Email</th>
                                         <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Role Utama</th>
-                                        <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Unit Sekolah</th>
+                                        <th className="hidden px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted md:table-cell">Unit Sekolah</th>
                                         <th className="px-6 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-text-muted">Aksi</th>
                                     </tr>
                                 </thead>
@@ -109,7 +109,7 @@ export default function Index({ auth, users, filters, stats, flash }) {
                                                 </div>
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4">{roleBadge(u)}</td>
-                                            <td className="whitespace-nowrap px-6 py-4">
+                                            <td className="hidden whitespace-nowrap px-6 py-4 md:table-cell">
                                                 {u.unit_sekolah ? (
                                                     <span className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary">
                                                         <Building2 className="h-3.5 w-3.5 text-text-muted" /> {u.unit_sekolah.nama}
