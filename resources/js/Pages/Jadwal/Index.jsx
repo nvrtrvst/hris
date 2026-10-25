@@ -82,14 +82,14 @@ const JadwalLiveBadge = ({ jadwal, presensi, now }) => {
 
     if (selesai) {
         return (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700 print:hidden">
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-emerald-700 print:hidden">
                 Selesai
             </span>
         );
     }
 
     return (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 print:hidden">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-700 print:hidden">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden="true" />
             Mengajar
         </span>
@@ -108,7 +108,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         if (jp === undefined) return null;
         const warna = jp > targetJpMinggu ? 'bg-red-100 text-red-700' : jp < targetJpMinggu ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700';
         return (
-            <span className={`inline-flex rounded font-semibold text-[10px] px-1.5 py-0.5 ${warna}`} title={`Beban mengajar ${jp} dari target ${targetJpMinggu} JP/minggu`}>
+            <span className={`inline-flex rounded font-semibold text-[11px] px-1.5 py-0.5 ${warna}`} title={`Beban mengajar ${jp} dari target ${targetJpMinggu} JP/minggu`}>
                 {jp}/{targetJpMinggu} JP
             </span>
         );
@@ -737,7 +737,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                                                 return (
                                                     <div key={day}>
-                                                        <div className="text-[10px] font-bold uppercase text-muted mb-1">{day}</div>
+                                                        <div className="text-[11px] font-bold uppercase text-muted mb-1">{day}</div>
                                                         <div className="flex flex-wrap gap-1.5">
                                                             {dayJadwals.map((jadwal) => {
                                                                 const meta = jenisBadge(jadwal.jenis_jadwal);
@@ -748,12 +748,12 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                             {jadwal.jam_mulai.substring(0, 5)}–{jadwal.jam_selesai.substring(0, 5)}
                                                                         </span>
                                                                         {jadwal.mata_pelajaran?.nama && (
-                                                                            <span className="mt-0.5 text-[10px] font-semibold text-gray-700 leading-tight">{jadwal.mata_pelajaran.nama}</span>
+                                                                            <span className="mt-0.5 text-[11px] font-semibold text-gray-700 leading-tight">{jadwal.mata_pelajaran.nama}</span>
                                                                         )}
                                                                         {jadwal.kelas_label && (
-                                                                            <span className="text-[9px] text-muted leading-tight">Kls {jadwal.kelas_label}</span>
+                                                                            <span className="text-[11px] text-muted leading-tight">Kls {jadwal.kelas_label}</span>
                                                                         )}
-                                                                        <span className={`mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border ${meta.badge}`}>
+                                                                        <span className={`mt-1 text-[11px] font-bold px-1.5 py-0.5 rounded uppercase border ${meta.badge}`}>
                                                                             {meta.label}
                                                                         </span>
                                                                         <JadwalLiveBadge
@@ -844,12 +844,12 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                                 {jadwal.jam_mulai.substring(0, 5)}–{jadwal.jam_selesai.substring(0, 5)}
                                                                             </span>
                                                                             {jadwal.mata_pelajaran?.nama && (
-                                                                                <span className="mt-0.5 text-[10px] font-semibold text-gray-700 leading-tight">{jadwal.mata_pelajaran.nama}</span>
+                                                                                <span className="mt-0.5 text-[11px] font-semibold text-gray-700 leading-tight">{jadwal.mata_pelajaran.nama}</span>
                                                                             )}
                                                                             {jadwal.kelas_label && (
-                                                                                <span className="text-[9px] text-muted leading-tight">Kls {jadwal.kelas_label}</span>
+                                                                                <span className="text-[11px] text-muted leading-tight">Kls {jadwal.kelas_label}</span>
                                                                             )}
-                                                                            <span className={`mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border ${meta.badge}`}>
+                                                                            <span className={`mt-1 text-[11px] font-bold px-1.5 py-0.5 rounded uppercase border ${meta.badge}`}>
                                                                                 {meta.label}
                                                                             </span>
                                                                             <JadwalLiveBadge
@@ -974,13 +974,13 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                         return (
                                             <div key={j.id} className="card p-4 flex items-center gap-4 transition-shadow hover:shadow-card-hover">
                                                 <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-primary/5 border border-primary/10">
-                                                    <span className="text-[9px] font-bold uppercase text-text-muted">{j.hari.substring(0, 3)}</span>
+                                                    <span className="text-[11px] font-bold uppercase text-text-muted">{j.hari.substring(0, 3)}</span>
                                                     <span className="font-mono text-[11px] font-bold text-primary">{j.jam_mulai?.substring(0, 5)}</span>
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold text-primary truncate">{j.mata_pelajaran?.nama || j.jenis_jadwal}</span>
-                                                        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${meta.badge}`}>{meta.label}</span>
+                                                        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${meta.badge}`}>{meta.label}</span>
                                                     </div>
                                                     <div className="mt-0.5 text-xs text-text-secondary">
                                                         {j.jam_mulai?.substring(0, 5)} – {j.jam_selesai?.substring(0, 5)}
@@ -989,7 +989,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                 </div>
                                                 <div className="shrink-0 text-right">
                                                     <span className="text-xs font-semibold text-text-secondary">{j.unit_sekolah?.singkatan || '-'}</span>
-                                                    {j.unit_sekolah?.nama && <div className="max-w-[140px] truncate text-[10px] text-text-muted">{j.unit_sekolah.nama}</div>}
+                                                    {j.unit_sekolah?.nama && <div className="max-w-[140px] truncate text-[11px] text-text-muted">{j.unit_sekolah.nama}</div>}
                                                 </div>
                                             </div>
                                         );
@@ -1078,7 +1078,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                         <label className="form-label mb-1">Rentang Jam</label>
                                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                             <div className="relative">
-                                                <span className="absolute -top-2 left-3 text-[10px] text-text-muted bg-white px-1">Mulai</span>
+                                                <span className="absolute -top-2 left-3 text-[11px] text-text-muted bg-white px-1">Mulai</span>
                                                 <input
                                                     type="time"
                                                     value={genData.waktu_mulai}
@@ -1087,7 +1087,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                 />
                                             </div>
                                             <div className="relative">
-                                                <span className="absolute -top-2 left-3 text-[10px] text-text-muted bg-white px-1">Selesai</span>
+                                                <span className="absolute -top-2 left-3 text-[11px] text-text-muted bg-white px-1">Selesai</span>
                                                 <input
                                                     type="time"
                                                     value={genData.waktu_selesai}
@@ -1224,7 +1224,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                         <div className="flex items-center justify-between">
                                                             <div>
                                                                 <span className="font-bold text-text-primary">{j.hari}, {j.jam_mulai?.substring(0, 5)}-{j.jam_selesai?.substring(0, 5)}</span>
-                                                                <span className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase border ${jenisBadge(j.jenis_jadwal).badge}`}>{j.jenis_jadwal}</span>
+                                                                <span className={`ml-2 text-[11px] font-bold px-1.5 py-0.5 rounded uppercase border ${jenisBadge(j.jenis_jadwal).badge}`}>{j.jenis_jadwal}</span>
                                                             </div>
                                                             <div className="text-xs text-text-secondary text-right">
                                                                 {j.mapel_nama && <div>{j.mapel_nama}</div>}
