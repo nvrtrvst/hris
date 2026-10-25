@@ -150,12 +150,33 @@ export default function Pagination({ links, pagination = null, data = null, pres
     };
 
     return (
-        <nav className={`flex justify-end ${className}`} aria-label="Navigasi halaman">
-            <ul className="flex space-x-1">
+        <nav className={`flex w-full max-w-full flex-wrap items-center justify-end gap-2 ${className}`} aria-label="Navigasi halaman">
+            <ul className="hidden max-w-full flex-wrap items-center gap-1 sm:flex">
                 {links.map((link, index) => (
                     <li key={index}>{renderLink(link, index)}</li>
                 ))}
             </ul>
+            <div className="flex items-center justify-center gap-2 sm:hidden">
+                <button
+                    type="button"
+                    onClick={() => navigate(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                    aria-label="Halaman sebelumnya"
+                    className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                    « Sebelumnya
+                </button>
+                <span className="text-xs font-bold text-slate-500">Halaman {currentPage} / {lastPage}</span>
+                <button
+                    type="button"
+                    onClick={() => navigate(currentPage + 1)}
+                    disabled={currentPage >= lastPage}
+                    aria-label="Halaman berikutnya"
+                    className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                    Berikutnya »
+                </button>
+            </div>
         </nav>
     );
 }
