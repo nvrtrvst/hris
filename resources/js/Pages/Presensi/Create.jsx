@@ -95,7 +95,7 @@ export default function Create({ auth, jadwals, presensis, pegawai }) {
             <Head title="Absensi Mandiri" />
 
             <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="mb-4">
                         <Link href={route('presensi.index')} className="link inline-flex items-center text-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

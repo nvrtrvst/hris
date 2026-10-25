@@ -131,7 +131,7 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
             <Head title="Laporan Piket" />
 
             <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                     {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
 
                     <form onSubmit={tampilkan} className="page-card p-5">

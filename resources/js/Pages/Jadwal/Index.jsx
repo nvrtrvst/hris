@@ -500,7 +500,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                     {/* Stats */}
                     {isAdmin && (
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
                             {statCards.map((card) => <StatCard key={card.label} {...card} />)}
                         </div>
                     )}
@@ -1006,7 +1006,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                 </div>
 
                                 <form onSubmit={handleGenerate} className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div>
                                             <label className="form-label mb-1">Unit Sekolah</label>
                                             <select
@@ -1063,7 +1063,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                                     <div>
                                         <label className="form-label mb-1">Rentang Jam</label>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                             <div className="relative">
                                                 <span className="absolute -top-2 left-3 text-[10px] text-text-muted bg-white px-1">Mulai</span>
                                                 <input
@@ -1239,7 +1239,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     return (
                                         <div className="mb-4 p-3 bg-info-light border border-info/30 rounded-card">
                                             <p className="text-xs font-bold text-info uppercase tracking-wider mb-2">Preview Hasil Tukar</p>
-                                            <div className="grid grid-cols-2 gap-3 text-xs">
+                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
                                                 <div>
                                                     <p className="text-text-muted mb-0.5">← {asal.pegawai?.nama_lengkap} mendapat:</p>
                                                     <p className="font-semibold text-text-primary">{tujuan.hari}, {tujuan.jam_mulai?.substring(0, 5)}-{tujuan.jam_selesai?.substring(0, 5)}</p>
@@ -1329,7 +1329,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                                 {swapCandidates && (
                                     <>
-                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
                                             <div>
                                                 <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Pegawai A</label>
                                                 <select value={dayA} onChange={(e) => setDayA(e.target.value)} className="select-field">
@@ -1469,7 +1469,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                 </button>
                                                             )}
                                                         </div>
-                                                        <div className="grid grid-cols-2 gap-3">
+                                                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                                             <select value={pair.asal} onChange={(e) => setBulkPairs(bulkPairs.map((p, i) => (i === idx ? { ...p, asal: e.target.value, tujuan: p.tujuan === e.target.value ? '' : p.tujuan } : p)))} className="select-field text-xs">
                                                                 <option value="">— Jadwal asal —</option>
                                                                 {options.map((j) => <option key={j.id} value={j.id}>{jadwalOptionLabel(j)}</option>)}
@@ -1557,7 +1557,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                                 {swapCandidates && (
                                     <>
-                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
                                             <div>
                                                 <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Jadwal A</label>
                                                 <select value={slotA} onChange={(e) => setSlotA(e.target.value)} className="select-field text-xs">
@@ -1781,7 +1781,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                         </div>
 
                                         {importMode === 'excel' && (
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                                 <div>
                                                     <label className="form-label mb-1">Tahun Ajaran (opsional)</label>
                                                     <input

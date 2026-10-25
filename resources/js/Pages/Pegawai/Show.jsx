@@ -450,7 +450,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                         <div className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                                             <a
                                                 href={route('pegawai.dokumen.download', [pegawai.id, d.id])}
-                                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-primary/10 hover:text-primary"
+                                                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-primary/10 hover:text-primary md:h-8 md:w-8"
                                                 title="Unduh"
                                             >
                                                 <Download className="h-4 w-4" />
@@ -458,7 +458,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                             <button
                                                 type="button"
                                                 onClick={() => hapusDokumen(d)}
-                                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-rose-50 hover:text-rose-600"
+                                                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-rose-50 hover:text-rose-600 md:h-8 md:w-8"
                                                 title="Hapus"
                                             >
                                                 <Trash2 className="h-4 w-4" />

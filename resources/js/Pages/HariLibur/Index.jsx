@@ -261,7 +261,7 @@ export default function Index({ auth, holidays, units, years, filters }) {
                             <input type="text" className={inputClass} value={form.data.nama} onChange={(e) => form.setData('nama', e.target.value)} placeholder="Mis. Isra Mikraj" />
                             {form.errors.nama && <p className="form-error">{form.errors.nama}</p>}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
                                 <label className="mb-1 block text-xs font-bold text-text-muted">Unit</label>
                                 <select className={inputClass} value={form.data.unit_sekolah_id} onChange={(e) => form.setData('unit_sekolah_id', e.target.value)}>

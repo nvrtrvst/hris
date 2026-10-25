@@ -76,7 +76,7 @@ export default function Matrix({ auth, pegawais, komponens, unitSekolahs = [] })
         >
             <Head title="Matrix Gaji Pegawai" />
 
-            <div className="-m-4 sm:-m-6 lg:-m-8 h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] flex flex-col bg-surface pt-6 pb-6 px-4 sm:px-6 lg:px-8">
+            <div className="-m-4 sm:-m-6 lg:-m-8 h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] flex flex-col bg-surface pt-6 pb-6 px-4 sm:px-6 lg:px-8">
                 {flash.message && <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
                 {flash.error && <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
 

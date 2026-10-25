@@ -48,7 +48,7 @@ export default function PerbandinganUnit({ units, filter }) {
         >
             <Head title="Perbandingan Unit" />
             <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
                     {/* Filter */}
                     <div className="filter-bar card p-4">

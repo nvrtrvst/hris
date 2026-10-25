@@ -77,7 +77,7 @@ export default function Edit({ auth, jadwal, pegawais, units, mapel, lokalis }) 
             <Head title="Edit Jadwal" />
 
             <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="mb-4">
                         <Link href={route('jadwal.index')} className="link inline-flex items-center text-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

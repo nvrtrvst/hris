@@ -424,7 +424,7 @@ export default function LaporanIndex({ auth, units }) {
                                         key={p.label}
                                         type="button"
                                         onClick={() => setFilter({ ...filter, start_date: p.s, end_date: p.e })}
-                                        className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${filter.start_date === p.s && filter.end_date === p.e ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text-secondary hover:bg-surface hover:text-text-primary'}`}
+                                        className={`inline-flex min-h-11 items-center rounded-full border px-3 text-xs font-semibold transition md:min-h-0 md:py-1 ${filter.start_date === p.s && filter.end_date === p.e ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text-secondary hover:bg-surface hover:text-text-primary'}`}
                                     >
                                         {p.label}
                                     </button>

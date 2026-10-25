@@ -272,7 +272,7 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                             {errors.message && <p className="text-danger text-xs mt-1">{errors.message}</p>}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
                                 <label className="form-label text-sm font-semibold">Jenis <span className="text-danger">*</span></label>
                                 <select value={data.type} onChange={e => setData('type', e.target.value)} className="select-field w-full">
@@ -292,7 +292,7 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
                                 <label className="form-label text-sm font-semibold">Target</label>
                                 <select value={data.target_all ? 'all' : 'custom'} onChange={e => setData('target_all', e.target.value === 'all')} className="select-field w-full">
@@ -417,7 +417,7 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                             {editErrors.message && <p className="text-danger text-xs mt-1">{editErrors.message}</p>}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
                                 <label className="form-label text-sm font-semibold">Jenis <span className="text-danger">*</span></label>
                                 <select value={editData.type} onChange={e => setEditData('type', e.target.value)} className="select-field w-full">
@@ -437,7 +437,7 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
                                 <label className="form-label text-sm font-semibold">Target</label>
                                 <select value={editData.target_all ? 'all' : 'custom'} onChange={e => setEditData('target_all', e.target.value === 'all')} className="select-field w-full">
