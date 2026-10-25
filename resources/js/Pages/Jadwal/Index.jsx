@@ -743,7 +743,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                 const meta = jenisBadge(jadwal.jenis_jadwal);
 
                                                                 return (
-                                                                    <div key={jadwal.id} className="flex flex-col items-center text-center bg-white p-2 rounded-lg shadow-sm border border-gray-200 min-w-[100px]">
+                                                                    <div key={jadwal.id} className="flex min-w-[148px] flex-col items-center text-center bg-white p-2 rounded-lg shadow-sm border border-gray-200">
                                                                         <span className="text-[11px] font-bold text-primary font-mono">
                                                                             {jadwal.jam_mulai.substring(0, 5)}–{jadwal.jam_selesai.substring(0, 5)}
                                                                         </span>
@@ -761,6 +761,19 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                             presensi={presensiByJadwal.get(jadwal.id)}
                                                                             now={now}
                                                                         />
+                                                                        {canMutateJadwal && (
+                                                                            <div className="mt-1.5 flex items-center gap-1 border-t border-gray-100 pt-1.5">
+                                                                                <button type="button" onClick={() => router.get(route('jadwal.edit', jadwal.id))} className="flex h-11 w-11 items-center justify-center rounded-lg text-emerald-600 transition-colors active:bg-emerald-50" title="Edit jadwal" aria-label={`Edit jadwal ${jadwal.mata_pelajaran?.nama || ''}`}>
+                                                                                    <Pencil className="h-4 w-4" />
+                                                                                </button>
+                                                                                <button type="button" onClick={() => { setSwapData({ jadwal_asal_id: jadwal.id, jadwal_tujuan_id: '' }); setTargetPegawaiId(''); setShowSwapModal(true); }} className="flex h-11 w-11 items-center justify-center rounded-lg text-blue-600 transition-colors active:bg-blue-50" title="Tukar jadwal" aria-label="Tukar jadwal">
+                                                                                    <ArrowLeftRight className="h-4 w-4" />
+                                                                                </button>
+                                                                                <button type="button" onClick={() => { if (confirm('Hapus jadwal ini?')) { router.delete(route('jadwal.destroy', jadwal.id)); } }} className="flex h-11 w-11 items-center justify-center rounded-lg text-rose-600 transition-colors active:bg-rose-50" title="Hapus jadwal" aria-label="Hapus jadwal">
+                                                                                    <Trash2 className="h-4 w-4" />
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 );
                                                             })}

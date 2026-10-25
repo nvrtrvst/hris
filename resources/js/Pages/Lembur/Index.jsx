@@ -204,8 +204,60 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
                         </div>
                     </FilterSheet>
 
-                    {/* Tabel */}
-                    <div className="overflow-hidden rounded-xl border border-border bg-white">
+
+                    {/* Mobile: kartu lembur */}
+                    <div className="space-y-3 md:hidden">
+                        {lemburs.data.length === 0 ? (
+                            <div className="card p-6 text-center text-sm text-text-muted">Tidak ada pengajuan lembur pada filter ini.</div>
+                        ) : lemburs.data.map((p) => (
+                            <div key={p.id} className="card p-4">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-bold text-text-primary">{p.pegawai?.nama_lengkap || '—'}</p>
+                                        <p className="mt-0.5 text-[11px] text-text-muted">{fmtTanggal(p.tanggal)}{p.unit_sekolah?.nama ? ' · ' + p.unit_sekolah.nama : ''}</p>
+                                    </div>
+                                    <span className="shrink-0"><LemburBadge status={p.lembur_status} /></span>
+                                </div>
+                                <dl className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <dt className="text-text-muted">Jam</dt>
+                                        <dd className="font-medium tabular-nums text-text-primary">{(p.jam_masuk ? p.jam_masuk.slice(0, 5) : '—')} → {(p.jam_keluar ? p.jam_keluar.slice(0, 5) : '—')}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-text-muted">Durasi</dt>
+                                        <dd className="font-bold text-text-primary">{durasiLembur(p.jam_masuk, p.jam_keluar)}</dd>
+                                    </div>
+                                </dl>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <button type="button" onClick={() => openDetail(p)} className="btn-secondary btn-sm">
+                                        <Eye className="mr-1 inline h-4 w-4" /> Detail
+                                    </button>
+                                    {p.lembur_status === 'pending' && bisaApprove && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => router.post(route('presensi.approveLembur', p.id), {}, { preserveState: true })}
+                                                className="btn-sm inline-flex items-center gap-1 rounded-button bg-emerald-500 font-bold text-white"
+                                            >
+                                                <CheckCircle2 className="h-4 w-4" /> Setuju
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => router.post(route('presensi.rejectLembur', p.id), {}, { preserveState: true })}
+                                                className="btn-sm inline-flex items-center gap-1 rounded-button bg-rose-500 font-bold text-white"
+                                            >
+                                                <XCircle className="h-4 w-4" /> Tolak
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        <Pagination links={lemburs.links} pagination={lemburs} data={{ start_date: startDate, end_date: endDate, lembur_status: status, unit_id: unitId, search }} variant="mobile" />
+                    </div>
+
+                    {/* Tabel (desktop) */}
+                    <div className="hidden overflow-hidden rounded-xl border border-border bg-white md:block">
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-border">
                                 <thead className="bg-surface">
