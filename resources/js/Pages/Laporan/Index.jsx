@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import FilterSheet from '@/Components/FilterSheet';
 import { Head, Link } from '@inertiajs/react';
 import { Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users, X } from 'lucide-react';
 import axios from 'axios';
@@ -132,6 +133,17 @@ export default function LaporanIndex({ auth, units }) {
     const [pdfLoading, setPdfLoading] = useState(false);
     const [viewMode, setViewMode] = useState('rekap');
     const [error, setError] = useState('');
+    const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+    const activeFilterCount = [filter.jenis_filter, filter.tipe_filter, filter.status_filter, filter.jadwal_filter, filter.lembur_status, filter.search].filter(Boolean).length;
+    const resetFilters = () => setFilter({
+        ...filter,
+        jenis_filter: '',
+        tipe_filter: '',
+        status_filter: '',
+        jadwal_filter: '',
+        lembur_status: '',
+        search: '',
+    });
 
     const handlePreview = async () => {
         setLoading(true);
@@ -363,8 +375,16 @@ export default function LaporanIndex({ auth, units }) {
                         {auth.permissions?.includes('view_kpi') && <Link href={route('kpi.index')} className="btn-secondary">Laporan KPI Pegawai</Link>}
                     </div>
 
-                    {/* Filter Card */}
-                    <div className="card p-6">
+                    {/* Filter: sheet di mobile, kartu di desktop */}
+                    <FilterSheet
+                        open={filterSheetOpen}
+                        onOpenChange={setFilterSheetOpen}
+                        activeCount={activeFilterCount}
+                        onReset={() => { resetFilters(); setFilterSheetOpen(false); }}
+                        onApply={handlePreview}
+                        applyLabel="Tampilkan"
+                        title="Filter laporan"
+                    >
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                             <Field label="Jenis Laporan">
                                 <div className="relative">
@@ -559,8 +579,9 @@ export default function LaporanIndex({ auth, units }) {
                                 </Field>
                             )}
                         </div>
+                    </FilterSheet>
 
-                        {error && (
+                    {error && (
                             <div role="alert" className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm font-semibold text-danger">
                                 <span className="whitespace-pre-line">{error}</span>
                                 <button
@@ -574,7 +595,7 @@ export default function LaporanIndex({ auth, units }) {
                             </div>
                         )}
 
-                        <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                             <button onClick={handlePreview} disabled={loading} className="btn-primary inline-flex items-center gap-2">
                                 {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat…</> : <><Search className="h-4 w-4" /> Tampilkan</>}
                             </button>
@@ -588,7 +609,6 @@ export default function LaporanIndex({ auth, units }) {
                             <button onClick={cetakDaftarHadir} disabled={pdfLoading} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline disabled:opacity-60">
                                 <FileText className="h-4 w-4" /> Cetak daftar hadir (PDF)
                             </button>
-                        </div>
                     </div>
 
                     {/* Preview */}
