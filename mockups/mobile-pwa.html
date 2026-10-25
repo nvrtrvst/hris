@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Layout PWA — Sebelum vs Sesudah</title>
+<style>
+    :root {
+        --primary: #0f3d3e;
+        --accent: #c9a227;
+        --bg: #f4f7f5;
+        --surface: #ffffff;
+        --text: #0f172a;
+        --muted: #475569;
+        --border: rgba(15, 23, 42, 0.12);
+        --w: 320px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        background: #e6ece9;
+        color: var(--text);
+        font-family: Figtree, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    .page-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 20px;
+        padding: 14px 20px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 50;
+    }
+
+    .page-bar h1 {
+        font-size: 15px;
+        margin: 0;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+    }
+
+    .page-bar .note {
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    .control {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .control > span {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--muted);
+    }
+
+    .seg {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--surface);
+    }
+
+    .seg button {
+        border: 0;
+        background: none;
+        padding: 8px 12px;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--muted);
+        cursor: pointer;
+    }
+
+    .seg button[aria-pressed="true"] {
+        background: var(--primary);
+        color: #fff;
+    }
+
+    .toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--muted);
+        cursor: pointer;
+    }
+
+    .toggle input { width: 16px; height: 16px; accent-color: var(--primary); }
+
+    .stage {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 28px;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 28px 20px 48px;
+    }
+
+    .col {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .col > h2 {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+    }
+
+    .col[data-variant="before"] > h2 { color: #b42318; }
+    .col[data-variant="after"] > h2 { color: #067647; }
+
+    .device {
+        width: var(--w);
+        height: 700px;
+        border-radius: 22px;
+        background: #dfe7e3;
+        box-shadow: 0 0 0 1px var(--border), 0 18px 40px -24px rgba(15, 23, 42, 0.5);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* Kolom aplikasi: selalu 448px, sama seperti `max-w-md` di MobileLayout */
+    .app {
+        position: relative;
+        width: 100%;
+        max-width: 448px;
+        margin: 0 auto;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: var(--bg);
+    }
+
+    /* ---------- header aplikasi ---------- */
+
+    .app-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: var(--primary);
+        color: #fff;
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    }
+
+    .header-row {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        gap: 4px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+
+    .brand .logo {
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.16);
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        font-size: 13px;
+    }
+
+    .eyebrow {
+        margin: 0;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #d1fae5;
+    }
+
+    .unit {
+        margin: 2px 0 0;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .icon-group { display: flex; align-items: center; gap: 4px; }
+
+    .icon-btn {
+        position: relative;
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 12px;
+        background: none;
+        color: rgba(255, 255, 255, 0.85);
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.12);
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .dot {
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: #fbbf24;
+        color: #451a03;
+        font-size: 10px;
+        font-weight: 800;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 0 0 2px var(--primary);
+    }
+
+    /* sebelum: judul unit memaksa lebar, grup ikon terpisah */
+    .col[data-variant="before"] .header-row { justify-content: space-between; overflow: visible; }
+    .col[data-variant="before"] .brand { flex: 0 0 auto; }
+    .col[data-variant="before"] .unit { white-space: nowrap; max-width: 208px; }
+    .col[data-variant="before"] .icon-group { gap: 4px; }
+
+    /* sesudah: brand menyusut, ikon+avatar satu klaster */
+    .col[data-variant="after"] .brand { min-width: 0; flex: 1 1 auto; }
+    .col[data-variant="after"] .brand > div { min-width: 0; }
+    .col[data-variant="after"] .unit {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .col[data-variant="after"] .eyebrow {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .col[data-variant="after"] .right-cluster { display: flex; align-items: center; gap: 8px; }
+
+    /* ---------- konten ---------- */
+
+    .content {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        padding: 20px 16px 92px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .hero {
+        background: var(--primary);
+        color: #fff;
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .hero-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .hero-head p { margin: 0; }
+    .hero-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #d1fae5; }
+    .hero-status { margin: 4px 0 0; font-size: 20px; font-weight: 800; }
+
+    .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.14);
+        white-space: nowrap;
+    }
+
+    .hero-grid { display: grid; grid-template-columns: 1fr 1fr; }
+    .hero-cell { padding: 16px 20px; }
+    .hero-cell + .hero-cell { border-left: 1px solid rgba(255, 255, 255, 0.12); }
+    .hero-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #d1fae5; margin: 0; }
+    .time {
+        margin: 4px 0 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 24px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .col[data-variant="after"] .time { font-size: 24px; }
+
+    .photo {
+        margin-top: 14px;
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(0, 0, 0, 0.25);
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.72);
+        text-align: center;
+        padding: 4px;
+    }
+
+    .cta {
+        margin: 0 16px 16px;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        background: #fff;
+        color: var(--primary);
+        font-size: 14px;
+        font-weight: 800;
+    }
+
+    .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 0;
+        font-size: 15px;
+        font-weight: 800;
+    }
+
+    .section-title span { font-size: 12px; font-weight: 700; color: var(--muted); }
+
+    .jp-scroll {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 2px 0 8px;
+        scrollbar-width: none;
+    }
+
+    .jp-scroll::-webkit-scrollbar,
+    .day-tabs::-webkit-scrollbar { display: none; }
+
+    .col[data-variant="after"] .jp-scroll {
+        scroll-snap-type: x mandatory;
+        mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    }
+
+    .jp-card {
+        flex: 0 0 172px;
+        min-height: 76px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #fff;
+        padding: 12px;
+        text-align: left;
+    }
+
+    .col[data-variant="after"] .jp-card { scroll-snap-align: start; }
+    .jp-card strong { display: block; font-size: 14px; }
+    .jp-card small { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); }
+
+    .list-card {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 4px 14px;
+    }
+
+    .money-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+        font-size: 14px;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .money-row:last-child { border-bottom: 0; }
+    .money-row b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .col[data-variant="before"] .money-row { gap: 0; }
+    .col[data-variant="after"] .money-row { gap: 12px; }
+    .col[data-variant="after"] .money-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ---------- bottom nav ---------- */
+
+    .bottom-nav {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
+        background: #fff;
+        border-top: 1px solid var(--border);
+    }
+
+    /* Sebelum: nav `fixed inset-x-0` mengikuti viewport, bukan kolom 448px */
+    .col[data-variant="before"] .bottom-nav {
+        left: 50%;
+        right: auto;
+        width: var(--w);
+        transform: translateX(-50%);
+    }
+
+    /* Sesudah: nav tinggal di dalam kolom yang sama */
+    .col[data-variant="after"] .bottom-nav {
+        left: 0;
+        right: 0;
+        width: auto;
+        transform: none;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .nav-row { display: flex; height: 64px; padding: 0 4px; }
+
+    .nav-item {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #64748b;
+        position: relative;
+    }
+
+    .col[data-variant="after"] .nav-item { font-size: 12px; }
+    .nav-item.active { color: var(--primary); }
+    .nav-item.active::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 16px;
+        right: 16px;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--primary);
+    }
+
+    .nav-item i {
+        display: block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid currentColor;
+        border-radius: 6px;
+    }
+
+    /* ---------- sorot area sentuh ---------- */
+
+    body.hl .icon-btn,
+    body.hl .nav-item,
+    body.hl .menu-item,
+    body.hl .day-tab,
+    body.hl .link-btn {
+        outline: 2px dashed rgba(220, 38, 38, 0.85);
+        outline-offset: 2px;
+    }
+
+    body.hl .col[data-variant="after"] .icon-btn,
+    body.hl .col[data-variant="after"] .nav-item,
+    body.hl .col[data-variant="after"] .menu-item,
+    body.hl .col[data-variant="after"] .day-tab,
+    body.hl .col[data-variant="after"] .link-btn {
+        outline-color: rgba(5, 150, 105, 0.9);
+    }
+
+    /* ---------- panel menu + tab hari ---------- */
+
+    .menu {
+        position: absolute;
+        right: 12px;
+        top: 64px;
+        z-index: 40;
+        width: 192px;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 14px 30px -18px rgba(15, 23, 42, 0.6);
+        padding: 6px 0;
+    }
+
+    .menu-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .col[data-variant="after"] .menu-item { min-height: 44px; padding-top: 12px; padding-bottom: 12px; }
+
+    .menu-item.danger { color: #be123c; font-weight: 700; }
+
+    .day-tabs {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 2px 0 8px;
+        scrollbar-width: none;
+    }
+
+    .day-tab {
+        flex: 0 0 58px;
+        min-height: 36px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--muted);
+    }
+
+    .day-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .col[data-variant="after"] .day-tab { min-height: 44px; }
+
+    .legend {
+        max-width: 900px;
+        margin: 0 auto 48px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 20px;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .legend h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .legend ul { margin: 0; padding-left: 18px; }
+    .legend code { background: #eef2f1; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<header class="page-bar">
+    <h1>Mockup Layout PWA</h1>
+    <p class="note">Data contoh, bukan data produksi</p>
+    <div class="control">
+        <span>Lebar</span>
+        <div class="seg" role="group" aria-label="Lebar perangkat">
+            <button type="button" data-width="320" aria-pressed="true">320</button>
+            <button type="button" data-width="375">375</button>
+            <button type="button" data-width="390">390</button>
+            <button type="button" data-width="768">768</button>
+        </div>
+    </div>
+    <label class="toggle"><input type="checkbox" id="hl"> Sorot area sentuh</label>
+</header>
+
+<main class="stage">
+    <div class="col" data-variant="before">
+        <h2>Sebelum</h2>
+        <div class="device">
+            <div class="app">
+            <header class="app-header">
+                <div class="header-row">
+                    <div class="brand">
+                        <div class="logo">NM</div>
+                        <div>
+                            <p class="eyebrow">Portal Pegawai</p>
+                            <p class="unit">Presensi SMK Nuurul Muttaqiin</p>
+                        </div>
+                    </div>
+                    <div class="icon-group">
+                        <button class="icon-btn" aria-label="Pengumuman">A<span class="dot">3</span></button>
+                        <button class="icon-btn" aria-label="Notifikasi">N</button>
+                    </div>
+                    <button class="icon-btn" aria-label="Buka menu akun"><span class="avatar">G</span></button>
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="hero">
+                    <div class="hero-head">
+                        <div>
+                            <p class="hero-kicker">Status hari ini</p>
+                            <p class="hero-status">Sedang bekerja</p>
+                        </div>
+                        <span class="pill">07:15:42</span>
+                    </div>
+                    <div class="hero-grid">
+                        <div class="hero-cell">
+                            <p class="hero-label">Masuk</p>
+                            <p class="time">07:15:42</p>
+                            <div class="photo">Foto masuk</div>
+                        </div>
+                        <div class="hero-cell">
+                            <p class="hero-label">Keluar</p>
+                            <p class="time">--:--:--</p>
+                        </div>
+                    </div>
+                    <div class="cta">Buka presensi <span>→</span></div>
+                </div>
+
+                <div>
+                    <h3 class="section-title">Jadwal hari ini <span>4 JP</span></h3>
+                    <div class="day-tabs">
+                        <div class="day-tab active">Sel</div>
+                        <div class="day-tab">Rab</div>
+                        <div class="day-tab">Kam</div>
+                        <div class="day-tab">Jum</div>
+                        <div class="day-tab">Sab</div>
+                        <div class="day-tab">Min</div>
+                        <div class="day-tab">Sen</div>
+                    </div>
+                    <div class="jp-scroll">
+                        <div class="jp-card"><strong>07:30 - 08:10</strong><small>Matematika · X TKJ 1</small></div>
+                        <div class="jp-card"><strong>08:10 - 08:50</strong><small>Matematika · X TKJ 1</small></div>
+                        <div class="jp-card"><strong>09:10 - 09:50</strong><small>Matematika · XI TKJ 2</small></div>
+                        <div class="jp-card"><strong>10:30 - 11:10</strong><small>Matematika · XII TKJ 1</small></div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="section-title">Slip gaji terakhir</h3>
+                    <div class="list-card">
+                        <div class="money-row"><span>Tunjangan kehadiran penuh satu bulan</span><b>Rp 450.000</b></div>
+                        <div class="money-row"><span>Potongan BPJS</span><b>Rp 35.000</b></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="menu" hidden>
+                <div class="menu-item">Slip Gaji</div>
+                <div class="menu-item">Pengumuman</div>
+                <div class="menu-item">Aktifkan Notifikasi</div>
+                <div class="menu-item danger">Keluar</div>
+            </div>
+
+            </div>
+            <nav class="bottom-nav" aria-label="Navigasi utama">
+                <div class="nav-row">
+                    <span class="nav-item active"><i></i>Beranda</span>
+                    <span class="nav-item"><i></i>Jadwal</span>
+                    <span class="nav-item"><i></i>Presensi</span>
+                    <span class="nav-item"><i></i>Izin</span>
+                    <span class="nav-item"><i></i>Profil</span>
+                </div>
+            </nav>
+        </div>
+    </div>
+
+    <div class="col" data-variant="after">
+        <h2>Sesudah</h2>
+        <div class="device">
+            <div class="app">
+            <header class="app-header">
+                <div class="header-row">
+                    <div class="brand">
+                        <div class="logo">NM</div>
+                        <div>
+                            <p class="eyebrow">Portal Pegawai</p>
+                            <p class="unit">Presensi SMK Nuurul Muttaqiin</p>
+                        </div>
+                    </div>
+                    <div class="right-cluster">
+                        <div class="icon-group">
+                            <button class="icon-btn" aria-label="Pengumuman">A<span class="dot">3</span></button>
+                            <button class="icon-btn" aria-label="Notifikasi">N</button>
+                        </div>
+                        <button class="icon-btn" aria-label="Buka menu akun"><span class="avatar">G</span></button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="hero">
+                    <div class="hero-head">
+                        <div>
+                            <p class="hero-kicker">Status hari ini</p>
+                            <p class="hero-status">Sedang bekerja</p>
+                        </div>
+                        <span class="pill">07:15:42</span>
+                    </div>
+                    <div class="hero-grid">
+                        <div class="hero-cell">
+                            <p class="hero-label">Masuk</p>
+                            <p class="time">07:15:42</p>
+                            <div class="photo">Foto masuk</div>
+                        </div>
+                        <div class="hero-cell">
+                            <p class="hero-label">Keluar</p>
+                            <p class="time">--:--:--</p>
+                        </div>
+                    </div>
+                    <div class="cta">Buka presensi <span>→</span></div>
+                </div>
+
+                <div>
+                    <h3 class="section-title">Jadwal hari ini <span>4 JP</span></h3>
+                    <div class="day-tabs">
+                        <div class="day-tab active">Sel</div>
+                        <div class="day-tab">Rab</div>
+                        <div class="day-tab">Kam</div>
+                        <div class="day-tab">Jum</div>
+                        <div class="day-tab">Sab</div>
+                        <div class="day-tab">Min</div>
+                        <div class="day-tab">Sen</div>
+                    </div>
+                    <div class="jp-scroll">
+                        <div class="jp-card"><strong>07:30 - 08:10</strong><small>Matematika · X TKJ 1</small></div>
+                        <div class="jp-card"><strong>08:10 - 08:50</strong><small>Matematika · X TKJ 1</small></div>
+                        <div class="jp-card"><strong>09:10 - 09:50</strong><small>Matematika · XI TKJ 2</small></div>
+                        <div class="jp-card"><strong>10:30 - 11:10</strong><small>Matematika · XII TKJ 1</small></div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="section-title">Slip gaji terakhir</h3>
+                    <div class="list-card">
+                        <div class="money-row"><span>Tunjangan kehadiran penuh satu bulan</span><b>Rp 450.000</b></div>
+                        <div class="money-row"><span>Potongan BPJS</span><b>Rp 35.000</b></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="menu" hidden>
+                <div class="menu-item">Slip Gaji</div>
+                <div class="menu-item">Pengumuman</div>
+                <div class="menu-item">Aktifkan Notifikasi</div>
+                <div class="menu-item danger">Keluar</div>
+            </div>
+
+            <nav class="bottom-nav" aria-label="Navigasi utama">
+                <div class="nav-row">
+                    <span class="nav-item active"><i></i>Beranda</span>
+                    <span class="nav-item"><i></i>Jadwal</span>
+                    <span class="nav-item"><i></i>Presensi</span>
+                    <span class="nav-item"><i></i>Izin</span>
+                    <span class="nav-item"><i></i>Profil</span>
+                </div>
+            </nav>
+            </div>
+        </div>
+    </div>
+</main>
+
+<section class="legend">
+    <h3>Yang dibandingkan</h3>
+    <ul>
+        <li><b>Header</b>: judul unit tidak lagi memaksa lebar (sebelum: 423px di layar 320px, ikon kanan terpotong), ikon dan avatar jadi satu klaster.</li>
+        <li><b>Tab hari</b>: tinggi 36px menjadi 44px (tap target).</li>
+        <li><b>Carousel JP</b>: tambah scroll-snap + mask di kanan sebagai petunjuk masih ada kartu.</li>
+        <li><b>Baris nominal</b>: <code>min-width:0</code> + ellipsis, angka tidak tertabrak nama panjang.</li>
+        <li><b>Bottom nav</b>: lebar mengikuti kolom 448px, tidak lagi melebar penuh di tablet/desktop.</li>
+        <li><b>Item menu</b>: 40px menjadi 44px.</li>
+    </ul>
+</section>
+
+<script>
+    const root = document.documentElement;
+    document.querySelectorAll('.seg button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+            btn.setAttribute('aria-pressed', 'true');
+            root.style.setProperty('--w', btn.dataset.width + 'px');
+        });
+    });
+
+    document.getElementById('hl').addEventListener('change', (e) => {
+        document.body.classList.toggle('hl', e.target.checked);
+    });
+
+    document.querySelectorAll('.device').forEach((device) => {
+        const menu = device.querySelector('.menu');
+        const trigger = device.querySelector('[aria-label="Buka menu akun"]');
+        trigger.addEventListener('click', () => {
+            menu.hidden = !menu.hidden;
+        });
+    });
+</script>
+</body>
+</html>
