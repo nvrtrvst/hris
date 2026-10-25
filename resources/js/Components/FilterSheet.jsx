@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Filter, RotateCcw, X } from 'lucide-react';
 
 /**
@@ -53,8 +54,9 @@ export default function FilterSheet({
                 )}
             </div>
 
-            {open && (
-                <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={close} role="presentation" />
+            {open && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={close} role="presentation" />,
+                document.body,
             )}
 
             <div

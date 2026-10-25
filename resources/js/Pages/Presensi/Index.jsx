@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { subscribeRouter } from '@/Utils/routerEvents';
 import useNowEveryMinute from '@/Utils/useNowEveryMinute';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
@@ -1164,8 +1165,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         </button>
                     </div>
 
-                    {filterSheetOpen && (
-                        <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setFilterSheetOpen(false)} role="presentation" />
+                    {filterSheetOpen && typeof document !== 'undefined' && createPortal(
+                        <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setFilterSheetOpen(false)} role="presentation" />,
+                        document.body,
                     )}
 
                     {/* Filter bar: sheet di mobile, kartu biasa di desktop */}
