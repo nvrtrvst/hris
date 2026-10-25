@@ -85,7 +85,7 @@ export default function Index({ auth, tugasLuar, units, pegawais, filters = {} }
                                         <th className="px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Tanggal</th>
                                         <th className="px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Jam</th>
                                         <th className="px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Tujuan</th>
-                                        <th className="px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Dibuat Oleh</th>
+                                        <th className="hidden px-4 py-3 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider md:table-cell">Dibuat Oleh</th>
                                         <th className="px-4 py-3 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Aksi</th>
                                     </tr>
                                 </thead>
@@ -109,7 +109,7 @@ export default function Index({ auth, tugasLuar, units, pegawais, filters = {} }
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{t.created_by ? (t.created_by.name || t.createdBy?.name || '-') : '—'}</td>
+                                            <td className="hidden px-4 py-3 whitespace-nowrap text-xs text-text-secondary md:table-cell">{t.created_by ? (t.created_by.name || t.createdBy?.name || '-') : '—'}</td>
                                             <td className="px-4 py-3 whitespace-nowrap text-right">
                                                 <button onClick={() => hapus(t.id)} className="rounded-lg p-1.5 text-rose-600 transition-colors hover:bg-rose-50" title="Hapus"><Trash2 className="h-4 w-4" /></button>
                                             </td>

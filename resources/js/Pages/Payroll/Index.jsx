@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { subscribeRouter } from '@/Utils/routerEvents';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import FilterSheet from '@/Components/FilterSheet';
 import StatCard from '@/Components/StatCard';
 import Pagination from '@/Components/Pagination';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -75,6 +76,8 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
     ];
 
     const filterSelect = 'select-field text-xs h-9 w-full md:w-auto md:min-w-[150px]';
+    const [filterSheetOpen, setFilterSheetOpen] = React.useState(false);
+    const activeFilterCount = [filterPeriode, filterStatus].filter(Boolean).length;
 
     const unitName = (p) => p.pegawai?.units?.[0]?.singkatan || p.pegawai?.units?.[0]?.nama || '—';
 
@@ -147,7 +150,12 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
 
                     {/* Filter bar */}
                     {isAdmin && (
-                        <div className="card p-5">
+                        <FilterSheet
+                            open={filterSheetOpen}
+                            onOpenChange={setFilterSheetOpen}
+                            activeCount={activeFilterCount}
+                            onReset={() => { resetFilters(); setFilterSheetOpen(false); }}
+                        >
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                 <select
                                     className={filterSelect}
@@ -182,7 +190,7 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                                 )}
                                 <p className="ml-auto text-[11px] text-text-muted">Filter diterapkan otomatis saat dipilih.</p>
                             </div>
-                        </div>
+                        </FilterSheet>
                     )}
 
                     {/* Mass Delete Draft Payroll */}
@@ -215,8 +223,8 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                                     <tr>
                                         <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Periode</th>
                                         <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Pegawai</th>
-                                        <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Pendapatan</th>
-                                        <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Potongan</th>
+                                        <th className="hidden px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider lg:table-cell">Pendapatan</th>
+                                        <th className="hidden px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider lg:table-cell">Potongan</th>
                                         <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Gaji Bersih</th>
                                         <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status</th>
                                         <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Aksi</th>
@@ -242,10 +250,10 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3.5 whitespace-nowrap text-right text-sm font-medium text-emerald-600 tabular-nums">
+                                                <td className="hidden px-4 py-3.5 whitespace-nowrap text-right text-sm font-medium text-emerald-600 tabular-nums lg:table-cell">
                                                     {formatRupiah(p.total_pendapatan)}
                                                 </td>
-                                                <td className="px-4 py-3.5 whitespace-nowrap text-right text-sm font-medium text-rose-600 tabular-nums">
+                                                <td className="hidden px-4 py-3.5 whitespace-nowrap text-right text-sm font-medium text-rose-600 tabular-nums lg:table-cell">
                                                     {formatRupiah(p.total_potongan)}
                                                 </td>
                                                 <td className="px-4 py-3.5 whitespace-nowrap text-right text-base font-bold text-primary tabular-nums">

@@ -3,6 +3,7 @@ import { subscribeRouter } from '@/Utils/routerEvents';
 import useNowEveryMinute from '@/Utils/useNowEveryMinute';
 import usePolling from '@/Utils/usePolling';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import FilterSheet from '@/Components/FilterSheet';
 import StatCard from '@/Components/StatCard';
 import Modal from '@/Components/Modal';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
@@ -452,6 +453,8 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
     ];
 
     const filterSelect = 'select-field text-xs h-9 w-full md:w-auto md:min-w-[150px]';
+    const [filterSheetOpen, setFilterSheetOpen] = React.useState(false);
+    const activeFilterCount = [unitFilter, jenisFilter, kelasFilter, searchName].filter(Boolean).length;
 
     const unitSingkatan = (pegawai) => pegawai?.units?.[0]?.singkatan || '-';
 
@@ -504,7 +507,13 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                     {/* Filter bar */}
                     {isAdmin && (
-                        <div className="card p-5">
+                        <>
+                        <FilterSheet
+                            open={filterSheetOpen}
+                            onOpenChange={setFilterSheetOpen}
+                            activeCount={activeFilterCount}
+                            onReset={() => { resetFilters(); setFilterSheetOpen(false); }}
+                        >
                             {/* Row 1: Search + Quick Filters */}
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
                                 <div className="relative lg:col-span-2">
@@ -531,9 +540,10 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     {kelasLabels.map((kl) => <option key={kl} value={kl}>{kl}</option>)}
                                 </select>
                             </div>
+                        </FilterSheet>
 
                             {/* Row 2: Actions */}
-                            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
+                            <div className="flex flex-wrap items-center gap-2">
                                 {hasFilter && (
                                     <button type="button" onClick={resetFilters} className="btn-secondary btn-sm flex items-center gap-1.5">
                                         <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
@@ -590,7 +600,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                     )}
                                 </div>
                             </div>
-                        </div>
+                        </>
                     )}
 
                     {/* ─── ADMIN: prompt pilih unit (skip load semua unit) ─── */}

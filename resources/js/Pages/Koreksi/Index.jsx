@@ -190,7 +190,49 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                         </div>
                     </FilterSheet>
 
-                    <div className="card overflow-hidden">
+
+                    {/* Mobile: kartu pengajuan */}
+                    <div className="space-y-3 md:hidden">
+                        {pengajuans.data.length === 0 ? (
+                            <div className="card p-6 text-center text-sm text-text-muted">Tidak ada pengajuan koreksi.</div>
+                        ) : pengajuans.data.map((item) => (
+                            <div key={item.id} className="card p-4">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-bold text-text-primary">{item.pegawai?.nama_lengkap}</p>
+                                        <p className="mt-0.5 font-mono text-[11px] text-text-muted">{item.nomor} · {format(new Date(item.created_at), 'd MMM yyyy HH:mm', { locale: idLocale })}</p>
+                                    </div>
+                                    <span className="shrink-0">{getStatusBadge(item.status)}</span>
+                                </div>
+                                <dl className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <dt className="text-text-muted">Presensi</dt>
+                                        <dd className="font-medium text-text-primary">{item.tanggal ? format(new Date(item.tanggal), 'd MMM yyyy', { locale: idLocale }) : '—'} · masuk {fmtJam(item.presensi?.jam_masuk)}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-text-muted">Jam keluar</dt>
+                                        <dd><span className="text-text-muted line-through">{item.presensi?.jam_keluar ? fmtJam(item.presensi.jam_keluar) : '—'}</span> <span className="mx-0.5 text-border">→</span> <span className="font-bold text-text-primary">{fmtJam(item.nilai_baru)}</span></dd>
+                                    </div>
+                                </dl>
+                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                    <span className="badge badge-info uppercase">{ALASAN_LABEL[item.alasan] || item.alasan}</span>
+                                    {item.penjelasan_khusus && <span className="rounded-md border border-amber-200 bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-800">Lewat kuota</span>}
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <button onClick={() => openModal(item, 'detail')} className="btn-secondary btn-sm"><Info className="mr-1 inline h-4 w-4" /> Detail</button>
+                                    <button onClick={() => cetak(item)} className="btn-secondary btn-sm"><Printer className="mr-1 inline h-4 w-4" /> Cetak</button>
+                                    {item.status === 'pending' && item.can_act && (
+                                        <>
+                                            <button onClick={() => openModal(item, 'approve')} className="btn-sm rounded-button bg-success-light font-medium text-success" title="Setujui"><CheckCircle className="h-4 w-4" /></button>
+                                            <button onClick={() => openModal(item, 'reject')} className="btn-sm rounded-button bg-danger-light font-medium text-danger" title="Tolak"><XCircle className="h-4 w-4" /></button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="card hidden overflow-hidden md:block">
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-border">
                                 <thead className="bg-surface/50">
