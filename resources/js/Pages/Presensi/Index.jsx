@@ -321,7 +321,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                     <button
                         type="button"
                         onClick={() => setExpandedMapel((s) => ({ ...s, [mkey]: !s[mkey] }))}
-                        className="rounded-md px-1 text-text-secondary transition-colors hover:text-primary"
+                        className="flex h-11 w-11 items-center justify-center rounded-md text-text-secondary transition-colors hover:text-primary"
                         title={mIsOpen ? 'Tutup' : 'Buka'}
                     >
                         {mIsOpen ? '▾' : '▸'}
@@ -458,7 +458,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                 <tr className={`group transition-colors ${parentTelat ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-surface/70'}`}>
                     <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                            <button type="button" onClick={() => setExpanded((s) => ({ ...s, [key]: !s[key] }))} className="rounded-md px-1 text-text-secondary transition-colors hover:text-primary" title={isOpen ? 'Tutup' : 'Buka'}>
+                            <button type="button" onClick={() => setExpanded((s) => ({ ...s, [key]: !s[key] }))} className="flex h-11 w-11 items-center justify-center rounded-md text-text-secondary transition-colors hover:text-primary" title={isOpen ? 'Tutup' : 'Buka'}>
                                 {isOpen ? '▾' : '▸'}
                             </button>
                             <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold ${avatarTone(nama)}`}>

@@ -470,7 +470,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                     <p className="mt-0.5 text-sm text-text-secondary">Upload file Excel untuk menambahkan pegawai massal.</p>
                                 </div>
                             </div>
-                            <button type="button" onClick={() => setShowImportModal(false)} className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface hover:text-primary">
+                            <button type="button" onClick={() => setShowImportModal(false)} className="flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:h-9 md:w-9">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
