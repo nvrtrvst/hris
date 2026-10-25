@@ -889,6 +889,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [reviewModal, setReviewModal] = React.useState({ show: false, loading: false, data: null });
     const [tugasLuarModal, setTugasLuarModal] = React.useState({ show: false, loading: false, data: null });
     const [filterSheetOpen, setFilterSheetOpen] = React.useState(false);
+    const [openAtPeriode, setOpenAtPeriode] = React.useState(false);
+    const filterSheetRef = React.useRef(null);
 
     const hasFilter = Boolean(search || statusFilter || jadwalFilter || jenisFilter || unitId || lemburFilter || lokasiFilter || suspiciousFilter || startDate || endDate);
     const activeFilterCount = [statusFilter, unitId, jenisFilter, jadwalFilter, lemburFilter, lokasiFilter, suspiciousFilter].filter(Boolean).length;
@@ -902,6 +904,19 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
             document.body.style.overflow = previous;
         };
     }, [filterSheetOpen]);
+
+    // Buka sheet langsung ke blok Periode (tombol "Rentang…").
+    // Gulir kontainer sheet sendiri; scrollIntoView ke halaman memicu
+    // pergeseran viewport iOS sehingga sheet tampak hilang.
+    React.useEffect(() => {
+        if (!filterSheetOpen || !openAtPeriode) return;
+        const box = filterSheetRef.current;
+        const el = periodeRef.current;
+        if (box && el) {
+            box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - 12;
+        }
+        setOpenAtPeriode(false);
+    }, [filterSheetOpen, openAtPeriode]);
 
     // Default: Hari Ini jika tidak ada filter tanggal dari URL
     React.useEffect(() => {
@@ -1172,6 +1187,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                     {/* Filter bar: sheet di mobile, kartu biasa di desktop */}
                     <div
+                        ref={filterSheetRef}
                         className={`card p-5 ${filterSheetOpen ? 'fixed inset-x-0 bottom-0 z-50 max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-2xl rounded-b-none !border-b-0 pb-[calc(1.25rem+env(safe-area-inset-bottom))]' : 'hidden'} md:static md:block md:max-h-none md:overflow-visible md:rounded-card md:border-b md:pb-5`}
                     >
                         <div className="mb-3 flex items-center justify-between md:hidden">
@@ -1389,7 +1405,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         type="button"
                                         onClick={() => {
                                             setFilterSheetOpen(true);
-                                            requestAnimationFrame(() => periodeRef.current?.scrollIntoView({ block: 'center' }));
+                                            setOpenAtPeriode(true);
                                         }}
                                         aria-pressed={Boolean((startDate || endDate) && !activePreset)}
                                         className={`min-h-11 shrink-0 rounded-full border px-3 text-[11px] font-bold transition-colors ${(startDate || endDate) && !activePreset ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text-secondary'}`}

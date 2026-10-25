@@ -374,7 +374,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8">
                     {header && <div className="mb-4 md:hidden">{header}</div>}
                     {children}
                 </main>
