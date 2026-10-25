@@ -3,6 +3,7 @@ import { subscribeRouter } from '@/Utils/routerEvents';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import StatCard from '@/Components/StatCard';
 import Modal from '@/Components/Modal';
+import FilterSheet from '@/Components/FilterSheet';
 import Pagination from '@/Components/Pagination';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { avatarTone, initials } from '@/Utils/avatar';
@@ -62,6 +63,8 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
     });
 
     const hasFilter = Boolean(search || unitSekolahId || mataPelajaranId || jabatanId || jenisFilter);
+    const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+    const activeFilterCount = [unitSekolahId, mataPelajaranId, jabatanId, jenisFilter].filter(Boolean).length;
 
     const buildParams = (overrides = {}) => ({
         search,
@@ -181,7 +184,12 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                     </div>
 
                     {/* Filter bar */}
-                    <div className="card p-5">
+                    <FilterSheet
+                        open={filterSheetOpen}
+                        onOpenChange={setFilterSheetOpen}
+                        activeCount={activeFilterCount}
+                        onReset={hasFilter ? () => { resetFilters(); setFilterSheetOpen(false); } : undefined}
+                    >
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                             <div className="relative lg:col-span-2">
                                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
@@ -256,7 +264,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                             )}
                             <p className="ml-auto text-[11px] text-text-muted">Filter diterapkan otomatis saat dipilih.</p>
                         </div>
-                    </div>
+                    </FilterSheet>
 
                     {/* Mobile: Card list */}
                     <div className={`md:hidden space-y-3 transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>

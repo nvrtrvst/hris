@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import FilterSheet from '@/Components/FilterSheet';
 import { Head, useForm, usePage, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
@@ -51,6 +52,8 @@ export default function Index({ auth, pengajuans, filters, stats }) {
 
     const [search, setSearch] = useState(filters?.search || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || 'semua');
+    const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+    const activeFilterCount = [statusFilter !== 'semua' ? statusFilter : '', search].filter(Boolean).length;
 
     const { data, setData, post, processing, errors, reset } = useForm({
         alasan_penolakan: '',
@@ -153,7 +156,12 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                         </div>
                     )}
 
-                    <div className="card p-4 sm:p-5 mb-6 flex flex-col gap-3">
+                    <FilterSheet
+                        open={filterSheetOpen}
+                        onOpenChange={setFilterSheetOpen}
+                        activeCount={activeFilterCount}
+                        onReset={() => { setSearch(''); setStatusFilter('semua'); setFilterSheetOpen(false); }}
+                    >
                         <div className="relative w-full max-w-md">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <Search className="h-5 w-5 text-text-muted" />
@@ -183,7 +191,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                 </select>
                             </div>
                         </div>
-                    </div>
+                    </FilterSheet>
 
                     <div className="card overflow-hidden">
                         <div className="overflow-x-auto">

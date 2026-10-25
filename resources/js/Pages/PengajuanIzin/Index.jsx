@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import FilterSheet from '@/Components/FilterSheet';
 import { Head, useForm, usePage, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
@@ -41,6 +42,8 @@ export default function Index({ auth, pengajuans, filters, stats }) {
     const [statusFilter, setStatusFilter] = useState(filters?.status || 'semua');
     const [dateFilter, setDateFilter] = useState(filters?.tanggal ?? todayLocalISO());
     const [jenisFilter, setJenisFilter] = useState(filters?.jenis_filter || '');
+    const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+    const activeFilterCount = [statusFilter !== 'semua' ? statusFilter : '', jenisFilter].filter(Boolean).length;
     const [activeTab, setActiveTab] = useState(filters?.tab || 'l1');
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -268,7 +271,19 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                     </div>
 
                     {/* Filter Section */}
-                    <div className="card p-4 sm:p-5 mb-6 flex flex-col gap-3">
+                    <FilterSheet
+                        open={filterSheetOpen}
+                        onOpenChange={setFilterSheetOpen}
+                        activeCount={activeFilterCount}
+                        onReset={() => {
+                            setStatusFilter('semua');
+                            setJenisFilter('');
+                            setDateFilter(todayLocalISO());
+                            setSearch('');
+                            setFilterSheetOpen(false);
+                            router.get(route('pengajuan-izin.index'), { tanggal: todayLocalISO(), tab: activeTab }, { preserveState: true, replace: true });
+                        }}
+                    >
                         <form
                             className="relative w-full max-w-md flex gap-2"
                             onSubmit={(e) => {
@@ -334,7 +349,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                 </select>
                             </div>
                         </div>
-                    </div>
+                    </FilterSheet>
 
                     {/* Mobile: Card list */}
                     <div className="md:hidden space-y-3 mb-6">

@@ -1,5 +1,6 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import FilterSheet from '@/Components/FilterSheet';
 import Pagination from '@/Components/Pagination';
 import Modal from '@/Components/Modal';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -73,6 +74,8 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
     const [search, setSearch] = React.useState(filters.search || '');
     const [startDate, setStartDate] = React.useState(filters.start_date || format(subDays(new Date(), 1), 'yyyy-MM-dd'));
     const [endDate, setEndDate] = React.useState(filters.end_date || '');
+    const [filterSheetOpen, setFilterSheetOpen] = React.useState(false);
+    const activeFilterCount = [status, unitId, search, endDate].filter(Boolean).length;
     const [detail, setDetail] = React.useState({ show: false, loading: false, data: null, row: null });
     const flash = usePage().props.flash || {};
 
@@ -158,7 +161,13 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
                     </div>
 
                     {/* Filter */}
-                    <div className="rounded-xl border border-border bg-white p-4">
+                    <FilterSheet
+                        open={filterSheetOpen}
+                        onOpenChange={setFilterSheetOpen}
+                        activeCount={activeFilterCount}
+                        onReset={() => { resetFilters(); setFilterSheetOpen(false); }}
+                        onApply={() => applyFilters()}
+                    >
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                             <div>
                                 <label className="mb-1 block text-[11px] font-bold text-text-secondary">Dari Tanggal</label>
@@ -191,16 +200,9 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
                                     />
                                 </div>
                             </div>
-                            <div className="flex items-end gap-2">
-                                <button type="button" onClick={() => applyFilters()} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-white transition-opacity hover:opacity-90">
-                                    Terapkan
-                                </button>
-                                <button type="button" onClick={resetFilters} aria-label="Reset filter" className="flex h-11 w-11 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:text-primary">
-                                    <RotateCcw className="h-4 w-4" />
-                                </button>
-                            </div>
+
                         </div>
-                    </div>
+                    </FilterSheet>
 
                     {/* Tabel */}
                     <div className="overflow-hidden rounded-xl border border-border bg-white">

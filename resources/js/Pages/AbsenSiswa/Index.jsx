@@ -1,5 +1,6 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import FilterSheet from '@/Components/FilterSheet';
 import { Head, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale/id';
@@ -35,6 +36,8 @@ export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_o
     const [tanggal, setTanggal] = React.useState(filters.tanggal || format(new Date(), 'yyyy-MM-dd'));
     const [unitId, setUnitId] = React.useState(filters.unit_id || '');
     const [cari, setCari] = React.useState('');
+    const [filterSheetOpen, setFilterSheetOpen] = React.useState(false);
+    const activeFilterCount = [unitId, cari].filter(Boolean).length;
 
     const apply = (overrides = {}) => {
         router.get(
@@ -62,7 +65,12 @@ export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_o
             <Head title="Absen Siswa" />
             <div className="bg-surface min-h-screen">
                 <div className="mx-auto w-full space-y-6">
-                    <div className="rounded-xl border border-border bg-white p-4">
+                    <FilterSheet
+                        open={filterSheetOpen}
+                        onOpenChange={setFilterSheetOpen}
+                        activeCount={activeFilterCount}
+                        onReset={() => { setUnitId(''); setCari(''); apply({ unit_id: undefined }); setFilterSheetOpen(false); }}
+                    >
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <div>
                                 <label className="mb-1 block text-[11px] font-bold text-text-secondary">Tanggal</label>
@@ -85,7 +93,7 @@ export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_o
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </FilterSheet>
 
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
                         <div className="rounded-xl border border-border bg-white p-3">
