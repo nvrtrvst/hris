@@ -457,7 +457,9 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
     // Jalur remedial: admin bisa membuka seksi Pagi di luar jendelanya.
     const pagiOpen = inWin(windows.pagi) || Boolean(laporan?.unlocked_at);
     const kbmMulai = hhmm >= windows.kbm[0];
-    const soreMulai = hhmm >= windows.sore[0];
+    const submitAfter = piket.submit_after ?? windows.sore[0];
+    const teachingWindows = piket.teaching_windows ?? [];
+    const soreMulai = hhmm >= submitAfter;
     const errMsg = locErr || errors.geofence || errors.kode || errors.laporan;
 
     const kirim = async (payload, { geo = true } = {}) => {
@@ -835,12 +837,12 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                     </section>
 
                     <section aria-label="Kirim laporan">
-                        <SeksiHead icon={Send} title="Sore" win={windows.sore} state={soreMulai ? 'open' : 'locked'} />
+                        <SeksiHead icon={Send} title="Sore" win={[submitAfter, windows.sore[1]]} state={soreMulai ? 'open' : 'locked'} />
                         {blockReason && <p className="mb-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{blockReason}</p>}
                         <button type="button" disabled={!soreMulai || sending || doneCount < wajib.length || Boolean(blockReason)} onClick={submit} className="min-h-14 w-full rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-50">
                             {sending ? 'Mengirim...' : doneCount < wajib.length ? `Lengkapi dulu (${doneCount}/${wajib.length})` : 'Kirim laporan piket'}
                         </button>
-                        {!soreMulai && <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Pengiriman dibuka {windows.sore[0]}.</p>}
+                        {!soreMulai && <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Pengiriman dibuka {submitAfter}.</p>}
                     </section>
                 </div>
             )}
