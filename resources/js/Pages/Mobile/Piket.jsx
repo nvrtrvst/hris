@@ -18,6 +18,22 @@ import {
     X,
 } from 'lucide-react';
 
+// Endpoint JSON bisa membalas HTML saat sesi habis atau server error;
+// jangan biarkan .json() melempar "Unexpected token '<'".
+async function bacaJson(response, pesanGagal) {
+    const tipe = response.headers.get('content-type') || '';
+    if (!tipe.includes('application/json')) {
+        throw new Error(pesanGagal);
+    }
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        throw new Error(data.message || pesanGagal);
+    }
+
+    return data;
+}
+
 const getPos = () =>
     new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
@@ -84,11 +100,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
         setLoadingKelas(true);
         setErr('');
         fetch(`${route('presensi.jadwal.kelas')}?jadwal_id=${encodeURIComponent(jadwalId)}`)
-            .then(async (r) => {
-                const d = await r.json();
-                if (!r.ok || !d.success) throw new Error(d.message || 'Gagal memuat daftar kelas.');
-                return d;
-            })
+            .then((r) => bacaJson(r, 'Gagal memuat daftar kelas. Coba lagi.'))
             .then((d) => setDaftarKelas(d.kelas || []))
             .catch((e) => setErr(e.message))
             .finally(() => setLoadingKelas(false));
@@ -110,11 +122,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
         const sebelumnya = new Map((tersimpan?.details ?? []).map((d) => [d.nis, d]));
 
         fetch(`${route('presensi.jadwal.siswa')}?${params.toString()}`)
-            .then(async (r) => {
-                const d = await r.json();
-                if (!r.ok || !d.success) throw new Error(d.message || 'Gagal memuat data siswa.');
-                return d;
-            })
+            .then((r) => bacaJson(r, 'Gagal memuat data siswa. Coba lagi.'))
             .then((d) => setSiswa((d.siswa || []).map((s) => ({
                 nis: s.nis,
                 nama: s.nama,
