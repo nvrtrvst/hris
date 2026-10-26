@@ -74,6 +74,7 @@ class KepsekIzinApproveTest extends TestCase
 
         $guru = $this->makePegawai('Guru Reza', 'Guru Mata Pelajaran');
         $izin = $this->pendingIzin($guru);
+        $izin->forceFill(['approver_l1_id' => $kepsekUser->id])->save();
 
         $response = $this->actingAs($kepsekUser)
             ->post(route('pengajuan-izin.approve', $izin->id), ['catatan_approval' => 'Ok']);
@@ -105,6 +106,7 @@ class KepsekIzinApproveTest extends TestCase
             'wajib_kantor' => true,
         ]);
         $izin = $this->pendingIzin($pegawai);
+        $izin->forceFill(['approver_l1_id' => $admin->id])->save();
 
         $response = $this->actingAs($admin)
             ->post(route('pengajuan-izin.approve', $izin->id));

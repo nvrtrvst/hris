@@ -2,10 +2,12 @@
 
 namespace App\Helpers;
 
+use App\Models\ApprovalPolicy;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\User;
 use App\Notifications\TembusanIzin;
+use App\Services\ApprovalChain;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -25,8 +27,12 @@ class ApprovalHelper
      * Cari user Kepala Sekolah (pimpinan) unit secara live.
      * Robust thd AtasanHierarchySeeder yang mungkin belum jalan.
      */
-    public static function findHeadInUnit(int $unitId): ?User
+    public static function findHeadInUnit(?int $unitId): ?User
     {
+        if (! $unitId) {
+            return null;
+        }
+
         $pegawai = Pegawai::whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitId))
             ->whereHas('jabatans', fn ($q) => $q->whereIn('nama', self::HEAD_JABATAN_ALIASES))
             ->where('status_aktif', 'aktif')
@@ -36,48 +42,16 @@ class ApprovalHelper
         return $pegawai?->user;
     }
 
-    public static function determineApprovers(Pegawai $pegawai): array
+    public static function determineApprovers(Pegawai $pegawai, string $jenis = 'izin', int $hariPengajuan = 1): array
     {
-        $primaryUnit = $pegawai->units()->wherePivot('is_primary', true)->first()
-            ?? $pegawai->units()->first();
-
-        if (! $primaryUnit) {
-            return ['l1_id' => null, 'l2_id' => null, 'has_l1' => false, 'has_l2' => false];
-        }
-
-        // L1 = atasan langsung (pegawai.atasan_langsung_id, diisi AtasanHierarchySeeder).
-        // Fallback: Kepala Sekolah unit tsb (live lookup, robust thd seeder belum jalan).
-        $l1User = optional($pegawai->atasanLangsung)->user;
-        $l1Id = $l1User?->id;
-        $hasL1 = $l1User !== null;
-
-        if (! $l1Id) {
-            $l1User = self::findHeadInUnit($primaryUnit->id);
-            $l1Id = $l1User?->id;
-            $hasL1 = $l1User !== null;
-        }
-
-        // Fallback admin unit: dijadikan approver L1 (biar bisa approve) TAPI tidak
-        // menandai has_l1 -> notifikasi tetap broadcast ke admin_unit + superadmin
-        // (sesuai behaviour lama, menjamin superadmin tetap ke-notify).
-        if (! $l1Id) {
-            $adminUnit = User::where('unit_sekolah_id', $primaryUnit->id)
-                ->role('admin_unit')
-                ->first();
-            if ($adminUnit) {
-                $l1Id = $adminUnit->id;
-            }
-        }
-
-        // L2 sengaja null untuk sekarang (single-level: kepsek langsung final).
-        // Aktifkan nanti: $l2User = optional($pegawai->atasanLangsung?->atasanLangsung)?->user; $l2Id = $l2User?->id;
-        $l2Id = null;
+        $chain = ApprovalChain::resolve($pegawai, $jenis, now(), $hariPengajuan);
 
         return [
-            'l1_id' => $l1Id,
-            'l2_id' => $l2Id,
-            'has_l1' => $hasL1,
-            'has_l2' => false,
+            'l1_id' => $chain['l1'],
+            'l2_id' => $chain['l2'],
+            'auto' => $chain['auto'],
+            'has_l1' => $chain['l1'] !== null,
+            'has_l2' => $chain['l2'] !== null,
         ];
     }
 
@@ -159,12 +133,36 @@ class ApprovalHelper
             $skip[] = (int) $pegawai->user_id;
         }
 
-        foreach (self::tembusanIzinRecipients((int) $unit->id) as $target) {
+        $recipients = self::tembusanIzinRecipients((int) $unit->id);
+
+        if (ApprovalPolicy::for($pengajuan->jenis_izin)->tembusan_yayasan) {
+            $recipients = $recipients->merge(self::yayasanHeadUsers());
+        }
+
+        foreach ($recipients->unique('id') as $target) {
             if (in_array((int) $target->id, $skip, true)) {
                 continue;
             }
+
             NotificationHelper::sendSafely($target, new TembusanIzin($pengajuan, $momen));
         }
+    }
+
+    /** @return Collection<int, User> */
+    public static function yayasanHeadUsers(): Collection
+    {
+        $jabatanIds = config('approval.yayasan_head_jabatan_ids', [24]);
+
+        $userIds = DB::table('pegawai_unit')
+            ->join('pegawai', 'pegawai.id', '=', 'pegawai_unit.pegawai_id')
+            ->whereIn('pegawai_unit.jabatan_id', $jabatanIds)
+            ->where('pegawai.status_aktif', 'aktif')
+            ->whereNotNull('pegawai.user_id')
+            ->distinct()
+            ->pluck('pegawai.user_id')
+            ->all();
+
+        return User::whereIn('id', $userIds)->get();
     }
 
     /**

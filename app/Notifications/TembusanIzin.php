@@ -9,14 +9,14 @@ use NotificationChannels\WebPush\WebPushMessage;
 
 // Tembusan (CC read-only): tanpa tombol approve, murni informasi agar
 // pemegang jabatan struktural (mis. Wakasek Kurikulum) bisa antisipasi KBM.
-// Sinkron (tanpa ShouldQueue): tidak ada queue worker di deployment.
+// Database + webpush dikirim langsung; email lewat ApprovalMail (queue).
 class TembusanIzin extends Notification
 {
     public function __construct(public PengajuanIzin $pengajuan, public string $momen) {}
 
     public function via($notifiable): array
     {
-        return ['database', 'webpush', 'mail'];
+        return ['database', 'webpush'];
     }
 
     public function toMail($notifiable): MailMessage

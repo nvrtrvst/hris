@@ -160,6 +160,7 @@ class RouteSmokeTest extends TestCase
         'hari-libur.index' => 'HariLibur/Index',
         'tugas-luar.index' => 'TugasLuar/Index',
         'reminders.index' => 'Reminder/Index',
+        'approval-policies.index' => 'Settings/ApprovalPolicies',
         'laporan.kcd' => 'Laporan/Kcd',
         'laporan.rekap-detail' => 'Laporan/RekapDetail',
         'laporan.rekap-mengajar-detail' => 'Laporan/RekapMengajarDetail',

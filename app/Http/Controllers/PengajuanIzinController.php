@@ -4,17 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Helpers\ApprovalHelper;
 use App\Helpers\NotificationHelper;
-use App\Helpers\PayrollLockHelper;
-use App\Models\AuditPresensi;
+use App\Models\ApprovalPolicy;
+use App\Models\AuditLog;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\PengajuanIzinComment;
-use App\Models\Presensi;
 use App\Models\User;
+use App\Notifications\ApprovalMail;
 use App\Notifications\IzinBaru;
 use App\Notifications\IzinReply;
 use App\Notifications\StatusIzin;
-use Carbon\CarbonPeriod;
+use App\Services\ApprovalChain;
+use App\Services\IzinPresensiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -38,23 +39,16 @@ class PengajuanIzinController extends Controller
         $tab = $request->input('tab', 'semua');
 
         if ($tab === 'l1') {
-            $headUnitIds = ApprovalHelper::headUnitIds($user);
-            $query->where(function ($q) use ($user, $headUnitIds) {
-                $q->where('approver_l1_id', $user->id);
-                if ($user->hasRole('superadmin')) {
-                    $q->orWhereNull('approver_l1_id');
-                }
-                if ($headUnitIds) {
-                    $q->orWhereHas('pegawai', function ($pq) use ($headUnitIds) {
-                        $pq->whereHas('units', function ($uq) use ($headUnitIds) {
-                            $uq->where('is_primary', 1)->whereIn('unit_sekolah.id', $headUnitIds);
-                        });
-                    });
-                }
-            })->where('approval_stage', 'pending_l1');
+            $query->where('approval_stage', 'pending_l1')
+                ->where('approver_l1_id', $user->id);
         } elseif ($tab === 'l2') {
-            $query->where('approver_l2_id', $user->id)
-                ->where('approval_stage', 'pending_l2');
+            $query->where('approval_stage', 'pending_l2')
+                ->where('approver_l2_id', $user->id);
+        } elseif ($tab === 'superadmin') {
+            if (! $user->hasRole('superadmin')) {
+                abort(403, 'Akses ditolak.');
+            }
+            $query->where('approval_stage', 'pending_superadmin');
         }
 
         if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
@@ -158,54 +152,53 @@ class PengajuanIzinController extends Controller
                 throw ValidationException::withMessages(['error' => 'Pengajuan sudah final.']);
             }
 
-            $isSuperadmin = $user->hasRole('superadmin');
-            $recordUnit = optional($pengajuan->pegawai->units()->wherePivot('is_primary', true)->first()
-                ?? $pengajuan->pegawai->units()->first())?->id;
-            $isL1 = $isSuperadmin || $pengajuan->approver_l1_id === $user->id || ApprovalHelper::isUnitHead($user, $recordUnit);
-            $isL2 = $isSuperadmin || $pengajuan->approver_l2_id === $user->id || ApprovalHelper::isUnitHead($user, $recordUnit);
+            $stage = $this->resolveStage($pengajuan, $user, $request);
 
-            if ($pengajuan->approval_stage === 'pending_l1') {
-                if (! $isL1) {
-                    abort(403, 'Anda bukan atasan L1 untuk pengajuan ini.');
+            if ($stage === 'takeover') {
+                AuditLog::log($pengajuan, 'takeover_approve', [
+                    'stage' => $pengajuan->approval_stage,
+                    'approver_l1_id' => $pengajuan->approver_l1_id,
+                    'approver_l2_id' => $pengajuan->approver_l2_id,
+                ], [
+                    'oleh' => $user->id,
+                    'alasan' => $request->catatan_approval,
+                ]);
+                $pengajuan->approver_l1_id = $pengajuan->approver_l1_id ?: $user->id;
+            }
+
+            if (in_array($stage, ['l1', 'takeover'], true)) {
+                if ($stage === 'l1') {
+                    $pengajuan->approved_at_l1 = now();
                 }
 
-                // Superadmin approve → overwrite approver_l1 ke superadmin
-                // (karena superadmin yang benar-benar approve, bukan atasan asli)
-                if ($isSuperadmin) {
-                    $pengajuan->approver_l1_id = $user->id;
-                }
-                $pengajuan->approved_at_l1 = now();
-                if ($request->filled('catatan_approval')) {
-                    $pengajuan->catatan_approval = $request->catatan_approval;
-                }
-
-                if ($pengajuan->approver_l2_id && $pengajuan->approver_l2_id !== $pengajuan->approver_l1_id) {
+                if ($stage !== 'takeover'
+                    && $pengajuan->approver_l2_id
+                    && (int) $pengajuan->approver_l2_id !== (int) $pengajuan->approver_l1_id) {
                     $pengajuan->approval_stage = 'pending_l2';
+                    $pengajuan->due_at = ApprovalChain::dueAt(
+                        now(),
+                        ApprovalPolicy::for($pengajuan->jenis_izin)->sla_days,
+                        ApprovalChain::unitOf($pengajuan->pegawai),
+                    );
+                    $pengajuan->reminder_sent_at = null;
                 } else {
                     $pengajuan->approval_stage = 'approved';
                     $pengajuan->status = 'disetujui';
-                    $this->generatePresensi($pengajuan);
+                    $pengajuan->approved_at_l2 = now();
+                    IzinPresensiService::generate($pengajuan);
                 }
-
-                $pengajuan->save();
-            } elseif ($pengajuan->approval_stage === 'pending_l2') {
-                if (! $isL2) {
-                    abort(403, 'Anda bukan atasan L2 untuk pengajuan ini.');
-                }
-
-                // Superadmin approve → overwrite approver_l2 ke superadmin
-                if ($isSuperadmin) {
-                    $pengajuan->approver_l2_id = $user->id;
-                }
+            } else {
                 $pengajuan->approval_stage = 'approved';
                 $pengajuan->status = 'disetujui';
                 $pengajuan->approved_at_l2 = now();
-                if ($request->filled('catatan_approval')) {
-                    $pengajuan->catatan_approval = $request->catatan_approval;
-                }
-                $this->generatePresensi($pengajuan);
-                $pengajuan->save();
+                IzinPresensiService::generate($pengajuan);
             }
+
+            if ($request->filled('catatan_approval')) {
+                $pengajuan->catatan_approval = $request->catatan_approval;
+            }
+
+            $pengajuan->save();
 
             if ($request->filled('dihitung_hadir_kcd')) {
                 $pengajuan->dihitung_hadir_kcd = $request->boolean('dihitung_hadir_kcd');
@@ -221,7 +214,32 @@ class PengajuanIzinController extends Controller
         }
 
         if ($pengajuan->approval_stage === 'pending_l2' && $pengajuan->approver_l2_id) {
-            NotificationHelper::sendSafely(User::find($pengajuan->approver_l2_id), new IzinBaru($pengajuan));
+            $l2 = User::find($pengajuan->approver_l2_id);
+            NotificationHelper::sendSafely($l2, new IzinBaru($pengajuan));
+
+            $label = strtoupper($pengajuan->jenis_izin);
+            NotificationHelper::sendSafely($l2, new ApprovalMail(
+                "Pengajuan {$label} Menunggu Persetujuan L2",
+                'Yth. '.($l2?->name ?? 'Bapak/Ibu').',',
+                [
+                    "{$pengajuan->pegawai?->nama_lengkap} mengajukan {$label}.",
+                    'Telah disetujui atasan L1 dan diteruskan kepada Anda.',
+                ],
+                'Tinjau Pengajuan',
+                route('pengajuan-izin.index'),
+            ));
+        }
+
+        if ($pengajuan->status === 'disetujui') {
+            $pemohon = $pengajuan->pegawai?->user;
+            $label = strtoupper($pengajuan->jenis_izin);
+            NotificationHelper::sendSafely($pemohon, new ApprovalMail(
+                "Pengajuan {$label} Disetujui",
+                'Yth. '.($pemohon?->name ?? 'Pegawai').',',
+                [
+                    "Pengajuan {$label} Anda ({$pengajuan->tanggal_mulai?->format('d M Y')} s.d. {$pengajuan->tanggal_selesai?->format('d M Y')}) telah disetujui.",
+                ],
+            ));
         }
 
         $msg = $pengajuan->approval_stage === 'pending_l2'
@@ -255,14 +273,12 @@ class PengajuanIzinController extends Controller
                 throw ValidationException::withMessages(['error' => 'Pengajuan sudah final.']);
             }
 
-            $isSuperadmin = $user->hasRole('superadmin');
-            $recordUnit = optional($pengajuan->pegawai->units()->wherePivot('is_primary', true)->first()
-                ?? $pengajuan->pegawai->units()->first())?->id;
-            $isL1 = $isSuperadmin || $pengajuan->approver_l1_id === $user->id || ApprovalHelper::isUnitHead($user, $recordUnit);
-            $isL2 = $isSuperadmin || $pengajuan->approver_l2_id === $user->id || ApprovalHelper::isUnitHead($user, $recordUnit);
+            $boleh = $user->hasRole('superadmin')
+                || ($pengajuan->approval_stage === 'pending_l1' && (int) $pengajuan->approver_l1_id === (int) $user->id)
+                || ($pengajuan->approval_stage === 'pending_l2' && (int) $pengajuan->approver_l2_id === (int) $user->id);
 
-            if (! $isL1 && ! $isL2) {
-                abort(403, 'Anda tidak berhak menolak pengajuan ini.');
+            if (! $boleh) {
+                abort(403, 'Anda bukan penyetuju pada tahap ini.');
             }
 
             $pengajuan->status = 'ditolak';
@@ -276,6 +292,17 @@ class PengajuanIzinController extends Controller
 
         NotificationHelper::sendSafely($pengajuan->pegawai?->user, new StatusIzin($pengajuan, 'ditolak', $request->alasan_penolakan));
         ApprovalHelper::sendTembusanIzin($pengajuan, 'ditolak', array_filter([$pengajuan->approver_l1_id, $pengajuan->approver_l2_id]));
+
+        $pemohon = $pengajuan->pegawai?->user;
+        $label = strtoupper($pengajuan->jenis_izin);
+        NotificationHelper::sendSafely($pemohon, new ApprovalMail(
+            "Pengajuan {$label} Ditolak",
+            'Yth. '.($pemohon?->name ?? 'Pegawai').',',
+            [
+                "Pengajuan {$label} Anda ditolak.",
+                "Alasan: {$request->alasan_penolakan}",
+            ],
+        ));
 
         return back()->with('message', 'Pengajuan berhasil ditolak.');
     }
@@ -362,63 +389,49 @@ class PengajuanIzinController extends Controller
         ]);
     }
 
-    private function generatePresensi(PengajuanIzin $pengajuan): void
+    private function resolveStage(PengajuanIzin $pengajuan, User $user, Request $request): string
     {
-        $pegawai = $pengajuan->pegawai;
-        $primaryUnit = $pegawai?->units()->wherePivot('is_primary', true)->first()
-            ?? $pegawai?->units()->first();
-        $unitId = $primaryUnit?->id;
+        $assigned = match ($pengajuan->approval_stage) {
+            'pending_l1' => (int) $pengajuan->approver_l1_id === (int) $user->id,
+            'pending_l2' => (int) $pengajuan->approver_l2_id === (int) $user->id,
+            'pending_superadmin' => $user->hasRole('superadmin'),
+            default => false,
+        };
 
-        $period = CarbonPeriod::create($pengajuan->tanggal_mulai, $pengajuan->tanggal_selesai);
-        foreach ($period as $date) {
-            if ($date->isWeekend()) {
-                continue;
-            }
-            // ponytail: pegawai tanpa unit tetap bisa diapprove tanpa 500 NOT NULL
-            if (! $unitId) {
-                continue;
-            }
-            if (PayrollLockHelper::isPeriodLocked($pengajuan->pegawai_id, $date)) {
-                continue;
-            }
-            $presensi = Presensi::updateOrCreate(
-                [
-                    'pegawai_id' => $pengajuan->pegawai_id,
-                    'tanggal' => $date->format('Y-m-d'),
-                ],
-                [
-                    'unit_sekolah_id' => $unitId,
-                    // Row izin/cuti/sakit = kehadiran harian (tanpa jadwal).
-                    // Eksplisit karena default kolom adalah 'mengajar'.
-                    'tipe_presensi' => 'kantor',
-                    'keterangan' => 'Dari Pengajuan Izin/Cuti',
-                ]
-            );
-
-            $presensi->status = $pengajuan->jenis_izin;
-            $presensi->save();
-
-            AuditPresensi::log($presensi->id, 'generate_izin', 'status', null, $pengajuan->jenis_izin,
-                "Izin {$pengajuan->jenis_izin} {$date->format('Y-m-d')} (pengajuan #{$pengajuan->id})"
-            );
+        if ($assigned) {
+            return match ($pengajuan->approval_stage) {
+                'pending_l1' => 'l1',
+                'pending_l2' => 'l2',
+                default => 'superadmin',
+            };
         }
+
+        if ($user->hasRole('superadmin')) {
+            $bolehTakeover = $pengajuan->due_at === null
+                || $pengajuan->due_at->isPast()
+                || $pengajuan->approver_l1_id === null;
+
+            if ($bolehTakeover) {
+                if (! $request->filled('catatan_approval')) {
+                    throw ValidationException::withMessages([
+                        'catatan_approval' => 'Alasan take-over wajib diisi.',
+                    ]);
+                }
+
+                return 'takeover';
+            }
+        }
+
+        abort(403, 'Anda bukan penyetuju pada tahap ini.');
     }
 
     private function canActOnItem(PengajuanIzin $item, User $user): bool
     {
-        if (! in_array($item->approval_stage, ['pending_l1', 'pending_l2'], true)) {
-            return false;
-        }
-
-        if ($user->hasRole('superadmin')) {
-            return true;
-        }
-
-        $unit = optional($item->pegawai->units()->wherePivot('is_primary', true)->first()
-            ?? $item->pegawai->units()->first())?->id;
-
-        return $item->approver_l1_id === $user->id
-            || $item->approver_l2_id === $user->id
-            || ApprovalHelper::isUnitHead($user, $unit);
+        return match ($item->approval_stage) {
+            'pending_l1' => (int) $item->approver_l1_id === (int) $user->id || $user->hasRole('superadmin'),
+            'pending_l2' => (int) $item->approver_l2_id === (int) $user->id || $user->hasRole('superadmin'),
+            'pending_superadmin' => $user->hasRole('superadmin'),
+            default => false,
+        };
     }
 }

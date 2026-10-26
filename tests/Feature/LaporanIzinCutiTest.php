@@ -76,7 +76,11 @@ class LaporanIzinCutiTest extends TestCase
                 'tanggal_selesai' => $tanggal,
                 'alasan' => 'Uji coba laporan '.$jenis,
             ]);
-            $pengajuan->forceFill(['status' => 'pending', 'approval_stage' => 'pending_l1'])->save();
+            $pengajuan->forceFill([
+                'status' => 'pending',
+                'approval_stage' => 'pending_l1',
+                'approver_l1_id' => $this->superadmin->id,
+            ])->save();
 
             $this->actingAs($this->superadmin, 'web_admin')
                 ->post(route('pengajuan-izin.approve', $pengajuan->id))
@@ -109,7 +113,11 @@ class LaporanIzinCutiTest extends TestCase
             'tanggal_selesai' => $tanggal,
             'alasan' => 'Uji coba laporan izin',
         ]);
-        $pengajuan->forceFill(['status' => 'pending', 'approval_stage' => 'pending_l1'])->save();
+        $pengajuan->forceFill([
+            'status' => 'pending',
+            'approval_stage' => 'pending_l1',
+            'approver_l1_id' => $this->superadmin->id,
+        ])->save();
 
         // Approve via route (superadmin single-stage).
         $this->actingAs($this->superadmin, 'web_admin')

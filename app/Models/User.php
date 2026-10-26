@@ -66,18 +66,14 @@ class User extends Authenticatable
 
     public function isApprover(): bool
     {
-        if (! $this->pegawai) {
+        $pegawai = $this->pegawai;
+        if (! $pegawai) {
             return false;
         }
 
-        $jabatanIds = $this->pegawai->jabatans()->pluck('jabatan.id');
-        if ($jabatanIds->isEmpty()) {
-            return false;
-        }
-
-        return DB::table('jabatan')
-            ->where(fn ($q) => $q->whereIn('approver_l1_jabatan_id', $jabatanIds)
-                ->orWhereIn('approver_l2_jabatan_id', $jabatanIds))
+        return Pegawai::query()
+            ->where('atasan_langsung_id', $pegawai->id)
+            ->where('status_aktif', 'aktif')
             ->exists();
     }
 

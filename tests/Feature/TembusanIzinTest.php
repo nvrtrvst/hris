@@ -148,7 +148,7 @@ class TembusanIzinTest extends TestCase
         $superadmin = User::factory()->create(['role' => 'superadmin']);
         $superadmin->assignRole('superadmin');
 
-        $buat = function () use ($pegawai): PengajuanIzin {
+        $buat = function () use ($pegawai, $superadmin): PengajuanIzin {
             $p = PengajuanIzin::create([
                 'pegawai_id' => $pegawai->id,
                 'jenis_izin' => 'izin',
@@ -156,7 +156,11 @@ class TembusanIzinTest extends TestCase
                 'tanggal_selesai' => now()->format('Y-m-d'),
                 'alasan' => 'Urusan keluarga yang harus diurus.',
             ]);
-            $p->forceFill(['status' => 'pending', 'approval_stage' => 'pending_l1'])->save();
+            $p->forceFill([
+                'status' => 'pending',
+                'approval_stage' => 'pending_l1',
+                'approver_l1_id' => $superadmin->id,
+            ])->save();
 
             return $p->fresh();
         };

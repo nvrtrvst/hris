@@ -86,9 +86,12 @@ class RolePermissionSeeder extends Seeder
             // trait ScopesPimpinan (hanya bawahan langsung, bukan semua unit).
             'view_presensi',
             'view_jadwal',
+            'view_izin',
             'view_kpi',
             'evaluate_kpi',
             'manage_reminders',
         ]);
+
+        $this->call(ApprovalPolicySeeder::class);
     }
 }
