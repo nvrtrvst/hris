@@ -28,15 +28,21 @@ class ApprovalPolicy extends Model
     {
         $key = config('approval.policy_keys')[$jenis] ?? $jenis;
 
-        return Cache::rememberForever("approval_policy:{$key}", function () use ($key) {
-            return self::where('jenis', $key)->where('is_active', true)->first()
-                ?? new self([
+        // Cache hanya skalar; model tidak diserialisasi agar tidak jadi __PHP_Incomplete_Class.
+        $row = Cache::rememberForever("approval_policy:{$key}", function () use ($key) {
+            $policy = self::where('jenis', $key)->where('is_active', true)->first();
+
+            return $policy?->only(['jenis', 'levels', 'second_level_min_days', 'sla_days', 'tembusan_yayasan'])
+                ?? [
                     'jenis' => $key,
                     'levels' => 1,
+                    'second_level_min_days' => null,
                     'sla_days' => 1,
                     'tembusan_yayasan' => true,
-                ]);
+                ];
         });
+
+        return new self($row);
     }
 
     protected static function booted(): void
