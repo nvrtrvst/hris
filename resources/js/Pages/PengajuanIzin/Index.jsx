@@ -157,7 +157,11 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                 </p>
             );
         }
-        return null;
+        return item.due_at ? (
+            <p className="mt-1 text-[11px] text-text-muted">
+                Batas: {new Date(item.due_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+        ) : null;
     };
 
     const getStageBadge = (stage) => {

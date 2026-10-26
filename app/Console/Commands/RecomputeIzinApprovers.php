@@ -70,6 +70,7 @@ class RecomputeIzinApprovers extends Command
                     $pengajuan->forceFill([
                         'approver_l1_id' => $chain['l1'],
                         'approver_l2_id' => $chain['l2'],
+                        'approval_stage' => $chain['l1'] === null ? 'pending_superadmin' : $pengajuan->approval_stage,
                         'due_at' => $pengajuan->due_at ?? ApprovalChain::dueAt(now(), $policy->sla_days, ApprovalChain::unitOf($pegawai)),
                     ])->save();
                 }

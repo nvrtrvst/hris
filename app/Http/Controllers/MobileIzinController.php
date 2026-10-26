@@ -213,6 +213,10 @@ class MobileIzinController extends Controller
                 'has_l2' => $chain['l2'] !== null,
             ];
 
+            if (! $chain['auto'] && $chain['l1'] === null) {
+                $pengajuan->forceFill(['approval_stage' => 'pending_superadmin'])->save();
+            }
+
             if ($chain['auto']) {
                 $pengajuan->forceFill([
                     'approval_stage' => 'approved',
