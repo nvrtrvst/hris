@@ -15,6 +15,11 @@ class PiketPetugas extends Model
         return $this->belongsTo(Pegawai::class);
     }
 
+    public function sesi()
+    {
+        return $this->belongsTo(PiketSesi::class, 'sesi_id');
+    }
+
     public function area()
     {
         return $this->belongsTo(PiketArea::class, 'area_id');

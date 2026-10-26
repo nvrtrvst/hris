@@ -17,6 +17,7 @@ class AbsenSiswaSesi extends Model
         'tanggal',
         'class_id',
         'class_label',
+        'done_at',
     ];
 
     protected $casts = [
@@ -37,5 +38,10 @@ class AbsenSiswaSesi extends Model
     public function details(): HasMany
     {
         return $this->hasMany(AbsenSiswaDetail::class);
+    }
+
+    public function revisi(): HasMany
+    {
+        return $this->hasMany(AbsenSiswaRevisi::class, 'absen_siswa_sesi_id')->latest();
     }
 }

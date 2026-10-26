@@ -22,6 +22,7 @@ use App\Models\PiketSesi;
 use App\Models\Presensi;
 use App\Models\TugasLuar;
 use App\Models\UnitLokasi;
+use App\Services\AbsenSiswaService;
 use App\Services\AttestationService;
 use App\Services\GeocodingService;
 use App\Services\KeuanganClient;
@@ -343,6 +344,21 @@ class MobileController extends Controller
 
         if ($kelas === null) {
             return response()->json(['success' => false, 'kelas' => [], 'message' => 'Data kelas belum tersedia.'], 502)->header('Cache-Control', 'no-store');
+        }
+
+        if (PiketService::isAreaMode($unit)) {
+            $areaId = PiketService::areaIdUntukPegawai($pegawai, $unit);
+            $allowed = PiketService::kelasArea($unit, $areaId);
+
+            if ($allowed === []) {
+                return response()->json(['success' => false, 'kelas' => [], 'message' => 'Kelas belum dipetakan ke area. Hubungi admin.'], 422)->header('Cache-Control', 'no-store');
+            }
+
+            $kelas = array_values(array_filter($kelas, function ($c) use ($allowed) {
+                $label = trim(implode(' ', array_filter([$c['grade'] ?? null, $c['name'] ?? null, $c['section'] ?? null])));
+
+                return AbsenSiswaService::labelDiizinkan($allowed, $label);
+            }));
         }
 
         return response()->json([
@@ -1863,7 +1879,7 @@ class MobileController extends Controller
             ->get(['id', 'nama_lengkap']);
 
         // Absen siswa yang sudah tersimpan hari ini (prefill/edit).
-        $absensiSiswa = AbsenSiswaSesi::with(['details' => fn ($q) => $q->orderBy('nama_snapshot')])
+        $absensiSiswa = AbsenSiswaSesi::with(['details' => fn ($q) => $q->orderBy('nama_snapshot'), 'pegawai:id,nama_lengkap'])
             ->where('unit_sekolah_id', $unitId)
             ->where('tanggal', $today)
             ->orderBy('class_label')
@@ -1872,6 +1888,7 @@ class MobileController extends Controller
                 'class_id' => $s->class_id,
                 'class_label' => $s->class_label,
                 'done_at' => $s->done_at?->format('H:i'),
+                'oleh' => $s->pegawai?->nama_lengkap,
                 'details' => $s->details->map(fn ($d) => [
                     'nis' => $d->nis,
                     'nama' => $d->nama_snapshot,
@@ -2221,10 +2238,26 @@ class MobileController extends Controller
             'siswa.*.nama' => 'required|string|max:150',
             'siswa.*.status' => 'required|in:hadir,telat,izin,sakit,alpa',
             'siswa.*.keterangan' => 'nullable|string|max:255',
+            'alasan' => 'nullable|string|max:255',
         ]);
 
         $today = Carbon::today()->toDateString();
         $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
+        $unit = $slot->unitSekolah;
+
+        if (PiketService::isAreaMode($unit)) {
+            $areaId = PiketService::areaIdUntukPegawai($pegawai, $unit);
+            $allowed = PiketService::kelasArea($unit, $areaId);
+
+            if ($allowed === []) {
+                throw ValidationException::withMessages(['class_label' => 'Kelas belum dipetakan ke area. Hubungi admin.']);
+            }
+
+            if (! AbsenSiswaService::labelDiizinkan($allowed, $validated['class_label'])) {
+                abort(403, 'Kelas ini bukan area Anda.');
+            }
+        }
+
         $this->checkPiketGeofence(
             $slot,
             (float) $validated['latitude'],
@@ -2253,29 +2286,37 @@ class MobileController extends Controller
                 ->where('tanggal', $today)
                 ->where('class_id', $validated['class_id'])
                 ->lockForUpdate()
-                ->first()
-                ?? new AbsenSiswaSesi([
-                    'unit_sekolah_id' => $slot->unit_sekolah_id,
-                    'tanggal' => $today,
-                    'class_id' => $validated['class_id'],
-                ]);
+                ->first();
 
-            $sesi->fill([
-                'pegawai_id' => $pegawai->id,
-                'laporan_piket_id' => $laporan?->id,
-                'class_label' => $validated['class_label'],
-                'done_at' => Carbon::now(),
-            ])->save();
+            $sudahDiisi = $sesi && $sesi->done_at;
 
-            $sesi->details()->delete();
-            foreach ($validated['siswa'] as $s) {
-                $sesi->details()->create([
-                    'nis' => trim($s['nis']),
-                    'nama_snapshot' => trim($s['nama']),
-                    'status' => $s['status'],
-                    'keterangan' => trim((string) ($s['keterangan'] ?? '')) ?: null,
+            if ($sudahDiisi && blank($validated['alasan'] ?? null)) {
+                $oleh = $sesi->pegawai?->nama_lengkap ?? 'petugas';
+                throw ValidationException::withMessages([
+                    'alasan' => 'Kelas sudah diisi '.$oleh.' pukul '.$sesi->done_at->format('H:i').'. Isi alasan perubahan.',
                 ]);
             }
+
+            $sesi ??= new AbsenSiswaSesi([
+                'unit_sekolah_id' => $slot->unit_sekolah_id,
+                'tanggal' => $today,
+                'class_id' => $validated['class_id'],
+            ]);
+
+            $sesi->forceFill([
+                'pegawai_id' => $pegawai->id,
+                'class_label' => $validated['class_label'],
+            ])->save();
+
+            AbsenSiswaService::simpan(
+                $sesi,
+                $validated['siswa'],
+                auth()->id(),
+                'petugas',
+                $validated['alasan'] ?? null,
+                $laporan?->id,
+                $pegawai->id,
+            );
         });
 
         return back()->with('message', 'Absen siswa tersimpan.');

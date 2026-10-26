@@ -94,9 +94,15 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
     const [loadingSiswa, setLoadingSiswa] = useState(false);
     const [saving, setSaving] = useState(false);
     const [err, setErr] = useState('');
+    const [cariKelas, setCariKelas] = useState('');
+    const [cariSiswa, setCariSiswa] = useState('');
+    const [lastSaved, setLastSaved] = useState(null);
+    const [konfirmasi, setKonfirmasi] = useState(null);
+    const [alasan, setAlasan] = useState('');
 
-    const muatKelas = () => {
-        if (daftarKelas.length > 0 || loadingKelas) return;
+    const muatKelas = (force = false) => {
+        if (loadingKelas) return;
+        if (! force && daftarKelas.length > 0) return;
         setLoadingKelas(true);
         setErr('');
         fetch(`${route('presensi.jadwal.kelas')}?jadwal_id=${encodeURIComponent(jadwalId)}`)
@@ -119,6 +125,10 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
             class_id: c.id ?? '',
         });
         const tersimpan = sesiTersimpan.find((s) => String(s.class_id) === String(c.id));
+        setLastSaved(tersimpan ?? null);
+        setKonfirmasi(null);
+        setAlasan('');
+        setCariSiswa('');
         const sebelumnya = new Map((tersimpan?.details ?? []).map((d) => [d.nis, d]));
 
         fetch(`${route('presensi.jadwal.siswa')}?${params.toString()}`)
@@ -143,10 +153,26 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
 
     const semuaHadir = () => setSiswa((prev) => prev.map((s) => ({ ...s, status: 'hadir', keterangan: '' })));
 
-    const simpan = async () => {
+    const hitung = () => siswa.reduce((acc, s) => {
+        acc[s.status] = (acc[s.status] ?? 0) + 1;
+
+        return acc;
+    }, { hadir: 0, telat: 0, izin: 0, sakit: 0, alpa: 0 });
+
+    const siapkanSimpan = () => {
         const tanpaAlasan = siswa.find((s) => ['izin', 'sakit'].includes(s.status) && !s.keterangan.trim());
         if (tanpaAlasan) {
             setErr(`Keterangan wajib untuk ${tanpaAlasan.nama} (${tanpaAlasan.status}).`);
+            return;
+        }
+
+        setErr('');
+        setKonfirmasi(hitung());
+    };
+
+    const kirim = async () => {
+        if (lastSaved && alasan.trim().length < 5) {
+            setErr('Isi alasan perubahan (min. 5 karakter) karena kelas sudah pernah diisi.');
             return;
         }
 
@@ -157,6 +183,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
             const payload = {
                 class_id: String(selected.id),
                 class_label: labelKelas(selected),
+                alasan: alasan || null,
                 siswa: siswa.map((s) => ({ nis: s.nis, nama: s.nama, status: s.status, keterangan: s.keterangan })),
                 ...pos,
             };
@@ -218,13 +245,18 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                                     </button>
                                 )}
                             </div>
-                            <p className="mt-0.5 text-slate-500">{ringkasStatus(s.details)} · {s.done_at}</p>
+                            <p className="mt-0.5 text-slate-500">{ringkasStatus(s.details)} · {s.oleh || 'petugas'} {s.done_at}</p>
                         </li>
                     ))}
                 </ul>
             )}
 
-            {err && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{err}</p>}
+            {err && (
+                        <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                            <span className="min-w-0">{err}</span>
+                            {!selected && <button type="button" onClick={() => muatKelas(true)} className="shrink-0 rounded-lg bg-white px-2 py-1 font-bold text-rose-700 ring-1 ring-rose-200">Coba lagi</button>}
+                        </div>
+                    )}
 
             {!submitted && boleh && !selected && (
                 <div className="mt-2 space-y-2">
@@ -232,8 +264,16 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                         {loadingKelas ? 'Memuat kelas...' : sesiTersimpan.length > 0 ? 'Absen kelas lain' : 'Pilih kelas'}
                     </button>
                     {daftarKelas.length > 0 && (
-                        <div className="grid grid-cols-2 gap-2">
-                            {daftarKelas.map((c) => (
+                        <input
+                            value={cariKelas}
+                            onChange={(e) => setCariKelas(e.target.value)}
+                            placeholder="Cari kelas…"
+                            className="input-field h-11 w-full text-xs"
+                        />
+                    )}
+                    {daftarKelas.length > 0 && (
+                        <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
+                            {daftarKelas.filter((c) => labelKelas(c).toLowerCase().includes(cariKelas.trim().toLowerCase())).map((c) => (
                                 <button key={c.id} type="button" onClick={() => pilihKelas(c)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-slate-700 active:scale-95">
                                     {labelKelas(c)}
                                     {c.major_name && <span className="mt-0.5 block text-[11px] font-normal text-slate-500">{c.major_name}</span>}
@@ -251,12 +291,24 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
 
             {!submitted && boleh && selected && (
                 <div className="mt-2 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-bold text-slate-700">{selected.name}</p>
-                        <div className="flex gap-1">
-                            <button type="button" onClick={semuaHadir} className="rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-primary ring-1 ring-slate-200 active:scale-95">Semua hadir</button>
-                            <button type="button" onClick={() => { setSelected(null); setSiswa([]); setErr(''); }} className="rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-slate-500 ring-1 ring-slate-200 active:scale-95">Batal</button>
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-bold text-slate-700">{labelKelas(selected)}</p>
+                            <button type="button" onClick={() => { setSelected(null); setSiswa([]); setErr(''); setKonfirmasi(null); }} className="min-h-11 rounded-lg bg-white px-3 text-[11px] font-bold text-slate-500 ring-1 ring-slate-200 active:scale-95">Ganti kelas</button>
                         </div>
+                        {lastSaved && (
+                            <p className="text-[11px] text-amber-700">Terakhir diubah oleh {lastSaved.oleh || 'petugas'} pukul {lastSaved.done_at}. Perubahan butuh alasan.</p>
+                        )}
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-[11px] text-slate-500">{siswa.length} siswa</p>
+                            <button type="button" onClick={semuaHadir} className="min-h-11 rounded-lg bg-white px-3 text-[11px] font-bold text-primary ring-1 ring-slate-200 active:scale-95">Semua hadir</button>
+                        </div>
+                        <input
+                            value={cariSiswa}
+                            onChange={(e) => setCariSiswa(e.target.value)}
+                            placeholder="Cari nama atau NIS…"
+                            className="input-field h-11 w-full text-xs"
+                        />
                     </div>
 
                     {loadingSiswa ? (
@@ -265,7 +317,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                         <p className="py-4 text-center text-xs text-slate-500">Tidak ada data siswa untuk kelas ini.</p>
                     ) : (
                         <ul className="max-h-[45dvh] space-y-1.5 overflow-y-auto pr-0.5">
-                            {siswa.map((s) => (
+                            {siswa.filter((s) => s.nama.toLowerCase().includes(cariSiswa.trim().toLowerCase()) || String(s.nis).includes(cariSiswa.trim())).map((s) => (
                                 <li key={s.nis} className="rounded-xl bg-slate-50 px-3 py-2">
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="min-w-0">
@@ -280,7 +332,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                                                     aria-label={`${s.nama}: ${st}`}
                                                     aria-pressed={s.status === st}
                                                     onClick={() => ubahStatus(s.nis, st)}
-                                                    className={`h-7 w-7 rounded-full border text-[11px] font-bold transition ${s.status === st ? STATUS_SISWA[st].cls : 'border-slate-200 bg-white text-slate-500'}`}
+                                                    className={`h-11 w-11 rounded-lg border text-[10px] font-bold leading-tight transition ${s.status === st ? STATUS_SISWA[st].cls : 'border-slate-200 bg-white text-slate-500'}`}
                                                 >
                                                     {STATUS_SISWA[st].label}
                                                 </button>
@@ -302,9 +354,33 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                         </ul>
                     )}
 
-                    <button type="button" disabled={saving || loadingSiswa || siswa.length === 0} onClick={simpan} className="min-h-12 w-full rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
-                        {saving ? 'Menyimpan...' : 'Simpan absen siswa'}
-                    </button>
+                    {konfirmasi ? (
+                        <div className="rounded-xl border border-slate-200 bg-white p-3">
+                            <p className="text-xs font-bold text-slate-800">Ringkasan {labelKelas(selected)}</p>
+                            <p className="mt-1 text-[11px] text-slate-600">
+                                Hadir {konfirmasi.hadir} · Telat {konfirmasi.telat} · Izin {konfirmasi.izin} · Sakit {konfirmasi.sakit} · Alpa {konfirmasi.alpa}
+                            </p>
+                            {konfirmasi.alpa > 0 && <p className="mt-1 text-[11px] font-semibold text-rose-600">Ada {konfirmasi.alpa} siswa alpa. Periksa kembali.</p>}
+                            {lastSaved && (
+                                <input
+                                    value={alasan}
+                                    onChange={(e) => setAlasan(e.target.value)}
+                                    placeholder="Alasan perubahan (wajib, min. 5 karakter)"
+                                    className="input-field mt-2 h-11 w-full text-xs"
+                                />
+                            )}
+                            <div className="mt-2 flex gap-2">
+                                <button type="button" onClick={() => setKonfirmasi(null)} className="btn-secondary min-h-11 flex-1">Periksa lagi</button>
+                                <button type="button" disabled={saving || (lastSaved && alasan.trim().length < 5)} onClick={kirim} className="btn-primary min-h-11 flex-1">
+                                    {saving ? 'Menyimpan…' : 'Simpan'}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button type="button" disabled={saving || loadingSiswa || siswa.length === 0} onClick={siapkanSimpan} className="min-h-12 w-full rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
+                            Periksa & simpan
+                        </button>
+                    )}
                 </div>
             )}
         </div>

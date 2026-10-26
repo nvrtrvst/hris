@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\AbsenSiswaRevisi;
+use App\Models\AbsenSiswaSesi;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\LaporanPiket;
@@ -19,6 +21,7 @@ use App\Services\PiketService;
 use Carbon\Carbon;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -444,5 +447,113 @@ class PiketV2Test extends TestCase
         $this->assertSame('dikecualikan', $round->fresh()->status);
         $this->assertSame('complete', $sesi->fresh()->status);
         $this->assertDatabaseHas('audit_logs', ['aksi' => 'waive_piket_round']);
+    }
+
+    private function siapkanAbsenArea(Pegawai $pegawai): Jadwal
+    {
+        $this->masuk($pegawai);
+        $jadwal = $this->jadwal($pegawai);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $pegawai->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+
+        DB::table('piket_area_kelas')->insert([
+            'unit_sekolah_id' => $this->unit->id,
+            'area_id' => $this->area->id,
+            'kelas_label' => 'X - A',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $jadwal;
+    }
+
+    private function payloadAbsen(array $overrides = []): array
+    {
+        return array_merge([
+            'class_id' => '101',
+            'class_label' => 'X A',
+            'latitude' => -6.2,
+            'longitude' => 106.8,
+            'accuracy' => 15,
+            'siswa' => [
+                ['nis' => '001', 'nama' => 'Siswa Satu', 'status' => 'hadir', 'keterangan' => null],
+                ['nis' => '002', 'nama' => 'Siswa Dua', 'status' => 'izin', 'keterangan' => 'Acara keluarga'],
+            ],
+        ], $overrides);
+    }
+
+    public function test_absen_siswa_menyimpan_revisi_dan_alasan_timpa(): void
+    {
+        Carbon::setTestNow('2026-10-26 09:00:00');
+        $a = $this->pegawai('Petugas A');
+        $this->siapkanAbsenArea($a);
+
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.absen-siswa'), $this->payloadAbsen())
+            ->assertSessionHasNoErrors();
+
+        $sesi = AbsenSiswaSesi::where('pegawai_id', $a->id)->firstOrFail();
+        $this->assertNotNull($sesi->done_at);
+        $this->assertSame(1, AbsenSiswaRevisi::where('absen_siswa_sesi_id', $sesi->id)->count());
+
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.absen-siswa'), $this->payloadAbsen())
+            ->assertSessionHasErrors('alasan');
+
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.absen-siswa'), $this->payloadAbsen(['alasan' => 'Koreksi status izin']))
+            ->assertSessionHasNoErrors();
+
+        $revisi = AbsenSiswaRevisi::where('absen_siswa_sesi_id', $sesi->id)->orderBy('id')->get();
+        $this->assertCount(2, $revisi);
+        $this->assertSame('Koreksi status izin', $revisi->last()->alasan);
+    }
+
+    public function test_admin_bisa_koreksi_absen_siswa_setelah_laporan_dikirim(): void
+    {
+        Carbon::setTestNow('2026-10-26 16:00:00');
+        $a = $this->pegawai('Petugas A');
+        $jadwal = $this->siapkanAbsenArea($a);
+
+        $sesi = AbsenSiswaSesi::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'pegawai_id' => $a->id,
+            'tanggal' => now()->toDateString(),
+            'class_id' => '101',
+            'class_label' => 'X A',
+        ]);
+        $sesi->details()->create(['nis' => '001', 'nama_snapshot' => 'Siswa Satu', 'status' => 'hadir']);
+
+        $laporan = LaporanPiket::create([
+            'pegawai_id' => $a->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => now()->toDateString(),
+            'status' => LaporanPiket::STATUS_SUBMITTED,
+            'submitted_at' => now(),
+            'items' => [],
+        ]);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('absen-siswa.koreksi', $sesi->id), [
+                'alasan' => 'Surat dokter masuk setelah laporan dikirim',
+                'siswa' => [
+                    ['nis' => '001', 'nama' => 'Siswa Satu', 'status' => 'sakit', 'keterangan' => 'Demam'],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('sakit', $sesi->details()->first()->status);
+        $this->assertDatabaseHas('absen_siswa_revisi', [
+            'absen_siswa_sesi_id' => $sesi->id,
+            'peran' => 'admin',
+        ]);
     }
 }

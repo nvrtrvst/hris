@@ -74,6 +74,9 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::get('lembur', [PresensiController::class, 'lemburIndex'])
         ->middleware('can:view_presensi')
         ->name('lembur.index');
+    Route::post('absen-siswa/{sesi}/koreksi', [PresensiController::class, 'koreksiAbsenSiswa'])
+        ->middleware(['can:view_presensi', 'throttle:30,1'])
+        ->name('absen-siswa.koreksi');
     Route::get('absen-siswa', [PresensiController::class, 'absenSiswaRekap'])
         ->middleware('can:view_presensi')
         ->name('absen-siswa.index');
