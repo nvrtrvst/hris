@@ -2346,10 +2346,18 @@ class MobileController extends Controller
         $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
         $windows = $this->piketWindows($slot);
         $now = Carbon::now()->format('H:i');
+        $mulaiSore = $windows['sore'][0];
 
-        if ($now < $windows['sore'][0]) {
+        if (PiketService::isAreaMode($slot->unitSekolah)) {
+            $akhirMengajar = PiketService::lastTeachingEnd($pegawai, $this->hariIniIndo());
+            if ($akhirMengajar && $akhirMengajar > $mulaiSore) {
+                $mulaiSore = $akhirMengajar;
+            }
+        }
+
+        if ($now < $mulaiSore) {
             throw ValidationException::withMessages([
-                'laporan' => 'Pengiriman dibuka pukul '.substr($windows['sore'][0], 0, 5).'.',
+                'laporan' => 'Pengiriman dibuka pukul '.substr($mulaiSore, 0, 5).'.',
             ]);
         }
 

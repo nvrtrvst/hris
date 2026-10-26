@@ -354,4 +354,59 @@ class PiketV2Test extends TestCase
         $this->assertNotNull($round->fresh()->selesai_at);
         $this->assertSame('terlambat', $round->fresh()->status);
     }
+
+    public function test_bentrok_mengajar_dikecualikan_dan_kirim_setelah_kelas(): void
+    {
+        Carbon::setTestNow('2026-10-27 15:00:00');
+
+        $a = $this->pegawai('Guru Piket');
+        $this->masuk($a);
+        $jadwal = $this->jadwal($a);
+        $jadwal->forceFill(['hari' => 'Selasa', 'jam_selesai' => '18:00:00'])->save();
+
+        Jadwal::create([
+            'pegawai_id' => $a->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'hari' => 'Selasa',
+            'jam_mulai' => '14:00:00',
+            'jam_selesai' => '18:00:00',
+            'jenis_jadwal' => 'mengajar',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $a->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+
+        $this->assertTrue(PiketService::overlapsTeaching($a, 'Selasa', '14:30', '15:30'));
+        $this->assertSame('18:00', PiketService::lastTeachingEnd($a, 'Selasa'));
+
+        $sesi = PiketService::sessionFor($a, $jadwal);
+        PiketService::ensureRounds($sesi, $jadwal);
+        foreach (PiketRound::where('sesi_id', $sesi->id)->get() as $round) {
+            $round->forceFill(['selesai_at' => now(), 'status' => 'tepat'])->save();
+        }
+        $petugas = PiketService::petugasFor($sesi, $a->id);
+        $laporan = LaporanPiket::find($petugas->laporan_piket_id);
+        $laporan->forceFill(['items' => ['kelas_kosong' => ['done_at' => '13:00', 'nihil' => true]]])->save();
+        PiketService::recordPos($sesi, $this->gerbang, $a->id, true, null);
+
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.submit'))
+            ->assertSessionHasErrors('laporan');
+
+        Carbon::setTestNow('2026-10-27 18:30:00');
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.submit'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(LaporanPiket::STATUS_SUBMITTED, $laporan->fresh()->status);
+    }
 }

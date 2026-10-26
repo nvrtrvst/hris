@@ -261,6 +261,43 @@ class PiketService
         return ['pagi' => [$mulai, $fmt($p1)], 'kbm' => [$fmt($p1), $fmt($p2)], 'sore' => [$fmt($p2), $selesai]];
     }
 
+    /** @return list<array{mulai:string,selesai:string}> */
+    public static function teachingWindows(Pegawai $pegawai, string $hari): array
+    {
+        return Jadwal::where('pegawai_id', $pegawai->id)
+            ->where('hari', $hari)
+            ->where('jenis_jadwal', 'mengajar')
+            ->orderBy('jam_mulai')
+            ->get(['jam_mulai', 'jam_selesai'])
+            ->map(fn ($j) => [
+                'mulai' => substr((string) $j->jam_mulai, 0, 5),
+                'selesai' => substr((string) $j->jam_selesai, 0, 5),
+            ])
+            ->all();
+    }
+
+    public static function overlapsTeaching(Pegawai $pegawai, string $hari, string $mulai, string $selesai): bool
+    {
+        $toMin = fn (string $t): int => (int) substr($t, 0, 2) * 60 + (int) substr($t, 3, 2);
+        $a = $toMin($mulai);
+        $b = $toMin($selesai);
+
+        foreach (self::teachingWindows($pegawai, $hari) as $w) {
+            if ($a < $toMin($w['selesai']) && $b > $toMin($w['mulai'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static function lastTeachingEnd(Pegawai $pegawai, string $hari): ?string
+    {
+        $windows = self::teachingWindows($pegawai, $hari);
+
+        return $windows === [] ? null : max(array_column($windows, 'selesai'));
+    }
+
     public static function ensureRounds(PiketSesi $sesi, Jadwal $slot): void
     {
         if (! self::isAreaMode($slot->unitSekolah)) {
@@ -281,6 +318,11 @@ class PiketService
                 $titik = $awal + (int) ($durasi * $porsi);
                 $mulai = max($awal, $titik - 10);
                 $selesai = min($akhir, $titik + 10);
+
+                $pegawai = Pegawai::find($row->pegawai_id);
+                if ($pegawai && self::overlapsTeaching($pegawai, $slot->hari, $fmt($mulai), $fmt($selesai))) {
+                    continue;
+                }
 
                 PiketRound::updateOrCreate(
                     ['sesi_id' => $sesi->id, 'area_id' => $areaId, 'putaran' => $putaran],
