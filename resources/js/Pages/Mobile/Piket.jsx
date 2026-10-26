@@ -311,6 +311,47 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
     );
 }
 
+function PosItem({ pos, log, sending, onSave }) {
+    const [nihil, setNihil] = useState(false);
+    const [jumlah, setJumlah] = useState('');
+    const [catatan, setCatatan] = useState('');
+
+    if (log?.done_at) {
+        const bagian = [log.nihil ? 'Nihil' : null, log.jumlah != null ? `${log.jumlah} siswa` : null, log.catatan]
+            .filter(Boolean)
+            .join(' · ');
+
+        return (
+            <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                <span className="font-bold">{pos.nama}</span> — tercatat {log.done_at}
+                {bagian ? `: ${bagian}` : ''}
+                {log.sumber === 'override' && <span className="ml-1 text-slate-500">(diisi admin)</span>}
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-xl border border-slate-200 px-3 py-2">
+            <p className="text-sm font-bold text-slate-800">
+                {pos.nama}
+                {pos.is_wajib && <span className="ml-1 text-xs font-semibold text-rose-600">wajib</span>}
+            </p>
+            <p className="text-[11px] text-slate-500">Jendela {pos.jam_mulai}–{pos.jam_selesai}</p>
+            <label className="mt-2 flex items-center gap-2 text-xs font-medium text-slate-700">
+                <input type="checkbox" checked={nihil} onChange={(e) => setNihil(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" />
+                Nihil (tidak ada temuan)
+            </label>
+            <div className="mt-2 flex gap-2">
+                <input type="number" min="0" value={jumlah} onChange={(e) => setJumlah(e.target.value)} placeholder="Jumlah" className="input-field h-11 w-24" disabled={nihil} />
+                <input type="text" value={catatan} onChange={(e) => setCatatan(e.target.value)} placeholder="Catatan (opsional)" className="input-field h-11 flex-1" />
+                <button type="button" disabled={sending} onClick={() => onSave(pos.id, { nihil, jumlah: jumlah === '' ? null : Number(jumlah), catatan: catatan || null })} className="min-h-11 shrink-0 rounded-xl bg-primary px-4 text-sm font-bold text-white disabled:opacity-50">
+                    Catat
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKosong = [], mapelUnit = [], absensiSiswa = [] }) {
     const { auth, flash = {}, errors = {} } = usePage().props;
     const now = useNowEveryMinute();
@@ -356,6 +397,14 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
     }
 
     const { slot, windows, laporan, wajib, label } = piket;
+    const v2 = Boolean(piket.v2);
+    const area = piket.area;
+    const team = piket.team ?? [];
+    const posList = piket.pos ?? [];
+    const posLogs = piket.pos_logs ?? {};
+    const blockReason = piket.block_reason;
+    const templates = piket.templates ?? [];
+    const tplAktif = (kode) => !v2 || templates.some((t) => t.kode === kode);
     const items = laporan?.items ?? {};
     const done = (kode) => Boolean(items[kode]?.done_at);
     const doneCount = wajib.filter(done).length;
@@ -373,6 +422,21 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
         try {
             const pos = geo ? await getPos() : {};
             router.post(route('presensi.piket.item'), { ...payload, ...pos }, {
+                preserveScroll: true,
+                onFinish: () => setSending(false),
+            });
+        } catch (e) {
+            setLocErr(e.message);
+            setSending(false);
+        }
+    };
+
+    const kirimPos = async (posId, payload) => {
+        setLocErr(null);
+        setSending(true);
+        try {
+            const geo = await getPos();
+            router.post(route('presensi.piket.pos'), { pos_id: posId, ...payload, ...geo }, {
                 preserveScroll: true,
                 onFinish: () => setSending(false),
             });
@@ -419,7 +483,7 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                     <div>
                         <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Piket Hari Ini</h1>
                         <p className="mt-0.5 text-sm text-slate-500">
-                            {format(new Date(), 'EEEE, d MMMM yyyy', { locale: id })} ({slot.jam_mulai}-{slot.jam_selesai})
+                            {format(new Date(), 'EEEE, d MMMM yyyy', { locale: id })} ({slot.jam_mulai}-{slot.jam_selesai}){area ? ` · ${area.nama}` : ''}
                             {slot.unit ? ` ${slot.unit}` : ''}
                         </p>
                     </div>
@@ -442,6 +506,35 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                 </div>
             </Card>
 
+            {v2 && team.length > 0 && (
+                <Card className="mb-4">
+                    <p className="text-sm font-bold text-slate-800">Tim piket</p>
+                    <ul className="mt-2 space-y-1.5">
+                        {team.map((t) => (
+                            <li key={t.pegawai_id} className="flex items-center justify-between gap-2 text-xs text-slate-600">
+                                <span className="min-w-0 truncate">
+                                    <span className={`font-semibold ${t.pegawai_id === pegawai?.id ? 'text-primary' : 'text-slate-800'}`}>{t.nama}</span>
+                                    {t.area ? ` · ${t.area}` : ''}{t.peran === 'gerbang' ? ' · gerbang' : ''}
+                                </span>
+                                <span className="shrink-0 tabular-nums">{t.submitted ? 'terkirim' : `${t.selesai} item`}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </Card>
+            )}
+
+            {v2 && posList.length > 0 && (
+                <Card className="mb-4 space-y-2">
+                    <p className="text-sm font-bold text-slate-800">Pos hari ini</p>
+                    {posList.map((pos) => (
+                        <PosItem key={pos.id} pos={pos} log={posLogs[pos.id]} sending={sending} onSave={kirimPos} />
+                    ))}
+                    {blockReason && (
+                        <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{blockReason}</p>
+                    )}
+                </Card>
+            )}
+
             {submitted ? (
                 <Card>
                     <div className="flex items-start gap-3">
@@ -460,6 +553,7 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                             <p className="mb-2 rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800">Admin membuka jalur telat — item Pagi bisa dicatat sampai laporan dikirim.</p>
                         )}
                         <Card className="space-y-4">
+                            {!v2 && (
                             <div>
                                 <p className="text-sm font-bold text-slate-800">Jaga gerbang {done('gerbang') && <span className="ml-1 text-xs font-semibold text-emerald-700">({items.gerbang.done_at?.substring(0, 5)}, {items.gerbang.terlambat_count ?? 0} terlambat)</span>}</p>
                                 {!done('gerbang') && (
@@ -475,7 +569,9 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                                 )}
                                 {!pagiOpen && !done('gerbang') && <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Dibuka {windows.pagi[0]}-{windows.pagi[1]}.</p>}
                             </div>
+                            )}
 
+                            {tplAktif('cek_absen') && (
                             <div className="border-t border-slate-100 pt-3">
                                 <p className="text-sm font-bold text-slate-800">Cek guru berhalangan</p>
                                 {!done('cek_absen') && (
@@ -506,6 +602,8 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                                 )}
                             </div>
 
+                            )}
+                            {tplAktif('absen_siswa') && (
                             <AbsenSiswaCard
                                 jadwalId={slot.id}
                                 sesiTersimpan={absensiSiswa}
@@ -513,6 +611,7 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                                 boleh={hhmm >= windows.pagi[0]}
                                 submitted={submitted}
                             />
+                            )}
                         </Card>
                     </section>
 
@@ -670,7 +769,8 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
 
                     <section aria-label="Kirim laporan">
                         <SeksiHead icon={Send} title="Sore" win={windows.sore} state={soreMulai ? 'open' : 'locked'} />
-                        <button type="button" disabled={!soreMulai || sending || doneCount < wajib.length} onClick={submit} className="min-h-14 w-full rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-50">
+                        {blockReason && <p className="mb-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{blockReason}</p>}
+                        <button type="button" disabled={!soreMulai || sending || doneCount < wajib.length || Boolean(blockReason)} onClick={submit} className="min-h-14 w-full rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-50">
                             {sending ? 'Mengirim...' : doneCount < wajib.length ? `Lengkapi dulu (${doneCount}/${wajib.length})` : 'Kirim laporan piket'}
                         </button>
                         {!soreMulai && <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Pengiriman dibuka {windows.sore[0]}.</p>}

@@ -12,6 +12,7 @@ use App\Http\Controllers\KpiController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PiketSettingController;
 use App\Http\Controllers\PayrollReferenceTypeController;
 use App\Http\Controllers\PayrollReferenceValueController;
 use App\Http\Controllers\PegawaiController;
@@ -325,6 +326,38 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::post('laporan/piket/{laporan}/unlock', [LaporanController::class, 'unlockPiket'])
         ->middleware(['can:view_presensi', 'throttle:60,1'])
         ->name('laporan.piket.unlock');
+
+    // Piket v2: pengaturan (superadmin) + override pos (kepsek/admin unit).
+    Route::get('piket/pengaturan', [PiketSettingController::class, 'index'])
+        ->middleware('can:manage_master_data')
+        ->name('piket.settings.index');
+    Route::post('piket/pengaturan/mode', [PiketSettingController::class, 'toggleMode'])
+        ->middleware(['can:manage_master_data', 'throttle:30,1'])
+        ->name('piket.settings.mode');
+    Route::post('piket/pengaturan/area', [PiketSettingController::class, 'saveArea'])
+        ->middleware(['can:manage_master_data', 'throttle:60,1'])
+        ->name('piket.settings.area');
+    Route::post('piket/pengaturan/kelas', [PiketSettingController::class, 'saveKelas'])
+        ->middleware(['can:manage_master_data', 'throttle:60,1'])
+        ->name('piket.settings.kelas');
+    Route::post('piket/pengaturan/pos', [PiketSettingController::class, 'savePos'])
+        ->middleware(['can:manage_master_data', 'throttle:60,1'])
+        ->name('piket.settings.pos');
+    Route::post('piket/pengaturan/item', [PiketSettingController::class, 'saveItem'])
+        ->middleware(['can:manage_master_data', 'throttle:60,1'])
+        ->name('piket.settings.item');
+    Route::post('piket/pengaturan/penugasan', [PiketSettingController::class, 'savePenugasan'])
+        ->middleware(['can:manage_master_data', 'throttle:60,1'])
+        ->name('piket.settings.penugasan');
+    Route::delete('piket/pengaturan/penugasan/{penugasan}', [PiketSettingController::class, 'hapusPenugasan'])
+        ->middleware('can:manage_master_data')
+        ->name('piket.settings.penugasan.hapus');
+    Route::post('piket/sesi/{sesi}/pos/{pos}/layani', [PiketSettingController::class, 'servePos'])
+        ->middleware('throttle:60,1')
+        ->name('piket.sesi.pos.layani');
+    Route::post('piket/sesi/{sesi}/pos/{pos}/nonaktif', [PiketSettingController::class, 'disablePos'])
+        ->middleware('throttle:60,1')
+        ->name('piket.sesi.pos.nonaktif');
     // Laporan KCD (daftar hadir bulanan untuk sertifikasi KCD)
     Route::middleware('can:view_laporan_kcd')->group(function () {
         Route::get('laporan/kcd', [LaporanController::class, 'kcdIndex'])->name('laporan.kcd');

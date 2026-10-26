@@ -139,6 +139,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Hari Libur', href: route('hari-libur.index'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' });
     if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Backup DB', href: route('backup.index'), icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' });
     if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Reminder', href: route('reminders.index'), icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' });
+    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Piket', href: route('piket.settings.index'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3' });
     if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Aturan Persetujuan', href: route('approval-policies.index'), icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' });
 
     if (modulAdmin.length > 0) {
