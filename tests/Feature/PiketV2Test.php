@@ -556,4 +556,50 @@ class PiketV2Test extends TestCase
             'peran' => 'admin',
         ]);
     }
+
+    public function test_laporan_piket_v2_menampilkan_progress_pos_dan_filter_kualitas(): void
+    {
+        Carbon::setTestNow('2026-10-26 07:00:00');
+
+        $a = $this->pegawai('Petugas A');
+        $this->masuk($a);
+        $jadwal = $this->jadwal($a);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $a->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+
+        $sesi = PiketService::sessionFor($a, $jadwal);
+        $this->assertNotNull($sesi);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->get(route('laporan.piket', ['start_date' => '2026-10-26', 'end_date' => '2026-10-26']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Laporan/Piket')
+                ->where('laporan.0.legacy', false)
+                ->where('laporan.0.progress.item_total', 1)
+                ->where('laporan.0.progress.pos_total', 1)
+                ->where('laporan.0.progress.pos_done', 0)
+                ->has('laporan.0.pos', 1)
+                ->where('laporan.0.pos.0.nama', 'Gerbang Kampus 1')
+                ->where('laporan.0.pos_belum.0', 'Gerbang Kampus 1')
+            );
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->get(route('laporan.piket', ['start_date' => '2026-10-26', 'end_date' => '2026-10-26', 'kualitas' => 'pos_belum']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('laporan', 1));
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->get(route('laporan.piket', ['start_date' => '2026-10-26', 'end_date' => '2026-10-26', 'kualitas' => 'ronde_terlewat']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('laporan', 0));
+    }
 }

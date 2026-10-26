@@ -12,6 +12,11 @@ class PiketPosLog extends Model
 
     protected $casts = ['done_at' => 'datetime', 'nihil' => 'boolean'];
 
+    public function overrideBy()
+    {
+        return $this->belongsTo(User::class, 'override_by');
+    }
+
     public function pos()
     {
         return $this->belongsTo(PiketPos::class, 'pos_id');

@@ -19,10 +19,13 @@ use App\Models\Jadwal;
 use App\Models\LaporanKcdCetak;
 use App\Models\LaporanPiket;
 use App\Models\Pegawai;
+use App\Models\PiketArea;
+use App\Models\PiketPos;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Services\KcdReportService;
 use App\Services\LaporanPdfService;
+use App\Services\PiketService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -612,7 +615,9 @@ class LaporanController extends Controller
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'area_id' => 'nullable|exists:piket_area,id',
             'status' => 'nullable|in:semua,draft,submitted,perlu_cek,belum',
+            'kualitas' => 'nullable|in:semua,pos_belum,ronde_terlewat,perlu_cek',
         ]);
 
         $end = isset($validated['end_date']) ? Carbon::parse($validated['end_date']) : Carbon::today();
@@ -631,29 +636,139 @@ class LaporanController extends Controller
             ? UnitSekolah::orderBy('nama')->get(['id', 'nama', 'singkatan'])
             : UnitSekolah::where('id', $unitId)->get(['id', 'nama', 'singkatan']);
 
-        $laporan = LaporanPiket::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama'])
+        $areaId = $validated['area_id'] ?? null;
+        $kualitas = $validated['kualitas'] ?? 'semua';
+
+        $laporan = LaporanPiket::with([
+            'pegawai:id,nama_lengkap',
+            'unitSekolah:id,nama',
+            'area:id,nama',
+            'sesi.petugas.pegawai:id,nama_lengkap',
+            'sesi.petugas.area:id,nama',
+            'sesi.posLogs.pos',
+            'sesi.posLogs.overrideBy:id,name',
+            'sesi.rounds.area:id,nama',
+            'absenSesi.details',
+        ])
             ->whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
             ->when($unitId, fn ($q) => $q->where('unit_sekolah_id', $unitId))
+            ->when($areaId, fn ($q) => $q->where('area_id', $areaId))
             ->orderBy('tanggal', 'desc')
             ->orderBy('id', 'desc')
             ->get()
-            ->map(fn (LaporanPiket $lap) => [
-                'id' => $lap->id,
-                'tanggal' => $lap->tanggal->format('Y-m-d'),
-                'pegawai' => $lap->pegawai?->only(['id', 'nama_lengkap']),
-                'unit' => $lap->unitSekolah?->nama,
-                'status' => $lap->status,
-                'done' => $lap->doneCount(),
-                'total' => count(LaporanPiket::ITEM_WAJIB),
-                'perlu_cek' => $lap->perluCekCount(),
-                'submitted_at' => $lap->submitted_at?->format('Y-m-d H:i'),
-                'items' => $lap->items ?? [],
-            ]);
+            ->map(function (LaporanPiket $lap) {
+                $petugas = $lap->sesi?->petugas->firstWhere('pegawai_id', $lap->pegawai_id);
+                $required = $lap->sesi_id && $lap->unitSekolah
+                    ? PiketService::requiredCodes($lap->unitSekolah, $petugas)
+                    : LaporanPiket::ITEM_WAJIB;
+
+                $itemDone = count(array_filter($required, fn ($kode) => $lap->isItemDone($kode)));
+                $posBelum = $lap->sesi ? PiketService::unservedRequiredPos($lap->sesi) : [];
+                $posTotal = $lap->unitSekolah
+                    ? PiketPos::where('unit_sekolah_id', $lap->unit_sekolah_id)->where('aktif', true)->where('is_wajib', true)->count()
+                    : 0;
+                $rounds = $lap->sesi ? PiketService::rounds($lap->sesi) : [];
+                $roundSelesai = count(array_filter($rounds, fn ($r) => $r['selesai_at'] !== null));
+
+                $posList = collect();
+                if ($lap->sesi) {
+                    $posList = PiketPos::where('unit_sekolah_id', $lap->unit_sekolah_id)
+                        ->where('aktif', true)
+                        ->where(fn ($q) => $q->whereNull('area_id')->when($petugas?->area_id, fn ($qq, $a) => $qq->orWhere('area_id', $a)))
+                        ->get()
+                        ->map(function (PiketPos $pos) use ($lap) {
+                            $log = $lap->sesi->posLogs->firstWhere('pos_id', $pos->id);
+
+                            return [
+                                'id' => $pos->id,
+                                'nama' => $pos->nama,
+                                'is_wajib' => (bool) $pos->is_wajib,
+                                'tercatat' => $log !== null,
+                                'done_at' => $log?->done_at?->format('H:i'),
+                                'nihil' => (bool) $log?->nihil,
+                                'jumlah' => $log?->jumlah,
+                                'catatan' => $log?->catatan,
+                                'sumber' => $log?->sumber,
+                                'alasan_override' => $log?->alasan_override,
+                                'override_by' => $log?->overrideBy?->name,
+                            ];
+                        });
+                }
+
+                $absen = $lap->absenSesi->map(function ($sesiAbsen) {
+                    $counts = $sesiAbsen->details->countBy('status');
+
+                    return [
+                        'class_label' => $sesiAbsen->class_label,
+                        'counts' => [
+                            'hadir' => $counts->get('hadir', 0),
+                            'telat' => $counts->get('telat', 0),
+                            'izin' => $counts->get('izin', 0),
+                            'sakit' => $counts->get('sakit', 0),
+                            'alpa' => $counts->get('alpa', 0),
+                        ],
+                        'total' => $sesiAbsen->details->count(),
+                        'non_hadir' => $sesiAbsen->details
+                            ->where('status', '!=', 'hadir')
+                            ->map(fn ($d) => ['nama' => $d->nama_snapshot, 'nis' => $d->nis, 'status' => $d->status, 'keterangan' => $d->keterangan])
+                            ->values(),
+                    ];
+                })->values();
+
+                return [
+                    'id' => $lap->id,
+                    'tanggal' => $lap->tanggal->format('Y-m-d'),
+                    'pegawai' => $lap->pegawai?->only(['id', 'nama_lengkap']),
+                    'unit' => $lap->unitSekolah?->nama,
+                    'unit_id' => $lap->unit_sekolah_id,
+                    'area' => $lap->area?->nama,
+                    'area_id' => $lap->area_id,
+                    'peran' => $lap->peran,
+                    'status' => $lap->status,
+                    'sesi' => $lap->sesi ? [
+                        'id' => $lap->sesi->id,
+                        'status' => $lap->sesi->status,
+                        'jam' => $lap->sesi->jam_mulai.'-'.$lap->sesi->jam_selesai,
+                        'petugas' => $lap->sesi->petugas->map(fn ($t) => [
+                            'nama' => $t->pegawai?->nama_lengkap,
+                            'area' => $t->area?->nama,
+                            'peran' => $t->peran,
+                        ])->values(),
+                    ] : null,
+                    'pos' => $posList->values(),
+                    'pos_belum' => $posBelum,
+                    'rounds' => $rounds,
+                    'absen' => $absen,
+                    'done' => $itemDone,
+                    'total' => count($required),
+                    'progress' => [
+                        'item_done' => $itemDone,
+                        'item_total' => count($required),
+                        'pos_done' => max(0, $posTotal - count($posBelum)),
+                        'pos_total' => $posTotal,
+                        'round_done' => $roundSelesai,
+                        'round_total' => count($rounds),
+                    ],
+                    'block_reason' => $lap->status === LaporanPiket::STATUS_DRAFT ? PiketService::sessionBlockReason($lap) : null,
+                    'perlu_cek' => $lap->perluCekCount(),
+                    'submitted_at' => $lap->submitted_at?->format('Y-m-d H:i'),
+                    'items' => $lap->items ?? [],
+                    'legacy' => $lap->sesi_id === null,
+                ];
+            });
 
         if ($status === 'draft' || $status === 'submitted') {
             $laporan = $laporan->where('status', $status)->values();
         } elseif ($status === 'perlu_cek') {
             $laporan = $laporan->where('perlu_cek', '>', 0)->values();
+        }
+
+        if ($kualitas === 'pos_belum') {
+            $laporan = $laporan->filter(fn ($lap) => $lap['pos_belum'] !== [])->values();
+        } elseif ($kualitas === 'ronde_terlewat') {
+            $laporan = $laporan->filter(fn ($lap) => collect($lap['rounds'])->contains(fn ($r) => $r['selesai_at'] === null))->values();
+        } elseif ($kualitas === 'perlu_cek') {
+            $laporan = $laporan->filter(fn ($lap) => $lap['perlu_cek'] > 0)->values();
         }
 
         // Belum melapor: jadwal piket per tanggal minus yang sudah ada laporan.
@@ -693,14 +808,22 @@ class LaporanController extends Controller
             $laporan = collect();
         }
 
+        $areas = PiketArea::query()
+            ->when($unitId, fn ($q) => $q->where('unit_sekolah_id', $unitId))
+            ->orderBy('urutan')
+            ->get(['id', 'nama', 'unit_sekolah_id']);
+
         return Inertia::render('Laporan/Piket', [
             'filters' => [
                 'start_date' => $start->toDateString(),
                 'end_date' => $end->toDateString(),
                 'unit_sekolah_id' => $unitId,
                 'status' => $status,
+                'area_id' => $areaId,
+                'kualitas' => $kualitas,
             ],
             'units' => $units,
+            'areas' => $areas,
             'laporan' => $laporan->values(),
             'belum' => $belum->values(),
             'label' => LaporanPiket::ITEM_LABEL,
