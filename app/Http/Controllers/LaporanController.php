@@ -14,6 +14,7 @@ use App\Exports\LaporanRekapKehadiranHarianExport;
 use App\Exports\LaporanRekapMengajarExport;
 use App\Http\Requests\KcdReportRequest;
 use App\Http\Requests\LaporanGenerateRequest;
+use App\Models\AuditLog;
 use App\Models\Jadwal;
 use App\Models\LaporanKcdCetak;
 use App\Models\LaporanPiket;
@@ -473,7 +474,7 @@ class LaporanController extends Controller
             'unlocked_by' => $user->id,
         ])->save();
 
-        \App\Models\AuditLog::log($laporan, 'unlock_piket', null, [
+        AuditLog::log($laporan, 'unlock_piket', null, [
             'unlocked_by' => $user->id,
             'tanggal' => $laporan->tanggal?->toDateString(),
         ]);
