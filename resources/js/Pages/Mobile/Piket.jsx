@@ -394,7 +394,7 @@ function PosItem({ pos, log, sending, onSave }) {
     );
 }
 
-export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKosong = [], mapelUnit = [], absensiSiswa = [] }) {
+export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruUnit = [], slotKosong = [], mapelUnit = [], absensiSiswa = [] }) {
     const { auth, flash = {}, errors = {} } = usePage().props;
     const now = useNowEveryMinute();
     const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
