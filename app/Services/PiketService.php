@@ -105,6 +105,29 @@ class PiketService
         );
     }
 
+    public static function areaIdUntukPegawai(Pegawai $pegawai, UnitSekolah $unit): ?int
+    {
+        $penugasan = PiketPenugasan::where('unit_sekolah_id', $unit->id)
+            ->where('pegawai_id', $pegawai->id)
+            ->where('aktif', true)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($penugasan?->area_id) {
+            return (int) $penugasan->area_id;
+        }
+
+        return self::petugasHariIni($pegawai)?->area_id;
+    }
+
+    public static function petugasHariIni(Pegawai $pegawai): ?PiketPetugas
+    {
+        return PiketPetugas::where('pegawai_id', $pegawai->id)
+            ->whereHas('sesi', fn ($q) => $q->whereDate('tanggal', Carbon::today()))
+            ->latest('id')
+            ->first();
+    }
+
     public static function petugasFor(PiketSesi $sesi, int $pegawaiId): ?PiketPetugas
     {
         return PiketPetugas::where('sesi_id', $sesi->id)

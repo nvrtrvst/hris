@@ -1,10 +1,11 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import FilterSheet from '@/Components/FilterSheet';
+import Modal from '@/Components/Modal';
 import { Head, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale/id';
-import { ClipboardList, Search } from 'lucide-react';
+import { ClipboardList, Search, History, Pencil } from 'lucide-react';
 
 const STATUS_META = {
     telat: { label: 'Telat', badge: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -37,6 +38,29 @@ export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_o
     const [unitId, setUnitId] = React.useState(filters.unit_id || '');
     const [cari, setCari] = React.useState('');
     const [filterSheetOpen, setFilterSheetOpen] = React.useState(false);
+    const [riwayatSesi, setRiwayatSesi] = React.useState(null);
+    const [koreksiSesi, setKoreksiSesi] = React.useState(null);
+    const [editSiswa, setEditSiswa] = React.useState([]);
+    const [alasanEdit, setAlasanEdit] = React.useState('');
+
+    const bukaKoreksi = (s) => {
+        setKoreksiSesi(s);
+        setEditSiswa((s.students ?? []).map((d) => ({ ...d })));
+        setAlasanEdit('');
+    };
+
+    const ubahEdit = (nis, patch) => setEditSiswa((prev) => prev.map((d) => (d.nis === nis ? { ...d, ...patch } : d)));
+
+    const simpanKoreksi = (e) => {
+        e.preventDefault();
+        router.post(route('absen-siswa.koreksi', koreksiSesi.id), {
+            alasan: alasanEdit,
+            siswa: editSiswa,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => setKoreksiSesi(null),
+        });
+    };
     const activeFilterCount = [unitId, cari].filter(Boolean).length;
 
     const apply = (overrides = {}) => {
@@ -194,6 +218,82 @@ export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_o
                     )}
                 </div>
             </div>
+
+            <Modal show={riwayatSesi !== null} onClose={() => setRiwayatSesi(null)} maxWidth="lg">
+                {riwayatSesi && (
+                    <div className="p-5">
+                        <h3 className="text-base font-bold text-text-primary">Riwayat {riwayatSesi.class_label}</h3>
+                        <ul className="mt-3 space-y-3">
+                            {(riwayatSesi.riwayat ?? []).map((r, i) => (
+                                <li key={i} className="rounded-xl border border-border p-3 text-xs">
+                                    <p className="font-semibold text-text-primary">{r.user} · {r.peran} · {r.waktu}</p>
+                                    {r.alasan && <p className="mt-1 text-text-secondary">Alasan: {r.alasan}</p>}
+                                    <p className="mt-1 text-text-secondary">
+                                        H {r.ringkasan?.hadir ?? 0} · T {r.ringkasan?.telat ?? 0} · I {r.ringkasan?.izin ?? 0} · S {r.ringkasan?.sakit ?? 0} · A {r.ringkasan?.alpa ?? 0}
+                                    </p>
+                                </li>
+                            ))}
+                            {(riwayatSesi.riwayat ?? []).length === 0 && <li className="text-sm text-text-muted">Belum ada riwayat.</li>}
+                        </ul>
+                    </div>
+                )}
+            </Modal>
+
+            <Modal show={koreksiSesi !== null} onClose={() => setKoreksiSesi(null)} maxWidth="2xl">
+                {koreksiSesi && (
+                    <form onSubmit={simpanKoreksi} className="p-5">
+                        <h3 className="text-base font-bold text-text-primary">Koreksi {koreksiSesi.class_label}</h3>
+                        <p className="mt-1 text-xs text-text-muted">Perubahan dicatat di riwayat dan wajib alasan.</p>
+
+                        <div className="mt-3 max-h-[50dvh] space-y-2 overflow-y-auto pr-1">
+                            {editSiswa.map((d) => (
+                                <div key={d.nis} className="rounded-xl border border-border p-2">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <span className="min-w-0 text-xs font-semibold text-text-primary">{d.nama} <span className="font-mono text-text-muted">{d.nis}</span></span>
+                                        <select
+                                            value={d.status}
+                                            onChange={(e) => ubahEdit(d.nis, { status: e.target.value })}
+                                            className="select-field h-11 w-32 text-xs"
+                                        >
+                                            <option value="hadir">Hadir</option>
+                                            <option value="telat">Telat</option>
+                                            <option value="izin">Izin</option>
+                                            <option value="sakit">Sakit</option>
+                                            <option value="alpa">Alpa</option>
+                                        </select>
+                                    </div>
+                                    {['izin', 'sakit'].includes(d.status) && (
+                                        <input
+                                            value={d.keterangan ?? ''}
+                                            onChange={(e) => ubahEdit(d.nis, { keterangan: e.target.value })}
+                                            placeholder="Keterangan (wajib)"
+                                            className="input-field mt-2 h-11 w-full text-xs"
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        <label className="mt-3 block">
+                            <span className="form-label text-xs">Alasan koreksi</span>
+                            <textarea
+                                value={alasanEdit}
+                                onChange={(e) => setAlasanEdit(e.target.value)}
+                                required
+                                minLength={5}
+                                rows={2}
+                                className="input-field w-full"
+                                placeholder="Contoh: status sakit dikoreksi setelah surat dokter masuk"
+                            />
+                        </label>
+
+                        <div className="mt-4 flex justify-end gap-2">
+                            <button type="button" onClick={() => setKoreksiSesi(null)} className="btn-secondary">Batal</button>
+                            <button type="submit" className="btn-primary">Simpan koreksi</button>
+                        </div>
+                    </form>
+                )}
+            </Modal>
         </AuthenticatedLayout>
     );
 }

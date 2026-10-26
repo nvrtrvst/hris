@@ -16,6 +16,7 @@ use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Notifications\StatusLembur;
+use App\Services\AbsenSiswaService;
 use App\Services\GeocodingService;
 use App\Services\ImageUploadService;
 use App\Services\KeuanganClient;
@@ -392,7 +393,7 @@ class PresensiController extends Controller
         }
         $unitList = $unitQuery->orderBy('nama')->get(['id', 'nama']);
 
-        $rows = AbsenSiswaSesi::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama', 'details'])
+        $rows = AbsenSiswaSesi::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama', 'details', 'revisi.user:id,name'])
             ->whereDate('tanggal', $tanggal)
             ->whereIn('unit_sekolah_id', $unitList->pluck('id'))
             ->orderBy('class_label')
@@ -468,6 +469,34 @@ class PresensiController extends Controller
             'filters' => ['tanggal' => $tanggal, 'unit_id' => $request->unit_id],
             'units' => $units,
         ]);
+    }
+
+    public function koreksiAbsenSiswa(Request $request, AbsenSiswaSesi $sesi)
+    {
+        $user = $request->user();
+        abort_unless($user && $user->can('view_presensi'), 403);
+        abort_if($user->unit_sekolah_id && ! $user->can('view_all_units') && (int) $user->unit_sekolah_id !== (int) $sesi->unit_sekolah_id, 403);
+
+        $validated = $request->validate([
+            'alasan' => 'required|string|min:5|max:255',
+            'siswa' => 'required|array|min:1|max:200',
+            'siswa.*.nis' => 'required|string|max:30|distinct',
+            'siswa.*.nama' => 'required|string|max:150',
+            'siswa.*.status' => 'required|in:hadir,telat,izin,sakit,alpa',
+            'siswa.*.keterangan' => 'nullable|string|max:255',
+        ]);
+
+        foreach ($validated['siswa'] as $i => $row) {
+            if (in_array($row['status'], ['izin', 'sakit'], true) && trim((string) ($row['keterangan'] ?? '')) === '') {
+                throw ValidationException::withMessages([
+                    "siswa.$i.keterangan" => 'Keterangan wajib untuk siswa izin/sakit.',
+                ]);
+            }
+        }
+
+        AbsenSiswaService::simpan($sesi, $validated['siswa'], $user->id, 'admin', $validated['alasan']);
+
+        return back()->with('message', 'Absen siswa dikoreksi dan riwayat tersimpan.');
     }
 
     /**

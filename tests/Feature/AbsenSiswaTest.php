@@ -125,7 +125,7 @@ class AbsenSiswaTest extends TestCase
         $this->actingAs($pegawai->user, 'web_mobile')
             ->post(route('presensi.piket.absen-siswa'), $this->payload([
                 ['nis' => '001', 'nama' => 'Ani', 'status' => 'sakit', 'keterangan' => 'Demam'],
-            ]));
+            ]) + ['alasan' => 'Koreksi status setelah surat dokter']);
 
         $this->assertSame(1, AbsenSiswaSesi::count());
         $this->assertSame(1, AbsenSiswaDetail::count());
