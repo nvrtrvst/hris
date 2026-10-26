@@ -22,6 +22,10 @@ use App\Models\PengajuanKoreksi;
 use App\Models\PengajuanPulangCepat;
 use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
+use App\Models\PiketArea;
+use App\Models\PiketPenugasan;
+use App\Models\PiketPos;
+use App\Models\PiketSesi;
 use App\Models\Presensi;
 use App\Models\Reminder;
 use App\Models\SkalaMasaBakti;
@@ -160,6 +164,7 @@ class RouteSmokeTest extends TestCase
         'hari-libur.index' => 'HariLibur/Index',
         'tugas-luar.index' => 'TugasLuar/Index',
         'reminders.index' => 'Reminder/Index',
+        'piket.settings.index' => 'Piket/Settings',
         'approval-policies.index' => 'Settings/ApprovalPolicies',
         'laporan.kcd' => 'Laporan/Kcd',
         'laporan.rekap-detail' => 'Laporan/RekapDetail',
@@ -540,6 +545,14 @@ class RouteSmokeTest extends TestCase
 
     private KpiEvaluation $kpiEvaluation;
 
+    private PiketArea $piketArea;
+
+    private PiketPos $piketPos;
+
+    private PiketSesi $piketSesi;
+
+    private PiketPenugasan $piketPenugasan;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -595,6 +608,37 @@ class RouteSmokeTest extends TestCase
         ]);
         $this->pegawai->units()->attach($this->unit->id, ['jabatan_id' => $this->jabatan->id, 'is_primary' => true]);
         $this->pegawai->mapels()->attach($this->mapel->id, ['unit_sekolah_id' => $this->unit->id]);
+
+        $this->piketArea = PiketArea::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'nama' => 'Kampus 1',
+            'urutan' => 1,
+        ]);
+        $this->piketPos = PiketPos::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'area_id' => $this->piketArea->id,
+            'nama' => 'Gerbang Kampus 1',
+            'jam_mulai' => '06:30',
+            'jam_selesai' => '07:15',
+            'is_wajib' => true,
+            'aktif' => true,
+        ]);
+        $this->piketSesi = PiketSesi::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => now()->toDateString(),
+            'jam_mulai' => '07:00',
+            'jam_selesai' => '15:00',
+            'status' => 'open',
+        ]);
+        $this->piketPenugasan = PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => '1',
+            'pegawai_id' => $this->pegawai->id,
+            'area_id' => $this->piketArea->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
 
         // Operator payroll = jabatan dgn flag is_payroll_operator (bendahara).
         // Admin unit TIDAK lagi pegang view_payroll/manage_payroll (seeder),
@@ -1694,6 +1738,9 @@ class RouteSmokeTest extends TestCase
             },
             'hari_libur' => $routeName === 'hari-libur.destroy' ? $this->disposableHariLibur->id : $this->hariLibur->id,
             'tugas_luar' => $routeName === 'tugas-luar.destroy' ? $this->disposableTugasLuar->id : $this->tugasLuar->id,
+            'sesi' => $this->piketSesi->id,
+            'pos' => $this->piketPos->id,
+            'penugasan' => $this->piketPenugasan->id,
             'laporan' => $this->laporanPiket->id,
             'reminder' => in_array($routeName, ['reminders.destroy', 'reminders.send'], true) ? $this->disposableReminder->id : $this->reminder->id,
             'lokasi' => $this->lokasi->id,

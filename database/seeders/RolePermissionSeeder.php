@@ -93,5 +93,6 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         $this->call(ApprovalPolicySeeder::class);
+        $this->call(PiketSeeder::class);
     }
 }
