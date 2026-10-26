@@ -17,6 +17,11 @@ class PiketSesi extends Model
         return $this->hasMany(PiketPetugas::class, 'sesi_id');
     }
 
+    public function rounds()
+    {
+        return $this->hasMany(PiketRound::class, 'sesi_id');
+    }
+
     public function posLogs()
     {
         return $this->hasMany(PiketPosLog::class, 'sesi_id');

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
 import { CheckCircle2, ChevronDown } from 'lucide-react';
@@ -37,7 +37,7 @@ function EntryValidasi({ lapId, entry, idx }) {
     );
 }
 
-function LaporanDetail({ lap, label }) {
+function LegacyDetail({ lap, label }) {
     const items = lap.items || {};
     const gerbang = items.gerbang;
     const cek = items.cek_absen;
@@ -46,7 +46,7 @@ function LaporanDetail({ lap, label }) {
     const insiden = items.insiden;
 
     return (
-        <div className="space-y-3 px-4 py-3 text-sm">
+        <div className="space-y-3 text-sm">
             {gerbang?.done_at && (
                 <p><span className="font-bold">{label.gerbang}:</span> {gerbang.done_at.substring(0, 5)} ({gerbang.terlambat_count ?? 0} terlambat)</p>
             )}
@@ -69,12 +69,6 @@ function LaporanDetail({ lap, label }) {
                                 <li key={i} className="rounded-lg bg-surface px-2.5 py-2 ring-1 ring-border">
                                     <p><span className="font-bold">{e.kelas}</span>{e.mapel ? `, ${e.mapel}` : ''} ({e.guru_nama})</p>
                                     {e.ada_amanat && <p className="mt-0.5 text-text-secondary">Amanat: {e.detail_amanat}{e.tersampaikan ? ' (tersampaikan)' : ' (belum tersampaikan)'}</p>}
-                                    <p className="mt-0.5 text-xs text-text-muted">
-                                        Cross-check: {e.validasi_catatan}{' '}
-                                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${e.validasi === 'cocok' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                                            {e.validasi === 'cocok' ? 'Cocok' : 'Perlu cek'}
-                                        </span>
-                                    </p>
                                     <div className="mt-1.5"><EntryValidasi lapId={lap.id} entry={e} idx={i} /></div>
                                 </li>
                             ))}
@@ -93,18 +87,167 @@ function LaporanDetail({ lap, label }) {
                     )}
                 </div>
             )}
-            {lap.submitted_at && <p className="text-xs text-text-muted">Dikirim {lap.submitted_at}.</p>}
         </div>
     );
 }
 
-export default function Piket({ auth, filters, units = [], laporan = [], belum = [], label = {} }) {
+function LaporanDetail({ lap, label }) {
+    if (lap.legacy) {
+        return (
+            <div className="space-y-3 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Arsip laporan lama</p>
+                <LegacyDetail lap={lap} label={label} />
+            </div>
+        );
+    }
+
+    const progress = lap.progress ?? {};
+    const items = lap.items || {};
+    const kk = items.kelas_kosong;
+    const cek = items.cek_absen;
+    const buku = items.buku;
+    const insiden = items.insiden;
+
+    return (
+        <div className="space-y-4 px-4 py-4 text-sm">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
+                <span className="font-bold text-text-primary">{lap.sesi?.jam || '-'}</span>
+                <span>{lap.sesi?.status || '-'}</span>
+                {lap.area && <span>{lap.area}</span>}
+                {lap.peran && <span className="uppercase">{lap.peran}</span>}
+                {lap.sesi?.petugas?.length > 0 && (
+                    <span>Petugas: {lap.sesi.petugas.map((t) => `${t.nama}${t.area ? ` (${t.area})` : ''}`).join(' · ')}</span>
+                )}
+            </div>
+
+            {lap.pos?.length > 0 && (
+                <section>
+                    <h4 className="text-xs font-bold uppercase tracking-wide text-text-secondary">Pos</h4>
+                    <ul className="mt-1.5 space-y-1">
+                        {lap.pos.map((pos) => (
+                            <li key={pos.id} className="flex flex-wrap items-center gap-x-2">
+                                <span className="font-semibold text-text-primary">{pos.nama}</span>
+                                {pos.is_wajib && <span className="text-[10px] font-bold uppercase text-rose-600">wajib</span>}
+                                <span className="text-text-secondary">
+                                    {pos.tercatat
+                                        ? `tercatat ${pos.done_at}${pos.nihil ? ' · nihil' : ''}${pos.jumlah != null ? ` · ${pos.jumlah} siswa` : ''}${pos.catatan ? ` · ${pos.catatan}` : ''}`
+                                        : 'belum tercatat'}
+                                </span>
+                                {pos.sumber === 'override' && <span className="text-[10px] font-semibold uppercase text-sky-700">override {pos.override_by || ''}</span>}
+                                {pos.sumber === 'nonaktif' && <span className="text-[10px] font-semibold uppercase text-amber-700">dinonaktifkan</span>}
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+
+            {lap.rounds?.length > 0 && (
+                <section>
+                    <h4 className="text-xs font-bold uppercase tracking-wide text-text-secondary">Ronde</h4>
+                    <ul className="mt-1.5 space-y-1">
+                        {lap.rounds.map((r) => (
+                            <li key={r.id} className="flex flex-wrap items-center gap-x-2">
+                                <span className="font-semibold text-text-primary">Ronde {r.putaran}</span>
+                                {r.area && <span className="text-text-secondary">{r.area}</span>}
+                                <span className="text-xs text-text-muted">{r.jendela_mulai}–{r.jendela_selesai}</span>
+                                <span className={r.selesai_at ? 'text-emerald-700' : 'text-rose-600'}>
+                                    {r.selesai_at ? `${r.status} ${r.selesai_at}` : 'belum selesai'}
+                                </span>
+                                {r.alasan && <span className="text-xs text-text-secondary">· {r.alasan}</span>}
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+
+            <section>
+                <h4 className="text-xs font-bold uppercase tracking-wide text-text-secondary">Checklist</h4>
+                <div className="mt-1.5 space-y-2">
+                    {cek && (
+                        <div>
+                            <p className="font-semibold text-text-primary">{label.cek_absen}{cek.done_at ? ` (${cek.done_at.substring(0, 5)})` : ''}</p>
+                            {(cek.entries ?? []).length > 0 ? (
+                                <ul className="mt-0.5 list-disc pl-5 text-text-secondary">
+                                    {cek.entries.map((e, i) => <li key={i}>{e.nama_guru} ({e.created_at?.substring(0, 5)}): {e.keterangan}</li>)}
+                                </ul>
+                            ) : <p className="text-xs text-text-muted">Cek awal tercatat.</p>}
+                        </div>
+                    )}
+                    {kk && (
+                        <div>
+                            <p className="font-semibold text-text-primary">{label.kelas_kosong}</p>
+                            {kk.nihil ? <p className="text-xs text-text-muted">Nihil.</p> : (
+                                <ul className="mt-1 space-y-1.5">
+                                    {(kk.entries ?? []).map((e, i) => (
+                                        <li key={i} className="rounded-lg bg-surface px-2.5 py-2 ring-1 ring-border">
+                                            <p><span className="font-bold">{e.kelas}</span>{e.mapel ? `, ${e.mapel}` : ''} ({e.guru_nama})</p>
+                                            {e.ada_amanat && <p className="mt-0.5 text-text-secondary">Amanat: {e.detail_amanat}{e.tersampaikan ? ' (tersampaikan)' : ' (belum tersampaikan)'}</p>}
+                                            <div className="mt-1.5"><EntryValidasi lapId={lap.id} entry={e} idx={i} /></div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+                    {buku?.done_at && <p className="font-semibold text-text-primary">{label.buku}: <span className="font-normal text-text-secondary">{buku.done_at.substring(0, 5)}</span></p>}
+                    {insiden && (
+                        <div>
+                            <p className="font-semibold text-text-primary">{label.insiden}</p>
+                            {insiden.nihil ? <p className="text-xs text-text-muted">Nihil.</p> : (
+                                <ul className="mt-0.5 list-disc pl-5 text-text-secondary">
+                                    {(insiden.entries ?? []).map((e, i) => <li key={i}>{e.jenis} ({e.created_at?.substring(0, 5)}): {e.tindakan}</li>)}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {lap.absen?.length > 0 && (
+                <section>
+                    <h4 className="text-xs font-bold uppercase tracking-wide text-text-secondary">Absen siswa</h4>
+                    <ul className="mt-1.5 space-y-2">
+                        {lap.absen.map((a) => (
+                            <li key={a.class_label}>
+                                <p className="font-semibold text-text-primary">{a.class_label}</p>
+                                <p className="text-xs text-text-secondary">
+                                    H {a.counts.hadir} · T {a.counts.telat} · I {a.counts.izin} · S {a.counts.sakit} · A {a.counts.alpa} · {a.total} siswa
+                                </p>
+                                {a.non_hadir.length > 0 && (
+                                    <p className="mt-0.5 text-xs text-text-secondary">
+                                        Non-hadir: {a.non_hadir.map((d) => `${d.nama} (${d.status})`).join(', ')}
+                                    </p>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                    <Link href={route('absen-siswa.index', { tanggal: lap.tanggal, unit_id: lap.unit_id })} className="mt-2 inline-flex text-xs font-bold text-primary underline-offset-2 hover:underline">
+                        Lihat rekap absen
+                    </Link>
+                </section>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3 border-t border-border pt-2 text-xs text-text-secondary">
+                {lap.submitted_at && <span>Dikirim {lap.submitted_at}</span>}
+                <span>Item {progress.item_done}/{progress.item_total} · Pos {progress.pos_done}/{progress.pos_total} · Ronde {progress.round_done}/{progress.round_total}</span>
+                {lap.block_reason && <span className="font-semibold text-rose-700">{lap.block_reason}</span>}
+                <Link href={route('piket.index', { tanggal: lap.tanggal })} className="ml-auto font-bold text-primary underline-offset-2 hover:underline">
+                    Ke Monitoring
+                </Link>
+            </div>
+        </div>
+    );
+}
+
+export default function Piket({ auth, filters, units = [], areas = [], laporan = [], belum = [], label = {} }) {
     const { flash = {} } = usePage().props;
     const [form, setForm] = useState({
         start_date: filters.start_date,
         end_date: filters.end_date,
         unit_sekolah_id: filters.unit_sekolah_id || '',
         status: filters.status || 'semua',
+        area_id: filters.area_id || '',
+        kualitas: filters.kualitas || 'semua',
     });
     const [openId, setOpenId] = useState(null);
     const [unlockingId, setUnlockingId] = useState(null);
@@ -121,8 +264,9 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
 
     const tampilkan = (e) => {
         e.preventDefault();
-        const params = { start_date: form.start_date, end_date: form.end_date, status: form.status };
+        const params = { start_date: form.start_date, end_date: form.end_date, status: form.status, kualitas: form.kualitas };
         if (form.unit_sekolah_id) params.unit_sekolah_id = form.unit_sekolah_id;
+        if (form.area_id) params.area_id = form.area_id;
         router.get(route('laporan.piket'), params);
     };
 
@@ -135,7 +279,7 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
                     {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
 
                     <form onSubmit={tampilkan} className="page-card p-5">
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <div>
                                 <label className="form-label" htmlFor="f-start">Dari tanggal</label>
                                 <input id="f-start" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="input-field" required />
@@ -163,12 +307,124 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
                                     <option value="belum">Belum melapor</option>
                                 </select>
                             </div>
+                            {areas.length > 0 && (
+
+                                <div>
+
+                                    <label className="form-label" htmlFor="f-area">Area</label>
+
+                                    <select id="f-area" value={form.area_id} onChange={(e) => setForm({ ...form, area_id: e.target.value })} className="select-field">
+
+                                        <option value="">Semua area</option>
+
+                                        {areas.map((a) => <option key={a.id} value={a.id}>{a.nama}</option>)}
+
+                                    </select>
+
+                                </div>
+
+                            )}
+
+                            <div>
+
+                                <label className="form-label" htmlFor="f-kualitas">Kualitas</label>
+
+                                <select id="f-kualitas" value={form.kualitas} onChange={(e) => setForm({ ...form, kualitas: e.target.value })} className="select-field">
+
+                                    <option value="semua">Semua</option>
+
+                                    <option value="pos_belum">Pos belum</option>
+
+                                    <option value="ronde_terlewat">Ronde terlewat</option>
+
+                                    <option value="perlu_cek">Perlu cek</option>
+
+                                </select>
+
+                            </div>
+
                             <div className="flex items-end">
+
                                 <button type="submit" className="btn-primary w-full">Tampilkan</button>
+
                             </div>
                         </div>
                         <p className="form-hint mt-2">Maksimal 31 hari per tampil.</p>
                     </form>
+
+                    {(() => {
+
+
+                        const perlu = laporan.filter((lap) => (lap.pos_belum?.length ?? 0) > 0 || (lap.rounds ?? []).some((r) => !r.selesai_at) || lap.perlu_cek > 0);
+
+
+                        if (perlu.length === 0) return null;
+
+
+
+                        return (
+
+
+                            <div className="page-card p-4">
+
+
+                                <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary">Perlu perhatian ({perlu.length})</h3>
+
+
+                                <ul className="mt-2 divide-y divide-border/60">
+
+
+                                    {perlu.map((lap) => (
+
+
+                                        <li key={lap.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
+
+
+                                            <span className="min-w-0">
+
+
+                                                <b>{lap.tanggal}</b> · {lap.pegawai?.nama_lengkap} · {lap.unit}{lap.area ? ` / ${lap.area}` : ''}
+
+
+                                                <span className="ml-2 text-text-secondary">
+
+
+                                                    {(lap.pos_belum?.length ?? 0) > 0 && `Pos belum: ${lap.pos_belum.join(', ')} `}
+
+
+                                                    {(lap.rounds ?? []).some((r) => !r.selesai_at) && 'Ronde terlewat '}
+
+
+                                                    {lap.perlu_cek > 0 && 'Perlu cek'}
+
+
+                                                </span>
+
+
+                                            </span>
+
+
+                                            <button type="button" onClick={() => setOpenId(lap.id)} className="btn-secondary btn-sm shrink-0">Detail</button>
+
+
+                                        </li>
+
+
+                                    ))}
+
+
+                                </ul>
+
+
+                            </div>
+
+
+                        );
+
+
+                    })()}
+
+
 
                     <div className="page-card card-table">
                         <div className="px-5 py-4 border-b border-border">
@@ -191,9 +447,15 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
                                             <th>Tanggal</th>
                                             <th>Petugas</th>
                                             <th>Unit</th>
-                                            <th>Progress</th>
+                                            <th>Item</th>
+
+                                            <th>Pos</th>
+
+                                            <th>Ronde</th>
+
                                             <th>Status</th>
-                                            <th>Flag</th>
+
+                                            <th>Kualitas</th>
                                             <th></th>
                                         </tr>
                                     </thead>
@@ -204,14 +466,22 @@ export default function Piket({ auth, filters, units = [], laporan = [], belum =
                                                     <td className="whitespace-nowrap font-mono">{lap.tanggal}</td>
                                                     <td className="font-semibold">{lap.pegawai?.nama_lengkap || '-'}</td>
                                                     <td>{lap.unit || '-'}</td>
-                                                    <td className="whitespace-nowrap">{lap.done}/{lap.total}</td>
+                                                    <td className="whitespace-nowrap tabular-nums">{lap.progress?.item_done ?? lap.done}/{lap.progress?.item_total ?? lap.total}</td>
+
+                                                    <td className="whitespace-nowrap tabular-nums">{lap.progress ? `${lap.progress.pos_done}/${lap.progress.pos_total}` : '—'}</td>
+
+                                                    <td className="whitespace-nowrap tabular-nums">{lap.progress ? `${lap.progress.round_done}/${lap.progress.round_total}` : '—'}</td>
                                                     <td>
                                                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_BADGE[lap.status] || STATUS_BADGE.draft}`}>
                                                             {lap.status === 'submitted' ? 'Terkirim' : 'Belum lengkap'}
                                                         </span>
                                                         {lap.unlocked_at && <span className="ml-1 inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-700">Telat dibuka</span>}
                                                     </td>
-                                                    <td>{lap.perlu_cek > 0 ? <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">Perlu cek {lap.perlu_cek}</span> : <span className="text-text-muted">-</span>}</td>
+                                                    <td className="text-xs text-text-secondary">
+
+                                                        {(lap.pos_belum?.length ?? 0) > 0 ? 'Pos belum' : (lap.rounds ?? []).some((r) => !r.selesai_at) ? 'Ronde lewat' : lap.perlu_cek > 0 ? 'Perlu cek' : '—'}
+
+                                                    </td>
                                                     <td>
                                                         <div className="flex items-center gap-2">
                                                             <button

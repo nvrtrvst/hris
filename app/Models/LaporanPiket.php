@@ -80,6 +80,21 @@ class LaporanPiket extends Model
         'unlocked_at' => 'datetime',
     ];
 
+    public function sesi()
+    {
+        return $this->belongsTo(PiketSesi::class, 'sesi_id');
+    }
+
+    public function area()
+    {
+        return $this->belongsTo(PiketArea::class, 'area_id');
+    }
+
+    public function absenSesi()
+    {
+        return $this->hasMany(AbsenSiswaSesi::class, 'laporan_piket_id');
+    }
+
     public function pegawai(): BelongsTo
     {
         return $this->belongsTo(Pegawai::class);
