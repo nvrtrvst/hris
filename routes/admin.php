@@ -21,6 +21,7 @@ use App\Http\Controllers\PengajuanIzinController;
 use App\Http\Controllers\PengajuanKoreksiController;
 use App\Http\Controllers\PengajuanPulangCepatController;
 use App\Http\Controllers\PenggajianController;
+use App\Http\Controllers\PiketMonitorController;
 use App\Http\Controllers\PiketSettingController;
 use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\ProfileController;
@@ -328,6 +329,9 @@ Route::middleware('auth:web_admin')->group(function () {
         ->name('laporan.piket.unlock');
 
     // Piket v2: pengaturan (superadmin) + override pos (kepsek/admin unit).
+    Route::get('piket', [PiketMonitorController::class, 'index'])
+        ->middleware('can:view_presensi')
+        ->name('piket.index');
     Route::get('piket/pengaturan', [PiketSettingController::class, 'index'])
         ->middleware('can:manage_master_data')
         ->name('piket.settings.index');

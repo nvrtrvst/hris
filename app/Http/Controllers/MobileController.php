@@ -17,6 +17,7 @@ use App\Models\PiketArea;
 use App\Models\PiketPetugas;
 use App\Models\PiketPos;
 use App\Models\PiketPosLog;
+use App\Models\PiketRound;
 use App\Models\PiketSesi;
 use App\Models\Presensi;
 use App\Models\TugasLuar;
@@ -1837,6 +1838,7 @@ class MobileController extends Controller
 
         if ($v2) {
             $sesi = PiketService::sessionFor($pegawai, $slot);
+            PiketService::ensureRounds($sesi, $slot);
             $petugas = PiketService::petugasFor($sesi, $pegawai->id);
             $area = $petugas?->area_id ? PiketArea::find($petugas->area_id) : null;
             $pos = PiketService::posFor($unit, $petugas);
@@ -2152,6 +2154,54 @@ class MobileController extends Controller
      * (unit, tanggal, class_id) -> kirim ulang = ganti detail (edit).
      * Item checklist ditandai lewat storePiketItem(kode=absen_siswa).
      */
+    public function storePiketRound(Request $request, PiketRound $round)
+    {
+        $pegawai = $this->getPegawai();
+        $this->assertTidakSedangIzin($pegawai);
+        $this->assertSudahMasuk($pegawai->id);
+
+        $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
+        $unit = $slot->unitSekolah;
+
+        if (! PiketService::isAreaMode($unit) || (int) $round->petugas_id !== (int) $pegawai->id) {
+            abort(403, 'Ronde ini bukan milik Anda.');
+        }
+
+        $validated = $request->validate([
+            'alasan' => 'nullable|string|min:10|max:500',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'accuracy' => 'required|numeric|min:0',
+        ]);
+
+        $this->checkPiketGeofence(
+            $slot,
+            (float) $validated['latitude'],
+            (float) $validated['longitude'],
+            (float) $validated['accuracy']
+        );
+
+        $now = Carbon::now()->format('H:i');
+
+        if ($now < $round->jendela_mulai) {
+            throw ValidationException::withMessages(['round' => 'Ronde dibuka pukul '.$round->jendela_mulai.'.']);
+        }
+
+        $terlambat = $now > $round->jendela_selesai;
+
+        if ($terlambat && blank($validated['alasan'] ?? null)) {
+            throw ValidationException::withMessages(['round' => 'Isi alasan minimal 10 karakter karena ronde sudah lewat jendela.']);
+        }
+
+        $round->forceFill([
+            'selesai_at' => now(),
+            'status' => $terlambat ? 'terlambat' : 'tepat',
+            'alasan' => $validated['alasan'] ?? $round->alasan,
+        ])->save();
+
+        return back()->with('message', 'Ronde selesai.');
+    }
+
     public function storeAbsenSiswa(Request $request)
     {
         $pegawai = $this->getPegawai();

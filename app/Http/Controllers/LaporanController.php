@@ -14,6 +14,7 @@ use App\Exports\LaporanRekapKehadiranHarianExport;
 use App\Exports\LaporanRekapMengajarExport;
 use App\Http\Requests\KcdReportRequest;
 use App\Http\Requests\LaporanGenerateRequest;
+use App\Models\AuditLog;
 use App\Models\Jadwal;
 use App\Models\LaporanKcdCetak;
 use App\Models\LaporanPiket;
@@ -457,14 +458,26 @@ class LaporanController extends Controller
      */
     public function unlockPiket(Request $request, LaporanPiket $laporan)
     {
+        $user = $request->user();
+        $unitId = $laporan->unit_sekolah_id;
+
+        if (! $user->can('manage_master_data') && (int) $user->unit_sekolah_id !== (int) $unitId) {
+            abort(403, 'Akses ditolak.');
+        }
+
         if ($laporan->status === LaporanPiket::STATUS_SUBMITTED) {
             return back()->withErrors(['laporan' => 'Laporan sudah dikirim, tidak bisa dibuka.']);
         }
 
         $laporan->forceFill([
             'unlocked_at' => now(),
-            'unlocked_by' => $request->user()->id,
+            'unlocked_by' => $user->id,
         ])->save();
+
+        AuditLog::log($laporan, 'unlock_piket', null, [
+            'unlocked_by' => $user->id,
+            'tanggal' => $laporan->tanggal?->toDateString(),
+        ]);
 
         return back()->with('message', 'Jalur telat dibuka untuk laporan piket ini.');
     }

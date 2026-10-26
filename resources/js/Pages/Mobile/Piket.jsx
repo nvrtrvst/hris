@@ -311,6 +311,48 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
     );
 }
 
+function RoundCard({ round, hhmm, sending, onDone }) {
+    const [alasan, setAlasan] = useState('');
+    const selesai = Boolean(round.selesai_at);
+    const belumDibuka = hhmm < round.jendela_mulai;
+    const terlambat = hhmm > round.jendela_selesai;
+
+    return (
+        <div className="rounded-xl border border-slate-200 px-3 py-2">
+            <div className="flex items-start justify-between gap-2">
+                <div>
+                    <p className="text-sm font-bold text-slate-800">Ronde {round.putaran}{round.area ? ` · ${round.area}` : ''}</p>
+                    <p className="text-[11px] text-slate-500">Jendela {round.jendela_mulai}–{round.jendela_selesai}</p>
+                </div>
+                <span className={`shrink-0 text-[11px] font-bold ${selesai ? 'text-emerald-700' : terlambat ? 'text-rose-600' : 'text-slate-500'}`}>
+                    {selesai ? `Selesai ${round.selesai_at}` : belumDibuka ? 'Terkunci' : terlambat ? 'Lewat jendela' : 'Dibuka'}
+                </span>
+            </div>
+
+            {!selesai && !belumDibuka && (
+                <div className="mt-2 space-y-2">
+                    {terlambat && (
+                        <input
+                            value={alasan}
+                            onChange={(e) => setAlasan(e.target.value)}
+                            placeholder="Alasan terlewat (wajib, min. 10 karakter)"
+                            className="input-field h-11 w-full text-xs"
+                        />
+                    )}
+                    <button
+                        type="button"
+                        disabled={sending || (terlambat && alasan.trim().length < 10)}
+                        onClick={() => onDone(round.id, terlambat ? alasan : null)}
+                        className="min-h-11 w-full rounded-xl bg-primary text-sm font-bold text-white disabled:opacity-50"
+                    >
+                        Selesaikan ronde
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function PosItem({ pos, log, sending, onSave }) {
     const [nihil, setNihil] = useState(false);
     const [jumlah, setJumlah] = useState('');
@@ -404,6 +446,8 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
     const posLogs = piket.pos_logs ?? {};
     const blockReason = piket.block_reason;
     const templates = piket.templates ?? [];
+    const rounds = piket.rounds ?? [];
+    const areaRounds = area ? rounds.filter((r) => r.area_id === area.id) : [];
     const tplAktif = (kode) => !v2 || templates.some((t) => t.kode === kode);
     const items = laporan?.items ?? {};
     const done = (kode) => Boolean(items[kode]?.done_at);
@@ -437,6 +481,21 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
         try {
             const geo = await getPos();
             router.post(route('presensi.piket.pos'), { pos_id: posId, ...payload, ...geo }, {
+                preserveScroll: true,
+                onFinish: () => setSending(false),
+            });
+        } catch (e) {
+            setLocErr(e.message);
+            setSending(false);
+        }
+    };
+
+    const kirimRound = async (roundId, alasan) => {
+        setLocErr(null);
+        setSending(true);
+        try {
+            const geo = await getPos();
+            router.post(route('presensi.piket.round', roundId), { alasan, ...geo }, {
                 preserveScroll: true,
                 onFinish: () => setSending(false),
             });
@@ -618,6 +677,14 @@ export default function Piket({ piket, butuhMasuk = false, guruUnit = [], slotKo
                     <section aria-label="Tugas jam belajar">
                         <SeksiHead icon={BookOpen} title="Jam Belajar" win={windows.kbm} state={done('kelas_kosong') && done('buku') && done('insiden') ? 'done' : kbmMulai ? 'open' : 'locked'} />
                         <Card className="space-y-4">
+                            {v2 && areaRounds.length > 0 && (
+                                <div className="space-y-2 border-b border-slate-100 pb-3">
+                                    <p className="text-sm font-bold text-slate-800">Ronde keliling area</p>
+                                    {areaRounds.map((r) => (
+                                        <RoundCard key={r.id} round={r} hhmm={hhmm} sending={sending} onDone={kirimRound} />
+                                    ))}
+                                </div>
+                            )}
                             <div>
                                 <p className="text-sm font-bold text-slate-800">Isi kelas kosong</p>
                                 {!done('kelas_kosong') && kbmMulai && (

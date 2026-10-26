@@ -11,6 +11,7 @@ use App\Models\PiketPenugasan;
 use App\Models\PiketPetugas;
 use App\Models\PiketPos;
 use App\Models\PiketPosLog;
+use App\Models\PiketRound;
 use App\Models\PiketSesi;
 use App\Models\UnitSekolah;
 use Carbon\Carbon;
@@ -237,6 +238,104 @@ class PiketService
         );
     }
 
+    /** @return array{pagi:array{0:string,1:string},kbm:array{0:string,1:string},sore:array{0:string,1:string}} */
+    public static function windows(Jadwal $slot): array
+    {
+        $mulai = substr((string) ($slot->jam_mulai ?: ''), 0, 5);
+        $selesai = substr((string) ($slot->jam_selesai ?: ''), 0, 5);
+
+        if (! $mulai || ! $selesai || $selesai <= $mulai) {
+            $unit = $slot->unitSekolah;
+            $mulai = substr((string) ($unit?->jam_masuk_kantor ?: '07:00'), 0, 5);
+            $selesai = substr((string) ($unit?->jam_pulang_kantor ?: '15:00'), 0, 5);
+        }
+
+        $awal = (int) substr($mulai, 0, 2) * 60 + (int) substr($mulai, 3, 2);
+        $akhir = (int) substr($selesai, 0, 2) * 60 + (int) substr($selesai, 3, 2);
+        $total = max(60, $akhir - $awal);
+        $fmt = fn (int $m): string => sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
+
+        $p1 = $awal + (int) ($total / 3);
+        $p2 = $awal + (int) ($total * 2 / 3);
+
+        return ['pagi' => [$mulai, $fmt($p1)], 'kbm' => [$fmt($p1), $fmt($p2)], 'sore' => [$fmt($p2), $selesai]];
+    }
+
+    public static function ensureRounds(PiketSesi $sesi, Jadwal $slot): void
+    {
+        if (! self::isAreaMode($slot->unitSekolah)) {
+            return;
+        }
+
+        $windows = self::windows($slot);
+        [$kbmMulai, $kbmSelesai] = $windows['kbm'];
+        $awal = (int) substr($kbmMulai, 0, 2) * 60 + (int) substr($kbmMulai, 3, 2);
+        $akhir = (int) substr($kbmSelesai, 0, 2) * 60 + (int) substr($kbmSelesai, 3, 2);
+        $durasi = max(30, $akhir - $awal);
+        $fmt = fn (int $m): string => sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
+
+        $petugas = PiketPetugas::where('sesi_id', $sesi->id)->whereNotNull('area_id')->get()->keyBy('area_id');
+
+        foreach ($petugas as $areaId => $row) {
+            foreach ([1 => 0.25, 2 => 0.75] as $putaran => $porsi) {
+                $titik = $awal + (int) ($durasi * $porsi);
+                $mulai = max($awal, $titik - 10);
+                $selesai = min($akhir, $titik + 10);
+
+                PiketRound::updateOrCreate(
+                    ['sesi_id' => $sesi->id, 'area_id' => $areaId, 'putaran' => $putaran],
+                    [
+                        'petugas_id' => $row->pegawai_id,
+                        'jendela_mulai' => $fmt($mulai),
+                        'jendela_selesai' => $fmt($selesai),
+                    ],
+                );
+            }
+        }
+    }
+
+    public static function rounds(PiketSesi $sesi): array
+    {
+        return PiketRound::with('area:id,nama')
+            ->where('sesi_id', $sesi->id)
+            ->orderBy('area_id')
+            ->orderBy('putaran')
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'putaran' => $r->putaran,
+                'area' => $r->area?->nama,
+                'area_id' => $r->area_id,
+                'petugas_id' => $r->petugas_id,
+                'jendela_mulai' => $r->jendela_mulai,
+                'jendela_selesai' => $r->jendela_selesai,
+                'selesai_at' => $r->selesai_at?->format('H:i'),
+                'status' => $r->status,
+                'alasan' => $r->alasan,
+            ])
+            ->values()
+            ->all();
+    }
+
+    public static function roundBlockReason(?LaporanPiket $laporan): ?string
+    {
+        if (! $laporan?->sesi_id) {
+            return null;
+        }
+
+        $belum = PiketRound::where('sesi_id', $laporan->sesi_id)
+            ->whereNull('selesai_at')
+            ->get();
+
+        if ($belum->isEmpty()) {
+            return null;
+        }
+
+        $label = $belum->map(fn ($r) => 'Ronde '.$r->putaran)->implode(', ');
+
+        return $label.' belum diselesaikan.';
+    }
+
     public static function sessionBlockReason(?LaporanPiket $laporan): ?string
     {
         if (! $laporan?->sesi_id) {
@@ -254,7 +353,7 @@ class PiketService
             return 'Pos belum tercatat: '.implode(', ', $unserved).'.';
         }
 
-        return null;
+        return self::roundBlockReason($laporan);
     }
 
     public static function teamProgress(PiketSesi $sesi): array
