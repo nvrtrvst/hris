@@ -8,6 +8,7 @@ use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\LaporanPiket;
 use App\Models\Pegawai;
+use App\Models\PengajuanIzin;
 use App\Models\PiketArea;
 use App\Models\PiketItemTemplate;
 use App\Models\PiketPenugasan;
@@ -555,6 +556,93 @@ class PiketV2Test extends TestCase
             'absen_siswa_sesi_id' => $sesi->id,
             'peran' => 'admin',
         ]);
+    }
+
+    public function test_setujui_amanat_piket_memverifikasi_tugas_sakit_bersurat(): void
+    {
+        Carbon::setTestNow('2026-10-26 16:00:00');
+
+        $piket = $this->pegawai('Petugas Piket');
+        $guru = $this->pegawai('Guru Sakit');
+
+        $izin = PengajuanIzin::create([
+            'pegawai_id' => $guru->id,
+            'jenis_izin' => 'sakit',
+            'tanggal_mulai' => '2026-10-26',
+            'tanggal_selesai' => '2026-10-26',
+            'alasan' => 'Demam tinggi perlu istirahat.',
+            'dengan_surat_dokter' => true,
+        ]);
+        $izin->forceFill(['status' => 'disetujui'])->save();
+
+        $laporan = LaporanPiket::create([
+            'pegawai_id' => $piket->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-10-26',
+            'status' => LaporanPiket::STATUS_SUBMITTED,
+            'submitted_at' => now(),
+            'items' => [
+                LaporanPiket::ITEM_KELAS_KOSONG => ['entries' => [[
+                    'kelas' => 'X A',
+                    'guru_pegawai_id' => $guru->id,
+                    'guru_nama' => 'Guru Sakit',
+                    'ada_amanat' => true,
+                    'tersampaikan' => true,
+                    'validasi' => 'cocok',
+                    'sumber' => 'manual',
+                ]]],
+            ],
+        ]);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('laporan-piket.validasi', $laporan->id), ['entry_index' => 0, 'aksi' => 'setujui'])
+            ->assertRedirect();
+
+        $this->assertTrue((bool) $izin->fresh()->tugas_terverifikasi);
+        $this->assertNotNull($izin->fresh()->tugas_diverifikasi_at);
+    }
+
+    public function test_setujui_amanat_belum_tersampaikan_tidak_memverifikasi_tugas(): void
+    {
+        Carbon::setTestNow('2026-10-26 16:00:00');
+
+        $piket = $this->pegawai('Petugas Piket');
+        $guru = $this->pegawai('Guru Sakit');
+
+        $izin = PengajuanIzin::create([
+            'pegawai_id' => $guru->id,
+            'jenis_izin' => 'sakit',
+            'tanggal_mulai' => '2026-10-26',
+            'tanggal_selesai' => '2026-10-26',
+            'alasan' => 'Demam tinggi perlu istirahat.',
+            'dengan_surat_dokter' => true,
+        ]);
+        $izin->forceFill(['status' => 'disetujui'])->save();
+
+        $laporan = LaporanPiket::create([
+            'pegawai_id' => $piket->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-10-26',
+            'status' => LaporanPiket::STATUS_SUBMITTED,
+            'submitted_at' => now(),
+            'items' => [
+                LaporanPiket::ITEM_KELAS_KOSONG => ['entries' => [[
+                    'kelas' => 'X A',
+                    'guru_pegawai_id' => $guru->id,
+                    'guru_nama' => 'Guru Sakit',
+                    'ada_amanat' => true,
+                    'tersampaikan' => false,
+                    'validasi' => 'cocok',
+                    'sumber' => 'manual',
+                ]]],
+            ],
+        ]);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('laporan-piket.validasi', $laporan->id), ['entry_index' => 0, 'aksi' => 'setujui'])
+            ->assertRedirect();
+
+        $this->assertFalse((bool) $izin->fresh()->tugas_terverifikasi);
     }
 
     public function test_laporan_piket_v2_menampilkan_progress_pos_dan_filter_kualitas(): void

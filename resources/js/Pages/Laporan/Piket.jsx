@@ -18,7 +18,12 @@ function EntryValidasi({ lapId, entry, idx }) {
         );
     }
     return (
-        <span className="inline-flex gap-1.5">
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+            {entry.ada_amanat && (
+                <span className={`text-[10px] font-semibold ${entry.tersampaikan ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    {entry.tersampaikan ? 'Amanat tersampaikan' : 'Amanat belum tersampaikan'}
+                </span>
+            )}
             <button
                 type="button"
                 onClick={() => router.post(route('laporan-piket.validasi', lapId), { entry_index: idx, aksi: 'setujui' }, { preserveScroll: true })}

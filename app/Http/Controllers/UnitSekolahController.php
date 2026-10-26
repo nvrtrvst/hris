@@ -59,6 +59,7 @@ class UnitSekolahController extends Controller
             'bobot_izin_setengah' => 'nullable|numeric|between:0,1',
             'bobot_cuti' => 'nullable|numeric|between:0,1',
             'bobot_alpa' => 'nullable|numeric|between:0,1',
+            'sakit_wajib_tugas' => 'nullable|boolean',
             'wajib_pulang_mengajar' => 'nullable|boolean',
             'pulang_sebelum_menit' => 'nullable|integer|min:1|max:120',
             'max_lembur_jam' => 'nullable|numeric|min:0.5|max:24',
@@ -76,6 +77,7 @@ class UnitSekolahController extends Controller
         $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;
         $validated['toleransi_slide_menit'] = $validated['toleransi_slide_menit'] ?? 15;
         $validated['wajib_pulang_mengajar'] = (bool) ($validated['wajib_pulang_mengajar'] ?? false);
+        $validated['sakit_wajib_tugas'] = (bool) ($validated['sakit_wajib_tugas'] ?? false);
         $validated['pulang_sebelum_menit'] = $validated['pulang_sebelum_menit'] ?? 20;
 
         $disk = config('filesystems.image_disk', 'public');
@@ -125,6 +127,7 @@ class UnitSekolahController extends Controller
             'bobot_izin_setengah' => 'nullable|numeric|between:0,1',
             'bobot_cuti' => 'nullable|numeric|between:0,1',
             'bobot_alpa' => 'nullable|numeric|between:0,1',
+            'sakit_wajib_tugas' => 'nullable|boolean',
             'wajib_pulang_mengajar' => 'nullable|boolean',
             'pulang_sebelum_menit' => 'nullable|integer|min:1|max:120',
             'max_lembur_jam' => 'nullable|numeric|min:0.5|max:24',
@@ -145,6 +148,9 @@ class UnitSekolahController extends Controller
         $validated['toleransi_slide_menit'] = $validated['toleransi_slide_menit'] ?? $unit_sekolah->toleransi_slide_menit ?? 15;
         if (array_key_exists('wajib_pulang_mengajar', $validated)) {
             $validated['wajib_pulang_mengajar'] = (bool) $validated['wajib_pulang_mengajar'];
+        }
+        if (array_key_exists('sakit_wajib_tugas', $validated)) {
+            $validated['sakit_wajib_tugas'] = (bool) $validated['sakit_wajib_tugas'];
         }
         $validated['pulang_sebelum_menit'] = $validated['pulang_sebelum_menit'] ?? $unit_sekolah->pulang_sebelum_menit ?? 20;
 

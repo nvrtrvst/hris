@@ -31,7 +31,7 @@ class PengajuanIzinController extends Controller
         }
 
         $query = PengajuanIzin::with([
-            'pegawai' => fn ($q) => $q->with(['pengajuanIzins' => fn ($iq) => $iq->select('id', 'pegawai_id', 'jenis_izin', 'status', 'tanggal_mulai', 'tanggal_selesai')]),
+            'pegawai' => fn ($q) => $q->with(['units', 'pengajuanIzins' => fn ($iq) => $iq->select('id', 'pegawai_id', 'jenis_izin', 'status', 'tanggal_mulai', 'tanggal_selesai')]),
             'approverL1' => fn ($q) => $q->select('id', 'name'),
             'approverL2' => fn ($q) => $q->select('id', 'name'),
             'rejectedByUser' => fn ($q) => $q->select('id', 'name'),
@@ -98,6 +98,7 @@ class PengajuanIzinController extends Controller
             if ($item->pegawai) {
                 $item->pegawai->append(['sisa_cuti', 'cuti_terpakai']);
             }
+            $item->unit_sakit_wajib_tugas = (bool) ($item->pegawai?->unitUtama()?->sakitWajibTugas() ?? false);
 
             return $item;
         });
@@ -125,6 +126,7 @@ class PengajuanIzinController extends Controller
             'dihitung_hadir_kcd' => 'nullable|boolean',
             'dihitung_setengah' => 'nullable|boolean',
             'dengan_surat_dokter' => 'nullable|boolean',
+            'tugas_terverifikasi' => 'nullable|boolean',
         ]);
 
         $pengajuan = DB::transaction(function () use ($id, $user, $request) {
@@ -140,6 +142,30 @@ class PengajuanIzinController extends Controller
             // Flag surat dokter (sakit): verifikasi admin menimpa klaim pegawai.
             if ($request->exists('dengan_surat_dokter')) {
                 $pengajuan->dengan_surat_dokter = $request->boolean('dengan_surat_dokter');
+            }
+
+            $tugasLama = (bool) $pengajuan->tugas_terverifikasi;
+            if ($request->exists('tugas_terverifikasi')) {
+                $pengajuan->tugas_terverifikasi = $request->boolean('tugas_terverifikasi');
+            }
+
+            // Tugas hanya bermakna untuk sakit bersurat.
+            if ($pengajuan->jenis_izin !== 'sakit' || ! $pengajuan->dengan_surat_dokter) {
+                $pengajuan->tugas_terverifikasi = false;
+            }
+
+            if ($pengajuan->tugas_terverifikasi) {
+                if (! $pengajuan->tugas_diverifikasi_at) {
+                    $pengajuan->tugas_diverifikasi_at = now();
+                }
+                $pengajuan->tugas_diverifikasi_oleh = $user->id;
+            } else {
+                $pengajuan->tugas_diverifikasi_at = null;
+                $pengajuan->tugas_diverifikasi_oleh = null;
+            }
+
+            if ($tugasLama !== (bool) $pengajuan->tugas_terverifikasi) {
+                AuditLog::log($pengajuan, 'verifikasi_tugas', ['tugas_terverifikasi' => $tugasLama], ['tugas_terverifikasi' => (bool) $pengajuan->tugas_terverifikasi, 'oleh' => $user->id]);
             }
 
             if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
@@ -285,6 +311,9 @@ class PengajuanIzinController extends Controller
             $pengajuan->approval_stage = 'rejected';
             $pengajuan->alasan_penolakan = $request->alasan_penolakan;
             $pengajuan->rejected_by = $user->id;
+            $pengajuan->tugas_terverifikasi = false;
+            $pengajuan->tugas_diverifikasi_at = null;
+            $pengajuan->tugas_diverifikasi_oleh = null;
             $pengajuan->save();
 
             return $pengajuan;
