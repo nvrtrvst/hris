@@ -17,6 +17,7 @@ use App\Models\StatusKepegawaian;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Services\JpCalculator;
+use App\Services\TugasVerifikasiService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -670,12 +671,18 @@ class DashboardController extends Controller
                 throw ValidationException::withMessages(['entry_index' => 'Entry tidak ditemukan.']);
             }
 
-            $entries[$validated['entry_index']]['verified'] = $validated['aksi'];
-            $entries[$validated['entry_index']]['verified_by'] = $user->id;
-            $entries[$validated['entry_index']]['verified_at'] = Carbon::now()->format('Y-m-d H:i:s');
+            $entry = $entries[$validated['entry_index']];
+            $entry['verified'] = $validated['aksi'];
+            $entry['verified_by'] = $user->id;
+            $entry['verified_at'] = Carbon::now()->format('Y-m-d H:i:s');
+            $entries[$validated['entry_index']] = $entry;
             $items[LaporanPiket::ITEM_KELAS_KOSONG]['entries'] = $entries;
             $laporan->items = $items;
             $laporan->save();
+
+            if ($validated['aksi'] === 'setujui') {
+                TugasVerifikasiService::dariPiket($laporan, $entry, $user);
+            }
         });
 
         return back()->with('message', $validated['aksi'] === 'setujui' ? 'Entry disetujui.' : 'Entry ditolak.');

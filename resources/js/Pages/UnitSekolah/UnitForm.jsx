@@ -191,14 +191,25 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
             {/* Bobot Kehadiran (Rekap & Payroll) */}
             <SectionCard Icon={Percent} title="Bobot Kehadiran"
                 description="Persentase hari yang dihitung sebagai hadir di Rekap Kehadiran & Payroll. Kosong = default.">
+                <label className="mb-4 flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-surface p-3">
+                    <input type="checkbox" checked={Boolean(data.sakit_wajib_tugas)}
+                        onChange={(e) => setData('sakit_wajib_tugas', e.target.checked ? 1 : 0)}
+                        className="mt-0.5 h-4 w-4 accent-[#0F3D3E]" />
+                    <span className="text-sm text-text-secondary">
+                        <span className="font-semibold text-text-primary">Sakit wajib tugas untuk 100%</span>
+                        <span className="mt-0.5 block text-xs text-text-muted">Jika aktif: sakit harus punya surat dokter + tugas terverifikasi. Selain itu memakai bobot sakit belum lengkap.</span>
+                    </span>
+                </label>
+                {errors.sakit_wajib_tugas && <p className="form-error mb-2">{errors.sakit_wajib_tugas}</p>}
+
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <Field label="Sakit dgn Surat Dokter" error={errors.bobot_sakit_surat}
-                        hint="Default 1.0 (hari penuh).">
+                    <Field label="Sakit Lengkap (Surat + Tugas)" error={errors.bobot_sakit_surat}
+                        hint="Default 1.0. Jika wajib tugas aktif: surat + tugas; jika mati: sakit bersurat.">
                         <input type="number" min="0" max="1" step="0.25" value={data.bobot_sakit_surat ?? ''}
                             onChange={(e) => setData('bobot_sakit_surat', e.target.value)} className={inputClass} placeholder="1.0" />
                     </Field>
-                    <Field label="Sakit tanpa Surat Dokter" error={errors.bobot_sakit_tanpa_surat}
-                        hint="Default 0.5 (setengah hari).">
+                    <Field label="Sakit Belum Lengkap" error={errors.bobot_sakit_tanpa_surat}
+                        hint="Default 0.5. Surat tanpa tugas, atau tanpa surat.">
                         <input type="number" min="0" max="1" step="0.25" value={data.bobot_sakit_tanpa_surat ?? ''}
                             onChange={(e) => setData('bobot_sakit_tanpa_surat', e.target.value)} className={inputClass} placeholder="0.5" />
                     </Field>
@@ -207,8 +218,8 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                         <input type="number" min="0" max="1" step="0.25" value={data.bobot_izin ?? ''}
                             onChange={(e) => setData('bobot_izin', e.target.value)} className={inputClass} placeholder="0.5" />
                     </Field>
-                    <Field label="Izin ½ Hari (Tugas)" error={errors.bobot_izin_setengah}
-                        hint="Default 0.5. Untuk izin berflag &quot;dihitung setengah&quot; oleh admin.">
+                    <Field label="Izin Setengah Hari" error={errors.bobot_izin_setengah}
+                        hint="Default 0.5. Untuk izin berflag &quot;dihitung setengah&quot; oleh admin (bukan sakit).">
                         <input type="number" min="0" max="1" step="0.25" value={data.bobot_izin_setengah ?? ''}
                             onChange={(e) => setData('bobot_izin_setengah', e.target.value)} className={inputClass} placeholder="0.5" />
                     </Field>

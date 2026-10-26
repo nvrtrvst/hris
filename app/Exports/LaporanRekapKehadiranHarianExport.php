@@ -138,9 +138,9 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         ));
         $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap($unitIds, $start, $end);
         $dates = $this->dates;
-        $sakitSuratRanges = BobotKehadiran::sakitSuratRanges($byPegawai->keys()->all(), $start, $end);
+        $sakitRanges = BobotKehadiran::sakitRanges($byPegawai->keys()->all(), $start, $end);
 
-        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $start, $end, $holidayMap, $dates, $sakitSuratRanges) {
+        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $start, $end, $holidayMap, $dates, $sakitRanges) {
             $pegawai = $pegawaiMap->get($pegawaiId);
             $unit = $this->unit_id
                 ? $pegawai?->units->firstWhere('id', $this->unit_id)
@@ -175,8 +175,11 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
             })->values();
             $cells = [];
             $counts = ['hadir' => 0, 'telat' => 0, 'sakit' => 0, 'izin' => 0, 'cuti' => 0, 'alpa' => 0];
-            $inSuratRange = function (string $d) use ($sakitSuratRanges, $pegawaiId): bool {
-                foreach ($sakitSuratRanges->get($pegawaiId, []) as $r) {
+            $wajibTugas = $unit?->sakitWajibTugas() ?? false;
+            $rangePegawai = $sakitRanges->get($pegawaiId, []);
+            $rangeSakit = $wajibTugas ? ($rangePegawai['lengkap'] ?? []) : ($rangePegawai['surat'] ?? []);
+            $inSuratRange = function (string $d) use ($rangeSakit): bool {
+                foreach ($rangeSakit as $r) {
                     if ($d >= $r[0] && $d <= $r[1]) {
                         return true;
                     }
@@ -209,7 +212,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
 
             $sakitDates = collect($deduped)->where('status', 'sakit')
                 ->map(fn ($p) => $p->tanggal instanceof \DateTimeInterface ? $p->tanggal->format('Y-m-d') : (string) $p->tanggal);
-            $split = BobotKehadiran::splitSakitSurat($sakitDates, $sakitSuratRanges->get($pegawaiId, []));
+            $split = BobotKehadiran::splitSakit($sakitDates, $rangePegawai, $wajibTugas);
 
             $bobot = $unit?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;
             $hadirEq = BobotKehadiran::hadirEq($counts['hadir'], $counts['telat'], $split['surat'], $split['tanpa'], $counts['izin'], 0, $counts['cuti'], $bobot);
@@ -309,7 +312,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         }
 
         return array_merge($heads, [
-            'Hadir', 'Telat', 'Sakit (dgn Surat)', 'Sakit (tanpa Surat)', 'Izin', 'Cuti', 'Alpa',
+            'Hadir', 'Telat', 'Sakit Lengkap', 'Sakit Belum Lengkap', 'Izin', 'Cuti', 'Alpa',
             'Hari Kerja', '% Kehadiran',
         ]);
     }

@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Constants\BobotKehadiran;
-use App\Models\PengajuanIzin;
+use App\Models\Pegawai;
 use App\Models\Presensi;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -53,7 +53,7 @@ class PresensiAggregator
         return [
             'attendance' => $this->attendanceByPegawai($presensiRows, $unitScope),
             'sakit_prorata' => $this->sakitProrata($presensiRows),
-            'sakit_split' => $this->sakitSplitByPegawai($presensiRows, $pegawaiIds, $periodeStart, $attendanceCutoff),
+            'sakit_split' => $this->sakitSplitByPegawai($presensiRows, $pegawaiIds, $periodeStart, $attendanceCutoff, $this->wajibTugasByPegawai($pegawaiIds)),
             'present_days' => $this->presentDaysByPegawai($presensiRows, $unitScope),
             'kantor_days' => $this->kantorDaysByPegawai($presensiRows, $unitScope),
             'active_dates' => $this->activeDatesByPegawai($presensiRows),
@@ -109,29 +109,14 @@ class PresensiAggregator
      * sakit disetujui berflag surat dokter vs sisanya. Dedup pasif-aktif sama
      * dengan attendanceByPegawai. Dipakai bobot kehadiran payroll/rekap.
      */
-    private function sakitSplitByPegawai(Collection $rows, Collection $pegawaiIds, Carbon $periodeStart, Carbon $attendanceCutoff): Collection
+    private function sakitSplitByPegawai(Collection $rows, Collection $pegawaiIds, Carbon $periodeStart, Carbon $attendanceCutoff, Collection $wajibTugasByPegawai): Collection
     {
-        $suratRanges = PengajuanIzin::whereIn('pegawai_id', $pegawaiIds->all())
-            ->where('status', 'disetujui')
-            ->where('jenis_izin', 'sakit')
-            ->where('dengan_surat_dokter', true)
-            ->whereDate('tanggal_mulai', '<=', $attendanceCutoff->toDateString())
-            ->whereDate('tanggal_selesai', '>=', $periodeStart->toDateString())
-            ->get(['pegawai_id', 'tanggal_mulai', 'tanggal_selesai'])
-            ->groupBy('pegawai_id')
-            ->map(function ($items) {
-                $ranges = [];
-                foreach ($items as $r) {
-                    $ranges[] = [Carbon::parse($r->tanggal_mulai)->toDateString(), Carbon::parse($r->tanggal_selesai)->toDateString()];
-                }
-
-                return $ranges;
-            });
+        $sakitRanges = BobotKehadiran::sakitRanges($pegawaiIds->all(), $periodeStart, $attendanceCutoff);
 
         return $rows
             ->filter(fn ($p) => ! $p->is_lembur && $p->status === 'sakit')
             ->groupBy('pegawai_id')
-            ->mapWithKeys(function ($pegawaiRows, $id) use ($suratRanges) {
+            ->mapWithKeys(function ($pegawaiRows, $id) use ($sakitRanges, $wajibTugasByPegawai) {
                 $dates = $this->dedupPassiveByActiveDate($pegawaiRows)
                     ->where('status', 'sakit')
                     ->pluck('tanggal')
@@ -139,9 +124,23 @@ class PresensiAggregator
                     ->unique()
                     ->values();
 
-                return [$id => BobotKehadiran::splitSakitSurat($dates, $suratRanges->get($id, [])
+                return [$id => BobotKehadiran::splitSakit(
+                    $dates,
+                    $sakitRanges->get($id, []),
+                    (bool) ($wajibTugasByPegawai->get($id) ?? false),
                 )];
             });
+    }
+
+    /** Aturan sakit per pegawai mengikuti unit utamanya. */
+    private function wajibTugasByPegawai(Collection $pegawaiIds): Collection
+    {
+        return Pegawai::whereIn('id', $pegawaiIds)
+            ->with(['units' => fn ($q) => $q->select('unit_sekolah.id', 'unit_sekolah.sakit_wajib_tugas')])
+            ->get()
+            ->mapWithKeys(fn ($pegawai) => [
+                $pegawai->id => (bool) ($pegawai->unitUtama()?->sakit_wajib_tugas ?? false),
+            ]);
     }
 
     /**

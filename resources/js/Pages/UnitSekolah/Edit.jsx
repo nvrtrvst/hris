@@ -29,6 +29,7 @@ export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = []
         telepon: unit.telepon ?? '',
         alamat: unit.alamat ?? '',
         tembusan_jabatan_ids: (tembusan || []).map(String),
+        sakit_wajib_tugas: unit.sakit_wajib_tugas ? 1 : 0,
         bobot_sakit_surat: unit.bobot_sakit_surat ?? '',
         bobot_sakit_tanpa_surat: unit.bobot_sakit_tanpa_surat ?? '',
         bobot_izin: unit.bobot_izin ?? '',

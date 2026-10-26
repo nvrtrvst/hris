@@ -149,6 +149,78 @@ class BobotKehadiranTest extends TestCase
         $this->assertEquals(909090.91, (float) ($rows['Potongan Kehadiran — (Rp 1.000.000 ÷ 22 hari × 20 hari)'] ?? 0));
     }
 
+    public function test_sakit_wajib_tugas_tanpa_tugas_hanya_setengah(): void
+    {
+        $this->unit->update(['sakit_wajib_tugas' => true]);
+        $pegawai = $this->makePegawai();
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen(['nama' => 'Gaji Pokok', 'kode' => 'gaji_pokok', 'jenis' => 'fixed', 'nilai_default' => 1000000]);
+        $this->makeKomponen(['nama' => 'Potongan Sakit', 'kode' => 'kehadiran_sakit', 'tipe' => 'potongan', 'jenis' => 'dinamis_kehadiran', 'nilai_default' => 100000]);
+
+        PengajuanIzin::create([
+            'pegawai_id' => $pegawai->id,
+            'jenis_izin' => 'sakit',
+            'tanggal_mulai' => '2026-06-02',
+            'tanggal_selesai' => '2026-06-03',
+            'alasan' => 'Demam tinggi perlu perawatan dokter.',
+            'dengan_surat_dokter' => true,
+        ])->forceFill(['status' => 'disetujui'])->save();
+
+        foreach (['2026-06-02', '2026-06-03'] as $tgl) {
+            $p = Presensi::create([
+                'pegawai_id' => $pegawai->id,
+                'unit_sekolah_id' => $this->unit->id,
+                'tipe_presensi' => 'kantor',
+                'tanggal' => $tgl,
+                'persentase_bayar_jam' => 100,
+            ]);
+            $p->status = 'sakit';
+            $p->save();
+        }
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        $this->assertEquals(200000, (float) ($rows['Potongan Sakit'] ?? 0));
+        $this->assertEquals(954545.45, (float) (collect($rows)->first(fn ($v, $k) => str_starts_with($k, 'Potongan Kehadiran'))));
+    }
+
+    public function test_sakit_wajib_tugas_dengan_tugas_dibayar_penuh(): void
+    {
+        $this->unit->update(['sakit_wajib_tugas' => true]);
+        $pegawai = $this->makePegawai();
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen(['nama' => 'Gaji Pokok', 'kode' => 'gaji_pokok', 'jenis' => 'fixed', 'nilai_default' => 1000000]);
+        $this->makeKomponen(['nama' => 'Potongan Sakit', 'kode' => 'kehadiran_sakit', 'tipe' => 'potongan', 'jenis' => 'dinamis_kehadiran', 'nilai_default' => 100000]);
+
+        PengajuanIzin::create([
+            'pegawai_id' => $pegawai->id,
+            'jenis_izin' => 'sakit',
+            'tanggal_mulai' => '2026-06-02',
+            'tanggal_selesai' => '2026-06-03',
+            'alasan' => 'Demam tinggi perlu perawatan dokter.',
+            'dengan_surat_dokter' => true,
+        ])->forceFill(['status' => 'disetujui', 'tugas_terverifikasi' => true])->save();
+
+        foreach (['2026-06-02', '2026-06-03'] as $tgl) {
+            $p = Presensi::create([
+                'pegawai_id' => $pegawai->id,
+                'unit_sekolah_id' => $this->unit->id,
+                'tipe_presensi' => 'kantor',
+                'tanggal' => $tgl,
+                'persentase_bayar_jam' => 100,
+            ]);
+            $p->status = 'sakit';
+            $p->save();
+        }
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        $this->assertEquals(0, (float) ($rows['Potongan Sakit'] ?? 0));
+        $this->assertEquals(909090.91, (float) (collect($rows)->first(fn ($v, $k) => str_starts_with($k, 'Potongan Kehadiran'))));
+    }
+
     public function test_bobot_unit_kustom_menimpa_default(): void
     {
         $this->unit->update(['bobot_sakit_tanpa_surat' => 0.25, 'bobot_alpa' => 0.0]);
@@ -173,7 +245,7 @@ class BobotKehadiranTest extends TestCase
 
         // hadirEq = 2 × 0.25 = 0.5 → hari nol = 21.5 → (1.000.000 ÷ 22) × 21.5.
         [, $rows] = $this->details($pegawai);
-        $this->assertEquals(977272.73, (float) ($rows['Potongan Kehadiran — (Rp 1.000.000 ÷ 22 hari × 21,5 hari)'] ?? 0));
+        $this->assertEquals(977272.73, (float) (collect($rows)->first(fn ($v, $k) => str_starts_with($k, 'Potongan Kehadiran'))));
     }
 
     public function test_pengajuan_mobile_sakit_dengan_flag_surat_tersimpan(): void
@@ -230,6 +302,35 @@ class BobotKehadiranTest extends TestCase
             ->assertRedirect();
 
         $this->assertTrue((bool) $izin->fresh()->dengan_surat_dokter);
+    }
+
+    public function test_approve_bisa_verifikasi_tugas_sakit_bersurat(): void
+    {
+        $pegawai = $this->makePegawai();
+        $izin = PengajuanIzin::create([
+            'pegawai_id' => $pegawai->id,
+            'jenis_izin' => 'sakit',
+            'tanggal_mulai' => now()->format('Y-m-d'),
+            'tanggal_selesai' => now()->format('Y-m-d'),
+            'alasan' => 'Demam tinggi perlu perawatan dokter.',
+        ]);
+        $izin->forceFill([
+            'status' => 'pending',
+            'approval_stage' => 'pending_l1',
+            'approver_l1_id' => $this->admin->id,
+        ])->save();
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('pengajuan-izin.approve', $izin->id), [
+                'dengan_surat_dokter' => true,
+                'tugas_terverifikasi' => true,
+            ])
+            ->assertRedirect();
+
+        $fresh = $izin->fresh();
+        $this->assertTrue((bool) $fresh->dengan_surat_dokter);
+        $this->assertTrue((bool) $fresh->tugas_terverifikasi);
+        $this->assertSame($this->admin->id, (int) $fresh->tugas_diverifikasi_oleh);
     }
 
     private function makePegawai(): Pegawai

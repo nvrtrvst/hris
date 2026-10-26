@@ -82,10 +82,27 @@ class BobotKehadiran
     }
 
     /**
-     * Range pengajuan izin sakit disetujui berflag surat dokter per pegawai
-     * (list [mulai, selesai] tanggal Y-m-d) dalam periode tertentu.
+     * Split sakit memakai range surat (lama) atau range lengkap
+     * (surat + tugas terverifikasi), tergantung aturan unit.
+     *
+     * @param  iterable<string>  $dates
+     * @param  Collection|array  $ranges  [surat => [...], lengkap => [...]] atau list range lama
+     * @return array{surat: int, tanpa: int}
      */
-    public static function sakitSuratRanges($pegawaiIds, $start, $end): Collection
+    public static function splitSakit($dates, $ranges, bool $wajibTugas = false): array
+    {
+        $selected = $wajibTugas
+            ? ($ranges['lengkap'] ?? [])
+            : ($ranges['surat'] ?? $ranges);
+
+        return self::splitSakitSurat($dates, $selected);
+    }
+
+    /**
+     * Range pengajuan izin sakit disetujui per pegawai.
+     * 'surat' = semua yang bersurat dokter; 'lengkap' = bersurat + tugas terverifikasi.
+     */
+    public static function sakitRanges($pegawaiIds, $start, $end): Collection
     {
         return PengajuanIzin::whereIn('pegawai_id', $pegawaiIds)
             ->where('status', 'disetujui')
@@ -93,11 +110,25 @@ class BobotKehadiran
             ->where('dengan_surat_dokter', true)
             ->whereDate('tanggal_mulai', '<=', $end->toDateString())
             ->whereDate('tanggal_selesai', '>=', $start->toDateString())
-            ->get(['pegawai_id', 'tanggal_mulai', 'tanggal_selesai'])
+            ->get(['pegawai_id', 'tanggal_mulai', 'tanggal_selesai', 'tugas_terverifikasi'])
             ->groupBy('pegawai_id')
-            ->map(fn ($items) => $items->map(fn ($r) => [
-                Carbon::parse($r->tanggal_mulai)->toDateString(),
-                Carbon::parse($r->tanggal_selesai)->toDateString(),
-            ]));
+            ->map(function ($items) {
+                $toRange = fn ($r) => [
+                    Carbon::parse($r->tanggal_mulai)->toDateString(),
+                    Carbon::parse($r->tanggal_selesai)->toDateString(),
+                ];
+
+                return [
+                    'surat' => $items->map($toRange)->values()->all(),
+                    'lengkap' => $items->where('tugas_terverifikasi', true)->map($toRange)->values()->all(),
+                ];
+            });
+    }
+
+    /** Kompatibilitas: range surat saja. */
+    public static function sakitSuratRanges($pegawaiIds, $start, $end): Collection
+    {
+        return self::sakitRanges($pegawaiIds, $start, $end)
+            ->map(fn ($ranges) => $ranges['surat']);
     }
 }

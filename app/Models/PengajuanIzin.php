@@ -32,6 +32,9 @@ class PengajuanIzin extends Model
         'approved_at_l1',
         'approved_at_l2',
         'rejected_by',
+        'tugas_terverifikasi',
+        'tugas_diverifikasi_at',
+        'tugas_diverifikasi_oleh',
     ];
 
     protected $casts = [
@@ -47,6 +50,8 @@ class PengajuanIzin extends Model
         'reminder_sent_at' => 'datetime',
         'dihitung_setengah' => 'boolean',
         'dengan_surat_dokter' => 'boolean',
+        'tugas_terverifikasi' => 'boolean',
+        'tugas_diverifikasi_at' => 'datetime',
     ];
 
     protected $appends = ['bukti_foto_url'];
@@ -69,6 +74,11 @@ class PengajuanIzin extends Model
     public function approverL2()
     {
         return $this->belongsTo(User::class, 'approver_l2_id');
+    }
+
+    public function tugasDiverifikasiOleh()
+    {
+        return $this->belongsTo(User::class, 'tugas_diverifikasi_oleh');
     }
 
     public function rejectedByUser()

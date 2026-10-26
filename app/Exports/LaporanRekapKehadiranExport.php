@@ -131,11 +131,11 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             })->values();
         });
 
-        // 5b. Range pengajuan sakit berflag surat dokter — untuk split bobot.
-        $sakitSuratRanges = BobotKehadiran::sakitSuratRanges($byPegawai->keys()->all(), $start, $end);
+        // 5b. Range sakit: surat dokter vs lengkap (surat + tugas).
+        $sakitRanges = BobotKehadiran::sakitRanges($byPegawai->keys()->all(), $start, $end);
 
         // 6. Assemble final rekap.
-        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $start, $end, $holidayMap, $sakitSuratRanges) {
+        $this->rekap = $byPegawai->map(function ($deduped, $pegawaiId) use ($pegawaiMap, $start, $end, $holidayMap, $sakitRanges) {
             $counts = $deduped->groupBy('status')->map(fn ($g) => $g->count())->all();
             $hadir = $counts['hadir'] ?? 0;
             $telat = $counts['telat'] ?? 0;
@@ -145,12 +145,11 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
 
             $sakitDates = $deduped->where('status', 'sakit')
                 ->map(fn ($p) => $p->tanggal instanceof \DateTimeInterface ? $p->tanggal->format('Y-m-d') : (string) $p->tanggal);
-            $split = BobotKehadiran::splitSakitSurat($sakitDates, $sakitSuratRanges->get($pegawaiId, []));
-
             $pegawai = $pegawaiMap->get($pegawaiId);
             $unit = $this->unit_id
                 ? $pegawai?->units->firstWhere('id', $this->unit_id)
                 : $pegawai?->unitUtama();
+            $split = BobotKehadiran::splitSakit($sakitDates, $sakitRanges->get($pegawaiId, []), $unit?->sakitWajibTugas() ?? false);
             $hariKerja = self::computeUniformWorkingDays(
                 $start,
                 $end,
@@ -356,8 +355,8 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             'Jenis',
             'Hadir',
             'Telat',
-            'Sakit (dgn Surat)',
-            'Sakit (tanpa Surat)',
+            'Sakit Lengkap',
+            'Sakit Belum Lengkap',
             'Izin',
             'Cuti',
             'Alpa',

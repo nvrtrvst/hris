@@ -53,6 +53,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         dihitung_hadir_kcd: false,
         dihitung_setengah: false,
         dengan_surat_dokter: false,
+        tugas_terverifikasi: false,
     });
 
     const openModal = (item, type) => {
@@ -62,6 +63,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         setData('catatan_approval', '');
         setData('dihitung_setengah', !!item.dihitung_setengah);
         setData('dengan_surat_dokter', !!item.dengan_surat_dokter);
+        setData('tugas_terverifikasi', !!item.tugas_terverifikasi && !!item.dengan_surat_dokter);
     };
 
     const closeModal = () => {
@@ -71,6 +73,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         setData('catatan_approval', '');
         setData('dihitung_setengah', false);
         setData('dengan_surat_dokter', false);
+        setData('tugas_terverifikasi', false);
     };
 
     const submitAction = (e) => {
@@ -201,6 +204,15 @@ export default function Index({ auth, pengajuans, filters, stats }) {
         }
     };
 
+    const TugasBadge = ({ item }) => {
+        if (!item.unit_sakit_wajib_tugas || item.jenis_izin !== 'sakit' || !item.dengan_surat_dokter) return null;
+        const done = !!item.tugas_terverifikasi;
+        return (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${done ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                {done ? 'Tugas OK' : 'Tugas belum'}
+            </span>
+        );
+    };
 
     return (
         <AuthenticatedLayout
@@ -398,6 +410,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                     <div className="flex items-center gap-1.5">
                                         {getStatusBadge(item.status)}
                                         {getStageBadge(item.approval_stage)}
+                                        <TugasBadge item={item} />
                                     </div>
                                     <ApproverLine item={item} />
                                 </div>
@@ -486,6 +499,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                                 <div className="flex items-center">
                                                     {getStatusBadge(item.status)}
                                                     {getStageBadge(item.approval_stage)}
+                                                    <TugasBadge item={item} />
                                                 </div>
                                                 <ApproverLine item={item} />
                                             </td>
@@ -713,11 +727,28 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                                 <input
                                                     type="checkbox"
                                                     checked={data.dengan_surat_dokter}
-                                                    onChange={e => setData('dengan_surat_dokter', e.target.checked)}
+                                                    onChange={e => {
+                                                        setData('dengan_surat_dokter', e.target.checked);
+                                                        if (!e.target.checked) setData('tugas_terverifikasi', false);
+                                                    }}
                                                     className="mt-0.5 h-4 w-4 accent-[#0F3D3E]"
                                                 />
                                                 <span className="text-sm text-text-secondary">
-                                                    Sakit dengan surat dokter <span className="text-text-muted">(hari sakit dibayar penuh di payroll &amp; rekap kehadiran)</span>
+                                                    Sakit dengan surat dokter <span className="text-text-muted">(syarat 100% jika unit mewajibkan tugas)</span>
+                                                </span>
+                                            </label>
+                                        )}
+                                        {selectedItem.jenis_izin === 'sakit' && (
+                                            <label className="mt-2 flex items-start gap-2.5 rounded-card border border-border bg-surface p-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={data.tugas_terverifikasi}
+                                                    disabled={!data.dengan_surat_dokter}
+                                                    onChange={e => setData('tugas_terverifikasi', e.target.checked)}
+                                                    className="mt-0.5 h-4 w-4 accent-[#0F3D3E] disabled:opacity-40"
+                                                />
+                                                <span className="text-sm text-text-secondary">
+                                                    Tugas/amanat terverifikasi <span className="text-text-muted">(wajib bersama surat dokter untuk 100% bila aturan unit aktif)</span>
                                                 </span>
                                             </label>
                                         )}

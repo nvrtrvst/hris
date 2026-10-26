@@ -356,7 +356,8 @@ class LaporanController extends Controller
         // dibelah via pengajuan izin sakit berflag surat dokter.
         $sakitDates = $rows->where('status', 'sakit')
             ->map(fn ($p) => $p->tanggal->format('Y-m-d'));
-        $split = BobotKehadiran::splitSakitSurat($sakitDates, BobotKehadiran::sakitSuratRanges([$pegawai->id], $start, $end)->get($pegawai->id, []));
+        $sakitRanges = BobotKehadiran::sakitRanges([$pegawai->id], $start, $end)->get($pegawai->id, []);
+        $split = BobotKehadiran::splitSakit($sakitDates, $sakitRanges, $unitUtama?->sakitWajibTugas() ?? false);
         $summary['sakit_surat'] = $split['surat'];
         $summary['sakit_tanpa_surat'] = $split['tanpa'];
         $bobot = $pegawai->unitUtama()?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;

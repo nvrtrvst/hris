@@ -12,7 +12,7 @@ class UnitSekolah extends Model
 {
     protected $table = 'unit_sekolah';
 
-    protected $fillable = ['nama', 'singkatan', 'logo', 'latitude', 'longitude', 'radius_meter', 'durasi_jp', 'max_jam_minggu', 'toleransi_menit', 'toleransi_slide_menit', 'wajib_pulang_mengajar', 'pulang_sebelum_menit', 'max_lembur_jam', 'jam_masuk_kantor', 'jam_pulang_kantor', 'jam_kerja_sabtu_mulai', 'jam_kerja_sabtu_selesai', 'jam_kerja_minggu_mulai', 'jam_kerja_minggu_selesai', 'web', 'telepon', 'alamat', 'bobot_sakit_surat', 'bobot_sakit_tanpa_surat', 'bobot_izin', 'bobot_izin_setengah', 'bobot_cuti', 'bobot_alpa'];
+    protected $fillable = ['nama', 'singkatan', 'logo', 'latitude', 'longitude', 'radius_meter', 'durasi_jp', 'max_jam_minggu', 'toleransi_menit', 'toleransi_slide_menit', 'wajib_pulang_mengajar', 'pulang_sebelum_menit', 'max_lembur_jam', 'jam_masuk_kantor', 'jam_pulang_kantor', 'jam_kerja_sabtu_mulai', 'jam_kerja_sabtu_selesai', 'jam_kerja_minggu_mulai', 'jam_kerja_minggu_selesai', 'web', 'telepon', 'alamat', 'bobot_sakit_surat', 'bobot_sakit_tanpa_surat', 'bobot_izin', 'bobot_izin_setengah', 'bobot_cuti', 'bobot_alpa', 'sakit_wajib_tugas'];
 
     protected $appends = ['logo_url'];
 
@@ -31,6 +31,11 @@ class UnitSekolah extends Model
             'cuti' => (float) ($this->bobot_cuti ?? BobotKehadiran::CUTI),
             'alpa' => (float) ($this->bobot_alpa ?? BobotKehadiran::ALPA),
         ];
+    }
+
+    public function sakitWajibTugas(): bool
+    {
+        return (bool) ($this->sakit_wajib_tugas ?? false);
     }
 
     public function getLogoUrlAttribute(): ?string

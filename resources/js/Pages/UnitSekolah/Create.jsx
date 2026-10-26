@@ -27,6 +27,7 @@ export default function Create({ auth }) {
         web: '',
         telepon: '',
         alamat: '',
+        sakit_wajib_tugas: 0,
         bobot_sakit_surat: null,
         bobot_sakit_tanpa_surat: null,
         bobot_izin: null,
