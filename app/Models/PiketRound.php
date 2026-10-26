@@ -12,6 +12,11 @@ class PiketRound extends Model
 
     protected $casts = ['selesai_at' => 'datetime', 'putaran' => 'int'];
 
+    public function sesi()
+    {
+        return $this->belongsTo(PiketSesi::class, 'sesi_id');
+    }
+
     public function area()
     {
         return $this->belongsTo(PiketArea::class, 'area_id');

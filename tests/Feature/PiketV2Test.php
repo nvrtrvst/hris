@@ -409,4 +409,40 @@ class PiketV2Test extends TestCase
 
         $this->assertSame(LaporanPiket::STATUS_SUBMITTED, $laporan->fresh()->status);
     }
+
+    public function test_admin_bisa_membuka_ronde(): void
+    {
+        Carbon::setTestNow('2026-10-26 16:00:00');
+
+        $a = $this->pegawai('Petugas A');
+        $this->masuk($a);
+        $jadwal = $this->jadwal($a);
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $a->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+
+        $sesi = PiketService::sessionFor($a, $jadwal);
+        PiketService::ensureRounds($sesi, $jadwal);
+        PiketService::recordPos($sesi, $this->gerbang, $a->id, true, null);
+
+        $petugas = PiketService::petugasFor($sesi, $a->id);
+        $laporan = LaporanPiket::find($petugas->laporan_piket_id);
+        $laporan->forceFill(['status' => LaporanPiket::STATUS_SUBMITTED, 'submitted_at' => now()])->save();
+
+        $round = PiketRound::where('sesi_id', $sesi->id)->firstOrFail();
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('piket.round.buka', $round->id), ['alasan' => 'Laporan sudah dikirim sebelum sesi aktif.'])
+            ->assertRedirect();
+
+        $this->assertSame('dikecualikan', $round->fresh()->status);
+        $this->assertSame('complete', $sesi->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', ['aksi' => 'waive_piket_round']);
+    }
 }

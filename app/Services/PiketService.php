@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AuditLog;
 use App\Models\Jadwal;
 use App\Models\LaporanPiket;
 use App\Models\Pegawai;
@@ -333,6 +334,40 @@ class PiketService
                     ],
                 );
             }
+        }
+    }
+
+    public static function waiveRound(PiketRound $round, int $userId, string $alasan): void
+    {
+        $lama = ['status' => $round->status, 'selesai_at' => $round->selesai_at?->toDateTimeString()];
+
+        $round->forceFill([
+            'selesai_at' => now(),
+            'status' => 'dikecualikan',
+            'alasan' => $alasan,
+        ])->save();
+
+        AuditLog::log($round, 'waive_piket_round', $lama, [
+            'alasan' => $alasan,
+            'oleh' => $userId,
+        ]);
+
+        $sesi = $round->sesi;
+        if (! $sesi) {
+            return;
+        }
+
+        $petugas = PiketPetugas::where('sesi_id', $sesi->id)->count();
+        $terkirim = LaporanPiket::where('sesi_id', $sesi->id)
+            ->where('status', LaporanPiket::STATUS_SUBMITTED)
+            ->count();
+
+        if ($petugas > 0 && $terkirim >= $petugas && self::unservedRequiredPos($sesi) === []) {
+            $sesi->forceFill([
+                'status' => 'complete',
+                'ditutup_oleh' => $userId,
+                'ditutup_at' => now(),
+            ])->save();
         }
     }
 

@@ -21,6 +21,41 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
         );
     };
 
+    const RoundRow = ({ round }) => {
+        const [alasan, setAlasan] = useState('');
+        const selesai = Boolean(round.selesai_at);
+
+        if (selesai) {
+            return (
+                <p className="text-xs text-text-muted">
+                    Ronde {round.putaran}{round.area ? ` · ${round.area}` : ''}: {round.selesai_at} ({round.status})
+                </p>
+            );
+        }
+
+        return (
+            <div className="flex flex-col gap-2 rounded-lg border border-border px-3 py-2 sm:flex-row sm:items-center">
+                <span className="min-w-0 text-xs">
+                    <b>Ronde {round.putaran}</b>{round.area ? ` · ${round.area}` : ''} · {round.jendela_mulai}–{round.jendela_selesai}
+                </span>
+                <input
+                    className="input-field h-11 flex-1 text-xs"
+                    placeholder="Alasan buka ronde (wajib)"
+                    value={alasan}
+                    onChange={(e) => setAlasan(e.target.value)}
+                />
+                <button
+                    type="button"
+                    disabled={alasan.trim().length < 5}
+                    onClick={() => router.post(route('piket.round.buka', round.id), { alasan }, { preserveScroll: true })}
+                    className="btn-secondary btn-sm"
+                >
+                    Buka ronde
+                </button>
+            </div>
+        );
+    };
+
     const SesionCard = ({ sesi }) => {
         const form = koreksi[sesi.id] ?? { pos_id: '', alasan: '' };
         const setForm = (patch) => setKoreksi({ ...koreksi, [sesi.id]: { ...form, ...patch } });
@@ -45,6 +80,14 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                     <div><dt className="text-text-muted">Temuan</dt><dd className="font-semibold">{sesi.temuan}</dd></div>
                     <div><dt className="text-text-muted">Insiden</dt><dd className="font-semibold">{sesi.insiden}</dd></div>
                 </dl>
+
+                {sesi.rounds.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                        {sesi.rounds.map((r) => (
+                            <RoundRow key={r.id} round={r} />
+                        ))}
+                    </div>
+                )}
 
                 {sesi.pos_belum.length > 0 && (
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
