@@ -7,13 +7,18 @@ use App\Events\IzinBaruEvent;
 use App\Helpers\ApprovalHelper;
 use App\Helpers\NotificationHelper;
 use App\Helpers\PayrollLockHelper;
+use App\Models\ApprovalPolicy;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\PengajuanIzinComment;
 use App\Models\User;
+use App\Notifications\ApprovalMail;
 use App\Notifications\IzinBaru;
 use App\Notifications\IzinReply;
+use App\Notifications\StatusIzin;
+use App\Services\ApprovalChain;
 use App\Services\ImageUploadService;
+use App\Services\IzinPresensiService;
 use App\Traits\ResolvesPegawai;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -189,11 +194,36 @@ class MobileIzinController extends Controller
         try {
             $pengajuan->save();
 
-            $approvers = ApprovalHelper::determineApprovers($pegawai);
-            $pengajuan->update([
-                'approver_l1_id' => $approvers['l1_id'],
-                'approver_l2_id' => $approvers['l2_id'],
-            ]);
+            $policy = ApprovalPolicy::for($request->jenis_izin === 'cuti' ? 'cuti' : 'izin');
+            $hari = (int) $pengajuan->tanggal_mulai->diffInDays($pengajuan->tanggal_selesai) + 1;
+            $chain = ApprovalChain::resolve($pegawai, $policy->jenis, now(), $hari);
+
+            // approver_* ada di $guarded; update() akan mengabaikannya tanpa error.
+            $pengajuan->forceFill([
+                'approver_l1_id' => $chain['l1'],
+                'approver_l2_id' => $chain['l2'],
+                'due_at' => ApprovalChain::dueAt(now(), $policy->sla_days, ApprovalChain::unitOf($pegawai)),
+            ])->save();
+
+            $approvers = [
+                'l1_id' => $chain['l1'],
+                'l2_id' => $chain['l2'],
+                'auto' => $chain['auto'],
+                'has_l1' => $chain['l1'] !== null,
+                'has_l2' => $chain['l2'] !== null,
+            ];
+
+            if ($chain['auto']) {
+                $pengajuan->forceFill([
+                    'approval_stage' => 'approved',
+                    'status' => 'disetujui',
+                    'approved_at_l1' => now(),
+                    'approved_at_l2' => now(),
+                    'catatan_approval' => 'Tanpa persetujuan (puncak organisasi).',
+                ])->save();
+
+                IzinPresensiService::generate($pengajuan);
+            }
         } catch (\Throwable $e) {
             // Jangan tinggalkan file bukti foto yang menggantung bila save gagal.
             if (! empty($imageName)) {
@@ -202,15 +232,35 @@ class MobileIzinController extends Controller
             throw $e;
         }
 
-        $this->notifyPengajuanBaru($pengajuan, $pegawai, $approvers);
+        if ($pengajuan->status === 'disetujui') {
+            NotificationHelper::sendSafely($pegawai->user, new StatusIzin($pengajuan, 'disetujui'));
+            ApprovalHelper::sendTembusanIzin($pengajuan, 'disetujui');
+        } else {
+            $this->notifyPengajuanBaru($pengajuan, $pegawai, $approvers);
+            ApprovalHelper::sendTembusanIzin($pengajuan, 'diajukan', array_filter([$approvers['l1_id'] ?? null]));
+            IzinBaruEvent::dispatch($pengajuan);
 
-        // Tembusan struktural (mis. Wakasek Kurikulum se-unit): read-only.
-        ApprovalHelper::sendTembusanIzin($pengajuan, 'diajukan', array_filter([$approvers['l1_id'] ?? null]));
+            if ($approvers['l1_id']) {
+                $label = strtoupper($pengajuan->jenis_izin);
+                NotificationHelper::sendSafely(User::find($approvers['l1_id']), new ApprovalMail(
+                    "Pengajuan {$label} Baru - Perlu Persetujuan",
+                    'Yth. '.($approvers['l1_id'] ? 'Bapak/Ibu' : 'Approver').',',
+                    [
+                        "{$pegawai->nama_lengkap} mengajukan {$label}.",
+                        "Periode: {$pengajuan->tanggal_mulai?->format('d M Y')} s.d. {$pengajuan->tanggal_selesai?->format('d M Y')}",
+                        "Alasan: {$pengajuan->alasan}",
+                    ],
+                    'Tinjau Pengajuan',
+                    route('pengajuan-izin.index'),
+                ));
+            }
+        }
 
-        // Real-time: beri tahu approver L1 via Reverb (F2b).
-        IzinBaruEvent::dispatch($pengajuan);
+        $pesan = $pengajuan->status === 'disetujui'
+            ? 'Pengajuan berhasil dikirim.'
+            : 'Pengajuan berhasil dikirim dan menunggu persetujuan.';
 
-        return redirect()->route('presensi.izin.index')->with('message', 'Pengajuan berhasil dikirim dan menunggu persetujuan.');
+        return redirect()->route('presensi.izin.index')->with('message', $pesan);
     }
 
     /**

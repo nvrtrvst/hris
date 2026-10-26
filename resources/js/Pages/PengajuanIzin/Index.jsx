@@ -19,6 +19,7 @@ const FOTO_FALLBACK =
 const TABS = [
     { key: 'l1', label: 'Approval L1' },
     { key: 'l2', label: 'Approval L2' },
+    { key: 'superadmin', label: 'Superadmin' },
     { key: 'semua', label: 'Semua' },
 ];
 
@@ -171,6 +172,12 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                 return (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200 ml-1">
                         L2
+                    </span>
+                );
+            case 'pending_superadmin':
+                return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-sky-100 text-sky-800 border border-sky-200 ml-1">
+                        Superadmin
                     </span>
                 );
             case 'approved':

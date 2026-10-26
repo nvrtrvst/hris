@@ -7,7 +7,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushMessage;
 
-// Sinkron (tanpa ShouldQueue): deployment tidak menjalankan queue worker,
+// Database + webpush dikirim langsung; email lewat ApprovalMail (queue).
 // jadi notifikasi dikirim langsung agar tidak menumpuk di tabel jobs.
 class StatusIzin extends Notification
 {
@@ -15,7 +15,7 @@ class StatusIzin extends Notification
 
     public function via($notifiable): array
     {
-        return ['database', 'webpush', 'mail'];
+        return ['database', 'webpush'];
     }
 
     public function toMail($notifiable): MailMessage

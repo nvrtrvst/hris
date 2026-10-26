@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\ApprovalPolicyController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HariLiburController;
@@ -383,6 +384,12 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::post('unit-sekolah/{unit_sekolah}/lokasi', [UnitSekolahController::class, 'storeLokasi'])->name('unit-sekolah.store-lokasi')->middleware('throttle:30,1');
         Route::put('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'updateLokasi'])->name('unit-sekolah.update-lokasi')->middleware('throttle:30,1');
         Route::delete('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'destroyLokasi'])->name('unit-sekolah.destroy-lokasi')->middleware('throttle:30,1');
+
+        // Aturan persetujuan: jumlah tahap, ambang cuti, batas waktu.
+        Route::get('pengaturan/persetujuan', [ApprovalPolicyController::class, 'index'])->name('approval-policies.index');
+        Route::put('pengaturan/persetujuan', [ApprovalPolicyController::class, 'update'])
+            ->middleware('throttle:30,1')
+            ->name('approval-policies.update');
 
     });
 

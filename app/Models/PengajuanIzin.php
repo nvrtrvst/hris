@@ -42,6 +42,9 @@ class PengajuanIzin extends Model
         'tanggal_selesai' => 'date',
         'approved_at_l1' => 'datetime',
         'approved_at_l2' => 'datetime',
+        'due_at' => 'datetime',
+        'escalated_at' => 'datetime',
+        'reminder_sent_at' => 'datetime',
         'dihitung_setengah' => 'boolean',
         'dengan_surat_dokter' => 'boolean',
     ];

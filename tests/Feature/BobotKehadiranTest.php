@@ -219,7 +219,11 @@ class BobotKehadiranTest extends TestCase
             'tanggal_selesai' => now()->format('Y-m-d'),
             'alasan' => 'Demam tinggi perlu perawatan dokter.',
         ]);
-        $izin->forceFill(['status' => 'pending', 'approval_stage' => 'pending_l1'])->save();
+        $izin->forceFill([
+            'status' => 'pending',
+            'approval_stage' => 'pending_l1',
+            'approver_l1_id' => $this->admin->id,
+        ])->save();
 
         $this->actingAs($this->admin, 'web_admin')
             ->post(route('pengajuan-izin.approve', $izin->id), ['dengan_surat_dokter' => true])
