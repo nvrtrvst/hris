@@ -220,11 +220,18 @@ class PiketSettingController extends Controller
             'semester' => 'nullable|string|max:10',
         ]);
 
+        $jadwal = Jadwal::where('unit_sekolah_id', $data['unit_sekolah_id'])
+            ->orderByDesc('id')
+            ->first(['tahun_ajaran', 'semester']);
+
+        $tahun = $data['tahun_ajaran'] ?? $jadwal?->tahun_ajaran ?? (date('Y').'/'.(date('Y') + 1));
+        $semester = $data['semester'] ?? (string) ($jadwal?->semester ?? '1');
+
         PiketPenugasan::updateOrCreate(
             [
                 'unit_sekolah_id' => $data['unit_sekolah_id'],
-                'tahun_ajaran' => $data['tahun_ajaran'] ?? null,
-                'semester' => $data['semester'] ?? null,
+                'tahun_ajaran' => $tahun,
+                'semester' => $semester,
                 'pegawai_id' => $data['pegawai_id'],
             ],
             [
