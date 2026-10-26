@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class PiketPetugas extends Model
 {
     protected $table = 'piket_petugas';
+
     protected $fillable = ['sesi_id', 'pegawai_id', 'area_id', 'pos_id', 'peran', 'laporan_piket_id'];
 
     public function pegawai()

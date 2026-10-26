@@ -103,12 +103,12 @@ class PiketSettingController extends Controller
     {
         $data = $request->validate([
             'unit_sekolah_id' => 'required|integer|exists:unit_sekolah,id',
-            'mode' => ['required', \Illuminate\Validation\Rule::in(['simple', 'area'])],
+            'mode' => ['required', Rule::in(['simple', 'area'])],
         ]);
 
         if ($data['mode'] === 'area') {
-            $punyaArea = \App\Models\PiketArea::where('unit_sekolah_id', $data['unit_sekolah_id'])->exists();
-            $punyaTugas = \App\Models\PiketPenugasan::where('unit_sekolah_id', $data['unit_sekolah_id'])->where('aktif', true)->exists();
+            $punyaArea = PiketArea::where('unit_sekolah_id', $data['unit_sekolah_id'])->exists();
+            $punyaTugas = PiketPenugasan::where('unit_sekolah_id', $data['unit_sekolah_id'])->where('aktif', true)->exists();
 
             if (! $punyaArea || ! $punyaTugas) {
                 return back()->with('error', 'Lengkapi area dan penugasan sebelum mengaktifkan mode area.');

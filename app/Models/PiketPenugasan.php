@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class PiketPenugasan extends Model
 {
     protected $table = 'piket_penugasan';
+
     protected $fillable = ['unit_sekolah_id', 'tahun_ajaran', 'semester', 'pegawai_id', 'area_id', 'pos_id', 'peran', 'aktif'];
+
     protected $casts = ['aktif' => 'boolean'];
 
     public function pegawai()
