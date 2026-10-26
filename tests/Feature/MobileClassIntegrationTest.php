@@ -64,7 +64,7 @@ class MobileClassIntegrationTest extends TestCase
             'jam_selesai' => '08:00:00',
             'jenis_jadwal' => 'piket',
             'tahun_ajaran' => '2026/2027',
-            'semester' => 'Ganjil',
+            'semester' => 1,
         ]);
     }
 
