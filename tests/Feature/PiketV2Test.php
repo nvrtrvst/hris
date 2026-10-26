@@ -10,6 +10,7 @@ use App\Models\PiketArea;
 use App\Models\PiketItemTemplate;
 use App\Models\PiketPenugasan;
 use App\Models\PiketPos;
+use App\Models\PiketRound;
 use App\Models\PiketSesi;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
@@ -272,5 +273,85 @@ class PiketV2Test extends TestCase
                 ...$this->geo(),
             ])
             ->assertForbidden();
+    }
+
+    public function test_ronde_dibuat_dan_memblokir_kirim(): void
+    {
+        Carbon::setTestNow('2026-10-26 16:00:00');
+
+        $a = $this->pegawai('Petugas A');
+        $this->masuk($a);
+        $jadwal = $this->jadwal($a);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $a->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+
+        $sesi = PiketService::sessionFor($a, $jadwal);
+        PiketService::ensureRounds($sesi, $jadwal);
+
+        $this->assertSame(2, PiketRound::where('sesi_id', $sesi->id)->count());
+
+        $petugas = PiketService::petugasFor($sesi, $a->id);
+        $laporan = LaporanPiket::find($petugas->laporan_piket_id);
+        $laporan->forceFill(['items' => ['kelas_kosong' => ['done_at' => '15:30', 'nihil' => true]]])->save();
+
+        PiketService::recordPos($sesi, $this->gerbang, $a->id, true, null);
+
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.submit'))
+            ->assertSessionHasErrors('laporan');
+
+        foreach (PiketRound::where('sesi_id', $sesi->id)->get() as $round) {
+            $round->forceFill(['selesai_at' => now(), 'status' => 'terlambat', 'alasan' => 'Menunggu instruksi kepala sekolah.'])->save();
+        }
+
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.submit'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(LaporanPiket::STATUS_SUBMITTED, $laporan->fresh()->status);
+    }
+
+    public function test_ronde_terlambat_wajib_alasan(): void
+    {
+        Carbon::setTestNow('2026-10-26 16:00:00');
+
+        $a = $this->pegawai('Petugas A');
+        $this->masuk($a);
+        $jadwal = $this->jadwal($a);
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $a->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+
+        $sesi = PiketService::sessionFor($a, $jadwal);
+        PiketService::ensureRounds($sesi, $jadwal);
+        $round = PiketRound::where('sesi_id', $sesi->id)->firstOrFail();
+
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.round', $round->id), $this->geo())
+            ->assertSessionHasErrors('round');
+
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.round', $round->id), [
+                'alasan' => 'Mendampingi siswa sakit di UKS.',
+                ...$this->geo(),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertNotNull($round->fresh()->selesai_at);
+        $this->assertSame('terlambat', $round->fresh()->status);
     }
 }
