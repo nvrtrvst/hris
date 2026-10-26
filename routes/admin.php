@@ -356,6 +356,9 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::delete('piket/pengaturan/penugasan/{penugasan}', [PiketSettingController::class, 'hapusPenugasan'])
         ->middleware('can:manage_master_data')
         ->name('piket.settings.penugasan.hapus');
+    Route::post('piket/round/{round}/buka', [PiketSettingController::class, 'waiveRound'])
+        ->middleware('throttle:60,1')
+        ->name('piket.round.buka');
     Route::post('piket/sesi/{sesi}/pos/{pos}/layani', [PiketSettingController::class, 'servePos'])
         ->middleware('throttle:60,1')
         ->name('piket.sesi.pos.layani');

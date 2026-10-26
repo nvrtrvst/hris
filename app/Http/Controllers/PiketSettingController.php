@@ -8,6 +8,7 @@ use App\Models\PiketArea;
 use App\Models\PiketItemTemplate;
 use App\Models\PiketPenugasan;
 use App\Models\PiketPos;
+use App\Models\PiketRound;
 use App\Models\PiketSesi;
 use App\Models\UnitSekolah;
 use App\Services\PiketService;
@@ -250,6 +251,22 @@ class PiketSettingController extends Controller
         $penugasan->delete();
 
         return back()->with('message', 'Penugasan dihapus.');
+    }
+
+    public function waiveRound(Request $request, PiketRound $round)
+    {
+        $sesi = $round->sesi;
+        abort_unless($sesi, 404);
+
+        $this->authorizePosAction($request, $sesi);
+
+        $data = $request->validate([
+            'alasan' => 'required|string|min:5|max:255',
+        ]);
+
+        PiketService::waiveRound($round, $request->user()->id, $data['alasan']);
+
+        return back()->with('message', 'Ronde dibuka/dikecualikan.');
     }
 
     public function servePos(Request $request, PiketSesi $sesi, PiketPos $pos)

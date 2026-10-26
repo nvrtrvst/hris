@@ -1851,7 +1851,9 @@ class MobileController extends Controller
             $laporan = $petugas?->laporan_piket_id
                 ? LaporanPiket::find($petugas->laporan_piket_id)
                 : $laporan;
-            $blockReason = PiketService::sessionBlockReason($laporan);
+            $blockReason = $laporan?->status === LaporanPiket::STATUS_DRAFT
+                ? PiketService::sessionBlockReason($laporan)
+                : null;
         }
 
         $guruUnit = Pegawai::where('status_aktif', 'aktif')
