@@ -107,6 +107,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     if (permissions.includes('view_presensi')) modulUtama.push({ name: 'Presensi', href: route('presensi.index'), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
     if (permissions.includes('view_presensi')) modulUtama.push({ name: 'Lembur', href: route('lembur.index'), icon: 'M12 8v4l3 3M22 12a10 10 0 11-20 0 10 10 0 0120 0M5 3L2 6M19 3l3 3' });
     if (permissions.includes('view_presensi')) modulUtama.push({ name: 'Absen Siswa', href: route('absen-siswa.index'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
+    if (permissions.includes('view_absen_siswa')) modulUtama.push({ name: 'Laporan Absen Siswa', href: route('laporan.absen-siswa'), icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
     if (permissions.includes('view_presensi')) modulUtama.push({ name: 'Laporan Piket', href: route('laporan.piket'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
     if (permissions.includes('view_kpi') || permissions.includes('view_kpi_self')) modulUtama.push({ name: 'KPI Pegawai', href: route('kpi.index'), icon: 'M4 19V5m0 14h16M8 15V9m4 6V5m4 10v-4' });
     if (permissions.includes('view_izin') || auth.is_approver) modulUtama.push({ name: 'Pengajuan Izin', href: route('pengajuan-izin.index'), icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.293.707l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
@@ -141,6 +142,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Reminder', href: route('reminders.index'), icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' });
     if (permissions.includes('view_presensi')) modulAdmin.push({ name: 'Piket', href: route('piket.index'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3' });
     if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Aturan Persetujuan', href: route('approval-policies.index'), icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' });
+    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Wali Kelas', href: route('wali-kelas.index'), icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' });
 
     if (modulAdmin.length > 0) {
         menuGroups.push({ title: 'Modul Admin', items: modulAdmin });
