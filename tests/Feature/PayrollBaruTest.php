@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\HariLibur;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
@@ -102,14 +103,14 @@ class PayrollBaruTest extends TestCase
         ]);
     }
 
-    private function masukKantor(Pegawai $pegawai, string $tanggal): void
+    private function masukKantor(Pegawai $pegawai, string $tanggal, string $jam = '07:00:00'): void
     {
         $p = Presensi::create([
             'pegawai_id' => $pegawai->id,
             'unit_sekolah_id' => $this->unit->id,
             'tipe_presensi' => 'kantor',
             'tanggal' => $tanggal,
-            'jam_masuk' => '07:00:00',
+            'jam_masuk' => $jam,
             'jam_keluar' => '15:00:00',
         ]);
         $p->status = 'hadir';
@@ -204,6 +205,150 @@ class PayrollBaruTest extends TestCase
 
         $potongan = array_filter(array_keys($rows), fn ($k) => str_contains($k, 'Potongan Kehadiran'));
         $this->assertSame([], array_values($potongan));
+    }
+
+    public function test_honor_hadir_harian_dibayar_tanpa_masuk_kelas(): void
+    {
+        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Harian', 20);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen([
+            'nama' => 'Honor Mengajar',
+            'kode' => 'honor_mengajar',
+            'jenis' => 'dinamis_jam_mengajar',
+            'nilai_default' => 50000,
+            'syarat_bayar_jam_mengajar' => 'hadir_harian',
+            'unit_sekolah_id' => $this->unit->id,
+            'applies_to_status_kepegawaian' => 'guru',
+        ]);
+        $this->makeJadwalSenin($pegawai);
+        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29'] as $tgl) {
+            $this->masukKantor($pegawai, $tgl);
+        }
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        $this->assertEquals(250000, (float) ($rows['Honor Mengajar'] ?? 0));
+    }
+
+    public function test_honor_harian_biasa_tetap_dibayar_saat_telat(): void
+    {
+        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Telat', 21);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen([
+            'nama' => 'Honor Mengajar',
+            'kode' => 'honor_mengajar',
+            'jenis' => 'dinamis_jam_mengajar',
+            'nilai_default' => 50000,
+            'syarat_bayar_jam_mengajar' => 'hadir_harian',
+            'unit_sekolah_id' => $this->unit->id,
+            'applies_to_status_kepegawaian' => 'guru',
+        ]);
+        $this->makeJadwalSenin($pegawai);
+        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29'] as $tgl) {
+            $this->masukKantor($pegawai, $tgl, '10:00:00');
+        }
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        $this->assertEquals(250000, (float) ($rows['Honor Mengajar'] ?? 0));
+    }
+
+    public function test_honor_harian_tanpa_presensi_tidak_dibayar(): void
+    {
+        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Tanpa Presensi', 24);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen([
+            'nama' => 'Honor Mengajar',
+            'kode' => 'honor_mengajar',
+            'jenis' => 'dinamis_jam_mengajar',
+            'nilai_default' => 50000,
+            'syarat_bayar_jam_mengajar' => 'hadir_harian',
+            'unit_sekolah_id' => $this->unit->id,
+            'applies_to_status_kepegawaian' => 'guru',
+        ]);
+        $this->makeJadwalSenin($pegawai);
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        $this->assertArrayNotHasKey('Honor Mengajar', $rows);
+    }
+
+    public function test_honor_harian_tidak_menghitung_tanggal_libur(): void
+    {
+        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Libur', 25);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen([
+            'nama' => 'Honor Mengajar',
+            'kode' => 'honor_mengajar',
+            'jenis' => 'dinamis_jam_mengajar',
+            'nilai_default' => 50000,
+            'syarat_bayar_jam_mengajar' => 'hadir_harian',
+            'unit_sekolah_id' => $this->unit->id,
+            'applies_to_status_kepegawaian' => 'guru',
+        ]);
+        $this->makeJadwalSenin($pegawai);
+        HariLibur::create(['nama' => 'Libur', 'tanggal' => '2026-06-08', 'unit_sekolah_id' => $this->unit->id]);
+        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29'] as $tgl) {
+            $this->masukKantor($pegawai, $tgl);
+        }
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        $this->assertEquals(200000, (float) ($rows['Honor Mengajar'] ?? 0));
+    }
+
+    public function test_honor_sebelum_jp_pertama_memakai_toleransi_unit(): void
+    {
+        $this->unit->update(['toleransi_menit' => 15]);
+        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Pagi', 22);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen([
+            'nama' => 'Honor Mengajar',
+            'kode' => 'honor_mengajar',
+            'jenis' => 'dinamis_jam_mengajar',
+            'nilai_default' => 50000,
+            'syarat_bayar_jam_mengajar' => 'hadir_harian_pagi',
+            'unit_sekolah_id' => $this->unit->id,
+            'applies_to_status_kepegawaian' => 'guru',
+        ]);
+        $this->makeJadwalSenin($pegawai);
+        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29'] as $tgl) {
+            $this->masukKantor($pegawai, $tgl, '08:10:00');
+        }
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        $this->assertEquals(250000, (float) ($rows['Honor Mengajar'] ?? 0));
+    }
+
+    public function test_honor_sebelum_jp_pertama_lewat_toleransi_tidak_dibayar(): void
+    {
+        $this->unit->update(['toleransi_menit' => 15]);
+        $pegawai = $this->makePegawai('guru_tetap_yayasan', 'Guru Lewat', 23);
+        KomponenGaji::query()->update(['is_active' => false]);
+        $this->makeKomponen([
+            'nama' => 'Honor Mengajar',
+            'kode' => 'honor_mengajar',
+            'jenis' => 'dinamis_jam_mengajar',
+            'nilai_default' => 50000,
+            'syarat_bayar_jam_mengajar' => 'hadir_harian_pagi',
+            'unit_sekolah_id' => $this->unit->id,
+            'applies_to_status_kepegawaian' => 'guru',
+        ]);
+        $this->makeJadwalSenin($pegawai);
+        foreach (['2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29'] as $tgl) {
+            $this->masukKantor($pegawai, $tgl, '08:20:00');
+        }
+
+        $this->runDraft();
+        [, $rows] = $this->details($pegawai);
+
+        $this->assertArrayNotHasKey('Honor Mengajar', $rows);
     }
 
     public function test_guru_tidak_tetap_tidak_dapat_transport(): void

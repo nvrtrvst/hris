@@ -6,6 +6,7 @@ use App\Constants\BobotKehadiran;
 use App\Exports\TransferBankExport;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Models\HariLibur;
+use App\Models\Jadwal;
 use App\Models\KomponenGaji;
 use App\Models\LaporanPiket;
 use App\Models\Pegawai;
@@ -222,6 +223,7 @@ class PenggajianController extends Controller
         $activeDatesByPegawai = $presensiAgg['active_dates'];
         $lemburByPegawai = $presensiAgg['lembur'];
         $attendedJadwalByPegawai = $presensiAgg['attended_jadwal'];
+        $harianPagiByPegawai = $presensiAgg['harian_pagi'];
 
         // Hari ½ (izin + tugas, flag admin): 1 query untuk semua pegawai,
         // tanggal overlap dihitung di PHP, lewati tanggal berkehadiran fisik.
@@ -284,7 +286,7 @@ class PenggajianController extends Controller
                             continue;
                         }
                         $nominal = round((float) $this->computeComponentNominal(
-                            $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDaysByPegawai, $attendedJadwalByPegawai, $holidayMap, $jabatanRates, $kantorDaysByPegawai, (float) $totalTaxable, (float) $totalPendapatan, $piketSubmittedByPegawai
+                            $komponen, $pegawai, $pegawaiKomponens, $globalKomponens, $counts, $skalas, $periodeEnd, $periodeStart, $attendanceCutoff, $lemburByPegawai, $sakitProrata, $presentDaysByPegawai, $attendedJadwalByPegawai, $holidayMap, $jabatanRates, $kantorDaysByPegawai, (float) $totalTaxable, (float) $totalPendapatan, $piketSubmittedByPegawai, $harianPagiByPegawai
                         ), 2);
 
                         if ($nominal <= 0) {
@@ -919,9 +921,11 @@ class PenggajianController extends Controller
      * @param  Collection|null  $presentDays  Jumlah hari kalender hadir/telat per pegawai (dedup per tanggal)
      * @param  Collection|null  $attendedJadwalByPegawai  Map pegawai_id => [jadwal_id => jumlah hadir]
      * @param  array  $holidayMap  Map hari libur untuk exclude libur di sesi mengajar
+     * @param  Collection|null  $piketSubmittedByPegawai  Jumlah laporan piket terkirim per pegawai
+     * @param  Collection|null  $harianPagiByPegawai  Map pegawai_id => [tanggal => jam_masuk paling awal]
      * @return float nominal komponen gaji
      */
-    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null, $presentDays = null, $attendedJadwalByPegawai = null, array $holidayMap = [], $jabatanRatesByKomponen = null, $kantorDaysByPegawai = null, float $totalTaxable = 0, float $totalPendapatan = 0, $piketSubmittedByPegawai = null): float
+    protected function computeComponentNominal(KomponenGaji $komponen, Pegawai $pegawai, $pegawaiKomponens, $globalKomponens, array $counts, $skalas, Carbon $periodeEnd, Carbon $periodeStart, Carbon $attendanceCutoff, $lemburByPegawai = null, $sakitProrata = null, $presentDays = null, $attendedJadwalByPegawai = null, array $holidayMap = [], $jabatanRatesByKomponen = null, $kantorDaysByPegawai = null, float $totalTaxable = 0, float $totalPendapatan = 0, $piketSubmittedByPegawai = null, $harianPagiByPegawai = null): float
     {
         $nominal = 0;
 
@@ -1029,6 +1033,14 @@ class PenggajianController extends Controller
             $attendedJadwalIds = $attendedJadwalByPegawai && isset($attendedJadwalByPegawai[$pegawai->id])
                 ? $attendedJadwalByPegawai[$pegawai->id]
                 : collect();
+            $harianPagi = $harianPagiByPegawai && isset($harianPagiByPegawai[$pegawai->id])
+                ? $harianPagiByPegawai[$pegawai->id]
+                : [];
+            $firstStartByHari = $pegawai->jadwals
+                ->where('jenis_jadwal', 'mengajar')
+                ->groupBy('hari')
+                ->map(fn ($rows) => substr((string) $rows->min('jam_mulai'), 0, 8))
+                ->all();
 
             $totalHoursMonthly = 0;
             foreach ($pegawai->jadwals as $jadwal) {
@@ -1048,12 +1060,24 @@ class PenggajianController extends Controller
                 }
                 $sessionHours = $mulai->diffInMinutes($selesai) / $durasiJp;
 
-                $count = $syarat === 'hanya_hadir'
-                    ? ($attendedJadwalIds[$jadwal->id] ?? 0)
-                    : max(0, $this->countWeekdayInRange(
-                        $jadwal->hari, $periodeStart, $attendanceCutoff,
-                        $this->holidayCountFor($holidayMap, $jadwal->unit_sekolah_id, $jadwal->hari)
-                    ));
+                if (in_array($syarat, ['hadir_harian', 'hadir_harian_pagi'], true)) {
+                    $count = $this->countHarianPaid(
+                        $jadwal,
+                        $harianPagi,
+                        $firstStartByHari,
+                        $periodeStart,
+                        $attendanceCutoff,
+                        $holidayMap,
+                        $syarat === 'hadir_harian_pagi',
+                    );
+                } else {
+                    $count = $syarat === 'hanya_hadir'
+                        ? ($attendedJadwalIds[$jadwal->id] ?? 0)
+                        : max(0, $this->countWeekdayInRange(
+                            $jadwal->hari, $periodeStart, $attendanceCutoff,
+                            $this->holidayCountFor($holidayMap, $jadwal->unit_sekolah_id, $jadwal->hari)
+                        ));
+                }
 
                 $totalHoursMonthly += $sessionHours * $count;
             }
@@ -1321,16 +1345,26 @@ class PenggajianController extends Controller
         $idMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         $national = [];
         $units = [];
+        $nationalDates = [];
+        $unitDates = [];
         foreach ($rows as $h) {
+            $date = Carbon::parse($h->tanggal)->toDateString();
             $wd = $idMap[(int) Carbon::parse($h->tanggal)->dayOfWeek];
             if ($h->unit_sekolah_id === null) {
                 $national[$wd] = ($national[$wd] ?? 0) + 1;
+                $nationalDates[$date] = true;
             } else {
                 $units[$h->unit_sekolah_id][$wd] = ($units[$h->unit_sekolah_id][$wd] ?? 0) + 1;
+                $unitDates[$h->unit_sekolah_id][$date] = true;
             }
         }
 
-        return ['national' => $national, 'units' => $units];
+        return [
+            'national' => $national,
+            'units' => $units,
+            'national_dates' => $nationalDates,
+            'unit_dates' => $unitDates,
+        ];
     }
 
     /**
@@ -1340,6 +1374,50 @@ class PenggajianController extends Controller
     {
         return (int) ($holidayMap['national'][$hari] ?? 0)
             + (int) ($holidayMap['units'][$unitId][$hari] ?? 0);
+    }
+
+    protected function isHolidayDate(array $holidayMap, ?int $unitId, string $date): bool
+    {
+        return isset($holidayMap['national_dates'][$date])
+            || ($unitId !== null && isset($holidayMap['unit_dates'][$unitId][$date]));
+    }
+
+    /**
+     * Jumlah JP terbayar untuk aturan hadir harian. Mode pagi mewajibkan
+     * presensi sebelum JP pertama (plus toleransi unit); mode biasa cukup
+     * ada presensi hadir/telat pada tanggal tersebut.
+     */
+    protected function countHarianPaid(Jadwal $jadwal, array $harianPagi, array $firstStartByHari, Carbon $start, Carbon $end, array $holidayMap, bool $sebelumJpPertama): int
+    {
+        $count = 0;
+        $firstStart = $firstStartByHari[$jadwal->hari] ?? null;
+        $toleransi = (int) ($jadwal->unitSekolah?->toleransi_menit ?? 0);
+
+        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+            if ($date->locale('id')->translatedFormat('l') !== $jadwal->hari) {
+                continue;
+            }
+
+            $tanggal = $date->toDateString();
+            if ($this->isHolidayDate($holidayMap, $jadwal->unit_sekolah_id, $tanggal)) {
+                continue;
+            }
+
+            $jamMasuk = $harianPagi[$tanggal] ?? null;
+            if ($jamMasuk === null) {
+                continue;
+            }
+
+            if ($sebelumJpPertama) {
+                if (! $firstStart || Carbon::parse($jamMasuk)->gt(Carbon::parse($firstStart)->addMinutes($toleransi))) {
+                    continue;
+                }
+            }
+
+            $count++;
+        }
+
+        return $count;
     }
 
     /**

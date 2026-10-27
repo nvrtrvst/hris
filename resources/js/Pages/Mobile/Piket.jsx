@@ -470,14 +470,15 @@ function PosItem({ pos, log, sending, onSave }) {
     );
 }
 
-export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruUnit = [], slotKosong = [], mapelUnit = [], absensiSiswa = [] }) {
+export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruUnit = [], guruUnitAll = [], slotKosong = [], mapelUnit = [], absensiSiswa = [] }) {
     const { auth, flash = {}, errors = {} } = usePage().props;
     const now = useNowEveryMinute();
     const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const [sending, setSending] = useState(false);
     const [locErr, setLocErr] = useState(null);
     const [terlambat, setTerlambat] = useState(0);
-    const [absenForm, setAbsenForm] = useState({ nama_guru: '', keterangan_absen: '' });
+    const [absenForm, setAbsenForm] = useState({ guru_pegawai_id: '', nama_guru: '', keterangan_absen: '' });
+    const [absenManual, setAbsenManual] = useState(false);
     const [kkForm, setKkForm] = useState({ slot_jadwal_id: '', kelas: '', guru_pegawai_id: '', mapel_id: '', ada_amanat: false, jenis_amanat: 'tugas', detail_amanat: '', tersampaikan: false });
     const kkSlot = slotKosong.find((s) => String(s.jadwal_id) === String(kkForm.slot_jadwal_id));
     const kkManual = kkForm.slot_jadwal_id === 'manual' || slotKosong.length === 0;
@@ -536,7 +537,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     const submitAfter = piket.submit_after ?? windows.sore[0];
     const teachingWindows = piket.teaching_windows ?? [];
     const soreMulai = hhmm >= submitAfter;
-    const errMsg = locErr || errors.geofence || errors.kode || errors.laporan;
+    const errMsg = locErr || errors.geofence || errors.kode || errors.laporan || errors.guru_pegawai_id || errors.keterangan_absen;
 
     const kirim = async (payload, { geo = true } = {}) => {
         setLocErr(null);
@@ -728,10 +729,36 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                 )}
                                 {done('cek_absen') && (
                                     <div className="mt-2 grid grid-cols-1 gap-2">
-                                        <input value={absenForm.nama_guru} onChange={(e) => setAbsenForm({ ...absenForm, nama_guru: e.target.value })} placeholder="Nama guru (konfirmasi susulan)" className={inputCls} maxLength={100} aria-label="Nama guru" />
+                                        <select
+                                            value={absenManual ? 'manual' : absenForm.guru_pegawai_id}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                if (value === 'manual') {
+                                                    setAbsenManual(true);
+                                                    setAbsenForm({ ...absenForm, guru_pegawai_id: '', nama_guru: '' });
+                                                    return;
+                                                }
+                                                setAbsenManual(false);
+                                                setAbsenForm({ ...absenForm, guru_pegawai_id: value, nama_guru: '' });
+                                            }}
+                                            className={inputCls}
+                                            aria-label="Guru berhalangan"
+                                        >
+                                            <option value="">Pilih guru</option>
+                                            {guruUnitAll.map((g) => <option key={g.id} value={g.id}>{g.nama_lengkap}</option>)}
+                                            <option value="manual">Guru tidak ada di daftar</option>
+                                        </select>
+                                        {absenManual && (
+                                            <input value={absenForm.nama_guru} onChange={(e) => setAbsenForm({ ...absenForm, nama_guru: e.target.value })} placeholder="Nama guru (manual)" className={inputCls} maxLength={100} aria-label="Nama guru manual" />
+                                        )}
                                         <div className="flex gap-2">
                                             <input value={absenForm.keterangan_absen} onChange={(e) => setAbsenForm({ ...absenForm, keterangan_absen: e.target.value })} placeholder="Keterangan" className={`${inputCls} flex-1`} maxLength={255} aria-label="Keterangan" />
-                                            <button type="button" disabled={sending} onClick={() => kirim({ kode: 'cek_absen', mode: 'tambah', ...absenForm })} className="min-h-12 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95 disabled:opacity-50">
+                                            <button
+                                                type="button"
+                                                disabled={sending || !absenForm.keterangan_absen.trim() || (!absenForm.guru_pegawai_id && !absenForm.nama_guru.trim())}
+                                                onClick={() => kirim({ kode: 'cek_absen', mode: 'tambah', ...absenForm })}
+                                                className="min-h-12 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95 disabled:opacity-50"
+                                            >
                                                 Tambah
                                             </button>
                                         </div>

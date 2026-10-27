@@ -323,10 +323,12 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                                     )}
                                     {data.jenis === 'dinamis_jam_mengajar' && (
                                         <Field id="komponen-syarat-jam-mengajar" label="Syarat Bayar Jam Mengajar" error={errors.syarat_bayar_jam_mengajar}
-                                            hint="'Hanya Hadir' = jam dihitung dari jadwal yang ada presensi hadir/telat. 'Semua Jadwal' = semua jam jadwal dibayar.">
+                                            hint="Hanya Hadir = potong per JP. Hadir Harian = semua JP dibayar jika ada presensi hadir/telat. Sebelum JP Pertama = presensi harus sebelum JP pertama, memakai toleransi unit.">
                                             <select value={data.syarat_bayar_jam_mengajar} onChange={(e) => setData('syarat_bayar_jam_mengajar', e.target.value)} className={selectClass}>
                                                 <option value="hanya_hadir">Hanya Jadwal dengan Presensi Hadir/Telat</option>
                                                 <option value="semua_jadwal">Semua Jadwal (tanpa cek presensi)</option>
+                                                <option value="hadir_harian">Semua Jadwal Jika Ada Presensi Harian</option>
+                                                <option value="hadir_harian_pagi">Semua Jadwal Jika Presensi Sebelum JP Pertama</option>
                                             </select>
                                         </Field>
                                     )}
@@ -446,7 +448,7 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                                                             // hanya yang di-set: bukan lima pill berwarna.
                                                             const attr = [
                                                                 k.applies_to_status_kepegawaian === 'tetap' ? 'Tetap (GTYS/PTY)' : k.applies_to_status_kepegawaian ? 'Non-Tetap' : null,
-                                                                k.syarat_bayar_jam_mengajar === 'hanya_hadir' ? 'Bayar Hadir' : k.syarat_bayar_jam_mengajar ? 'Bayar Semua Jadwal' : null,
+                                                                k.syarat_bayar_jam_mengajar === 'hanya_hadir' ? 'Potong per JP' : k.syarat_bayar_jam_mengajar === 'hadir_harian' ? 'Hadir Harian' : k.syarat_bayar_jam_mengajar === 'hadir_harian_pagi' ? 'Sebelum JP Pertama' : k.syarat_bayar_jam_mengajar ? 'Bayar Semua' : null,
                                                                 k.unit_sekolah_id ? 'Unit khusus' : null,
                                                                 k.is_taxable == 1 ? 'Taxable' : null,
                                                             ].filter(Boolean);
