@@ -189,7 +189,18 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
             };
             router.post(route('presensi.piket.absen-siswa'), payload, {
                 preserveScroll: true,
-                onSuccess: () => router.post(route('presensi.piket.item'), { kode: 'absen_siswa', mode: 'centang', ...pos }, { preserveScroll: true }),
+                onSuccess: () => {
+                    setSelected(null);
+                    setSiswa([]);
+                    setKonfirmasi(null);
+                    setLastSaved(null);
+                    setAlasan('');
+                    router.post(route('presensi.piket.item'), { kode: 'absen_siswa', mode: 'centang', ...pos }, {
+                        preserveScroll: true,
+                        onError: (errs) => setErr(Object.values(errs || {}).flat()[0] || 'Absen tersimpan, tetapi checklist gagal diperbarui.'),
+                    });
+                },
+                onError: (errs) => setErr(Object.values(errs || {}).flat()[0] || 'Gagal menyimpan absen siswa.'),
                 onFinish: () => setSaving(false),
             });
         } catch (e) {
@@ -205,6 +216,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
             const pos = await getPos();
             router.post(route('presensi.piket.item'), { kode: 'absen_siswa', mode: 'nihil', ...pos }, {
                 preserveScroll: true,
+                onError: (errs) => setErr(Object.values(errs || {}).flat()[0] || 'Gagal menyimpan absen siswa.'),
                 onFinish: () => setSaving(false),
             });
         } catch (e) {

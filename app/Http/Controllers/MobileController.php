@@ -1931,16 +1931,17 @@ class MobileController extends Controller
         // sendiri tetap punya pilihan.
         if ($mappedClasses !== []) {
             $absensiSiswa = $absensiSiswa
-                ->filter(fn ($s) => in_array($s['class_label'], $mappedClasses, true))
+                ->filter(fn ($s) => AbsenSiswaService::labelDiizinkan($mappedClasses, $s['class_label']))
                 ->values();
 
             $slotKosong = $slotKosong
-                ->filter(fn ($s) => in_array($s['kelas'], $mappedClasses, true))
+                ->filter(fn ($s) => AbsenSiswaService::labelDiizinkan($mappedClasses, $s['kelas']))
                 ->values();
 
             $guruAreaIds = Jadwal::where('unit_sekolah_id', $unitId)
                 ->where('jenis_jadwal', 'mengajar')
-                ->whereIn('kelas_label', $mappedClasses)
+                ->get(['pegawai_id', 'kelas_label'])
+                ->filter(fn ($j) => AbsenSiswaService::labelDiizinkan($mappedClasses, (string) $j->kelas_label))
                 ->pluck('pegawai_id')
                 ->unique()
                 ->all();
