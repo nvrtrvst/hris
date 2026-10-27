@@ -39,6 +39,7 @@ class PresensiAggregator
      *     present_days: Collection,
      *     lembur: Collection,
      *     attended_jadwal: Collection,
+     *     harian_pagi: Collection,
      * }
      */
     public function aggregate(Collection $pegawaiIds, Carbon $periodeStart, Carbon $periodeEnd, Carbon $attendanceCutoff, ?int $unitScope = null): array
@@ -59,6 +60,7 @@ class PresensiAggregator
             'active_dates' => $this->activeDatesByPegawai($presensiRows),
             'lembur' => $this->lemburByPegawai($presensiRows, $attendanceCutoff),
             'attended_jadwal' => $this->attendedJadwalByPegawai($presensiRows, $attendanceCutoff),
+            'harian_pagi' => $this->harianPagiByPegawai($presensiRows, $attendanceCutoff),
         ];
     }
 
@@ -232,6 +234,24 @@ class PresensiAggregator
                 && $p->jam_keluar !== null
                 && $p->tanggal->lte($attendanceCutoff))
             ->groupBy('pegawai_id');
+    }
+
+    /**
+     * Jam masuk paling awal per pegawai per tanggal untuk aturan hadir harian.
+     * Hanya presensi hadir/telat dengan jam_masuk; lembur dikecualikan.
+     */
+    private function harianPagiByPegawai(Collection $rows, Carbon $attendanceCutoff): Collection
+    {
+        return $rows
+            ->filter(fn ($p) => ! $p->is_lembur
+                && in_array($p->status, self::ACTIVE_STATUSES, true)
+                && $p->jam_masuk !== null
+                && $p->tanggal->lte($attendanceCutoff))
+            ->groupBy('pegawai_id')
+            ->map(fn ($pegawaiRows) => $pegawaiRows
+                ->groupBy(fn ($p) => $p->tanggal->format('Y-m-d'))
+                ->map(fn ($tanggalRows) => $tanggalRows->min('jam_masuk'))
+                ->all());
     }
 
     /**

@@ -331,6 +331,8 @@ class MobileController extends Controller
 
     public function kelasUnit(Request $request)
     {
+        $pegawai = $this->getPegawai();
+
         $validated = $request->validate([
             'jadwal_id' => 'required|integer|min:1',
         ]);
@@ -1877,6 +1879,7 @@ class MobileController extends Controller
             ->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitId))
             ->orderBy('nama_lengkap')
             ->get(['id', 'nama_lengkap']);
+        $guruUnitAll = $guruUnit->values();
 
         // Absen siswa yang sudah tersimpan hari ini (prefill/edit).
         $absensiSiswa = AbsenSiswaSesi::with(['details' => fn ($q) => $q->orderBy('nama_snapshot'), 'pegawai:id,nama_lengkap'])
@@ -1980,6 +1983,7 @@ class MobileController extends Controller
                 'area_kelas' => $mappedClasses,
             ],
             'guruUnit' => $guruUnit,
+            'guruUnitAll' => $guruUnitAll,
             'slotKosong' => $slotKosong,
             'mapelUnit' => $mapelUnit,
             'absensiSiswa' => $absensiSiswa,
@@ -2100,7 +2104,7 @@ class MobileController extends Controller
                     'terlambat_count' => (int) $request->input('terlambat_count', 0),
                 ],
                 LaporanPiket::ITEM_BUKU => $items[$kode] = $stamp,
-                LaporanPiket::ITEM_CEK_ABSEN => $items[$kode] = $this->applyCekAbsen($items[$kode] ?? null, $mode, $request, $stamp),
+                LaporanPiket::ITEM_CEK_ABSEN => $items[$kode] = $this->applyCekAbsen($items[$kode] ?? null, $mode, $request, $stamp, $slot->unit_sekolah_id),
                 LaporanPiket::ITEM_KELAS_KOSONG => $items[$kode] = $this->applyKelasKosong($items[$kode] ?? null, $mode, $request, $stamp, $today, $slot->unit_sekolah_id),
                 LaporanPiket::ITEM_INSIDEN => $items[$kode] = $this->applyInsiden($items[$kode] ?? null, $mode, $request, $stamp),
                 LaporanPiket::ITEM_ABSEN_SISWA => $items[$kode] = $this->applyAbsenSiswa($slot, $mode, $stamp, $today),
@@ -2620,8 +2624,11 @@ class MobileController extends Controller
     private function validateTambahPayload(Request $request, string $kode): void
     {
         if ($kode === LaporanPiket::ITEM_CEK_ABSEN) {
-            if (! $request->filled('nama_guru') || ! $request->filled('keterangan_absen')) {
-                throw ValidationException::withMessages(['nama_guru' => 'Nama guru dan keterangan wajib diisi.']);
+            if (! $request->filled('guru_pegawai_id') && ! $request->filled('nama_guru')) {
+                throw ValidationException::withMessages(['guru_pegawai_id' => 'Pilih guru atau isi nama manual.']);
+            }
+            if (! $request->filled('keterangan_absen')) {
+                throw ValidationException::withMessages(['keterangan_absen' => 'Keterangan wajib diisi.']);
             }
         }
         if ($kode === LaporanPiket::ITEM_KELAS_KOSONG) {
@@ -2641,12 +2648,30 @@ class MobileController extends Controller
         }
     }
 
-    private function applyCekAbsen(?array $item, string $mode, Request $request, array $stamp): array
+    private function applyCekAbsen(?array $item, string $mode, Request $request, array $stamp, ?int $unitId): array
     {
         $item ??= ['entries' => []];
         if ($mode === 'tambah') {
+            $guruId = null;
+            $nama = trim((string) $request->nama_guru);
+            $sumber = 'manual';
+
+            if ($request->filled('guru_pegawai_id')) {
+                $guru = Pegawai::select('id', 'nama_lengkap', 'status_aktif')->find($request->guru_pegawai_id);
+                if (! $guru || $guru->status_aktif !== 'aktif'
+                    || ($unitId && ! $guru->belongsToUnit($unitId))) {
+                    throw ValidationException::withMessages(['guru_pegawai_id' => 'Guru tidak valid untuk unit ini.']);
+                }
+
+                $guruId = (int) $guru->id;
+                $nama = $guru->nama_lengkap;
+                $sumber = 'daftar';
+            }
+
             $item['entries'][] = [
-                'nama_guru' => trim((string) $request->nama_guru),
+                'guru_pegawai_id' => $guruId,
+                'nama_guru' => $nama,
+                'sumber' => $sumber,
                 'keterangan' => trim((string) $request->keterangan_absen),
                 'created_at' => $stamp['done_at'],
                 'lat' => $stamp['lat'],
@@ -2706,7 +2731,7 @@ class MobileController extends Controller
             $slotId = null;
         }
 
-        $cek = $this->validasiKehadiranGuru($guruId, $today);
+        $cek = $this->validasiKehadiranGuru($guruId, $today, $slotId);
         $item['entries'][] = [
             'kelas' => $kelas,
             'mapel' => $mapel,
@@ -2781,7 +2806,7 @@ class MobileController extends Controller
      * disetujui mencakup tanggal itu, atau tidak ada presensi masuk.
      * Guru yang tercatat hadir = perlu_cek (flag untuk admin).
      */
-    private function validasiKehadiranGuru(int $guruPegawaiId, string $tanggal): array
+    private function validasiKehadiranGuru(int $guruPegawaiId, string $tanggal, ?int $jadwalId = null): array
     {
         $izin = PengajuanIzin::where('pegawai_id', $guruPegawaiId)
             ->where('status', 'disetujui')
@@ -2792,13 +2817,20 @@ class MobileController extends Controller
             return ['cocok' => true, 'catatan' => 'Izin disetujui: '.$izin->jenis_izin];
         }
 
-        $hadir = Presensi::where('pegawai_id', $guruPegawaiId)
+        $presensi = Presensi::where('pegawai_id', $guruPegawaiId)
             ->where('tanggal', $tanggal)
             ->whereNotNull('jam_masuk')
-            ->whereIn('status', ['hadir', 'telat'])
-            ->exists();
-        if ($hadir) {
-            return ['cocok' => false, 'catatan' => 'Guru tercatat hadir'];
+            ->whereIn('status', ['hadir', 'telat']);
+
+        if ($jadwalId !== null) {
+            $presensi->where('jadwal_id', $jadwalId);
+        }
+
+        if ($presensi->exists()) {
+            return [
+                'cocok' => false,
+                'catatan' => $jadwalId !== null ? 'Guru tercatat hadir di kelas ini' : 'Guru tercatat hadir',
+            ];
         }
 
         return ['cocok' => true, 'catatan' => 'Tidak ada presensi masuk'];

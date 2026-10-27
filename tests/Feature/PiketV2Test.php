@@ -23,6 +23,7 @@ use Carbon\Carbon;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -643,6 +644,166 @@ class PiketV2Test extends TestCase
             ->assertRedirect();
 
         $this->assertFalse((bool) $izin->fresh()->tugas_terverifikasi);
+    }
+
+    public function test_kelas_unit_area_tidak_error_dan_terfilter(): void
+    {
+        Carbon::setTestNow('2026-10-26 07:00:00');
+        config(['keuangan.url' => 'https://keuangan.test', 'keuangan.key' => 'test-key']);
+
+        $piket = $this->pegawai('Petugas Piket');
+        $jadwal = $this->jadwal($piket);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $piket->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+
+        DB::table('piket_area_kelas')->insert([
+            'unit_sekolah_id' => $this->unit->id,
+            'area_id' => $this->area->id,
+            'kelas_label' => 'X A',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Http::fake([
+            '*' => Http::response([
+                'data' => ['classes' => [
+                    ['id' => 1, 'grade' => 'X', 'name' => 'A'],
+                    ['id' => 2, 'grade' => 'Y', 'name' => 'B'],
+                ]],
+            ]),
+        ]);
+
+        $this->actingAs($piket->user, 'web_mobile')
+            ->getJson(route('presensi.jadwal.kelas', ['jadwal_id' => $jadwal->id]))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(1, 'kelas')
+            ->assertJsonPath('kelas.0.name', 'A');
+    }
+
+    public function test_cek_absen_menyimpan_guru_pegawai_id(): void
+    {
+        Carbon::setTestNow('2026-10-26 07:00:00');
+
+        $piket = $this->pegawai('Petugas Piket');
+        $guru = $this->pegawai('Guru Sakit');
+        $this->masuk($piket);
+        $this->jadwal($piket);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $piket->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+        PiketItemTemplate::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'kode' => 'cek_absen',
+            'label' => 'Cek guru',
+            'seksi' => 'pagi',
+            'scope' => 'area',
+            'tipe' => 'tambah',
+            'wajib' => true,
+            'urutan' => 2,
+        ]);
+
+        $this->actingAs($piket->user, 'web_mobile')
+            ->post(route('presensi.piket.item'), [
+                'kode' => 'cek_absen',
+                'mode' => 'tambah',
+                'guru_pegawai_id' => $guru->id,
+                'keterangan_absen' => 'Sakit, tidak masuk kelas.',
+                ...$this->geo(),
+            ])
+            ->assertRedirect();
+
+        $entry = LaporanPiket::where('pegawai_id', $piket->id)->firstOrFail()
+            ->items['cek_absen']['entries'][0];
+
+        $this->assertSame($guru->id, $entry['guru_pegawai_id']);
+        $this->assertSame('Guru Sakit', $entry['nama_guru']);
+        $this->assertSame('daftar', $entry['sumber']);
+    }
+
+    public function test_validasi_kelas_kosong_memakai_presensi_slot_bukan_harian(): void
+    {
+        Carbon::setTestNow('2026-10-26 10:00:00');
+
+        $piket = $this->pegawai('Petugas Piket');
+        $guru = $this->pegawai('Guru Kelas');
+        $this->masuk($piket);
+        $this->jadwal($piket);
+
+        $pagi = Jadwal::create([
+            'pegawai_id' => $guru->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'hari' => 'Senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '07:45:00',
+            'jenis_jadwal' => 'mengajar',
+            'kelas_label' => 'X A',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+        $siang = Jadwal::create([
+            'pegawai_id' => $guru->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'hari' => 'Senin',
+            'jam_mulai' => '09:00:00',
+            'jam_selesai' => '09:45:00',
+            'jenis_jadwal' => 'mengajar',
+            'kelas_label' => 'X B',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+
+        $presensi = Presensi::create([
+            'pegawai_id' => $guru->id,
+            'jadwal_id' => $pagi->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tipe_presensi' => 'mengajar',
+            'tanggal' => '2026-10-26',
+            'jam_masuk' => '07:00:00',
+        ]);
+        $presensi->status = 'hadir';
+        $presensi->save();
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $piket->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+
+        $this->actingAs($piket->user, 'web_mobile')
+            ->post(route('presensi.piket.item'), [
+                'kode' => 'kelas_kosong',
+                'mode' => 'tambah',
+                'slot_jadwal_id' => $siang->id,
+                'ada_amanat' => false,
+                ...$this->geo(),
+            ])
+            ->assertRedirect();
+
+        $entry = LaporanPiket::where('pegawai_id', $piket->id)->firstOrFail()
+            ->items['kelas_kosong']['entries'][0];
+
+        $this->assertSame('cocok', $entry['validasi']);
+        $this->assertSame($siang->id, $entry['slot_jadwal_id']);
     }
 
     public function test_laporan_piket_v2_menampilkan_progress_pos_dan_filter_kualitas(): void
