@@ -806,6 +806,52 @@ class PiketV2Test extends TestCase
         $this->assertSame($siang->id, $entry['slot_jadwal_id']);
     }
 
+    public function test_absensi_siswa_area_tampil_setelah_label_dinormalisasi(): void
+    {
+        Carbon::setTestNow('2026-10-26 10:00:00');
+
+        $piket = $this->pegawai('Petugas Piket');
+        $this->masuk($piket);
+        $this->jadwal($piket);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $piket->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+
+        DB::table('piket_area_kelas')->insert([
+            'unit_sekolah_id' => $this->unit->id,
+            'area_id' => $this->area->id,
+            'kelas_label' => '1 - Kelas 1',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $sesi = AbsenSiswaSesi::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'pegawai_id' => $piket->id,
+            'tanggal' => '2026-10-26',
+            'class_id' => 'cls_1',
+            'class_label' => '1 Kelas 1',
+            'done_at' => now(),
+        ]);
+        $sesi->details()->create(['nis' => '001', 'nama_snapshot' => 'Siswa Satu', 'status' => 'sakit', 'keterangan' => 'Demam']);
+
+        $this->actingAs($piket->user, 'web_mobile')
+            ->get(route('presensi.piket.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Piket')
+                ->has('absensiSiswa', 1)
+                ->where('absensiSiswa.0.class_label', '1 Kelas 1')
+            );
+    }
+
     public function test_laporan_piket_v2_menampilkan_progress_pos_dan_filter_kualitas(): void
     {
         Carbon::setTestNow('2026-10-26 07:00:00');
