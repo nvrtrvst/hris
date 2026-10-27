@@ -29,6 +29,7 @@ class RolePermissionSeeder extends Seeder
             'view_jadwal',
             'manage_jadwal', // tambah/edit/generate/hapus jadwal (admin_unit & staf yang ditunjuk)
             'view_presensi',
+            'view_absen_siswa',
             'view_izin',
             'view_payroll',
             'view_kpi',
@@ -61,6 +62,7 @@ class RolePermissionSeeder extends Seeder
             'view_jadwal',
             'manage_jadwal',
             'view_presensi',
+            'view_absen_siswa',
             'view_izin',
             'view_kpi',
             'evaluate_kpi',
@@ -85,12 +87,16 @@ class RolePermissionSeeder extends Seeder
             // Presensi & jadwal bawahan (pengawasan) — scope di controller via
             // trait ScopesPimpinan (hanya bawahan langsung, bukan semua unit).
             'view_presensi',
+            'view_absen_siswa',
             'view_jadwal',
             'view_izin',
             'view_kpi',
             'evaluate_kpi',
             'manage_reminders',
         ]);
+
+        $roleWaliKelas = Role::firstOrCreate(['name' => 'wali_kelas', 'guard_name' => 'web']);
+        $roleWaliKelas->syncPermissions(['view_absen_siswa']);
 
         $this->call(ApprovalPolicySeeder::class);
         $this->call(PiketSeeder::class);

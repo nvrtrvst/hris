@@ -66,6 +66,7 @@ class RouteSmokeTest extends TestCase
         'password.confirm',    // Breeze boilerplate (session confirm)
         'backup.download',     // side-effect: dump DB sungguhan
         'jadwal.export-pdf',   // side-effect: generate PDF download
+        'laporan.absen-siswa.detail', // butuh nis + rentang tanggal
     ];
 
     /** Route yang bergantung pada API eksternal (keuangan) — bukan bug 500. */
@@ -87,6 +88,7 @@ class RouteSmokeTest extends TestCase
         'profile.destroy',
         'pegawai.import',
         'komponen-gaji.pegawai.import',
+        'wali-kelas.nonaktifkan', // butuh fixture mapping wali kelas
     ];
 
     /**
@@ -171,6 +173,8 @@ class RouteSmokeTest extends TestCase
         'laporan.rekap-detail' => 'Laporan/RekapDetail',
         'laporan.rekap-mengajar-detail' => 'Laporan/RekapMengajarDetail',
         'laporan.piket' => 'Laporan/Piket',
+        'laporan.absen-siswa' => 'Laporan/AbsenSiswa',
+        'wali-kelas.index' => 'Settings/WaliKelas',
 
         // ── Mobile (web_mobile) ──
         'presensi.dashboard' => 'Mobile/Dashboard',
@@ -288,6 +292,8 @@ class RouteSmokeTest extends TestCase
         'pulang-cepat.index' => ['pengajuans' => true, 'filters' => false, 'stats' => true],
         'laporan.index' => ['units' => true],
         'laporan.piket' => ['filters' => true, 'units' => true, 'laporan' => false, 'belum' => false, 'label' => true],
+        'laporan.absen-siswa' => ['filters' => true, 'summary' => true, 'sessions' => false, 'students' => false, 'classes' => false, 'classSummary' => false, 'perhatian' => false, 'units' => true, 'canFilterUnit' => true],
+        'wali-kelas.index' => ['units' => true, 'mappings' => false, 'pegawais' => false, 'classes' => false, 'filters' => true, 'defaults' => true],
         'users.index' => ['users' => true, 'filters' => false, 'stats' => true],
         'users.create' => ['allRoles' => true, 'unitSekolah' => true],
         'users.edit' => ['userData' => true, 'allPermissions' => true, 'allRoles' => true],

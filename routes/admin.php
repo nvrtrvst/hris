@@ -9,6 +9,7 @@ use App\Http\Controllers\JabatanController;
 use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\KomponenGajiController;
 use App\Http\Controllers\KpiController;
+use App\Http\Controllers\LaporanAbsenSiswaController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\NotificationController;
@@ -31,6 +32,7 @@ use App\Http\Controllers\SkalaMasaBaktiController;
 use App\Http\Controllers\TugasLuarController;
 use App\Http\Controllers\UnitSekolahController;
 use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\WaliKelasController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -327,6 +329,12 @@ Route::middleware('auth:web_admin')->group(function () {
 
     Route::get('laporan/pdf', [LaporanController::class, 'exportPdf'])->name('laporan.pdf');
     Route::get('laporan/piket', [LaporanController::class, 'laporanPiket'])->name('laporan.piket');
+    Route::middleware('can:view_absen_siswa')->group(function () {
+        Route::get('laporan/absen-siswa', [LaporanAbsenSiswaController::class, 'index'])->name('laporan.absen-siswa');
+        Route::get('laporan/absen-siswa/detail', [LaporanAbsenSiswaController::class, 'detail'])->name('laporan.absen-siswa.detail');
+        Route::get('laporan/absen-siswa/export', [LaporanAbsenSiswaController::class, 'exportExcel'])->name('laporan.absen-siswa.export');
+        Route::get('laporan/absen-siswa/pdf', [LaporanAbsenSiswaController::class, 'exportPdf'])->name('laporan.absen-siswa.pdf');
+    });
     Route::post('laporan/piket/{laporan}/unlock', [LaporanController::class, 'unlockPiket'])
         ->middleware(['can:view_presensi', 'throttle:60,1'])
         ->name('laporan.piket.unlock');
@@ -433,6 +441,15 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::put('pengaturan/persetujuan', [ApprovalPolicyController::class, 'update'])
             ->middleware('throttle:30,1')
             ->name('approval-policies.update');
+
+        Route::get('pengaturan/wali-kelas', [WaliKelasController::class, 'index'])
+            ->name('wali-kelas.index');
+        Route::post('pengaturan/wali-kelas', [WaliKelasController::class, 'store'])
+            ->middleware('throttle:30,1')
+            ->name('wali-kelas.store');
+        Route::delete('pengaturan/wali-kelas/{mapping}', [WaliKelasController::class, 'nonaktifkan'])
+            ->middleware('throttle:30,1')
+            ->name('wali-kelas.nonaktifkan');
 
     });
 

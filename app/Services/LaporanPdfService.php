@@ -62,8 +62,54 @@ class LaporanPdfService
         $rows = $export->collection()->map(fn ($item) => $export->map($item))->all();
         $headings = $export->headings();
 
-        // Kop surat: unit terpilih (atau auto-resolved dari scope user) → data unit itu;
-        // semua unit (superadmin) → unit induk "Yayasan"; fallback terakhir → config env.
+        $title = match ($type) {
+            'presensi' => 'LAPORAN REKAPITULASI PRESENSI PEGAWAI',
+            'penggajian' => 'LAPORAN REKAPITULASI PENGGAJIAN PEGAWAI',
+            'lemburan' => 'LAPORAN LEMBUR PEGAWAI',
+            'rekap_mengajar' => 'LAPORAN REKAPITULASI PRESENSI MENGAJAR',
+            'rekap_kehadiran' => 'LAPORAN REKAPITULASI KEHADIRAN',
+            'rekap_kehadiran_harian' => 'LAPORAN REKAPITULASI KEHADIRAN HARIAN',
+            'detail_harian' => 'DETAIL PRESENSI HARIAN PEGAWAI',
+            'mengajar_harian' => 'DETAIL MENGAJAR HARIAN PEGAWAI (MENGAJAR & PIKET)',
+        };
+
+        $filename = match ($type) {
+            'presensi' => 'Laporan_Presensi',
+            'penggajian' => 'Laporan_Rekap_Gaji',
+            'lemburan' => 'Laporan_Lemburan',
+            'rekap_mengajar' => 'Laporan_Rekap_Mengajar',
+            'rekap_kehadiran' => 'Laporan_Rekap_Kehadiran',
+            'rekap_kehadiran_harian' => 'Laporan_Rekap_Kehadiran_Harian',
+            'detail_harian' => 'Laporan_Detail_Presensi_Harian',
+            'mengajar_harian' => 'Laporan_Detail_Mengajar_Harian',
+        };
+
+        return $this->renderDocument($validated, $unitId, $headings, $rows, $title, $filename, $type);
+    }
+
+    public function generateAbsenSiswa(array $validated, ?int $unitId, array $headings, array $rows): array
+    {
+        if (count($rows) > self::MAX_ROWS) {
+            throw new PdfTooLargeException(
+                'Data terlalu banyak untuk PDF ('.count($rows).' baris, maksimal '.self::MAX_ROWS.'). Gunakan filter yang lebih spesifik atau export ke Excel.'
+            );
+        }
+
+        return $this->renderDocument(
+            $validated,
+            $unitId,
+            $headings,
+            $rows,
+            'LAPORAN ABSEN SISWA',
+            'Laporan_Absen_Siswa',
+            'absen_siswa',
+        );
+    }
+
+    private function renderDocument(array $validated, ?int $unitId, array $headings, array $rows, string $title, string $filename, string $type): array
+    {
+        // Kop surat: unit terpilih (atau auto-resolved dari scope user) -> data unit itu;
+        // semua unit (superadmin) -> unit induk "Yayasan"; fallback terakhir -> config env.
         $kopUnit = $unitId ? UnitSekolah::find($unitId) : null;
         if (! $kopUnit) {
             $kopUnit = UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
@@ -91,29 +137,7 @@ class LaporanPdfService
             'website' => $kopUnit?->web ?: config('yayasan.website'),
         ];
 
-        $title = match ($type) {
-            'presensi' => 'LAPORAN REKAPITULASI PRESENSI PEGAWAI',
-            'penggajian' => 'LAPORAN REKAPITULASI PENGGAJIAN PEGAWAI',
-            'lemburan' => 'LAPORAN LEMBUR PEGAWAI',
-            'rekap_mengajar' => 'LAPORAN REKAPITULASI PRESENSI MENGAJAR',
-            'rekap_kehadiran' => 'LAPORAN REKAPITULASI KEHADIRAN',
-            'rekap_kehadiran_harian' => 'LAPORAN REKAPITULASI KEHADIRAN HARIAN',
-            'detail_harian' => 'DETAIL PRESENSI HARIAN PEGAWAI',
-            'mengajar_harian' => 'DETAIL MENGAJAR HARIAN PEGAWAI (MENGAJAR & PIKET)',
-        };
-
-        $filename = match ($type) {
-            'presensi' => 'Laporan_Presensi',
-            'penggajian' => 'Laporan_Rekap_Gaji',
-            'lemburan' => 'Laporan_Lemburan',
-            'rekap_mengajar' => 'Laporan_Rekap_Mengajar',
-            'rekap_kehadiran' => 'Laporan_Rekap_Kehadiran',
-            'rekap_kehadiran_harian' => 'Laporan_Rekap_Kehadiran_Harian',
-            'detail_harian' => 'Laporan_Detail_Presensi_Harian',
-            'mengajar_harian' => 'Laporan_Detail_Mengajar_Harian',
-        };
-
-        $unitSlug = $this->resolveUnitSlug($validated['unit_sekolah_id'] ?? null);
+        $unitSlug = $this->resolveUnitSlug($unitId);
 
         $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop', 'type'))
             ->setPaper('A4', 'landscape');

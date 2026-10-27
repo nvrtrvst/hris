@@ -500,6 +500,11 @@ class Pegawai extends Model
         return $this->hasMany(Jadwal::class, 'pegawai_id', 'id');
     }
 
+    public function kelasBinaan(): HasMany
+    {
+        return $this->hasMany(PegawaiKelasBinaan::class, 'pegawai_id');
+    }
+
     /**
      * Scope: batasi ke pegawai yang termasuk unit tertentu.
      * Pegawai TIDAK punya kolom unit_sekolah_id — relasi via pegawai_unit.
