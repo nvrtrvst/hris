@@ -639,7 +639,9 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
         .filter((kode) => !done(kode))
         .map((kode) => ({ kode, label: label[kode] ?? kode }));
     const missingItems = (blockers.items ?? []).length > 0 ? blockers.items : fallbackMissing;
-    const missingAbsen = blockers.absen_missing ?? [];
+    const missingAbsen = (blockers.absen_missing ?? []).length > 0
+        ? blockers.absen_missing
+        : (piket.absen_coverage?.missing ?? []);
     const pendingRounds = blockers.rounds ?? [];
     const pendingPos = blockers.pos ?? [];
     const hasBlockers = missingItems.length > 0 || missingAbsen.length > 0 || pendingRounds.length > 0 || pendingPos.length > 0;
