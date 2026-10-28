@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Constants\BobotKehadiran;
+use App\Constants\PresensiMessages;
 use App\Exceptions\PdfTooLargeException;
 use App\Exports\LaporanDetailHarianExport;
 use App\Exports\LaporanLemburanExport;
@@ -19,16 +20,19 @@ use App\Models\Jadwal;
 use App\Models\LaporanKcdCetak;
 use App\Models\LaporanPiket;
 use App\Models\Pegawai;
+use App\Models\PengajuanIzin;
 use App\Models\PiketArea;
 use App\Models\PiketPos;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Services\KcdReportService;
 use App\Services\LaporanPdfService;
+use App\Services\PiketIzinService;
 use App\Services\PiketService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -602,13 +606,44 @@ class LaporanController extends Controller
     }
 
     /**
+     * Buat pengajuan izin dari entry cek_absen pada laporan piket.
+     */
+    public function buatIzinPiket(Request $request, LaporanPiket $laporan)
+    {
+        $user = $request->user();
+        if (! $user || ! $user->can('create_izin_from_piket')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'entry_index' => 'required|integer|min:0',
+            'jenis_izin' => 'required|in:sakit,izin,cuti',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'alasan' => 'required|string|min:10|max:500',
+            'bukti_foto' => ['nullable', 'string', 'max:'.PresensiMessages::MAX_FOTO_BASE64, 'regex:/^data:image\/\w+;base64,/'],
+            'dengan_surat_dokter' => ['nullable', 'boolean'],
+        ]);
+
+        if ($validated['jenis_izin'] === 'sakit' && blank($validated['bukti_foto'] ?? null)) {
+            throw ValidationException::withMessages([
+                'bukti_foto' => 'Bukti surat dokter wajib diunggah untuk sakit.',
+            ]);
+        }
+
+        PiketIzinService::convert($laporan, (int) $validated['entry_index'], $validated, $user);
+
+        return back()->with('message', 'Pengajuan izin dibuat dan menunggu persetujuan.');
+    }
+
+    /**
      * Halaman Laporan Piket: semua laporan per periode + daftar petugas
      * piket yang belum melapor (jadwal ada, laporan tidak ada).
      */
     public function laporanPiket(Request $request)
     {
         $user = $request->user();
-        if (! $user || ! $user->can('view_presensi')) {
+        if (! $user || (! $user->can('view_presensi') && ! $user->can('view_piket'))) {
             abort(403);
         }
 
@@ -757,6 +792,33 @@ class LaporanController extends Controller
                     'legacy' => $lap->sesi_id === null,
                 ];
             });
+
+        $izinIds = $laporan->flatMap(function ($lap) {
+            return collect($lap['items'][LaporanPiket::ITEM_CEK_ABSEN]['entries'] ?? [])
+                ->pluck('pengajuan_izin_id')
+                ->filter();
+        })->unique()->values();
+
+        $izinMap = $izinIds->isEmpty()
+            ? collect()
+            : PengajuanIzin::whereIn('id', $izinIds)->get(['id', 'status', 'jenis_izin'])->keyBy('id');
+
+        if ($izinMap->isNotEmpty()) {
+            $laporan = $laporan->map(function ($lap) use ($izinMap) {
+                $entries = $lap['items'][LaporanPiket::ITEM_CEK_ABSEN]['entries'] ?? [];
+
+                foreach ($entries as $index => $entry) {
+                    $izin = $izinMap->get($entry['pengajuan_izin_id'] ?? null);
+                    if ($izin) {
+                        $entries[$index]['pengajuan_izin'] = $izin->only(['id', 'status', 'jenis_izin']);
+                    }
+                }
+
+                $lap['items'][LaporanPiket::ITEM_CEK_ABSEN]['entries'] = $entries;
+
+                return $lap;
+            });
+        }
 
         if ($status === 'draft' || $status === 'submitted') {
             $laporan = $laporan->where('status', $status)->values();

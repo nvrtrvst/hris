@@ -2,12 +2,112 @@ import React, { useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
-import { CheckCircle2, ChevronDown } from 'lucide-react';
+import { CheckCircle2, ChevronDown, X } from 'lucide-react';
 
 const STATUS_BADGE = {
     submitted: 'bg-emerald-50 text-emerald-700',
     draft: 'bg-amber-50 text-amber-700',
 };
+
+const IZIN_BADGE = {
+    pending: 'bg-amber-50 text-amber-700',
+    disetujui: 'bg-emerald-50 text-emerald-700',
+    ditolak: 'bg-rose-50 text-rose-700',
+};
+
+const IZIN_LABEL = {
+    pending: 'Izin pending',
+    disetujui: 'Izin disetujui',
+    ditolak: 'Izin ditolak',
+};
+
+const EMPTY_IZIN = {
+    jenis_izin: 'izin',
+    tanggal_mulai: '',
+    tanggal_selesai: '',
+    alasan: '',
+    bukti_foto: null,
+    bukti_nama: '',
+    dengan_surat_dokter: false,
+};
+
+const qualityText = (lap) => {
+    if ((lap.pos_belum?.length ?? 0) > 0) return 'Pos belum';
+    if ((lap.rounds ?? []).some((r) => !r.selesai_at)) return 'Fase lewat';
+    if (lap.perlu_cek > 0) return 'Perlu cek';
+
+    return '-';
+};
+
+function IzinBadge({ izin }) {
+    if (!izin) return null;
+
+    return (
+        <Link
+            href={route('pengajuan-izin.index')}
+            className={`inline-flex rounded-full px-2 py-1 text-xs font-bold ${IZIN_BADGE[izin.status] || 'bg-slate-100 text-slate-700'}`}
+        >
+            {IZIN_LABEL[izin.status] || 'Pengajuan izin'}
+        </Link>
+    );
+}
+
+function LaporanMobileCard({ lap, label, openId, setOpenId, canConvert, canUnlock, onConvert, onUnlock }) {
+    const open = openId === lap.id;
+    const progress = lap.progress ?? {};
+
+    return (
+        <div className="p-4">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="font-mono text-sm font-bold text-text-primary">{lap.tanggal}</p>
+                    <p className="truncate text-sm font-semibold text-text-primary">{lap.pegawai?.nama_lengkap || '-'}</p>
+                    <p className="truncate text-xs text-text-secondary">{lap.unit || '-'}{lap.area ? ` / ${lap.area}` : ''}</p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-bold ${STATUS_BADGE[lap.status] || STATUS_BADGE.draft}`}>
+                        {lap.status === 'submitted' ? 'Terkirim' : 'Belum lengkap'}
+                    </span>
+                    {lap.unlocked_at && <span className="text-xs font-bold text-sky-700">Telat dibuka</span>}
+                </div>
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-secondary">
+                <span>Item {progress.item_done ?? lap.done}/{progress.item_total ?? lap.total}</span>
+                <span>Pos {progress.pos_done ?? 0}/{progress.pos_total ?? 0}</span>
+                <span>Fase {progress.round_done ?? 0}/{progress.round_total ?? 0}</span>
+                <span>{qualityText(lap)}</span>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2">
+                <button
+                    type="button"
+                    onClick={() => setOpenId(open ? null : lap.id)}
+                    aria-expanded={open}
+                    className="btn-secondary flex min-h-11 w-full items-center justify-between gap-2"
+                >
+                    {open ? 'Tutup detail' : 'Detail'}
+                    <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+                </button>
+                {canUnlock && lap.status !== 'submitted' && !lap.unlocked_at && (
+                    <button
+                        type="button"
+                        onClick={() => onUnlock(lap)}
+                        className="min-h-11 w-full rounded-lg bg-white px-3 text-sm font-bold text-amber-700 ring-1 ring-amber-200 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                    >
+                        Buka jalur telat
+                    </button>
+                )}
+            </div>
+
+            {open && (
+                <div className="mt-3 border-t border-border pt-3">
+                    <LaporanDetail lap={lap} label={label} canConvert={canConvert} onConvert={onConvert} />
+                </div>
+            )}
+        </div>
+    );
+}
 
 function EntryValidasi({ lapId, entry, idx }) {
     if (entry.verified_at) {
@@ -96,7 +196,7 @@ function LegacyDetail({ lap, label }) {
     );
 }
 
-function LaporanDetail({ lap, label }) {
+function LaporanDetail({ lap, label, canConvert = false, onConvert = () => {} }) {
     if (lap.legacy) {
         return (
             <div className="space-y-3 px-4 py-3">
@@ -172,8 +272,27 @@ function LaporanDetail({ lap, label }) {
                         <div>
                             <p className="font-semibold text-text-primary">{label.cek_absen}{cek.done_at ? ` (${cek.done_at.substring(0, 5)})` : ''}</p>
                             {(cek.entries ?? []).length > 0 ? (
-                                <ul className="mt-0.5 list-disc pl-5 text-text-secondary">
-                                    {cek.entries.map((e, i) => <li key={i}>{e.nama_guru} ({e.created_at?.substring(0, 5)}): {e.keterangan}</li>)}
+                                <ul className="mt-1 space-y-2 text-text-secondary">
+                                    {cek.entries.map((e, i) => (
+                                        <li key={i} className="break-words">
+                                            <p>{e.nama_guru} ({e.created_at?.substring(0, 5)}): {e.keterangan}</p>
+                                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                                                {e.pengajuan_izin ? (
+                                                    <IzinBadge izin={e.pengajuan_izin} />
+                                                ) : canConvert && lap.status === 'submitted' && e.guru_pegawai_id ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onConvert(lap, i, e)}
+                                                        className="btn-secondary min-h-11 w-full px-3 text-xs sm:w-auto"
+                                                    >
+                                                        Buat pengajuan izin
+                                                    </button>
+                                                ) : ! e.guru_pegawai_id ? (
+                                                    <span className="text-xs text-text-secondary">Guru manual, belum terhubung ke data pegawai.</span>
+                                                ) : null}
+                                            </div>
+                                        </li>
+                                    ))}
                                 </ul>
                             ) : <p className="text-xs text-text-secondary">Cek awal tercatat.</p>}
                         </div>
@@ -257,6 +376,82 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
     const [openId, setOpenId] = useState(null);
     const [unlockingId, setUnlockingId] = useState(null);
     const [konfirmasi, setKonfirmasi] = useState(null);
+    const [izinEntry, setIzinEntry] = useState(null);
+    const [izinForm, setIzinForm] = useState(EMPTY_IZIN);
+    const [izinError, setIzinError] = useState('');
+    const [izinSending, setIzinSending] = useState(false);
+
+    const canConvert = auth?.permissions?.includes('create_izin_from_piket');
+    const canUnlock = auth?.permissions?.includes('view_presensi');
+
+    const openIzin = (lap, index, entry) => {
+        setIzinError('');
+        setIzinForm({
+            ...EMPTY_IZIN,
+            tanggal_mulai: lap.tanggal,
+            tanggal_selesai: lap.tanggal,
+            alasan: entry.keterangan ? `Dari laporan piket: ${entry.keterangan}` : '',
+        });
+        setIzinEntry({ lap, index, entry });
+    };
+
+    const closeIzin = () => {
+        if (izinSending) return;
+        setIzinEntry(null);
+        setIzinError('');
+        setIzinForm(EMPTY_IZIN);
+    };
+
+    const ubahBukti = (event) => {
+        const file = event.target.files?.[0];
+        if (! file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            setIzinError('Ukuran bukti maksimal 5 MB.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            setIzinForm((prev) => ({ ...prev, bukti_foto: reader.result, bukti_nama: file.name }));
+            setIzinError('');
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const simpanIzin = (event) => {
+        event.preventDefault();
+        if (! izinEntry) return;
+
+        if (izinForm.alasan.trim().length < 10) {
+            setIzinError('Alasan minimal 10 karakter.');
+            return;
+        }
+        if (izinForm.jenis_izin === 'sakit' && ! izinForm.bukti_foto) {
+            setIzinError('Bukti surat dokter wajib diunggah untuk sakit.');
+            return;
+        }
+
+        setIzinError('');
+        setIzinSending(true);
+        router.post(route('laporan-piket.buat-izin', izinEntry.lap.id), {
+            entry_index: izinEntry.index,
+            jenis_izin: izinForm.jenis_izin,
+            tanggal_mulai: izinForm.tanggal_mulai,
+            tanggal_selesai: izinForm.tanggal_selesai,
+            alasan: izinForm.alasan,
+            bukti_foto: izinForm.bukti_foto,
+            dengan_surat_dokter: izinForm.dengan_surat_dokter,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIzinEntry(null);
+                setIzinForm(EMPTY_IZIN);
+            },
+            onError: (errors) => setIzinError(Object.values(errors || {}).flat()[0] || 'Gagal membuat pengajuan izin.'),
+            onFinish: () => setIzinSending(false),
+        });
+    };
 
     const bukaJalur = (lap) => {
         setUnlockingId(lap.id);
@@ -445,7 +640,23 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                         {laporan.length === 0 ? (
                             <p className="px-5 py-6 text-sm text-text-secondary">Tidak ada laporan pada periode ini. Ubah filter atau periode.</p>
                         ) : (
-                            <div className="table-wrap">
+                            <>
+                                <div className="divide-y divide-border lg:hidden">
+                                    {laporan.map((lap) => (
+                                        <LaporanMobileCard
+                                            key={lap.id}
+                                            lap={lap}
+                                            label={label}
+                                            openId={openId}
+                                            setOpenId={setOpenId}
+                                            canConvert={canConvert}
+                                            canUnlock={canUnlock}
+                                            onConvert={openIzin}
+                                            onUnlock={setKonfirmasi}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="hidden table-wrap lg:block">
                                 <table className="table-base">
                                     <thead>
                                         <tr>
@@ -514,14 +725,15 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                                                 </tr>
                                                 {openId === lap.id && (
                                                     <tr>
-                                                        <td colSpan={7} className="bg-surface/50"><LaporanDetail lap={lap} label={label} /></td>
+                                                        <td colSpan={9} className="bg-surface/50"><LaporanDetail lap={lap} label={label} canConvert={canConvert} onConvert={openIzin} /></td>
                                                     </tr>
                                                 )}
                                             </React.Fragment>
                                         ))}
                                     </tbody>
                                 </table>
-                            </div>
+                                </div>
+                            </>
                         )}
                     </div>
 
@@ -530,7 +742,21 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                             <div className="px-5 py-4 border-b border-border">
                                 <h3 className="section-title">Belum melapor ({belum.length})</h3>
                             </div>
-                            <div className="table-wrap">
+                            <div className="divide-y divide-border lg:hidden">
+                                {belum.map((b, i) => (
+                                    <div key={`${b.tanggal}-${b.pegawai?.id}-${i}`} className="p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="font-mono text-sm font-bold text-text-primary">{b.tanggal}</p>
+                                                <p className="truncate text-sm font-semibold text-text-primary">{b.pegawai?.nama_lengkap || '-'}</p>
+                                                <p className="truncate text-xs text-text-secondary">{b.unit || '-'}</p>
+                                            </div>
+                                            <p className="shrink-0 font-mono text-xs font-bold text-text-secondary">{b.jam}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="hidden table-wrap lg:block">
                                 <table className="table-base">
                                     <thead>
                                         <tr>
@@ -561,6 +787,128 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                     </p>
                 </div>
             </div>
+
+            <Modal show={izinEntry !== null} onClose={closeIzin} maxWidth="2xl" closeable={!izinSending}>
+                {izinEntry && (
+                    <form onSubmit={simpanIzin} className="flex max-h-[90dvh] flex-col">
+                        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+                            <div className="min-w-0">
+                                <h3 className="text-base font-bold text-text-primary">Buat pengajuan izin</h3>
+                                <p className="mt-0.5 break-words text-sm text-text-secondary">
+                                    {izinEntry.entry.nama_guru} - {izinEntry.lap.tanggal}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={closeIzin}
+                                disabled={izinSending}
+                                aria-label="Tutup form pengajuan izin"
+                                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4 overflow-y-auto px-5 py-4">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div className="sm:col-span-2">
+                                    <label htmlFor="izin-jenis" className="form-label">Jenis izin</label>
+                                    <select
+                                        id="izin-jenis"
+                                        value={izinForm.jenis_izin}
+                                        onChange={(e) => setIzinForm({ ...izinForm, jenis_izin: e.target.value })}
+                                        className="select-field min-h-11 text-base sm:text-sm"
+                                    >
+                                        <option value="izin">Izin</option>
+                                        <option value="sakit">Sakit</option>
+                                        <option value="cuti">Cuti</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="izin-mulai" className="form-label">Tanggal mulai</label>
+                                    <input
+                                        id="izin-mulai"
+                                        type="date"
+                                        value={izinForm.tanggal_mulai}
+                                        onChange={(e) => setIzinForm({ ...izinForm, tanggal_mulai: e.target.value })}
+                                        className="input-field min-h-11 text-base sm:text-sm"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="izin-selesai" className="form-label">Tanggal selesai</label>
+                                    <input
+                                        id="izin-selesai"
+                                        type="date"
+                                        value={izinForm.tanggal_selesai}
+                                        onChange={(e) => setIzinForm({ ...izinForm, tanggal_selesai: e.target.value })}
+                                        className="input-field min-h-11 text-base sm:text-sm"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="izin-alasan" className="form-label">Alasan</label>
+                                <textarea
+                                    id="izin-alasan"
+                                    rows={3}
+                                    value={izinForm.alasan}
+                                    onChange={(e) => setIzinForm({ ...izinForm, alasan: e.target.value })}
+                                    className="input-field min-h-24 text-base sm:text-sm"
+                                    maxLength={500}
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label htmlFor="izin-bukti" className="form-label">
+                                    Bukti surat {izinForm.jenis_izin === 'sakit' ? '(wajib)' : '(opsional)'}
+                                </label>
+                                <input
+                                    id="izin-bukti"
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    onChange={ubahBukti}
+                                    className="block min-h-11 w-full rounded-lg border border-border bg-surface p-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary"
+                                />
+                                {izinForm.bukti_nama && <p className="mt-1 break-all text-xs text-text-secondary">{izinForm.bukti_nama}</p>}
+                                {izinForm.bukti_foto && (
+                                    <img
+                                        src={izinForm.bukti_foto}
+                                        alt="Pratinjau bukti surat"
+                                        className="mt-2 max-h-48 w-full rounded-lg object-contain ring-1 ring-border"
+                                    />
+                                )}
+                            </div>
+
+                            {izinForm.jenis_izin === 'sakit' && (
+                                <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium text-text-primary">
+                                    <input
+                                        type="checkbox"
+                                        checked={izinForm.dengan_surat_dokter}
+                                        onChange={(e) => setIzinForm({ ...izinForm, dengan_surat_dokter: e.target.checked })}
+                                        className="h-5 w-5 rounded border-border text-primary focus:ring-primary"
+                                    />
+                                    Surat dokter sudah diterima
+                                </label>
+                            )}
+
+                            {izinError && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{izinError}</p>}
+                        </div>
+
+                        <div className="flex flex-col-reverse gap-2 border-t border-border px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:pb-4">
+                            <button type="button" onClick={closeIzin} disabled={izinSending} className="btn-secondary min-h-11 w-full sm:w-auto">
+                                Batal
+                            </button>
+                            <button type="submit" disabled={izinSending} className="btn-primary min-h-11 w-full sm:w-auto">
+                                {izinSending ? 'Menyimpan...' : 'Simpan pengajuan'}
+                            </button>
+                        </div>
+                    </form>
+                )}
+            </Modal>
 
             <Modal show={konfirmasi !== null} onClose={() => setKonfirmasi(null)} maxWidth="lg">
                 {konfirmasi && (

@@ -22,6 +22,8 @@ class PengajuanIzin extends Model
         'dihitung_hadir_kcd',
         'dihitung_setengah',
         'dengan_surat_dokter',
+        'sumber',
+        'created_by',
     ];
 
     protected $guarded = [
@@ -64,6 +66,11 @@ class PengajuanIzin extends Model
     public function pegawai()
     {
         return $this->belongsTo(Pegawai::class);
+    }
+
+    public function createdByUser()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function approverL1()

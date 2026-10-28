@@ -35,7 +35,9 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
         ? 'superadmin'
         : auth.roles?.includes('admin_unit')
             ? 'admin_unit'
-            : 'pegawai';
+            : auth.roles?.includes('tu_kependidikan')
+                ? 'tu_kependidikan'
+                : 'pegawai';
 
     const bottomNavItems = [];
     if (permissions.includes('view_dashboard')) {
@@ -108,7 +110,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     if (permissions.includes('view_presensi')) modulUtama.push({ name: 'Lembur', href: route('lembur.index'), icon: 'M12 8v4l3 3M22 12a10 10 0 11-20 0 10 10 0 0120 0M5 3L2 6M19 3l3 3' });
     if (permissions.includes('view_presensi')) modulUtama.push({ name: 'Absen Siswa', href: route('absen-siswa.index'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
     if (permissions.includes('view_absen_siswa')) modulUtama.push({ name: 'Laporan Absen Siswa', href: route('laporan.absen-siswa'), icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
-    if (permissions.includes('view_presensi')) modulUtama.push({ name: 'Laporan Piket', href: route('laporan.piket'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
+    if (permissions.includes('view_presensi') || permissions.includes('view_piket')) modulUtama.push({ name: 'Laporan Piket', href: route('laporan.piket'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
     if (permissions.includes('view_kpi') || permissions.includes('view_kpi_self')) modulUtama.push({ name: 'KPI Pegawai', href: route('kpi.index'), icon: 'M4 19V5m0 14h16M8 15V9m4 6V5m4 10v-4' });
     if (permissions.includes('view_izin') || auth.is_approver) modulUtama.push({ name: 'Pengajuan Izin', href: route('pengajuan-izin.index'), icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.293.707l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
     if (permissions.includes('view_izin') || auth.is_approver) modulUtama.push({ name: 'Koreksi Presensi', href: route('koreksi-presensi.index'), icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' });
@@ -231,13 +233,16 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                                             <div className="font-medium text-white text-sm truncate">{user.name}</div>
                                             <div className={`text-[11px] mt-px truncate ${role === 'superadmin' ? 'text-accent' :
                                                 role === 'admin_unit' ? 'text-success' :
+                                                    role === 'tu_kependidikan' ? 'text-sky-300' :
                                                     'text-gray-400'
                                                 }`}>
                                                 {role === 'superadmin'
                                                     ? 'Superadmin'
                                                     : role === 'admin_unit'
                                                         ? 'Admin Unit'
-                                                        : ([...new Set((user.pegawai?.jabatans || []).map((j) => j.nama))].join(', ') || 'Pegawai')}
+                                                        : role === 'tu_kependidikan'
+                                                            ? 'TU Kependidikan'
+                                                            : ([...new Set((user.pegawai?.jabatans || []).map((j) => j.nama))].join(', ') || 'Pegawai')}
                                             </div>
                                         </div>
                                         <svg className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

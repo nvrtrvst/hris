@@ -29,8 +29,10 @@ class RolePermissionSeeder extends Seeder
             'view_jadwal',
             'manage_jadwal', // tambah/edit/generate/hapus jadwal (admin_unit & staf yang ditunjuk)
             'view_presensi',
+            'view_piket',
             'view_absen_siswa',
             'view_izin',
+            'create_izin_from_piket',
             'view_payroll',
             'view_kpi',
             'view_kpi_self',
@@ -64,6 +66,7 @@ class RolePermissionSeeder extends Seeder
             'view_presensi',
             'view_absen_siswa',
             'view_izin',
+            'create_izin_from_piket',
             'view_kpi',
             'evaluate_kpi',
             'manage_reminders',
@@ -71,6 +74,14 @@ class RolePermissionSeeder extends Seeder
             // Payroll TIDAK lagi di role admin_unit — dialihkan ke jabatan
             // dgn flag `is_payroll_operator` (mis. Bendahara). Akses payroll
             // = operator jabatan (semua) + superadmin (view saja).
+        ]);
+
+        $roleTu = Role::firstOrCreate(['name' => 'tu_kependidikan', 'guard_name' => 'web']);
+        $roleTu->syncPermissions([
+            'view_dashboard',
+            'view_piket',
+            'view_izin',
+            'create_izin_from_piket',
         ]);
 
         $rolePegawai = Role::firstOrCreate(['name' => 'pegawai', 'guard_name' => 'web']);
