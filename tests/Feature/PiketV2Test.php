@@ -1045,7 +1045,7 @@ class PiketV2Test extends TestCase
             ->assertInertia(fn (Assert $page) => $page->has('laporan', 1));
 
         $this->actingAs($this->admin, 'web_admin')
-            ->get(route('laporan.piket', ['start_date' => '2026-10-26', 'end_date' => '2026-10-26', 'kualitas' => 'ronde_terlewat']))
+            ->get(route('laporan.piket', ['start_date' => '2026-10-26', 'end_date' => '2026-10-26', 'kualitas' => 'fase_terlewat']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->has('laporan', 0));
     }

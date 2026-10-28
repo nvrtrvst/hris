@@ -707,8 +707,8 @@ class PiketService
             $window = $round->jendela_mulai.'-'.$round->jendela_selesai;
 
             return $now < $round->jendela_mulai
-                ? 'Ronde '.$round->putaran.' belum dibuka ('.$window.')'
-                : 'Ronde '.$round->putaran.' belum diselesaikan ('.$window.')';
+                ? 'Fase '.$round->putaran.' belum dibuka ('.$window.')'
+                : 'Fase '.$round->putaran.' belum diselesaikan ('.$window.')';
         })->implode('; ');
 
         return $label.'.';

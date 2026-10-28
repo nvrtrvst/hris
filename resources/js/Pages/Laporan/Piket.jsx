@@ -148,11 +148,11 @@ function LaporanDetail({ lap, label }) {
 
             {lap.rounds?.length > 0 && (
                 <section>
-                    <h4 className="text-xs font-bold uppercase tracking-wide text-text-secondary">Ronde</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-wide text-text-secondary">Fase</h4>
                     <ul className="mt-1.5 space-y-1">
                         {lap.rounds.map((r) => (
                             <li key={r.id} className="flex flex-wrap items-center gap-x-2">
-                                <span className="font-semibold text-text-primary">Ronde {r.putaran}</span>
+                                <span className="font-semibold text-text-primary">Fase {r.putaran}</span>
                                 {r.area && <span className="text-text-secondary">{r.area}</span>}
                                 <span className="text-xs text-text-muted">{r.jendela_mulai}–{r.jendela_selesai}</span>
                                 <span className={r.selesai_at ? 'text-emerald-700' : 'text-rose-600'}>
@@ -234,7 +234,7 @@ function LaporanDetail({ lap, label }) {
 
             <div className="flex flex-wrap items-center gap-3 border-t border-border pt-2 text-xs text-text-secondary">
                 {lap.submitted_at && <span>Dikirim {lap.submitted_at}</span>}
-                <span>Item {progress.item_done}/{progress.item_total} · Pos {progress.pos_done}/{progress.pos_total} · Ronde {progress.round_done}/{progress.round_total}</span>
+                <span>Item {progress.item_done}/{progress.item_total} · Pos {progress.pos_done}/{progress.pos_total} · Fase {progress.round_done}/{progress.round_total}</span>
                 {lap.block_reason && <span className="font-semibold text-rose-700">{lap.block_reason}</span>}
                 <Link href={route('piket.index', { tanggal: lap.tanggal })} className="ml-auto font-bold text-primary underline-offset-2 hover:underline">
                     Ke Monitoring
@@ -340,7 +340,7 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
 
                                     <option value="pos_belum">Pos belum</option>
 
-                                    <option value="ronde_terlewat">Ronde terlewat</option>
+                                    <option value="fase_terlewat">Fase terlewat</option>
 
                                     <option value="perlu_cek">Perlu cek</option>
 
@@ -397,7 +397,7 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                                                     {(lap.pos_belum?.length ?? 0) > 0 && `Pos belum: ${lap.pos_belum.join(', ')} `}
 
 
-                                                    {(lap.rounds ?? []).some((r) => !r.selesai_at) && 'Ronde terlewat '}
+                                                    {(lap.rounds ?? []).some((r) => !r.selesai_at) && 'Fase terlewat '}
 
 
                                                     {lap.perlu_cek > 0 && 'Perlu cek'}
@@ -456,7 +456,7 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
 
                                             <th>Pos</th>
 
-                                            <th>Ronde</th>
+                                            <th>Fase</th>
 
                                             <th>Status</th>
 
@@ -484,7 +484,7 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                                                     </td>
                                                     <td className="text-xs text-text-secondary">
 
-                                                        {(lap.pos_belum?.length ?? 0) > 0 ? 'Pos belum' : (lap.rounds ?? []).some((r) => !r.selesai_at) ? 'Ronde lewat' : lap.perlu_cek > 0 ? 'Perlu cek' : '—'}
+                                                        {(lap.pos_belum?.length ?? 0) > 0 ? 'Pos belum' : (lap.rounds ?? []).some((r) => !r.selesai_at) ? 'Fase lewat' : lap.perlu_cek > 0 ? 'Perlu cek' : '—'}
 
                                                     </td>
                                                     <td>

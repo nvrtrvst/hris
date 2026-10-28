@@ -452,7 +452,7 @@ function RoundCard({ round, hhmm, sending, onDone }) {
         <div className="rounded-xl border border-slate-200 px-3 py-2">
             <div className="flex items-start justify-between gap-2">
                 <div>
-                    <p className="text-sm font-bold text-slate-800">Ronde {round.putaran}{round.area ? ` · ${round.area}` : ''}</p>
+                    <p className="text-sm font-bold text-slate-800">Fase {round.putaran}{round.area ? ` · ${round.area}` : ''}</p>
                     <p className="text-[11px] text-slate-500">Jendela {round.jendela_mulai}–{round.jendela_selesai}</p>
                 </div>
                 <span className={`shrink-0 text-[11px] font-bold ${selesai ? 'text-emerald-700' : terlambat ? 'text-rose-600' : 'text-slate-500'}`}>
@@ -476,7 +476,7 @@ function RoundCard({ round, hhmm, sending, onDone }) {
                         onClick={() => onDone(round.id, terlambat ? alasan : null)}
                         className="min-h-11 w-full rounded-xl bg-primary text-sm font-bold text-white disabled:opacity-50"
                     >
-                        Selesaikan ronde
+                        Selesaikan fase
                     </button>
                 </div>
             )}
@@ -648,7 +648,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     const blockerTarget = missingItems.some((item) => item.kode === 'absen_siswa') || missingAbsen.length > 0
         ? 'absen-siswa'
         : pendingRounds.length > 0
-            ? 'ronde-area'
+            ? 'fase-area'
             : pendingPos.length > 0
                 ? 'pos-gerbang'
                 : null;
@@ -668,7 +668,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
         : missingItems.length > 0
             ? `Lengkapi: ${missingItems.map((item) => item.label).join(', ')}`
             : pendingRounds.length > 0
-                ? `Selesaikan ${pendingRounds.map((r) => `Ronde ${r.putaran}`).join(' & ')}`
+                ? `Selesaikan ${pendingRounds.map((r) => `Fase ${r.putaran}`).join(' & ')}`
                 : pendingPos.length > 0
                     ? `Lengkapi pos: ${pendingPos.join(', ')}`
                     : blockReason
@@ -798,7 +798,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                             <p className="break-words"><span className="font-bold text-text-primary">Kelas belum diabsen:</span> {missingAbsen.join(', ')}</p>
                         )}
                         {pendingRounds.length > 0 && (
-                            <p className="break-words"><span className="font-bold text-text-primary">Penghalang:</span> {pendingRounds.map((r) => `Ronde ${r.putaran} (${r.jendela_mulai}-${r.jendela_selesai})`).join(', ')} belum selesai</p>
+                            <p className="break-words"><span className="font-bold text-text-primary">Penghalang:</span> {pendingRounds.map((r) => `Fase ${r.putaran} (${r.jendela_mulai}-${r.jendela_selesai})`).join(', ')} belum selesai</p>
                         )}
                         {pendingPos.length > 0 && (
                             <p className="break-words"><span className="font-bold text-text-primary">Pos belum:</span> {pendingPos.join(', ')}</p>
@@ -974,8 +974,8 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                         <SeksiHead icon={BookOpen} title="Jam Belajar" win={windows.kbm} state={done('kelas_kosong') && done('buku') && done('insiden') ? 'done' : kbmMulai ? 'open' : 'locked'} />
                         <Card className="space-y-4">
                             {v2 && areaRounds.length > 0 && (
-                                <div id="ronde-area" className="scroll-mt-24 space-y-2 border-b border-slate-100 pb-3">
-                                    <p className="text-sm font-bold text-slate-800">Ronde keliling area</p>
+                                <div id="fase-area" className="scroll-mt-24 space-y-2 border-b border-slate-100 pb-3">
+                                    <p className="text-sm font-bold text-slate-800">Fase keliling area</p>
                                     {areaRounds.map((r) => (
                                         <RoundCard key={r.id} round={r} hhmm={hhmm} sending={sending} onDone={kirimRound} />
                                     ))}

@@ -28,7 +28,7 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
         if (selesai) {
             return (
                 <p className="text-xs text-text-muted">
-                    Ronde {round.putaran}{round.area ? ` · ${round.area}` : ''}: {round.selesai_at} ({round.status})
+                    Fase {round.putaran}{round.area ? ` · ${round.area}` : ''}: {round.selesai_at} ({round.status})
                 </p>
             );
         }
@@ -36,11 +36,11 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
         return (
             <div className="flex flex-col gap-2 rounded-lg border border-border px-3 py-2 sm:flex-row sm:items-center">
                 <span className="min-w-0 text-xs">
-                    <b>Ronde {round.putaran}</b>{round.area ? ` · ${round.area}` : ''} · {round.jendela_mulai}–{round.jendela_selesai}
+                    <b>Fase {round.putaran}</b>{round.area ? ` · ${round.area}` : ''} · {round.jendela_mulai}–{round.jendela_selesai}
                 </span>
                 <input
                     className="input-field h-11 flex-1 text-xs"
-                    placeholder="Alasan buka ronde (wajib)"
+                    placeholder="Alasan buka fase (wajib)"
                     value={alasan}
                     onChange={(e) => setAlasan(e.target.value)}
                 />
@@ -50,7 +50,7 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                     onClick={() => router.post(route('piket.round.buka', round.id), { alasan }, { preserveScroll: true })}
                     className="btn-secondary btn-sm"
                 >
-                    Buka ronde
+                    Buka fase
                 </button>
             </div>
         );
@@ -76,7 +76,7 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
 
                 <dl className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                     <div><dt className="text-text-muted">Pos belum</dt><dd className="font-semibold">{sesi.pos_belum.length ? sesi.pos_belum.join(', ') : '—'}</dd></div>
-                    <div><dt className="text-text-muted">Ronde</dt><dd className="font-semibold">{sesi.round_terlewat} terlewat</dd></div>
+                    <div><dt className="text-text-muted">Fase</dt><dd className="font-semibold">{sesi.round_terlewat} terlewat</dd></div>
                     <div><dt className="text-text-muted">Temuan</dt><dd className="font-semibold">{sesi.temuan}</dd></div>
                     <div><dt className="text-text-muted">Insiden</dt><dd className="font-semibold">{sesi.insiden}</dd></div>
                 </dl>
