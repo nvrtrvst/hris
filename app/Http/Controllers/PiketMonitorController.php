@@ -34,7 +34,10 @@ class PiketMonitorController extends Controller
             $wajib = PiketItemTemplate::where('unit_sekolah_id', $sesi->unit_sekolah_id)->where('aktif', true)->where('wajib', true)->count();
             $posBelum = PiketService::unservedRequiredPos($sesi);
             $rounds = PiketService::rounds($sesi);
-            $roundTerlewat = collect($rounds)->filter(fn ($r) => $r['selesai_at'] === null && now()->format('H:i') > $r['jendela_selesai'])->count();
+            $isPast = $sesi->tanggal->lt(now()->startOfDay());
+            $now = now()->format('H:i');
+            $roundTerlewat = collect($rounds)->filter(fn ($r) => $r['selesai_at'] === null
+                && ($isPast || ($sesi->tanggal->isToday() && $now > $r['jendela_selesai'])))->count();
             $insiden = 0;
             $temuan = 0;
 

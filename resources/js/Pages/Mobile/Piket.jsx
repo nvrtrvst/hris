@@ -631,6 +631,8 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     const templates = piket.templates ?? [];
     const rounds = piket.rounds ?? [];
     const areaRounds = area ? rounds.filter((r) => r.area_id === area.id) : [];
+    const roundDone = areaRounds.filter((r) => Boolean(r.selesai_at)).length;
+    const roundTotal = areaRounds.length;
     const tplAktif = (kode) => !v2 || templates.some((t) => t.kode === kode);
     const items = laporan?.items ?? {};
     const done = (kode) => Boolean(items[kode]?.done_at);
@@ -675,7 +677,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                     : blockReason
                         ? 'Selesaikan penghalang dulu'
                         : 'Kirim laporan piket';
-    const errMsg = locErr || errors.geofence || errors.kode || errors.laporan || errors.guru_pegawai_id || errors.keterangan_absen;
+    const errMsg = locErr || errors.geofence || errors.kode || errors.laporan || errors.round || errors.guru_pegawai_id || errors.keterangan_absen;
 
     const kirim = async (payload, { geo = true } = {}) => {
         setLocErr(null);
@@ -684,6 +686,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
             const pos = geo ? await getPos() : {};
             router.post(route('presensi.piket.item'), { ...payload, ...pos }, {
                 preserveScroll: true,
+                onError: (errs) => setLocErr(Object.values(errs || {}).flat()[0] || 'Gagal menyimpan piket.'),
                 onFinish: () => setSending(false),
             });
         } catch (e) {
@@ -699,6 +702,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
             const geo = await getPos();
             router.post(route('presensi.piket.pos'), { pos_id: posId, ...payload, ...geo }, {
                 preserveScroll: true,
+                onError: (errs) => setLocErr(Object.values(errs || {}).flat()[0] || 'Gagal menyimpan piket.'),
                 onFinish: () => setSending(false),
             });
         } catch (e) {
@@ -714,6 +718,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
             const geo = await getPos();
             router.post(route('presensi.piket.round', roundId), { alasan, ...geo }, {
                 preserveScroll: true,
+                onError: (errs) => setLocErr(Object.values(errs || {}).flat()[0] || 'Gagal menyimpan piket.'),
                 onFinish: () => setSending(false),
             });
         } catch (e) {
@@ -775,6 +780,9 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
             <Card className="mb-4">
                 <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-bold text-slate-800">Progress {doneCount}/{wajib.length}</p>
+                    {v2 && roundTotal > 0 && (
+                        <p className="mt-0.5 text-xs font-semibold text-slate-600">Item {doneCount}/{wajib.length} · Fase {roundDone}/{roundTotal}</p>
+                    )}
                     {submitted && <Badge tone="emerald" icon={CheckCircle2}>Terkirim</Badge>}
                 </div>
                 <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label="Progres checklist piket" aria-valuemin={0} aria-valuemax={wajib.length} aria-valuenow={doneCount} aria-valuetext={`${doneCount} dari ${wajib.length} selesai`}>

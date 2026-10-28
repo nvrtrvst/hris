@@ -702,13 +702,22 @@ class PiketService
             return null;
         }
 
+        $tanggal = $laporan->tanggal instanceof Carbon
+            ? $laporan->tanggal->copy()->startOfDay()
+            : Carbon::parse($laporan->tanggal)->startOfDay();
+        $today = Carbon::today();
+        $isPast = $tanggal->lt($today);
+        $isToday = $tanggal->isSameDay($today);
         $now = Carbon::now()->format('H:i');
-        $label = $belum->map(function ($round) use ($now) {
+
+        $label = $belum->map(function ($round) use ($isPast, $isToday, $now) {
             $window = $round->jendela_mulai.'-'.$round->jendela_selesai;
 
-            return $now < $round->jendela_mulai
-                ? 'Fase '.$round->putaran.' belum dibuka ('.$window.')'
-                : 'Fase '.$round->putaran.' belum diselesaikan ('.$window.')';
+            if ($isPast || ($isToday && $now > $round->jendela_selesai)) {
+                return 'Fase '.$round->putaran.' belum diselesaikan ('.$window.')';
+            }
+
+            return 'Fase '.$round->putaran.' belum dibuka ('.$window.')';
         })->implode('; ');
 
         return $label.'.';
