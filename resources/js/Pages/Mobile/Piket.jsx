@@ -652,13 +652,6 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
             : pendingPos.length > 0
                 ? 'pos-gerbang'
                 : null;
-    const submitLabel = missingItems.length > 0
-        ? `Lengkapi: ${missingItems.map((item) => item.label).join(', ')}`
-        : pendingRounds.length > 0
-            ? `Selesaikan ${pendingRounds.map((r) => `Ronde ${r.putaran}`).join(' & ')}`
-            : pendingPos.length > 0
-                ? `Lengkapi pos: ${pendingPos.join(', ')}`
-                : 'Kirim laporan piket';
     const lihatYangBelum = () => {
         if (blockerTarget) document.getElementById(blockerTarget)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
@@ -670,6 +663,17 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     const submitAfter = piket.submit_after ?? windows.sore[0];
     const teachingWindows = piket.teaching_windows ?? [];
     const soreMulai = hhmm >= submitAfter;
+    const submitLabel = !soreMulai
+        ? `Kirim dibuka ${submitAfter}`
+        : missingItems.length > 0
+            ? `Lengkapi: ${missingItems.map((item) => item.label).join(', ')}`
+            : pendingRounds.length > 0
+                ? `Selesaikan ${pendingRounds.map((r) => `Ronde ${r.putaran}`).join(' & ')}`
+                : pendingPos.length > 0
+                    ? `Lengkapi pos: ${pendingPos.join(', ')}`
+                    : blockReason
+                        ? 'Selesaikan penghalang dulu'
+                        : 'Kirim laporan piket';
     const errMsg = locErr || errors.geofence || errors.kode || errors.laporan || errors.guru_pegawai_id || errors.keterangan_absen;
 
     const kirim = async (payload, { geo = true } = {}) => {
