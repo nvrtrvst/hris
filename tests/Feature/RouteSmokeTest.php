@@ -72,6 +72,7 @@ class RouteSmokeTest extends TestCase
     /** Route yang bergantung pada API eksternal (keuangan) — bukan bug 500. */
     private const MOBILE_EXCLUDE = [
         'presensi.jadwal.siswa', // butuh integrasi keuangan; tanpa itu 502 (by design)
+        'presensi.piket.assignment-version', // butuh jadwal piket aktif
     ];
 
     /**

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -86,7 +86,7 @@ const ringkasStatus = (details = []) => {
     return URUT_STATUS.filter((s) => hitung[s]).map((s) => `${STATUS_SISWA[s].label} ${hitung[s]}`).join(' · ');
 };
 
-function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitted }) {
+function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitted, coverage = null, banner = false, onReload }) {
     const [daftarKelas, setDaftarKelas] = useState([]);
     const [loadingKelas, setLoadingKelas] = useState(false);
     const [selected, setSelected] = useState(null);
@@ -195,10 +195,6 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                     setKonfirmasi(null);
                     setLastSaved(null);
                     setAlasan('');
-                    router.post(route('presensi.piket.item'), { kode: 'absen_siswa', mode: 'centang', ...pos }, {
-                        preserveScroll: true,
-                        onError: (errs) => setErr(Object.values(errs || {}).flat()[0] || 'Absen tersimpan, tetapi checklist gagal diperbarui.'),
-                    });
                 },
                 onError: (errs) => setErr(Object.values(errs || {}).flat()[0] || 'Gagal menyimpan absen siswa.'),
                 onFinish: () => setSaving(false),
@@ -231,6 +227,27 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                 <p className="text-sm font-bold text-slate-800">Absen siswa</p>
                 {doneItem && <Badge tone="emerald" icon={CheckCircle2}>{doneItem.done_at?.substring(0, 5)}</Badge>}
             </div>
+
+            {coverage?.assigned_count > 0 && (
+                <p className="mt-1 text-[11px] font-semibold text-slate-600">
+                    Kelas Anda {coverage.completed_count}/{coverage.assigned_count} selesai
+                </p>
+            )}
+
+            {coverage?.assigned_count === 0 && !doneItem && (
+                <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    Belum ada kelas yang ditugaskan untuk Anda. Hubungi admin jika ini tidak sesuai.
+                </p>
+            )}
+
+            {banner && (
+                <div role="status" aria-live="polite" className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+                    <span className="min-w-0">Pembagian kelas diperbarui. Muat ulang tugas untuk melihat kelas terbaru.</span>
+                    <button type="button" onClick={onReload} className="min-h-11 shrink-0 rounded-lg bg-white px-2.5 font-bold text-primary ring-1 ring-sky-200 active:scale-95">
+                        Muat ulang tugas
+                    </button>
+                </div>
+            )}
 
             {!boleh && !doneItem && (
                 <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Dibuka sejak pagi.</p>
@@ -270,7 +287,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                         </div>
                     )}
 
-            {!submitted && boleh && !selected && (
+            {!submitted && boleh && !selected && coverage?.assigned_count !== 0 && (
                 <div className="mt-2 space-y-2">
                     <button type="button" onClick={muatKelas} className="min-h-12 w-full rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95">
                         {loadingKelas ? 'Memuat kelas...' : sesiTersimpan.length > 0 ? 'Absen kelas lain' : 'Pilih kelas'}
@@ -495,6 +512,56 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     const kkSlot = slotKosong.find((s) => String(s.jadwal_id) === String(kkForm.slot_jadwal_id));
     const kkManual = kkForm.slot_jadwal_id === 'manual' || slotKosong.length === 0;
     const [insidenForm, setInsidenForm] = useState({ jenis_insiden: '', tindakan: '' });
+    const [assignmentVersion, setAssignmentVersion] = useState(piket?.assignment_version ?? 1);
+    const [assignmentBanner, setAssignmentBanner] = useState(false);
+
+    useEffect(() => {
+        if (piket?.assignment_version) {
+            setAssignmentVersion(piket.assignment_version);
+            setAssignmentBanner(false);
+        }
+    }, [piket?.assignment_version]);
+
+    useEffect(() => {
+        if (!piket || piket.laporan?.status === 'submitted') return undefined;
+
+        let cancelled = false;
+        const check = async () => {
+            if (document.visibilityState !== 'visible') return;
+            try {
+                const response = await fetch(route('presensi.piket.assignment-version'), {
+                    headers: { Accept: 'application/json' },
+                });
+                if (!response.ok) return;
+                const data = await response.json();
+                if (!cancelled && Number(data.version) !== Number(assignmentVersion)) {
+                    setAssignmentBanner(true);
+                }
+            } catch {
+                // Abaikan gangguan jaringan; banner hanya untuk perubahan pembagian.
+            }
+        };
+
+        const timer = window.setInterval(check, 5 * 60 * 1000);
+        const onVisibility = () => {
+            if (document.visibilityState === 'visible') check();
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
+    }, [piket, assignmentVersion]);
+
+    const reloadTugas = () => {
+        router.reload({
+            only: ['piket', 'guruUnitAll', 'absensiSiswa'],
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
 
     if (!piket) {
         if (butuhMasuk) {
@@ -781,11 +848,15 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                             )}
                             {tplAktif('absen_siswa') && (
                             <AbsenSiswaCard
+                                key={assignmentVersion}
                                 jadwalId={slot.id}
                                 sesiTersimpan={absensiSiswa}
                                 doneItem={items.absen_siswa}
                                 boleh={hhmm >= windows.pagi[0]}
                                 submitted={submitted}
+                                coverage={piket.v2 ? (piket.absen_coverage || null) : null}
+                                banner={assignmentBanner}
+                                onReload={reloadTugas}
                             />
                             )}
                         </Card>

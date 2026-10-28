@@ -12,6 +12,8 @@ use App\Models\PengajuanIzin;
 use App\Models\PiketArea;
 use App\Models\PiketItemTemplate;
 use App\Models\PiketPenugasan;
+use App\Models\PiketPetugas;
+use App\Models\PiketPetugasKelas;
 use App\Models\PiketPos;
 use App\Models\PiketRound;
 use App\Models\PiketSesi;
@@ -850,6 +852,156 @@ class PiketV2Test extends TestCase
                 ->has('absensiSiswa', 1)
                 ->where('absensiSiswa.0.class_label', '1 Kelas 1')
             );
+    }
+
+    public function test_pembagian_absen_round_robin_tiga_petugas(): void
+    {
+        Carbon::setTestNow('2026-10-26 07:00:00');
+        $a = $this->pegawai('Petugas A');
+        $b = $this->pegawai('Petugas B');
+        $c = $this->pegawai('Petugas C');
+        $this->masuk($a);
+        $this->masuk($b);
+        $this->masuk($c);
+        $this->jadwal($a);
+
+        foreach ([$a, $b, $c] as $petugas) {
+            PiketPenugasan::create([
+                'unit_sekolah_id' => $this->unit->id,
+                'tahun_ajaran' => '2026/2027',
+                'semester' => 1,
+                'pegawai_id' => $petugas->id,
+                'area_id' => $this->area->id,
+                'peran' => 'area',
+                'aktif' => true,
+            ]);
+        }
+
+        foreach (['K1', 'K2', 'K3', 'K4', 'K5', 'K6'] as $label) {
+            DB::table('piket_area_kelas')->insert([
+                'unit_sekolah_id' => $this->unit->id,
+                'area_id' => $this->area->id,
+                'kelas_label' => $label,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $sesi = PiketService::sessionFor($a, $this->jadwal($a));
+        PiketService::ensureAbsenAssignments($sesi);
+
+        $this->assertSame(6, PiketPetugasKelas::where('sesi_id', $sesi->id)->count());
+        $this->assertSame(2, PiketPetugasKelas::where('sesi_id', $sesi->id)->where('petugas_id', $a->id)->count());
+        $this->assertSame(2, PiketPetugasKelas::where('sesi_id', $sesi->id)->where('petugas_id', $b->id)->count());
+        $this->assertSame(2, PiketPetugasKelas::where('sesi_id', $sesi->id)->where('petugas_id', $c->id)->count());
+    }
+
+    public function test_kelas_petugas_tidak_hadir_dialihkan_ke_petugas_hadir(): void
+    {
+        Carbon::setTestNow('2026-10-26 09:00:00');
+        $a = $this->pegawai('Petugas A');
+        $b = $this->pegawai('Petugas B');
+        $c = $this->pegawai('Petugas C');
+        $this->masuk($a);
+        $this->masuk($b);
+        $this->jadwal($a);
+
+        foreach ([$a, $b, $c] as $petugas) {
+            PiketPenugasan::create([
+                'unit_sekolah_id' => $this->unit->id,
+                'tahun_ajaran' => '2026/2027',
+                'semester' => 1,
+                'pegawai_id' => $petugas->id,
+                'area_id' => $this->area->id,
+                'peran' => 'area',
+                'aktif' => true,
+            ]);
+        }
+
+        foreach (['K1', 'K2', 'K3', 'K4', 'K5', 'K6'] as $label) {
+            DB::table('piket_area_kelas')->insert([
+                'unit_sekolah_id' => $this->unit->id,
+                'area_id' => $this->area->id,
+                'kelas_label' => $label,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $sesi = PiketService::sessionFor($a, $this->jadwal($a));
+        PiketService::ensureAbsenAssignments($sesi);
+
+        $this->assertTrue(PiketService::reassignAbsenIfNeeded($sesi));
+
+        $this->assertSame('tidak_hadir', PiketPetugas::where('sesi_id', $sesi->id)->where('pegawai_id', $c->id)->value('status'));
+        $this->assertSame(0, PiketPetugasKelas::where('sesi_id', $sesi->id)->where('petugas_id', $c->id)->count());
+        $this->assertSame(6, PiketPetugasKelas::where('sesi_id', $sesi->id)->count());
+        $this->assertSame(3, PiketPetugasKelas::where('sesi_id', $sesi->id)->where('petugas_id', $a->id)->count());
+        $this->assertSame(3, PiketPetugasKelas::where('sesi_id', $sesi->id)->where('petugas_id', $b->id)->count());
+    }
+
+    public function test_absen_siswa_baru_selesai_setelah_semua_kelas_tersimpan(): void
+    {
+        Carbon::setTestNow('2026-10-26 10:00:00');
+        $piket = $this->pegawai('Petugas Piket');
+        $this->masuk($piket);
+        $jadwal = $this->jadwal($piket);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $piket->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+        foreach (['K1', 'K2'] as $label) {
+            DB::table('piket_area_kelas')->insert([
+                'unit_sekolah_id' => $this->unit->id,
+                'area_id' => $this->area->id,
+                'kelas_label' => $label,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $sesi = PiketService::sessionFor($piket, $jadwal);
+        PiketService::ensureAbsenAssignments($sesi);
+
+        $payload = fn (string $class) => [
+            'class_id' => $class,
+            'class_label' => $class,
+            'siswa' => [['nis' => '001', 'nama' => 'Siswa', 'status' => 'hadir']],
+            ...$this->geo(),
+        ];
+
+        $this->actingAs($piket->user, 'web_mobile')
+            ->post(route('presensi.piket.absen-siswa'), $payload('K1'))
+            ->assertRedirect();
+
+        $laporan = LaporanPiket::where('pegawai_id', $piket->id)->firstOrFail();
+        $this->assertNull($laporan->item('absen_siswa')['done_at'] ?? null);
+
+        $this->actingAs($piket->user, 'web_mobile')
+            ->post(route('presensi.piket.absen-siswa'), $payload('K2'))
+            ->assertRedirect();
+
+        $laporan->refresh();
+        $this->assertNotNull($laporan->item('absen_siswa')['done_at'] ?? null);
+    }
+
+    public function test_version_endpoint_mengembalikan_versi_pembagian(): void
+    {
+        Carbon::setTestNow('2026-10-26 09:00:00');
+        $piket = $this->pegawai('Petugas Piket');
+        $this->masuk($piket);
+        $this->jadwal($piket);
+
+        $this->actingAs($piket->user, 'web_mobile')
+            ->getJson(route('presensi.piket.assignment-version'))
+            ->assertOk()
+            ->assertJsonPath('version', 1);
     }
 
     public function test_laporan_piket_v2_menampilkan_progress_pos_dan_filter_kualitas(): void
