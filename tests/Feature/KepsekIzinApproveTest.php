@@ -120,4 +120,33 @@ class KepsekIzinApproveTest extends TestCase
             'tanggal' => '2026-08-10',
         ]);
     }
+
+    public function test_superadmin_bisa_takeover_pending_l1_dengan_alasan(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('superadmin');
+
+        $guru = $this->makePegawai('Guru Takeover', 'Guru Mata Pelajaran');
+        $atasan = User::factory()->create();
+
+        $izin = $this->pendingIzin($guru);
+        $izin->forceFill([
+            'approver_l1_id' => $atasan->id,
+            'due_at' => now()->addDays(3),
+        ])->save();
+
+        $this->actingAs($admin)
+            ->post(route('pengajuan-izin.approve', $izin->id))
+            ->assertSessionHasErrors('catatan_approval');
+
+        $this->actingAs($admin)
+            ->post(route('pengajuan-izin.approve', $izin->id), [
+                'catatan_approval' => 'Take over karena atasan berhalangan.',
+            ])
+            ->assertRedirect();
+
+        $izin->refresh();
+        $this->assertSame('approved', $izin->approval_stage);
+        $this->assertSame('disetujui', $izin->status);
+    }
 }

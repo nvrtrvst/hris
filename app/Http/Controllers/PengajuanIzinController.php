@@ -95,6 +95,9 @@ class PengajuanIzinController extends Controller
 
         $pengajuans->getCollection()->transform(function ($item) use ($user) {
             $item->can_act = $this->canActOnItem($item, $user);
+            $item->can_takeover = $user->hasRole('superadmin')
+                && in_array($item->approval_stage, ['pending_l1', 'pending_l2'], true)
+                && ! $this->isAssignedToStage($item, $user);
             if ($item->pegawai) {
                 $item->pegawai->append(['sisa_cuti', 'cuti_terpakai']);
             }
@@ -436,19 +439,13 @@ class PengajuanIzinController extends Controller
         }
 
         if ($user->hasRole('superadmin')) {
-            $bolehTakeover = $pengajuan->due_at === null
-                || $pengajuan->due_at->isPast()
-                || $pengajuan->approver_l1_id === null;
-
-            if ($bolehTakeover) {
-                if (! $request->filled('catatan_approval')) {
-                    throw ValidationException::withMessages([
-                        'catatan_approval' => 'Alasan take-over wajib diisi.',
-                    ]);
-                }
-
-                return 'takeover';
+            if (! $request->filled('catatan_approval')) {
+                throw ValidationException::withMessages([
+                    'catatan_approval' => 'Alasan take-over wajib diisi.',
+                ]);
             }
+
+            return 'takeover';
         }
 
         abort(403, 'Anda bukan penyetuju pada tahap ini.');
@@ -456,9 +453,19 @@ class PengajuanIzinController extends Controller
 
     private function canActOnItem(PengajuanIzin $item, User $user): bool
     {
+        if ($this->isAssignedToStage($item, $user)) {
+            return true;
+        }
+
+        return $user->hasRole('superadmin')
+            && in_array($item->approval_stage, ['pending_l1', 'pending_l2'], true);
+    }
+
+    private function isAssignedToStage(PengajuanIzin $item, User $user): bool
+    {
         return match ($item->approval_stage) {
-            'pending_l1' => (int) $item->approver_l1_id === (int) $user->id || $user->hasRole('superadmin'),
-            'pending_l2' => (int) $item->approver_l2_id === (int) $user->id || $user->hasRole('superadmin'),
+            'pending_l1' => (int) $item->approver_l1_id === (int) $user->id,
+            'pending_l2' => (int) $item->approver_l2_id === (int) $user->id,
             'pending_superadmin' => $user->hasRole('superadmin'),
             default => false,
         };

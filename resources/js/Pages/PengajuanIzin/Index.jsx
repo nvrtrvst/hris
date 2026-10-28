@@ -677,27 +677,32 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                 {modalType === 'approve' && (
                                     <>
                                         <div className={`rounded-card p-4 mb-4 ${
-                                            selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
+                                            selectedItem.can_takeover || (selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id)
                                                 ? 'bg-warning-light border border-warning/30'
                                                 : 'bg-success-light border border-success/30'
                                         }`}>
                                             <p className={`text-sm ${
-                                                selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
+                                                selectedItem.can_takeover || (selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id)
                                                     ? 'text-warning' : 'text-success'
                                             }`}>
-                                                {selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
-                                                    ? 'Anda akan menyetujui sebagai atasan L1. Pengajuan akan diteruskan ke atasan L2 untuk persetujuan akhir.'
-                                                    : 'Anda yakin ingin menyetujui pengajuan ini? Sistem akan meng-generate data absensi secara otomatis.'}
+                                                {selectedItem.can_takeover
+                                                    ? 'Anda akan mengambil alih approval pengajuan ini sebagai Superadmin. Pengajuan langsung disetujui dan data absensi di-generate.'
+                                                    : selectedItem.approval_stage === 'pending_l1' && selectedItem.approver_l2_id
+                                                        ? 'Anda akan menyetujui sebagai atasan L1. Pengajuan akan diteruskan ke atasan L2 untuk persetujuan akhir.'
+                                                        : 'Anda yakin ingin menyetujui pengajuan ini? Sistem akan meng-generate data absensi secara otomatis.'}
                                             </p>
                                         </div>
                                         <div className="mb-6">
-                                            <label className="form-label text-sm font-semibold">Catatan Persetujuan <span className="text-text-muted">(opsional)</span></label>
+                                            <label className="form-label text-sm font-semibold">
+                                                Catatan Persetujuan {selectedItem.can_takeover ? <span className="text-red-500">*</span> : <span className="text-text-muted">(opsional)</span>}
+                                            </label>
                                             <textarea
                                                 value={data.catatan_approval}
                                                 onChange={e => setData('catatan_approval', e.target.value)}
                                                 className="input-field w-full"
                                                 rows="2"
-                                                placeholder="Tambahkan catatan untuk pegawai..."
+                                                placeholder={selectedItem.can_takeover ? 'Tuliskan alasan take-over...' : 'Tambahkan catatan untuk pegawai...'}
+                                                required={selectedItem.can_takeover}
                                             ></textarea>
                                         </div>
                                         <label className="flex items-start gap-2.5 rounded-card border border-border bg-surface p-3">
