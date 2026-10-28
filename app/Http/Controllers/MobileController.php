@@ -1988,6 +1988,26 @@ class MobileController extends Controller
             ->orderBy('nama')
             ->get(['id', 'nama']);
 
+        $wajibAktif = $v2 ? $requiredCodes : LaporanPiket::ITEM_WAJIB;
+        $missingItems = collect($wajibAktif)
+            ->filter(fn ($kode) => ! $laporan || ! $laporan->isItemDone($kode))
+            ->map(fn ($kode) => ['kode' => $kode, 'label' => LaporanPiket::ITEM_LABEL[$kode] ?? $kode])
+            ->values()
+            ->all();
+        $pendingRounds = $v2 && $sesi
+            ? collect(PiketService::rounds($sesi))
+                ->filter(fn ($row) => $row['selesai_at'] === null)
+                ->map(fn ($row) => ['putaran' => $row['putaran'], 'area' => $row['area']])
+                ->values()
+                ->all()
+            : [];
+        $blockers = [
+            'items' => $missingItems,
+            'absen_missing' => $absenCoverage['missing'],
+            'rounds' => $pendingRounds,
+            'pos' => $v2 && $sesi ? PiketService::unservedRequiredPos($sesi) : [],
+        ];
+
         return inertia('Mobile/Piket', [
             'pegawai' => $pegawai,
             'sudahMasuk' => $sudahMasuk,
@@ -2002,7 +2022,7 @@ class MobileController extends Controller
                 ],
                 'windows' => $this->piketWindows($slot),
                 'laporan' => $laporan,
-                'wajib' => $v2 ? $requiredCodes : LaporanPiket::ITEM_WAJIB,
+                'wajib' => $wajibAktif,
                 'label' => LaporanPiket::ITEM_LABEL,
                 'v2' => $v2,
                 'sesi' => $sesi ? ['id' => $sesi->id, 'status' => $sesi->status] : null,
