@@ -70,7 +70,7 @@ export default function PiketSettings({ auth, units = [], unit, areas = [], mapp
                 )}
 
                 {units.length === 0 ? (
-                    <div className="card p-6 text-sm text-text-muted">
+                    <div className="card p-6 text-sm text-text-secondary">
                         Belum ada unit dengan mode area. Aktifkan lewat seeder/migrasi terlebih dahulu.
                     </div>
                 ) : (
@@ -84,7 +84,7 @@ export default function PiketSettings({ auth, units = [], unit, areas = [], mapp
                             >
                                 {units.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
                             </select>
-                            <span className={`rounded-full px-2 py-1 text-[11px] font-bold uppercase ${unit?.piket_mode === 'area' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                            <span className={`rounded-full px-2 py-1 text-xs font-bold uppercase ${unit?.piket_mode === 'area' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                                 mode {unit?.piket_mode === 'area' ? 'area' : 'sederhana'}
                             </span>
                             <button
@@ -117,7 +117,7 @@ export default function PiketSettings({ auth, units = [], unit, areas = [], mapp
                                 <div className="card p-4">
                                     <h3 className="mb-3 text-sm font-extrabold uppercase tracking-wide text-primary">Area</h3>
                                     <ul className="mb-3 divide-y divide-border/60 text-sm">
-                                        {areas.map((a) => <li key={a.id} className="py-2">{a.nama} <span className="text-xs text-text-muted">· urutan {a.urutan}</span></li>)}
+                                        {areas.map((a) => <li key={a.id} className="py-2">{a.nama} <span className="text-xs text-text-secondary">· urutan {a.urutan}</span></li>)}
                                     </ul>
                                     <form onSubmit={simpanArea} className="flex flex-wrap items-end gap-2">
                                         <label className="block">
@@ -135,7 +135,7 @@ export default function PiketSettings({ auth, units = [], unit, areas = [], mapp
                                 <div className="card p-4">
                                     <h3 className="mb-3 text-sm font-extrabold uppercase tracking-wide text-primary">Pemetaan Kelas</h3>
                                     <ul className="mb-3 max-h-64 space-y-1 overflow-y-auto text-xs">
-                                        {mapping.map((m) => <li key={m.id} className="flex justify-between gap-2"><span className="font-medium text-text-primary">{m.kelas_label}</span><span className="text-text-muted">{m.area}</span></li>)}
+                                        {mapping.map((m) => <li key={m.id} className="flex justify-between gap-2"><span className="font-medium text-text-primary">{m.kelas_label}</span><span className="text-text-secondary">{m.area}</span></li>)}
                                     </ul>
                                     <form onSubmit={simpanKelas} className="flex flex-wrap items-end gap-2">
                                         <label className="block">
@@ -171,7 +171,7 @@ export default function PiketSettings({ auth, units = [], unit, areas = [], mapp
                                                 {pos.map((p) => (
                                                     <tr key={p.id}>
                                                         <td>{p.nama}</td>
-                                                        <td>{areas.find((a) => a.id === p.area_id)?.nama || '—'}</td>
+                                                        <td>{areas.find((a) => a.id === p.area_id)?.nama || '-'}</td>
                                                         <td className="font-mono text-xs">{p.jam_mulai}–{p.jam_selesai}</td>
                                                         <td>{p.is_wajib ? 'Ya' : 'Tidak'}</td>
                                                         <td>{p.aktif ? 'Ya' : 'Tidak'}</td>
@@ -230,11 +230,11 @@ export default function PiketSettings({ auth, units = [], unit, areas = [], mapp
                                     <ul className="divide-y divide-border/60 text-sm">
                                         {penugasan.map((p) => (
                                             <li key={p.id} className="flex items-center justify-between gap-2 py-2">
-                                                <span>{p.pegawai?.nama_lengkap} · {p.area?.nama || '—'} {p.pos ? `· ${p.pos.nama}` : ''} <span className="text-xs text-text-muted">({p.peran})</span></span>
+                                                <span>{p.pegawai?.nama_lengkap} · {p.area?.nama || '-'} {p.pos ? `· ${p.pos.nama}` : ''} <span className="text-xs text-text-secondary">({p.peran})</span></span>
                                                 <button type="button" onClick={() => router.delete(route('piket.settings.penugasan.hapus', p.id), { preserveScroll: true })} className="rounded-lg p-2 text-rose-600 hover:bg-rose-50" aria-label="Hapus penugasan"><Trash2 className="h-4 w-4" /></button>
                                             </li>
                                         ))}
-                                        {penugasan.length === 0 && <li className="py-2 text-text-muted">Belum ada penugasan.</li>}
+                                        {penugasan.length === 0 && <li className="py-2 text-text-secondary">Belum ada penugasan.</li>}
                                     </ul>
                                 </div>
                                 <div className="card p-4">
@@ -274,8 +274,8 @@ export default function PiketSettings({ auth, units = [], unit, areas = [], mapp
                         {sesiHariIni && (
                             <div className="card p-4">
                                 <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-primary">Sesi hari ini · {sesiHariIni.jam}</h3>
-                                <p className="text-xs text-text-muted">
-                                    Petugas: {sesiHariIni.petugas.map((p) => `${p.nama} (${p.peran})`).join(', ') || '—'} · status {sesiHariIni.status}
+                                <p className="text-xs text-text-secondary">
+                                    Petugas: {sesiHariIni.petugas.map((p) => `${p.nama} (${p.peran})`).join(', ') || '-'} · status {sesiHariIni.status}
                                 </p>
                                 {sesiHariIni.pos_belum.length > 0 ? (
                                     <div className="mt-3 space-y-3">

@@ -4,7 +4,7 @@ export function AmbientBg() {
     );
 }
 
-export function Card({ children, className = '', press = true, ...props }) {
+export function Card({ children, className = '', press = false, ...props }) {
     return (
         <div
             {...props}

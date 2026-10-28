@@ -315,7 +315,7 @@ export default function Riwayat({ auth, presensi, summary, filters }) {
                             return (
                                 <div key={`${g.nama}-${g.kelas}`}>
                                     <button type="button" onClick={() => toggleMapel(`${g.nama}|||${g.kelas}`)} className="w-full">
-                                        <Card className="flex items-center justify-between gap-3 py-3.5">
+                                        <Card press className="flex items-center justify-between gap-3 py-3.5">
                                             <div className="min-w-0 flex-1">
                                                 <p className="truncate font-bold text-slate-800" title={g.nama}>{g.nama}</p>
                                                 <div className="mt-1 flex flex-wrap items-center gap-2">

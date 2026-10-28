@@ -5,14 +5,14 @@ import Modal from '@/Components/Modal';
 import { CheckCircle2, ChevronDown } from 'lucide-react';
 
 const STATUS_BADGE = {
-    submitted: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    draft: 'bg-amber-50 text-amber-700 border-amber-200',
+    submitted: 'bg-emerald-50 text-emerald-700',
+    draft: 'bg-amber-50 text-amber-700',
 };
 
 function EntryValidasi({ lapId, entry, idx }) {
     if (entry.verified_at) {
         return (
-            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${entry.verified === 'setujui' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${entry.verified === 'setujui' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
                 {entry.verified === 'setujui' ? 'Disetujui' : 'Ditolak'}
             </span>
         );
@@ -20,21 +20,21 @@ function EntryValidasi({ lapId, entry, idx }) {
     return (
         <span className="inline-flex flex-wrap items-center gap-1.5">
             {entry.ada_amanat && (
-                <span className={`text-[10px] font-semibold ${entry.tersampaikan ? 'text-emerald-700' : 'text-amber-700'}`}>
+                <span className={`text-xs font-semibold ${entry.tersampaikan ? 'text-emerald-700' : 'text-amber-700'}`}>
                     {entry.tersampaikan ? 'Amanat tersampaikan' : 'Amanat belum tersampaikan'}
                 </span>
             )}
             <button
                 type="button"
                 onClick={() => router.post(route('laporan-piket.validasi', lapId), { entry_index: idx, aksi: 'setujui' }, { preserveScroll: true })}
-                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             >
                 Setujui
             </button>
             <button
                 type="button"
                 onClick={() => router.post(route('laporan-piket.validasi', lapId), { entry_index: idx, aksi: 'tolak' }, { preserveScroll: true })}
-                className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-bold text-rose-700 ring-1 ring-rose-200 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40"
+                className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-rose-700 ring-1 ring-rose-200 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40"
             >
                 Tolak
             </button>
@@ -62,13 +62,13 @@ function LegacyDetail({ lap, label }) {
                         <ul className="mt-1 list-disc space-y-0.5 pl-5 text-text-secondary">
                             {cek.entries.map((e, i) => <li key={i}>{e.nama_guru} ({e.created_at?.substring(0, 5)}): {e.keterangan}</li>)}
                         </ul>
-                    ) : <p className="text-text-muted">Cek awal tercatat.</p>}
+                    ) : <p className="text-text-secondary">Cek awal tercatat.</p>}
                 </div>
             )}
             {kk && (
                 <div>
                     <p className="font-bold">{label.kelas_kosong}:</p>
-                    {kk.nihil ? <p className="text-text-muted">Nihil.</p> : (
+                    {kk.nihil ? <p className="text-text-secondary">Nihil.</p> : (
                         <ul className="mt-1 space-y-1.5">
                             {(kk.entries ?? []).map((e, i) => (
                                 <li key={i} className="rounded-lg bg-surface px-2.5 py-2 ring-1 ring-border">
@@ -85,7 +85,7 @@ function LegacyDetail({ lap, label }) {
             {insiden && (
                 <div>
                     <p className="font-bold">{label.insiden}:</p>
-                    {insiden.nihil ? <p className="text-text-muted">Nihil.</p> : (
+                    {insiden.nihil ? <p className="text-text-secondary">Nihil.</p> : (
                         <ul className="mt-1 list-disc space-y-0.5 pl-5 text-text-secondary">
                             {(insiden.entries ?? []).map((e, i) => <li key={i}>{e.jenis} ({e.created_at?.substring(0, 5)}): {e.tindakan}</li>)}
                         </ul>
@@ -100,7 +100,7 @@ function LaporanDetail({ lap, label }) {
     if (lap.legacy) {
         return (
             <div className="space-y-3 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Arsip laporan lama</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Arsip laporan lama</p>
                 <LegacyDetail lap={lap} label={label} />
             </div>
         );
@@ -132,14 +132,14 @@ function LaporanDetail({ lap, label }) {
                         {lap.pos.map((pos) => (
                             <li key={pos.id} className="flex flex-wrap items-center gap-x-2">
                                 <span className="font-semibold text-text-primary">{pos.nama}</span>
-                                {pos.is_wajib && <span className="text-[10px] font-bold uppercase text-rose-600">wajib</span>}
+                                {pos.is_wajib && <span className="text-xs font-bold uppercase text-rose-600">wajib</span>}
                                 <span className="text-text-secondary">
                                     {pos.tercatat
                                         ? `tercatat ${pos.done_at}${pos.nihil ? ' · nihil' : ''}${pos.jumlah != null ? ` · ${pos.jumlah} siswa` : ''}${pos.catatan ? ` · ${pos.catatan}` : ''}`
                                         : 'belum tercatat'}
                                 </span>
-                                {pos.sumber === 'override' && <span className="text-[10px] font-semibold uppercase text-sky-700">override {pos.override_by || ''}</span>}
-                                {pos.sumber === 'nonaktif' && <span className="text-[10px] font-semibold uppercase text-amber-700">dinonaktifkan</span>}
+                                {pos.sumber === 'override' && <span className="text-xs font-semibold uppercase text-sky-700">override {pos.override_by || ''}</span>}
+                                {pos.sumber === 'nonaktif' && <span className="text-xs font-semibold uppercase text-amber-700">dinonaktifkan</span>}
                             </li>
                         ))}
                     </ul>
@@ -154,7 +154,7 @@ function LaporanDetail({ lap, label }) {
                             <li key={r.id} className="flex flex-wrap items-center gap-x-2">
                                 <span className="font-semibold text-text-primary">Fase {r.putaran}</span>
                                 {r.area && <span className="text-text-secondary">{r.area}</span>}
-                                <span className="text-xs text-text-muted">{r.jendela_mulai}–{r.jendela_selesai}</span>
+                                <span className="text-xs text-text-secondary">{r.jendela_mulai}–{r.jendela_selesai}</span>
                                 <span className={r.selesai_at ? 'text-emerald-700' : 'text-rose-600'}>
                                     {r.selesai_at ? `${r.status} ${r.selesai_at}` : 'belum selesai'}
                                 </span>
@@ -175,13 +175,13 @@ function LaporanDetail({ lap, label }) {
                                 <ul className="mt-0.5 list-disc pl-5 text-text-secondary">
                                     {cek.entries.map((e, i) => <li key={i}>{e.nama_guru} ({e.created_at?.substring(0, 5)}): {e.keterangan}</li>)}
                                 </ul>
-                            ) : <p className="text-xs text-text-muted">Cek awal tercatat.</p>}
+                            ) : <p className="text-xs text-text-secondary">Cek awal tercatat.</p>}
                         </div>
                     )}
                     {kk && (
                         <div>
                             <p className="font-semibold text-text-primary">{label.kelas_kosong}</p>
-                            {kk.nihil ? <p className="text-xs text-text-muted">Nihil.</p> : (
+                            {kk.nihil ? <p className="text-xs text-text-secondary">Nihil.</p> : (
                                 <ul className="mt-1 space-y-1.5">
                                     {(kk.entries ?? []).map((e, i) => (
                                         <li key={i} className="rounded-lg bg-surface px-2.5 py-2 ring-1 ring-border">
@@ -198,7 +198,7 @@ function LaporanDetail({ lap, label }) {
                     {insiden && (
                         <div>
                             <p className="font-semibold text-text-primary">{label.insiden}</p>
-                            {insiden.nihil ? <p className="text-xs text-text-muted">Nihil.</p> : (
+                            {insiden.nihil ? <p className="text-xs text-text-secondary">Nihil.</p> : (
                                 <ul className="mt-0.5 list-disc pl-5 text-text-secondary">
                                     {(insiden.entries ?? []).map((e, i) => <li key={i}>{e.jenis} ({e.created_at?.substring(0, 5)}): {e.tindakan}</li>)}
                                 </ul>
@@ -435,7 +435,7 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                         <div className="px-5 py-4 border-b border-border">
                             <h3 className="section-title">Laporan masuk ({laporan.length})</h3>
                             {laporan.length > 0 && (
-                                <p className="mt-0.5 text-xs font-semibold text-text-muted">
+                                <p className="mt-0.5 text-xs font-semibold text-text-secondary">
                                     Terkirim {laporan.filter((lap) => lap.status === 'submitted').length}
                                     {' · '}Belum lengkap {laporan.filter((lap) => lap.status !== 'submitted').length}
                                     {laporan.some((lap) => lap.perlu_cek > 0) && <span className="text-danger">{' · '}Perlu cek {laporan.filter((lap) => lap.perlu_cek > 0).length}</span>}
@@ -443,7 +443,7 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                             )}
                         </div>
                         {laporan.length === 0 ? (
-                            <p className="px-5 py-6 text-sm text-text-muted">Tidak ada laporan pada periode ini. Ubah filter atau periode.</p>
+                            <p className="px-5 py-6 text-sm text-text-secondary">Tidak ada laporan pada periode ini. Ubah filter atau periode.</p>
                         ) : (
                             <div className="table-wrap">
                                 <table className="table-base">
@@ -473,18 +473,18 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                                                     <td>{lap.unit || '-'}</td>
                                                     <td className="whitespace-nowrap tabular-nums">{lap.progress?.item_done ?? lap.done}/{lap.progress?.item_total ?? lap.total}</td>
 
-                                                    <td className="whitespace-nowrap tabular-nums">{lap.progress ? `${lap.progress.pos_done}/${lap.progress.pos_total}` : '—'}</td>
+                                                    <td className="whitespace-nowrap tabular-nums">{lap.progress ? `${lap.progress.pos_done}/${lap.progress.pos_total}` : '-'}</td>
 
-                                                    <td className="whitespace-nowrap tabular-nums">{lap.progress ? `${lap.progress.round_done}/${lap.progress.round_total}` : '—'}</td>
+                                                    <td className="whitespace-nowrap tabular-nums">{lap.progress ? `${lap.progress.round_done}/${lap.progress.round_total}` : '-'}</td>
                                                     <td>
-                                                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_BADGE[lap.status] || STATUS_BADGE.draft}`}>
+                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_BADGE[lap.status] || STATUS_BADGE.draft}`}>
                                                             {lap.status === 'submitted' ? 'Terkirim' : 'Belum lengkap'}
                                                         </span>
-                                                        {lap.unlocked_at && <span className="ml-1 inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-700">Telat dibuka</span>}
+                                                        {lap.unlocked_at && <span className="ml-1 inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-700">Telat dibuka</span>}
                                                     </td>
                                                     <td className="text-xs text-text-secondary">
 
-                                                        {(lap.pos_belum?.length ?? 0) > 0 ? 'Pos belum' : (lap.rounds ?? []).some((r) => !r.selesai_at) ? 'Fase lewat' : lap.perlu_cek > 0 ? 'Perlu cek' : '—'}
+                                                        {(lap.pos_belum?.length ?? 0) > 0 ? 'Pos belum' : (lap.rounds ?? []).some((r) => !r.selesai_at) ? 'Fase lewat' : lap.perlu_cek > 0 ? 'Perlu cek' : '-'}
 
                                                     </td>
                                                     <td>
@@ -504,7 +504,7 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                                                                     onClick={() => setKonfirmasi(lap)}
                                                                     disabled={unlockingId === lap.id}
                                                                     aria-label={`Buka jalur telat laporan piket ${lap.pegawai?.nama_lengkap || lap.tanggal}`}
-                                                                    className="rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 disabled:opacity-50"
+                                                                    className="rounded-lg bg-white px-2 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-200 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 disabled:opacity-50"
                                                                 >
                                                                     {unlockingId === lap.id ? '...' : 'Buka jalur telat'}
                                                                 </button>
@@ -555,7 +555,7 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                         </div>
                     )}
 
-                    <p className="text-xs text-text-muted flex items-center gap-1.5">
+                    <p className="text-xs text-text-secondary flex items-center gap-1.5">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Checklist wajib: jaga gerbang, cek guru absen, kelas kosong, buku piket, insiden.
                     </p>

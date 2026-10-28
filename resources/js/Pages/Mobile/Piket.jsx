@@ -69,11 +69,11 @@ function SeksiHead({ icon: Icon, title, win, state }) {
 }
 
 const STATUS_SISWA = {
-    hadir: { label: 'H', cls: 'bg-emerald-500 text-white border-emerald-500' },
-    telat: { label: 'T', cls: 'bg-amber-500 text-white border-amber-500' },
-    izin: { label: 'I', cls: 'bg-sky-500 text-white border-sky-500' },
-    sakit: { label: 'S', cls: 'bg-purple-500 text-white border-purple-500' },
-    alpa: { label: 'A', cls: 'bg-rose-500 text-white border-rose-500' },
+    hadir: { label: 'H', cls: 'bg-emerald-700 text-white border-emerald-700' },
+    telat: { label: 'T', cls: 'bg-amber-700 text-white border-amber-700' },
+    izin: { label: 'I', cls: 'bg-sky-700 text-white border-sky-700' },
+    sakit: { label: 'S', cls: 'bg-slate-700 text-white border-slate-700' },
+    alpa: { label: 'A', cls: 'bg-rose-700 text-white border-rose-700' },
 };
 const URUT_STATUS = ['hadir', 'telat', 'izin', 'sakit', 'alpa'];
 
@@ -234,12 +234,12 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
             </div>
 
             {coverage?.assigned_count > 0 && (
-                <p className="mt-1 text-[11px] font-semibold text-slate-600">
+                <p className="mt-1 text-xs font-semibold text-slate-600">
                     Kelas Anda {coverage.completed_count}/{coverage.assigned_count} selesai
                 </p>
             )}
             {coverage?.missing?.length > 0 && (
-                <p className="mt-0.5 break-words text-[11px] text-rose-700">
+                <p className="mt-0.5 break-words text-xs text-rose-700">
                     Belum: {coverage.missing.join(', ')}
                 </p>
             )}
@@ -260,7 +260,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
             )}
 
             {!boleh && !doneItem && (
-                <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Dibuka sejak pagi.</p>
+                <p className="mt-1 flex items-center gap-1 text-xs text-slate-600"><Clock3 className="h-3.5 w-3.5" /> Dibuka sejak pagi.</p>
             )}
 
             {sesiTersimpan.length > 0 && (
@@ -287,7 +287,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                                     </button>
                                 )}
                             </div>
-                            <p className="mt-0.5 text-slate-500">{ringkasStatus(s.details)} · {s.oleh || 'petugas'} {s.done_at}</p>
+                            <p className="mt-0.5 text-slate-600">{ringkasStatus(s.details)} · {s.oleh || 'petugas'} {s.done_at}</p>
                         </li>
                     ))}
                 </ul>
@@ -318,7 +318,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                             {daftarKelas.filter((c) => labelKelas(c).toLowerCase().includes(cariKelas.trim().toLowerCase())).map((c) => (
                                 <button key={c.id} type="button" onClick={() => pilihKelas(c)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-slate-700 active:scale-95">
                                     {labelKelas(c)}
-                                    {c.major_name && <span className="mt-0.5 block text-[11px] font-normal text-slate-500">{c.major_name}</span>}
+                                    {c.major_name && <span className="mt-0.5 block text-xs font-normal text-slate-600">{c.major_name}</span>}
                                 </button>
                             ))}
                         </div>
@@ -336,15 +336,15 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                     <div className="space-y-1.5">
                         <div className="flex items-center justify-between gap-2">
                             <p className="text-xs font-bold text-slate-700">{labelKelas(selected)}</p>
-                            <button type="button" onClick={() => { setSelected(null); setSiswa([]); setErr(''); setKonfirmasi(null); }} className="min-h-11 rounded-lg bg-white px-3 text-[11px] font-bold text-slate-500 ring-1 ring-slate-200 active:scale-95">Ganti kelas</button>
+                            <button type="button" onClick={() => { setSelected(null); setSiswa([]); setErr(''); setKonfirmasi(null); }} className="min-h-11 rounded-lg bg-white px-3 text-xs font-bold text-slate-600 ring-1 ring-slate-200 active:scale-95">Ganti kelas</button>
                         </div>
                         {lastSaved && (
                             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
                                 <p className="text-xs font-bold text-amber-900">Mode koreksi</p>
-                                <p className="mt-0.5 text-[11px] text-amber-800">
+                                <p className="mt-0.5 text-xs text-amber-800">
                                     Kelas ini sudah diisi oleh {lastSaved.oleh || 'petugas'} pukul {lastSaved.done_at}. Data sebelumnya akan diganti.
                                 </p>
-                                <label htmlFor="alasan-koreksi" className="mt-2 block text-[11px] font-bold text-amber-900">
+                                <label htmlFor="alasan-koreksi" className="mt-2 block text-xs font-bold text-amber-900">
                                     Alasan perubahan <span className="text-rose-600">*</span>
                                 </label>
                                 <input
@@ -356,13 +356,14 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                                     maxLength={255}
                                     aria-label="Alasan perubahan absen siswa"
                                 />
-                                <p className="mt-1 text-[10px] text-amber-700">Minimal 5 karakter.</p>
+                                <p className="mt-1 text-xs text-amber-700">Minimal 5 karakter.</p>
                             </div>
                         )}
                         <div className="flex items-center justify-between gap-2">
-                            <p className="text-[11px] text-slate-500">{siswa.length} siswa</p>
-                            <button type="button" onClick={semuaHadir} className="min-h-11 rounded-lg bg-white px-3 text-[11px] font-bold text-primary ring-1 ring-slate-200 active:scale-95">Semua hadir</button>
+                            <p className="text-xs text-slate-600">{siswa.length} siswa</p>
+                            <button type="button" onClick={semuaHadir} className="min-h-11 rounded-lg bg-white px-3 text-xs font-bold text-primary ring-1 ring-slate-200 active:scale-95">Semua hadir</button>
                         </div>
+                        <p className="mt-1 text-xs text-slate-600">H Hadir, T Telat, I Izin, S Sakit, A Alpa</p>
                         <input
                             value={cariSiswa}
                             onChange={(e) => setCariSiswa(e.target.value)}
@@ -372,9 +373,9 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                     </div>
 
                     {loadingSiswa ? (
-                        <p className="py-4 text-center text-xs text-slate-500">Memuat siswa...</p>
+                        <p className="py-4 text-center text-xs text-slate-600">Memuat siswa...</p>
                     ) : siswa.length === 0 ? (
-                        <p className="py-4 text-center text-xs text-slate-500">Tidak ada data siswa untuk kelas ini.</p>
+                        <p className="py-4 text-center text-xs text-slate-600">Tidak ada data siswa untuk kelas ini.</p>
                     ) : (
                         <ul className="max-h-[45dvh] space-y-1.5 overflow-y-auto pr-0.5">
                             {siswa.filter((s) => s.nama.toLowerCase().includes(cariSiswa.trim().toLowerCase()) || String(s.nis).includes(cariSiswa.trim())).map((s) => (
@@ -382,7 +383,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="min-w-0">
                                             <p className="truncate text-xs font-bold text-slate-800">{s.nama}</p>
-                                            <p className="text-[11px] text-slate-500">NIS {s.nis}</p>
+                                            <p className="text-xs text-slate-600">NIS {s.nis}</p>
                                         </div>
                                         <div className="flex shrink-0 gap-1">
                                             {URUT_STATUS.map((st) => (
@@ -392,7 +393,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                                                     aria-label={`${s.nama}: ${st}`}
                                                     aria-pressed={s.status === st}
                                                     onClick={() => ubahStatus(s.nis, st)}
-                                                    className={`h-11 w-11 rounded-lg border text-[10px] font-bold leading-tight transition ${s.status === st ? STATUS_SISWA[st].cls : 'border-slate-200 bg-white text-slate-500'}`}
+                                                    className={`h-11 w-11 rounded-lg border text-xs font-bold leading-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${s.status === st ? STATUS_SISWA[st].cls : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
                                                 >
                                                     {STATUS_SISWA[st].label}
                                                 </button>
@@ -417,12 +418,12 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                     {konfirmasi ? (
                         <div className="rounded-xl border border-slate-200 bg-white p-3">
                             <p className="text-xs font-bold text-slate-800">Ringkasan {labelKelas(selected)}</p>
-                            <p className="mt-1 text-[11px] text-slate-600">
+                            <p className="mt-1 text-xs text-slate-600">
                                 Hadir {konfirmasi.hadir} · Telat {konfirmasi.telat} · Izin {konfirmasi.izin} · Sakit {konfirmasi.sakit} · Alpa {konfirmasi.alpa}
                             </p>
-                            {konfirmasi.alpa > 0 && <p className="mt-1 text-[11px] font-semibold text-rose-600">Ada {konfirmasi.alpa} siswa alpa. Periksa kembali.</p>}
+                            {konfirmasi.alpa > 0 && <p className="mt-1 text-xs font-semibold text-rose-600">Ada {konfirmasi.alpa} siswa alpa. Periksa kembali.</p>}
                             {lastSaved && (
-                                <p className="mt-1 text-[11px] text-amber-800">Alasan koreksi: {alasan || '-'}</p>
+                                <p className="mt-1 text-xs text-amber-800">Alasan koreksi: {alasan || '-'}</p>
                             )}
                             <div className="mt-2 flex gap-2">
                                 <button type="button" onClick={() => setKonfirmasi(null)} className="btn-secondary min-h-11 flex-1">Periksa lagi</button>
@@ -432,7 +433,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                             </div>
                         </div>
                     ) : (
-                        <button type="button" disabled={saving || loadingSiswa || siswa.length === 0 || (lastSaved && alasan.trim().length < 5)} onClick={siapkanSimpan} className="min-h-12 w-full rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
+                        <button type="button" disabled={saving || loadingSiswa || siswa.length === 0 || (lastSaved && alasan.trim().length < 5)} onClick={siapkanSimpan} className="min-h-12 w-full rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 active:scale-95 disabled:opacity-50">
                             {lastSaved ? 'Periksa & simpan koreksi' : 'Periksa & simpan'}
                         </button>
                     )}
@@ -453,9 +454,9 @@ function RoundCard({ round, hhmm, sending, onDone }) {
             <div className="flex items-start justify-between gap-2">
                 <div>
                     <p className="text-sm font-bold text-slate-800">Fase {round.putaran}{round.area ? ` · ${round.area}` : ''}</p>
-                    <p className="text-[11px] text-slate-500">Jendela {round.jendela_mulai}–{round.jendela_selesai}</p>
+                    <p className="text-xs text-slate-600">Jendela {round.jendela_mulai}–{round.jendela_selesai}</p>
                 </div>
-                <span className={`shrink-0 text-[11px] font-bold ${selesai ? 'text-emerald-700' : terlambat ? 'text-rose-600' : 'text-slate-500'}`}>
+                <span className={`shrink-0 text-xs font-bold ${selesai ? 'text-emerald-700' : terlambat ? 'text-rose-600' : 'text-slate-600'}`}>
                     {selesai ? `Selesai ${round.selesai_at}` : belumDibuka ? 'Terkunci' : terlambat ? 'Lewat jendela' : 'Dibuka'}
                 </span>
             </div>
@@ -474,7 +475,7 @@ function RoundCard({ round, hhmm, sending, onDone }) {
                         type="button"
                         disabled={sending || (terlambat && alasan.trim().length < 10)}
                         onClick={() => onDone(round.id, terlambat ? alasan : null)}
-                        className="min-h-11 w-full rounded-xl bg-primary text-sm font-bold text-white disabled:opacity-50"
+                        className="min-h-11 w-full rounded-xl bg-white text-sm font-bold text-primary ring-1 ring-primary/25 disabled:opacity-50"
                     >
                         Selesaikan fase
                     </button>
@@ -496,9 +497,9 @@ function PosItem({ pos, log, sending, onSave }) {
 
         return (
             <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                <span className="font-bold">{pos.nama}</span> — tercatat {log.done_at}
+                <span className="font-bold">{pos.nama}</span>, tercatat {log.done_at}
                 {bagian ? `: ${bagian}` : ''}
-                {log.sumber === 'override' && <span className="ml-1 text-slate-500">(diisi admin)</span>}
+                {log.sumber === 'override' && <span className="ml-1 text-slate-600">(diisi admin)</span>}
             </div>
         );
     }
@@ -509,7 +510,7 @@ function PosItem({ pos, log, sending, onSave }) {
                 {pos.nama}
                 {pos.is_wajib && <span className="ml-1 text-xs font-semibold text-rose-600">wajib</span>}
             </p>
-            <p className="text-[11px] text-slate-500">Jendela {pos.jam_mulai}–{pos.jam_selesai}</p>
+            <p className="text-xs text-slate-600">Jendela {pos.jam_mulai}–{pos.jam_selesai}</p>
             <label className="mt-2 flex items-center gap-2 text-xs font-medium text-slate-700">
                 <input type="checkbox" checked={nihil} onChange={(e) => setNihil(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" />
                 Nihil (tidak ada temuan)
@@ -517,7 +518,7 @@ function PosItem({ pos, log, sending, onSave }) {
             <div className="mt-2 flex gap-2">
                 <input type="number" min="0" value={jumlah} onChange={(e) => setJumlah(e.target.value)} placeholder="Jumlah" className="input-field h-11 w-24" disabled={nihil} />
                 <input type="text" value={catatan} onChange={(e) => setCatatan(e.target.value)} placeholder="Catatan (opsional)" className="input-field h-11 flex-1" />
-                <button type="button" disabled={sending} onClick={() => onSave(pos.id, { nihil, jumlah: jumlah === '' ? null : Number(jumlah), catatan: catatan || null })} className="min-h-11 shrink-0 rounded-xl bg-primary px-4 text-sm font-bold text-white disabled:opacity-50">
+                <button type="button" disabled={sending} onClick={() => onSave(pos.id, { nihil, jumlah: jumlah === '' ? null : Number(jumlah), catatan: catatan || null })} className="min-h-11 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 disabled:opacity-50">
                     Catat
                 </button>
             </div>
@@ -599,7 +600,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                             <Lock className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                             <div>
                                 <p className="text-sm font-bold text-slate-800">Lakukan presensi masuk dulu.</p>
-                                <p className="mt-0.5 text-xs text-slate-500">Checklist piket terbuka setelah presensi masuk hari ini tercatat.</p>
+                                <p className="mt-0.5 text-xs text-slate-600">Checklist piket terbuka setelah presensi masuk hari ini tercatat.</p>
                             </div>
                         </div>
                         <Link href={route('presensi.absen')} className="mt-4 flex min-h-12 items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white transition-transform active:scale-[0.99]">
@@ -740,9 +741,9 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
             aria-label="Hapus entry"
             disabled={sending}
             onClick={() => hapusEntry(kode, index)}
-            className="ml-2 shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:scale-90 disabled:opacity-50"
+            className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 active:scale-95 disabled:opacity-50"
         >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
         </button>
     );
 
@@ -757,7 +758,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                 <div className="flex items-start justify-between gap-3">
                     <div>
                         <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">Piket Hari Ini</h1>
-                        <p className="mt-0.5 text-sm text-slate-500">
+                        <p className="mt-0.5 text-sm text-slate-600">
                             {format(new Date(), 'EEEE, d MMMM yyyy', { locale: id })} ({slot.jam_mulai}-{slot.jam_selesai}){area ? ` · ${area.nama}` : ''}
                             {slot.unit ? ` ${slot.unit}` : ''}
                         </p>
@@ -776,11 +777,11 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                     <p className="text-sm font-bold text-slate-800">Progress {doneCount}/{wajib.length}</p>
                     {submitted && <Badge tone="emerald" icon={CheckCircle2}>Terkirim</Badge>}
                 </div>
-                <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label="Progres checklist piket" aria-valuemin={0} aria-valuemax={wajib.length} aria-valuenow={doneCount} aria-valuetext={`${doneCount} dari ${wajib.length} selesai`}>
                     <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.round((doneCount / wajib.length) * 100)}%` }} />
                 </div>
                 {hasBlockers && (
-                    <div className="mt-3 space-y-2 border-t border-border pt-2 text-[11px] text-text-secondary">
+                    <div className="mt-3 space-y-2 border-t border-border pt-2 text-xs text-text-secondary">
                         {missingItems.length > 0 && (
                             <div>
                                 <p className="font-bold text-text-primary">Belum selesai</p>
@@ -788,7 +789,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                     {missingItems.map((item) => (
                                         <li key={item.kode} className="break-words">
                                             • {item.label}
-                                            {item.kode === 'absen_siswa' && missingAbsen.length > 0 && ` — ${missingAbsen.length} kelas belum`}
+                                            {item.kode === 'absen_siswa' && missingAbsen.length > 0 && `, ${missingAbsen.length} kelas belum`}
                                         </li>
                                     ))}
                                 </ul>
@@ -835,9 +836,6 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                     {posList.map((pos) => (
                         <PosItem key={pos.id} pos={pos} log={posLogs[pos.id]} sending={sending} onSave={kirimPos} />
                     ))}
-                    {blockReason && (
-                        <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{blockReason}</p>
-                    )}
                 </Card>
             )}
 
@@ -847,7 +845,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                         <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
                         <div>
                             <p className="text-sm font-bold text-slate-800">Laporan terkirim dan terkunci.</p>
-                            <p className="mt-0.5 text-xs text-slate-500">Terima kasih, tugas piket hari ini tercatat lengkap.</p>
+                            <p className="mt-0.5 text-xs text-slate-600">Terima kasih, tugas piket hari ini tercatat lengkap.</p>
                         </div>
                     </div>
                 </Card>
@@ -856,7 +854,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                     <section aria-label="Tugas pagi">
                         <SeksiHead icon={DoorOpen} title="Pagi" win={windows.pagi} state={done('gerbang') && done('cek_absen') && done('absen_siswa') ? 'done' : pagiOpen ? 'open' : 'locked'} />
                         {!inWin(windows.pagi) && pagiOpen && !submitted && (
-                            <p className="mb-2 rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800">Admin membuka jalur telat — item Pagi bisa dicatat sampai laporan dikirim.</p>
+                            <p className="mb-2 rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800">Admin membuka jalur telat. Item Pagi bisa dicatat sampai laporan dikirim.</p>
                         )}
                         <Card className="space-y-4">
                             {!v2 && (
@@ -868,12 +866,12 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                             <label htmlFor="terlambat" className={labelCls}>Siswa terlambat</label>
                                             <input id="terlambat" type="number" min="0" value={terlambat} onChange={(e) => setTerlambat(e.target.value)} className={inputCls} disabled={!pagiOpen || sending} />
                                         </div>
-                                        <button type="button" disabled={!pagiOpen || sending} onClick={() => kirim({ kode: 'gerbang', mode: 'centang', terlambat_count: Number(terlambat) || 0 })} className="mt-6 min-h-12 rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
+                                        <button type="button" disabled={!pagiOpen || sending} onClick={() => kirim({ kode: 'gerbang', mode: 'centang', terlambat_count: Number(terlambat) || 0 })} className="mt-6 min-h-12 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 active:scale-95 disabled:opacity-50">
                                             {sending ? '...' : 'Catat'}
                                         </button>
                                     </div>
                                 )}
-                                {!pagiOpen && !done('gerbang') && <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Dibuka {windows.pagi[0]}-{windows.pagi[1]}.</p>}
+                                {!pagiOpen && !done('gerbang') && <p className="mt-1 flex items-center gap-1 text-xs text-slate-600"><Clock3 className="h-3.5 w-3.5" /> Dibuka {windows.pagi[0]}-{windows.pagi[1]}.</p>}
                             </div>
                             )}
 
@@ -885,22 +883,22 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                         <Badge tone="slate">{(items.cek_absen?.entries ?? []).length} catatan</Badge>
                                     )}
                                 </div>
-                                <p className="mt-1 text-xs text-slate-500">Cek pagi memulai sesi. Catatan guru yang berhalangan ditambahkan di bawah.</p>
+                                <p className="mt-1 text-xs text-slate-600">Cek pagi memulai sesi. Catatan guru yang berhalangan ditambahkan di bawah.</p>
                                 {!done('cek_absen') && (
-                                    <button type="button" disabled={!pagiOpen || sending} onClick={() => kirim({ kode: 'cek_absen', mode: 'centang' })} className="mt-2 min-h-12 w-full rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
+                                    <button type="button" disabled={!pagiOpen || sending} onClick={() => kirim({ kode: 'cek_absen', mode: 'centang' })} className="mt-2 min-h-12 w-full rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 active:scale-95 disabled:opacity-50">
                                         {sending ? '...' : 'Mulai cek pagi'}
                                     </button>
                                 )}
 
                                 {(items.cek_absen?.entries ?? []).length > 0 && (
                                     <div className="mt-3">
-                                        <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">Sudah dicatat</p>
+                                        <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Sudah dicatat</p>
                                         <ul className="mt-1.5 space-y-1.5">
                                             {(items.cek_absen.entries ?? []).map((e, i) => (
                                                 <li key={i} className="flex items-center justify-between gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2 text-xs text-slate-700">
                                                     <span className="min-w-0">
                                                         <span className="font-bold">{e.nama_guru}</span>
-                                                        <span className="text-slate-500"> · {e.created_at?.substring(0, 5)}</span>
+                                                        <span className="text-slate-600"> · {e.created_at?.substring(0, 5)}</span>
                                                         <span className="mt-0.5 block text-slate-600">{e.keterangan}</span>
                                                     </span>
                                                     <HapusBtn kode="cek_absen" index={i} />
@@ -913,7 +911,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                 {done('cek_absen') && (
                                     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                                         <p className="text-xs font-bold text-slate-800">Tambah guru berhalangan</p>
-                                        <p className="mt-0.5 text-[11px] text-slate-500">Pilih guru dari daftar. Gunakan input manual hanya jika tidak ada di daftar.</p>
+                                        <p className="mt-0.5 text-xs text-slate-600">Pilih guru dari daftar. Gunakan input manual hanya jika tidak ada di daftar.</p>
                                         <div className="mt-2 grid grid-cols-1 gap-2">
                                             <select
                                                 value={absenManual ? 'manual' : absenForm.guru_pegawai_id}
@@ -1053,7 +1051,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                             </div>
                                         )}
                                         <div className="flex gap-2">
-                                            <button type="button" disabled={sending || (!kkSlot && !(kkForm.kelas && kkForm.guru_pegawai_id))} onClick={() => { const { slot_jadwal_id: _drop, ...rest } = kkForm; kirim({ kode: 'kelas_kosong', mode: 'tambah', ...rest, ...(kkSlot ? { slot_jadwal_id: kkSlot.jadwal_id } : {}) }); }} className="min-h-12 flex-1 rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
+                                            <button type="button" disabled={sending || (!kkSlot && !(kkForm.kelas && kkForm.guru_pegawai_id))} onClick={() => { const { slot_jadwal_id: _drop, ...rest } = kkForm; kirim({ kode: 'kelas_kosong', mode: 'tambah', ...rest, ...(kkSlot ? { slot_jadwal_id: kkSlot.jadwal_id } : {}) }); }} className="min-h-12 flex-1 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 active:scale-95 disabled:opacity-50">
                                                 {sending ? '...' : 'Catat kelas'}
                                             </button>
                                             <button type="button" disabled={sending} onClick={() => kirim({ kode: 'kelas_kosong', mode: 'nihil' })} className="min-h-12 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95 disabled:opacity-50">
@@ -1062,7 +1060,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                         </div>
                                     </div>
                                 )}
-                                {!kbmMulai && !done('kelas_kosong') && <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Dibuka {windows.kbm[0]}.</p>}
+                                {!kbmMulai && !done('kelas_kosong') && <p className="mt-1 flex items-center gap-1 text-xs text-slate-600"><Clock3 className="h-3.5 w-3.5" /> Dibuka {windows.kbm[0]}.</p>}
                                 {(items.kelas_kosong?.entries ?? []).length > 0 && (
                                     <ul className="mt-2 space-y-1.5">
                                         {(items.kelas_kosong.entries ?? []).map((e, i) => (
@@ -1084,7 +1082,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                 <div className="flex items-center justify-between gap-3">
                                     <p className="text-sm font-bold text-slate-800">Buku piket terisi</p>
                                     {done('buku') ? <Badge tone="emerald" icon={CheckCircle2}>{items.buku.done_at?.substring(0, 5)}</Badge> : (
-                                        <button type="button" disabled={!kbmMulai || sending} onClick={() => kirim({ kode: 'buku', mode: 'centang' })} className="min-h-12 rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
+                                        <button type="button" disabled={!kbmMulai || sending} onClick={() => kirim({ kode: 'buku', mode: 'centang' })} className="min-h-12 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 active:scale-95 disabled:opacity-50">
                                             {sending ? '...' : 'Catat'}
                                         </button>
                                     )}
@@ -1106,7 +1104,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button type="button" disabled={sending} onClick={() => kirim({ kode: 'insiden', mode: 'tambah', ...insidenForm })} className="min-h-12 flex-1 rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
+                                            <button type="button" disabled={sending} onClick={() => kirim({ kode: 'insiden', mode: 'tambah', ...insidenForm })} className="min-h-12 flex-1 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 active:scale-95 disabled:opacity-50">
                                                 {sending ? '...' : 'Catat insiden'}
                                             </button>
                                             <button type="button" disabled={sending} onClick={() => kirim({ kode: 'insiden', mode: 'nihil' })} className="min-h-12 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95 disabled:opacity-50">
@@ -1141,7 +1139,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                         <button type="button" disabled={!soreMulai || sending || doneCount < wajib.length || Boolean(blockReason)} onClick={submit} className="min-h-14 w-full rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-50">
                             {sending ? 'Mengirim...' : submitLabel}
                         </button>
-                        {!soreMulai && <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Pengiriman dibuka {submitAfter}.</p>}
+                        {!soreMulai && <p className="mt-1 flex items-center gap-1 text-xs text-slate-600"><Clock3 className="h-3.5 w-3.5" /> Pengiriman dibuka {submitAfter}.</p>}
                     </section>
                 </div>
             )}
