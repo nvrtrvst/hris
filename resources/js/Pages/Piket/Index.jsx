@@ -60,6 +60,13 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
     const SesionCard = ({ sesi }) => {
         const form = koreksi[sesi.id] ?? { pos_id: '', alasan: '' };
         const setForm = (patch) => setKoreksi({ ...koreksi, [sesi.id]: { ...form, ...patch } });
+        const sesiSelesai = sesi.status === 'complete';
+        const statusSesi = sesiSelesai ? 'Selesai' : sesi.perlu_tindakan ? 'Perlu tindakan' : 'Berjalan';
+        const statusSesiCls = sesiSelesai
+            ? 'bg-emerald-100 text-emerald-700'
+            : sesi.perlu_tindakan
+                ? 'bg-amber-100 text-amber-800'
+                : 'bg-sky-100 text-sky-700';
 
         return (
             <div className="card p-4">
@@ -70,8 +77,8 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                             Status: {sesi.status} · {sesi.petugas.map((p) => `${p.nama} (${p.area || p.peran}, ${p.selesai}/${p.wajib})`).join(' · ')}
                         </p>
                     </div>
-                    <span className={`rounded-full px-2 py-1 text-xs font-bold uppercase ${sesi.perlu_tindakan ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {sesi.perlu_tindakan ? 'Perlu tindakan' : 'Selesai'}
+                    <span className={`rounded-full px-2 py-1 text-xs font-bold ${statusSesiCls}`}>
+                        {statusSesi}
                     </span>
                 </div>
 

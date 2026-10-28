@@ -1049,4 +1049,52 @@ class PiketV2Test extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->has('laporan', 0));
     }
+
+    public function test_fase_tanggal_lampau_dihitung_terlewat(): void
+    {
+        Carbon::setTestNow('2026-10-29 05:10:00');
+
+        $piket = $this->pegawai('Petugas Piket');
+        $sesi = PiketSesi::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-10-28',
+            'jam_mulai' => '07:30',
+            'jam_selesai' => '18:00',
+            'status' => 'open',
+        ]);
+
+        foreach ([1 => ['11:42', '12:02'], 2 => ['13:27', '13:47']] as $putaran => [$mulai, $selesai]) {
+            PiketRound::create([
+                'sesi_id' => $sesi->id,
+                'area_id' => $this->area->id,
+                'petugas_id' => $piket->id,
+                'putaran' => $putaran,
+                'jendela_mulai' => $mulai,
+                'jendela_selesai' => $selesai,
+                'status' => 'tertunda',
+            ]);
+        }
+
+        $laporan = LaporanPiket::create([
+            'pegawai_id' => $piket->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-10-28',
+            'status' => LaporanPiket::STATUS_DRAFT,
+            'items' => [],
+        ]);
+        $laporan->forceFill(['sesi_id' => $sesi->id])->save();
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->get(route('piket.index', ['tanggal' => '2026-10-28']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Piket/Index')
+                ->where('sessions.0.round_terlewat', 2)
+                ->where('sessions.0.perlu_tindakan', true)
+            );
+
+        $reason = PiketService::roundBlockReason($laporan);
+        $this->assertStringContainsString('belum diselesaikan', $reason);
+        $this->assertStringNotContainsString('belum dibuka', $reason);
+    }
 }
