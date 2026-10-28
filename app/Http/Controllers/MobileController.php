@@ -349,18 +349,38 @@ class MobileController extends Controller
         }
 
         if (PiketService::isAreaMode($unit)) {
-            $areaId = PiketService::areaIdUntukPegawai($pegawai, $unit);
-            $allowed = PiketService::kelasArea($unit, $areaId);
+            $sesi = PiketService::sessionFor($pegawai, $jadwal);
+            PiketService::ensureAbsenAssignments($sesi);
+            PiketService::reassignAbsenIfNeeded($sesi);
+            $petugas = PiketService::petugasFor($sesi, $pegawai->id);
+            $assigned = $petugas && PiketService::hasAssignments($sesi)
+                ? PiketService::assignedClasses($sesi, $petugas)
+                : null;
 
-            if ($allowed === []) {
-                return response()->json(['success' => false, 'kelas' => [], 'message' => 'Kelas belum dipetakan ke area. Hubungi admin.'], 422)->header('Cache-Control', 'no-store');
+            if ($assigned !== null) {
+                if ($assigned === []) {
+                    return response()->json(['success' => true, 'kelas' => []])->header('Cache-Control', 'no-store');
+                }
+
+                $kelas = array_values(array_filter($kelas, function ($c) use ($assigned) {
+                    $label = trim(implode(' ', array_filter([$c['grade'] ?? null, $c['name'] ?? null, $c['section'] ?? null])));
+
+                    return AbsenSiswaService::labelDiizinkan($assigned, $label);
+                }));
+            } else {
+                $areaId = PiketService::areaIdUntukPegawai($pegawai, $unit);
+                $allowed = PiketService::kelasArea($unit, $areaId);
+
+                if ($allowed === []) {
+                    return response()->json(['success' => false, 'kelas' => [], 'message' => 'Kelas belum dipetakan ke area. Hubungi admin.'], 422)->header('Cache-Control', 'no-store');
+                }
+
+                $kelas = array_values(array_filter($kelas, function ($c) use ($allowed) {
+                    $label = trim(implode(' ', array_filter([$c['grade'] ?? null, $c['name'] ?? null, $c['section'] ?? null])));
+
+                    return AbsenSiswaService::labelDiizinkan($allowed, $label);
+                }));
             }
-
-            $kelas = array_values(array_filter($kelas, function ($c) use ($allowed) {
-                $label = trim(implode(' ', array_filter([$c['grade'] ?? null, $c['name'] ?? null, $c['section'] ?? null])));
-
-                return AbsenSiswaService::labelDiizinkan($allowed, $label);
-            }));
         }
 
         return response()->json([
@@ -1853,10 +1873,14 @@ class MobileController extends Controller
         $requiredCodes = [];
         $mappedClasses = [];
         $blockReason = null;
+        $assignmentVersion = 1;
+        $absenCoverage = ['assigned' => [], 'completed' => [], 'missing' => [], 'assigned_count' => 0, 'completed_count' => 0];
 
         if ($v2) {
             $sesi = PiketService::sessionFor($pegawai, $slot);
             PiketService::ensureRounds($sesi, $slot);
+            PiketService::ensureAbsenAssignments($sesi);
+            PiketService::reassignAbsenIfNeeded($sesi);
             $petugas = PiketService::petugasFor($sesi, $pegawai->id);
             $area = $petugas?->area_id ? PiketArea::find($petugas->area_id) : null;
             $pos = PiketService::posFor($unit, $petugas);
@@ -1864,7 +1888,11 @@ class MobileController extends Controller
             $team = PiketService::teamProgress($sesi);
             $templates = PiketService::activeTemplates($unit, $petugas);
             $requiredCodes = PiketService::requiredCodes($unit, $petugas);
-            $mappedClasses = PiketService::kelasArea($unit, $petugas?->area_id);
+            $mappedClasses = $petugas && PiketService::hasAssignments($sesi)
+                ? PiketService::assignedClasses($sesi, $petugas)
+                : PiketService::kelasArea($unit, $petugas?->area_id);
+            $absenCoverage = $petugas ? PiketService::absenCoverage($sesi, $petugas) : $absenCoverage;
+            $assignmentVersion = (int) $sesi->assignment_version;
 
             $laporan = $petugas?->laporan_piket_id
                 ? LaporanPiket::find($petugas->laporan_piket_id)
@@ -1872,6 +1900,9 @@ class MobileController extends Controller
             $blockReason = $laporan?->status === LaporanPiket::STATUS_DRAFT
                 ? PiketService::sessionBlockReason($laporan)
                 : null;
+            if ($laporan && $petugas && $absenCoverage['assigned_count'] > 0 && $absenCoverage['missing'] === []) {
+                PiketService::syncAbsenItem($laporan, $petugas);
+            }
         }
 
         $guruUnit = Pegawai::where('status_aktif', 'aktif')
@@ -2226,6 +2257,25 @@ class MobileController extends Controller
         return back()->with('message', 'Ronde selesai.');
     }
 
+    public function piketAssignmentVersion()
+    {
+        $pegawai = $this->getPegawai();
+        $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
+        $sesi = PiketService::sessionFor($pegawai, $slot);
+        PiketService::ensureAbsenAssignments($sesi);
+        PiketService::reassignAbsenIfNeeded($sesi);
+        $petugas = PiketService::petugasFor($sesi, $pegawai->id);
+        $coverage = $petugas
+            ? PiketService::absenCoverage($sesi, $petugas)
+            : ['assigned_count' => 0, 'completed_count' => 0];
+
+        return response()->json([
+            'version' => (int) $sesi->assignment_version,
+            'assigned_count' => $coverage['assigned_count'],
+            'completed_count' => $coverage['completed_count'],
+        ])->header('Cache-Control', 'no-store');
+    }
+
     public function storeAbsenSiswa(Request $request)
     {
         $pegawai = $this->getPegawai();
@@ -2250,16 +2300,24 @@ class MobileController extends Controller
         $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
         $unit = $slot->unitSekolah;
 
+        $sesiPiket = null;
+        $petugasPiket = null;
         if (PiketService::isAreaMode($unit)) {
-            $areaId = PiketService::areaIdUntukPegawai($pegawai, $unit);
-            $allowed = PiketService::kelasArea($unit, $areaId);
+            $sesiPiket = PiketService::sessionFor($pegawai, $slot);
+            PiketService::ensureAbsenAssignments($sesiPiket);
+            PiketService::reassignAbsenIfNeeded($sesiPiket);
+            $petugasPiket = PiketService::petugasFor($sesiPiket, $pegawai->id);
+
+            $allowed = $petugasPiket && PiketService::hasAssignments($sesiPiket)
+                ? PiketService::assignedClasses($sesiPiket, $petugasPiket)
+                : PiketService::kelasArea($unit, PiketService::areaIdUntukPegawai($pegawai, $unit));
 
             if ($allowed === []) {
-                throw ValidationException::withMessages(['class_label' => 'Kelas belum dipetakan ke area. Hubungi admin.']);
+                throw ValidationException::withMessages(['class_label' => 'Belum ada kelas yang ditugaskan untuk Anda.']);
             }
 
             if (! AbsenSiswaService::labelDiizinkan($allowed, $validated['class_label'])) {
-                abort(403, 'Kelas ini bukan area Anda.');
+                abort(403, 'Kelas ini bukan bagian tugas Anda.');
             }
         }
 
@@ -2323,6 +2381,15 @@ class MobileController extends Controller
                 $pegawai->id,
             );
         });
+
+        if ($petugasPiket) {
+            $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
+                ->whereDate('tanggal', $today)
+                ->first();
+            if ($laporan) {
+                PiketService::syncAbsenItem($laporan, $petugasPiket);
+            }
+        }
 
         return back()->with('message', 'Absen siswa tersimpan.');
     }
@@ -2446,7 +2513,9 @@ class MobileController extends Controller
 
         if ($laporan->sesi_id) {
             $sesi = PiketSesi::find($laporan->sesi_id);
-            $semua = PiketPetugas::where('sesi_id', $laporan->sesi_id)->count();
+            $semua = PiketPetugas::where('sesi_id', $laporan->sesi_id)
+                ->where('status', '!=', 'tidak_hadir')
+                ->count();
             $terkirim = LaporanPiket::where('sesi_id', $laporan->sesi_id)
                 ->where('status', LaporanPiket::STATUS_SUBMITTED)
                 ->count();

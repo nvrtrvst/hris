@@ -8,7 +8,7 @@ class PiketPetugas extends Model
 {
     protected $table = 'piket_petugas';
 
-    protected $fillable = ['sesi_id', 'pegawai_id', 'area_id', 'pos_id', 'peran', 'laporan_piket_id'];
+    protected $fillable = ['sesi_id', 'pegawai_id', 'area_id', 'pos_id', 'peran', 'status', 'status_alasan', 'laporan_piket_id'];
 
     public function pegawai()
     {
@@ -28,6 +28,11 @@ class PiketPetugas extends Model
     public function pos()
     {
         return $this->belongsTo(PiketPos::class, 'pos_id');
+    }
+
+    public function assignedClasses()
+    {
+        return $this->hasMany(PiketPetugasKelas::class, 'petugas_id');
     }
 
     public function laporan()

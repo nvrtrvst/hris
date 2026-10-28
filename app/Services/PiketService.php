@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AbsenSiswaSesi;
 use App\Models\AuditLog;
 use App\Models\Jadwal;
 use App\Models\LaporanPiket;
@@ -10,10 +11,12 @@ use App\Models\PiketArea;
 use App\Models\PiketItemTemplate;
 use App\Models\PiketPenugasan;
 use App\Models\PiketPetugas;
+use App\Models\PiketPetugasKelas;
 use App\Models\PiketPos;
 use App\Models\PiketPosLog;
 use App\Models\PiketRound;
 use App\Models\PiketSesi;
+use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -75,6 +78,259 @@ class PiketService
         self::linkPetugas($sesi, $pegawai->id, null, null, 'area');
 
         return $sesi->fresh('petugas');
+    }
+
+    /** Bagi kelas area secara round-robin; pembagian yang sudah ada tidak diubah. */
+    public static function ensureAbsenAssignments(PiketSesi $sesi): void
+    {
+        if (! self::isAreaMode($sesi->unitSekolah)) {
+            return;
+        }
+
+        $petugas = PiketPetugas::where('sesi_id', $sesi->id)
+            ->whereNotNull('area_id')
+            ->where('status', '!=', 'tidak_hadir')
+            ->orderBy('id')
+            ->get();
+
+        if ($petugas->isEmpty()) {
+            return;
+        }
+
+        $existing = PiketPetugasKelas::where('sesi_id', $sesi->id)->pluck('kelas_label')->all();
+        $existing = array_map(fn ($label) => AbsenSiswaService::normalizeLabel((string) $label), $existing);
+        $offset = Carbon::parse($sesi->tanggal)->dayOfYear;
+
+        foreach ($petugas->groupBy('area_id') as $areaId => $group) {
+            $classes = self::kelasArea($sesi->unitSekolah, (int) $areaId);
+            sort($classes, SORT_NATURAL | SORT_FLAG_CASE);
+            $group = $group->values();
+            $start = $offset % max(1, $group->count());
+
+            foreach ($classes as $index => $classLabel) {
+                $normalized = AbsenSiswaService::normalizeLabel($classLabel);
+                if (in_array($normalized, $existing, true)) {
+                    continue;
+                }
+
+                $owner = $group->get(($index + $start) % $group->count());
+                PiketPetugasKelas::create([
+                    'sesi_id' => $sesi->id,
+                    'petugas_id' => $owner->pegawai_id,
+                    'kelas_label' => $classLabel,
+                    'status' => 'aktif',
+                ]);
+                $existing[] = $normalized;
+            }
+        }
+    }
+
+    public static function hasAssignments(PiketSesi $sesi): bool
+    {
+        return PiketPetugasKelas::where('sesi_id', $sesi->id)->exists();
+    }
+
+    /** @return list<string> */
+    public static function assignedClasses(PiketSesi $sesi, PiketPetugas $petugas): array
+    {
+        return PiketPetugasKelas::where('sesi_id', $sesi->id)
+            ->where('petugas_id', $petugas->pegawai_id)
+            ->orderBy('kelas_label')
+            ->pluck('kelas_label')
+            ->all();
+    }
+
+    /**
+     * @return array{assigned: list<string>, completed: list<string>, missing: list<string>, assigned_count: int, completed_count: int}
+     */
+    public static function absenCoverage(PiketSesi $sesi, PiketPetugas $petugas): array
+    {
+        $assigned = self::assignedClasses($sesi, $petugas);
+        $saved = AbsenSiswaSesi::where('unit_sekolah_id', $sesi->unit_sekolah_id)
+            ->whereDate('tanggal', $sesi->tanggal)
+            ->pluck('class_label')
+            ->all();
+        $saved = array_map(fn ($label) => AbsenSiswaService::normalizeLabel((string) $label), $saved);
+
+        $completed = array_values(array_filter(
+            $assigned,
+            fn ($label) => in_array(AbsenSiswaService::normalizeLabel($label), $saved, true),
+        ));
+        $missing = array_values(array_diff($assigned, $completed));
+
+        return [
+            'assigned' => $assigned,
+            'completed' => $completed,
+            'missing' => $missing,
+            'assigned_count' => count($assigned),
+            'completed_count' => count($completed),
+        ];
+    }
+
+    public static function syncAbsenItem(LaporanPiket $laporan, PiketPetugas $petugas): void
+    {
+        if (! $laporan->sesi_id) {
+            return;
+        }
+
+        $sesi = PiketSesi::find($laporan->sesi_id);
+        if (! $sesi) {
+            return;
+        }
+
+        $coverage = self::absenCoverage($sesi, $petugas);
+        if ($coverage['assigned_count'] === 0 || $coverage['missing'] !== []) {
+            return;
+        }
+
+        $items = $laporan->items ?? [];
+        $items['absen_siswa'] = array_merge($items['absen_siswa'] ?? [], [
+            'done_at' => Carbon::now()->format('H:i:s'),
+            'sesi_count' => $coverage['completed_count'],
+            'assigned_count' => $coverage['assigned_count'],
+        ]);
+        $laporan->items = $items;
+        $laporan->save();
+    }
+
+    /**
+     * Tandai petugas yang tidak hadir/abai dan alihkan kelasnya ke petugas
+     * yang hadir. Dipanggil lazy, tanpa scheduler.
+     */
+    public static function reassignAbsenIfNeeded(PiketSesi $sesi): bool
+    {
+        if ($sesi->status !== 'open' || ! self::isAreaMode($sesi->unitSekolah)) {
+            return false;
+        }
+
+        $now = Carbon::now();
+        $presenceCutoff = self::presenceCutoff($sesi);
+        if ($now->lt($presenceCutoff)) {
+            return false;
+        }
+
+        $workCutoff = self::workCutoff($sesi);
+        $petugas = PiketPetugas::where('sesi_id', $sesi->id)->orderBy('id')->get();
+        $hasAssignment = PiketPetugasKelas::where('sesi_id', $sesi->id)->exists();
+
+        $absent = collect();
+        foreach ($petugas as $row) {
+            $hasPresensi = self::hasPresensi($row->pegawai_id, $sesi->tanggal);
+            $coverage = $hasAssignment ? self::absenCoverage($sesi, $row) : ['assigned_count' => 0, 'completed_count' => 0];
+
+            $abai = $hasPresensi
+                && $now->gte($workCutoff)
+                && $coverage['assigned_count'] > 0
+                && $coverage['completed_count'] === 0;
+
+            if ($row->status === 'tidak_hadir' || ! $hasPresensi || $abai) {
+                $absent->push($row);
+            }
+        }
+
+        if ($absent->isEmpty()) {
+            return false;
+        }
+
+        $present = $petugas->filter(
+            fn ($row) => $row->status !== 'tidak_hadir'
+                && self::hasPresensi($row->pegawai_id, $sesi->tanggal)
+                && ! self::isAbsentByProgress($row, $sesi, $now, $workCutoff)
+        )->values();
+
+        if ($present->isEmpty()) {
+            return false;
+        }
+
+        DB::transaction(function () use ($sesi, $absent, $present) {
+            $reassigned = 0;
+            $pointer = 0;
+
+            foreach ($absent as $row) {
+                $reason = self::hasPresensi($row->pegawai_id, $sesi->tanggal)
+                    ? 'Tidak menyimpan kelas sampai batas KBM.'
+                    : 'Tidak presensi sampai batas kehadiran.';
+
+                $coverage = self::absenCoverage($sesi, $row);
+                $missing = array_map(fn ($label) => AbsenSiswaService::normalizeLabel($label), $coverage['missing']);
+                $assignments = PiketPetugasKelas::where('sesi_id', $sesi->id)
+                    ->where('petugas_id', $row->pegawai_id)
+                    ->get()
+                    ->filter(fn ($item) => in_array(AbsenSiswaService::normalizeLabel($item->kelas_label), $missing, true));
+
+                foreach ($assignments as $assignment) {
+                    $newOwner = $present->get($pointer % $present->count());
+                    $assignment->forceFill([
+                        'petugas_id' => $newOwner->pegawai_id,
+                        'dialihkan_dari' => $row->pegawai_id,
+                        'status' => 'dialihkan',
+                    ])->save();
+                    $pointer++;
+                    $reassigned++;
+                }
+
+                $row->forceFill(['status' => 'tidak_hadir', 'status_alasan' => $reason])->save();
+
+                PiketRound::where('sesi_id', $sesi->id)
+                    ->where('petugas_id', $row->pegawai_id)
+                    ->whereNull('selesai_at')
+                    ->update(['petugas_id' => $present->first()->pegawai_id]);
+            }
+
+            if ($reassigned > 0) {
+                $sesi->forceFill(['assignment_version' => ((int) $sesi->assignment_version) + 1])->save();
+                AuditLog::log($sesi, 'reassign_absen', [], [
+                    'kelas_dialihkan' => $reassigned,
+                    'petugas_tidak_hadir' => $absent->pluck('pegawai_id')->all(),
+                ]);
+            }
+        });
+
+        return true;
+    }
+
+    /** Petugas dianggap abai bila sudah presensi tapi nol kelas selesai. */
+    private static function isAbsentByProgress(PiketPetugas $petugas, PiketSesi $sesi, Carbon $now, Carbon $workCutoff): bool
+    {
+        if (! self::hasPresensi($petugas->pegawai_id, $sesi->tanggal) || $now->lt($workCutoff)) {
+            return false;
+        }
+
+        $coverage = self::absenCoverage($sesi, $petugas);
+
+        return $coverage['assigned_count'] > 0 && $coverage['completed_count'] === 0;
+    }
+
+    private static function hasPresensi(int $pegawaiId, $tanggal): bool
+    {
+        return Presensi::where('pegawai_id', $pegawaiId)
+            ->whereDate('tanggal', $tanggal)
+            ->whereNotNull('jam_masuk')
+            ->exists();
+    }
+
+    private static function presenceCutoff(PiketSesi $sesi): Carbon
+    {
+        $date = Carbon::parse($sesi->tanggal)->startOfDay();
+        $sessionStart = $date->copy()->setTimeFromTimeString(substr((string) $sesi->jam_mulai, 0, 5));
+        $unitStart = $date->copy()->setTimeFromTimeString(
+            substr((string) ($sesi->unitSekolah?->jam_masuk_kantor ?: $sesi->jam_mulai), 0, 5)
+        )->addMinutes((int) ($sesi->unitSekolah?->toleransi_menit ?? 0));
+
+        return $sessionStart->gt($unitStart) ? $sessionStart : $unitStart;
+    }
+
+    private static function workCutoff(PiketSesi $sesi): Carbon
+    {
+        $windows = self::windowsForTimes(
+            (string) $sesi->jam_mulai,
+            (string) $sesi->jam_selesai,
+            $sesi->unitSekolah,
+        );
+
+        return Carbon::parse($sesi->tanggal)->startOfDay()
+            ->setTimeFromTimeString($windows['kbm'][0])
+            ->addMinutes(30);
     }
 
     public static function linkPetugas(PiketSesi $sesi, int $pegawaiId, ?int $areaId, ?int $posId, string $peran): PiketPetugas
@@ -170,11 +426,18 @@ class PiketService
     /** @return list<string> */
     public static function requiredCodes(?UnitSekolah $unit, ?PiketPetugas $petugas): array
     {
-        return collect(self::activeTemplates($unit, $petugas))
+        $codes = collect(self::activeTemplates($unit, $petugas))
             ->where('wajib', true)
             ->pluck('kode')
-            ->values()
-            ->all();
+            ->values();
+
+        if ($petugas?->sesi_id && $petugas->sesi && PiketPetugasKelas::where('sesi_id', $petugas->sesi_id)->exists()) {
+            if (self::assignedClasses($petugas->sesi, $petugas) === []) {
+                $codes = $codes->reject(fn ($kode) => $kode === 'absen_siswa');
+            }
+        }
+
+        return $codes->values()->all();
     }
 
     public static function posFor(?UnitSekolah $unit, ?PiketPetugas $petugas): array
@@ -265,11 +528,19 @@ class PiketService
     /** @return array{pagi:array{0:string,1:string},kbm:array{0:string,1:string},sore:array{0:string,1:string}} */
     public static function windows(Jadwal $slot): array
     {
-        $mulai = substr((string) ($slot->jam_mulai ?: ''), 0, 5);
-        $selesai = substr((string) ($slot->jam_selesai ?: ''), 0, 5);
+        return self::windowsForTimes(
+            (string) ($slot->jam_mulai ?: ''),
+            (string) ($slot->jam_selesai ?: ''),
+            $slot->unitSekolah,
+        );
+    }
+
+    private static function windowsForTimes(string $mulai, string $selesai, ?UnitSekolah $unit): array
+    {
+        $mulai = substr($mulai, 0, 5);
+        $selesai = substr($selesai, 0, 5);
 
         if (! $mulai || ! $selesai || $selesai <= $mulai) {
-            $unit = $slot->unitSekolah;
             $mulai = substr((string) ($unit?->jam_masuk_kantor ?: '07:00'), 0, 5);
             $selesai = substr((string) ($unit?->jam_pulang_kantor ?: '15:00'), 0, 5);
         }
@@ -380,7 +651,7 @@ class PiketService
             return;
         }
 
-        $petugas = PiketPetugas::where('sesi_id', $sesi->id)->count();
+        $petugas = PiketPetugas::where('sesi_id', $sesi->id)->where('status', '!=', 'tidak_hadir')->count();
         $terkirim = LaporanPiket::where('sesi_id', $sesi->id)
             ->where('status', LaporanPiket::STATUS_SUBMITTED)
             ->count();
@@ -466,6 +737,8 @@ class PiketService
                 'nama' => $p->pegawai?->nama_lengkap,
                 'area' => $p->area?->nama,
                 'peran' => $p->peran,
+                'status' => $p->status,
+                'status_alasan' => $p->status_alasan,
                 'selesai' => $p->laporan ? $p->laporan->doneCount() : 0,
                 'submitted' => $p->laporan?->status === LaporanPiket::STATUS_SUBMITTED,
             ])
