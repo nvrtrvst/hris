@@ -227,7 +227,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
     };
 
     return (
-        <div className="border-t border-slate-100 pt-3">
+        <div id="absen-siswa" className="scroll-mt-24 border-t border-slate-100 pt-3">
             <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-bold text-slate-800">Absen siswa</p>
                 {doneItem && <Badge tone="emerald" icon={CheckCircle2}>{doneItem.done_at?.substring(0, 5)}</Badge>}
@@ -236,6 +236,11 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
             {coverage?.assigned_count > 0 && (
                 <p className="mt-1 text-[11px] font-semibold text-slate-600">
                     Kelas Anda {coverage.completed_count}/{coverage.assigned_count} selesai
+                </p>
+            )}
+            {coverage?.missing?.length > 0 && (
+                <p className="mt-0.5 break-words text-[11px] text-rose-700">
+                    Belum: {coverage.missing.join(', ')}
                 </p>
             )}
 
@@ -629,6 +634,32 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     const items = laporan?.items ?? {};
     const done = (kode) => Boolean(items[kode]?.done_at);
     const doneCount = wajib.filter(done).length;
+    const blockers = piket.blockers ?? {};
+    const fallbackMissing = wajib
+        .filter((kode) => !done(kode))
+        .map((kode) => ({ kode, label: label[kode] ?? kode }));
+    const missingItems = (blockers.items ?? []).length > 0 ? blockers.items : fallbackMissing;
+    const missingAbsen = blockers.absen_missing ?? [];
+    const pendingRounds = blockers.rounds ?? [];
+    const pendingPos = blockers.pos ?? [];
+    const hasBlockers = missingItems.length > 0 || missingAbsen.length > 0 || pendingRounds.length > 0 || pendingPos.length > 0;
+    const blockerTarget = missingItems.some((item) => item.kode === 'absen_siswa') || missingAbsen.length > 0
+        ? 'absen-siswa'
+        : pendingRounds.length > 0
+            ? 'ronde-area'
+            : pendingPos.length > 0
+                ? 'pos-gerbang'
+                : null;
+    const submitLabel = missingItems.length > 0
+        ? `Lengkapi: ${missingItems.map((item) => item.label).join(', ')}`
+        : pendingRounds.length > 0
+            ? `Selesaikan ${pendingRounds.map((r) => `Ronde ${r.putaran}`).join(' & ')}`
+            : pendingPos.length > 0
+                ? `Lengkapi pos: ${pendingPos.join(', ')}`
+                : 'Kirim laporan piket';
+    const lihatYangBelum = () => {
+        if (blockerTarget) document.getElementById(blockerTarget)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
     const submitted = laporan?.status === 'submitted';
     const inWin = (w) => hhmm >= w[0] && hhmm <= w[1];
     // Jalur remedial: admin bisa membuka seksi Pagi di luar jendelanya.
@@ -742,6 +773,37 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                 <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.round((doneCount / wajib.length) * 100)}%` }} />
                 </div>
+                {hasBlockers && (
+                    <div className="mt-3 space-y-2 border-t border-border pt-2 text-[11px] text-text-secondary">
+                        {missingItems.length > 0 && (
+                            <div>
+                                <p className="font-bold text-text-primary">Belum selesai</p>
+                                <ul className="mt-0.5 space-y-0.5">
+                                    {missingItems.map((item) => (
+                                        <li key={item.kode} className="break-words">
+                                            • {item.label}
+                                            {item.kode === 'absen_siswa' && missingAbsen.length > 0 && ` — ${missingAbsen.length} kelas belum`}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                        {missingAbsen.length > 0 && (
+                            <p className="break-words"><span className="font-bold text-text-primary">Kelas belum diabsen:</span> {missingAbsen.join(', ')}</p>
+                        )}
+                        {pendingRounds.length > 0 && (
+                            <p><span className="font-bold text-text-primary">Penghalang:</span> {pendingRounds.map((r) => `Ronde ${r.putaran}`).join(', ')} belum selesai</p>
+                        )}
+                        {pendingPos.length > 0 && (
+                            <p className="break-words"><span className="font-bold text-text-primary">Pos belum:</span> {pendingPos.join(', ')}</p>
+                        )}
+                        {blockerTarget && (
+                            <button type="button" onClick={lihatYangBelum} className="min-h-11 rounded-lg bg-white px-2.5 font-bold text-primary ring-1 ring-border active:scale-95">
+                                Lihat yang belum
+                            </button>
+                        )}
+                    </div>
+                )}
             </Card>
 
             {v2 && team.length > 0 && (
@@ -762,7 +824,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
             )}
 
             {v2 && posList.length > 0 && (
-                <Card className="mb-4 space-y-2">
+                <Card id="pos-gerbang" className="mb-4 scroll-mt-24 space-y-2">
                     <p className="text-sm font-bold text-slate-800">Pos & gerbang</p>
                     {posList.map((pos) => (
                         <PosItem key={pos.id} pos={pos} log={posLogs[pos.id]} sending={sending} onSave={kirimPos} />
@@ -906,7 +968,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                         <SeksiHead icon={BookOpen} title="Jam Belajar" win={windows.kbm} state={done('kelas_kosong') && done('buku') && done('insiden') ? 'done' : kbmMulai ? 'open' : 'locked'} />
                         <Card className="space-y-4">
                             {v2 && areaRounds.length > 0 && (
-                                <div className="space-y-2 border-b border-slate-100 pb-3">
+                                <div id="ronde-area" className="scroll-mt-24 space-y-2 border-b border-slate-100 pb-3">
                                     <p className="text-sm font-bold text-slate-800">Ronde keliling area</p>
                                     {areaRounds.map((r) => (
                                         <RoundCard key={r.id} round={r} hhmm={hhmm} sending={sending} onDone={kirimRound} />
@@ -1064,9 +1126,14 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
 
                     <section aria-label="Kirim laporan">
                         <SeksiHead icon={Send} title="Sore" win={[submitAfter, windows.sore[1]]} state={soreMulai ? 'open' : 'locked'} />
-                        {blockReason && <p className="mb-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{blockReason}</p>}
+                        {blockReason && !hasBlockers && <p className="mb-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{blockReason}</p>}
+                        {hasBlockers && blockerTarget && (
+                            <button type="button" onClick={lihatYangBelum} className="mb-2 min-h-11 w-full rounded-xl bg-white px-3 text-xs font-bold text-primary ring-1 ring-slate-200 active:scale-95">
+                                Lihat yang belum
+                            </button>
+                        )}
                         <button type="button" disabled={!soreMulai || sending || doneCount < wajib.length || Boolean(blockReason)} onClick={submit} className="min-h-14 w-full rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-50">
-                            {sending ? 'Mengirim...' : doneCount < wajib.length ? `Lengkapi dulu (${doneCount}/${wajib.length})` : 'Kirim laporan piket'}
+                            {sending ? 'Mengirim...' : submitLabel}
                         </button>
                         {!soreMulai && <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Pengiriman dibuka {submitAfter}.</p>}
                     </section>
