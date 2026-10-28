@@ -27,7 +27,7 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
 
         if (selesai) {
             return (
-                <p className="text-xs text-text-muted">
+                <p className="text-xs text-text-secondary">
                     Fase {round.putaran}{round.area ? ` · ${round.area}` : ''}: {round.selesai_at} ({round.status})
                 </p>
             );
@@ -41,6 +41,7 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                 <input
                     className="input-field h-11 flex-1 text-xs"
                     placeholder="Alasan buka fase (wajib)"
+                    aria-label={`Alasan buka fase ${round.putaran}`}
                     value={alasan}
                     onChange={(e) => setAlasan(e.target.value)}
                 />
@@ -65,20 +66,20 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                 <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                         <p className="text-sm font-bold text-text-primary">Sesi {sesi.jam}</p>
-                        <p className="text-xs text-text-muted">
+                        <p className="text-xs text-text-secondary">
                             Status: {sesi.status} · {sesi.petugas.map((p) => `${p.nama} (${p.area || p.peran}, ${p.selesai}/${p.wajib})`).join(' · ')}
                         </p>
                     </div>
-                    <span className={`rounded-full px-2 py-1 text-[11px] font-bold uppercase ${sesi.perlu_tindakan ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>
+                    <span className={`rounded-full px-2 py-1 text-xs font-bold uppercase ${sesi.perlu_tindakan ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>
                         {sesi.perlu_tindakan ? 'Perlu tindakan' : 'Selesai'}
                     </span>
                 </div>
 
                 <dl className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                    <div><dt className="text-text-muted">Pos belum</dt><dd className="font-semibold">{sesi.pos_belum.length ? sesi.pos_belum.join(', ') : '—'}</dd></div>
-                    <div><dt className="text-text-muted">Fase</dt><dd className="font-semibold">{sesi.round_terlewat} terlewat</dd></div>
-                    <div><dt className="text-text-muted">Temuan</dt><dd className="font-semibold">{sesi.temuan}</dd></div>
-                    <div><dt className="text-text-muted">Insiden</dt><dd className="font-semibold">{sesi.insiden}</dd></div>
+                    <div><dt className="text-text-secondary">Pos belum</dt><dd className="font-semibold">{sesi.pos_belum.length ? sesi.pos_belum.join(', ') : '-'}</dd></div>
+                    <div><dt className="text-text-secondary">Fase</dt><dd className="font-semibold">{sesi.round_terlewat} terlewat</dd></div>
+                    <div><dt className="text-text-secondary">Temuan</dt><dd className="font-semibold">{sesi.temuan}</dd></div>
+                    <div><dt className="text-text-secondary">Insiden</dt><dd className="font-semibold">{sesi.insiden}</dd></div>
                 </dl>
 
                 {sesi.rounds.length > 0 && (
@@ -91,7 +92,7 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
 
                 {sesi.pos_belum.length > 0 && (
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
-                        <select className="select-field" value={form.pos_id} onChange={(e) => setForm({ pos_id: e.target.value })}>
+                        <select className="select-field" aria-label="Pilih pos yang belum dilayani" value={form.pos_id} onChange={(e) => setForm({ pos_id: e.target.value })}>
                             <option value="">Pilih pos</option>
                             {pos.filter((p) => p.unit_sekolah_id === sesi.unit && p.is_wajib).map((p) => (
                                 <option key={p.id} value={p.id}>{p.nama}</option>
@@ -100,6 +101,7 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                         <input
                             className="input-field sm:col-span-2"
                             placeholder="Alasan (wajib)"
+                            aria-label="Alasan tindakan pos"
                             value={form.alasan}
                             onChange={(e) => setForm({ alasan: e.target.value })}
                         />
@@ -124,6 +126,7 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <input
                         type="date"
+                        aria-label="Tanggal piket"
                         className="input-field w-auto"
                         value={tanggal}
                         onChange={(e) => router.get(route('piket.index'), { tanggal: e.target.value }, { preserveState: true })}
@@ -140,7 +143,7 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                         <ShieldAlert className="h-4 w-4" /> Perlu tindakan ({perlu.length})
                     </h3>
                     {perlu.length === 0 ? (
-                        <div className="card p-4 text-sm text-text-muted">Tidak ada sesi yang perlu ditindaklanjuti.</div>
+                        <div className="card p-4 text-sm text-text-secondary">Tidak ada sesi yang perlu ditindaklanjuti.</div>
                     ) : perlu.map((s) => <SesionCard key={s.id} sesi={s} />)}
                 </section>
 
