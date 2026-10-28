@@ -2239,7 +2239,7 @@ class MobileController extends Controller
         $unit = $slot->unitSekolah;
 
         if (! PiketService::isAreaMode($unit) || (int) $round->petugas_id !== (int) $pegawai->id) {
-            abort(403, 'Ronde ini bukan milik Anda.');
+            abort(403, 'Fase ini bukan milik Anda.');
         }
 
         $validated = $request->validate([
@@ -2259,13 +2259,13 @@ class MobileController extends Controller
         $now = Carbon::now()->format('H:i');
 
         if ($now < $round->jendela_mulai) {
-            throw ValidationException::withMessages(['round' => 'Ronde dibuka pukul '.$round->jendela_mulai.'.']);
+            throw ValidationException::withMessages(['round' => 'Fase dibuka pukul '.$round->jendela_mulai.'.']);
         }
 
         $terlambat = $now > $round->jendela_selesai;
 
         if ($terlambat && blank($validated['alasan'] ?? null)) {
-            throw ValidationException::withMessages(['round' => 'Isi alasan minimal 10 karakter karena ronde sudah lewat jendela.']);
+            throw ValidationException::withMessages(['round' => 'Isi alasan minimal 10 karakter karena fase sudah lewat jendela.']);
         }
 
         $round->forceFill([
@@ -2274,7 +2274,7 @@ class MobileController extends Controller
             'alasan' => $validated['alasan'] ?? $round->alasan,
         ])->save();
 
-        return back()->with('message', 'Ronde selesai.');
+        return back()->with('message', 'Fase selesai.');
     }
 
     public function piketAssignmentVersion()

@@ -618,7 +618,7 @@ class LaporanController extends Controller
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
             'area_id' => 'nullable|exists:piket_area,id',
             'status' => 'nullable|in:semua,draft,submitted,perlu_cek,belum',
-            'kualitas' => 'nullable|in:semua,pos_belum,ronde_terlewat,perlu_cek',
+            'kualitas' => 'nullable|in:semua,pos_belum,fase_terlewat,perlu_cek',
         ]);
 
         $end = isset($validated['end_date']) ? Carbon::parse($validated['end_date']) : Carbon::today();
@@ -766,7 +766,7 @@ class LaporanController extends Controller
 
         if ($kualitas === 'pos_belum') {
             $laporan = $laporan->filter(fn ($lap) => $lap['pos_belum'] !== [])->values();
-        } elseif ($kualitas === 'ronde_terlewat') {
+        } elseif ($kualitas === 'fase_terlewat') {
             $laporan = $laporan->filter(fn ($lap) => collect($lap['rounds'])->contains(fn ($r) => $r['selesai_at'] === null))->values();
         } elseif ($kualitas === 'perlu_cek') {
             $laporan = $laporan->filter(fn ($lap) => $lap['perlu_cek'] > 0)->values();

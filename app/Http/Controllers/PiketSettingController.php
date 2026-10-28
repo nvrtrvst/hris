@@ -266,7 +266,7 @@ class PiketSettingController extends Controller
 
         PiketService::waiveRound($round, $request->user()->id, $data['alasan']);
 
-        return back()->with('message', 'Ronde dibuka/dikecualikan.');
+        return back()->with('message', 'Fase dibuka/dikecualikan.');
     }
 
     public function servePos(Request $request, PiketSesi $sesi, PiketPos $pos)
