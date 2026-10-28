@@ -33,7 +33,7 @@ class LaporanPiket extends Model
 
     /** Label item untuk pesan error. */
     public const ITEM_LABEL = [
-        self::ITEM_GERBANG => 'Jaga gerbang',
+        self::ITEM_GERBANG => 'Pos gerbang',
         self::ITEM_CEK_ABSEN => 'Cek guru absen',
         self::ITEM_KELAS_KOSONG => 'Kelas kosong',
         self::ITEM_BUKU => 'Buku piket',

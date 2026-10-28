@@ -166,6 +166,11 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
             return;
         }
 
+        if (lastSaved && alasan.trim().length < 5) {
+            setErr('Isi alasan perubahan minimal 5 karakter.');
+            return;
+        }
+
         setErr('');
         setKonfirmasi(hitung());
     };
@@ -266,11 +271,14 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                                             muatKelas();
                                             setSelected({ id: s.class_id, name: s.class_label, grade: '', section: '' });
                                             setSiswa(s.details.map((d) => ({ nis: d.nis, nama: d.nama, status: d.status, keterangan: d.keterangan ?? '' })));
+                                            setLastSaved(s);
                                             setErr('');
+                                            setAlasan('');
+                                            setKonfirmasi(null);
                                         }}
                                         className="shrink-0 rounded-lg bg-white px-2 py-1 font-bold text-primary ring-1 ring-slate-200 active:scale-95"
                                     >
-                                        Edit
+                                        Koreksi
                                     </button>
                                 )}
                             </div>
@@ -326,7 +334,25 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                             <button type="button" onClick={() => { setSelected(null); setSiswa([]); setErr(''); setKonfirmasi(null); }} className="min-h-11 rounded-lg bg-white px-3 text-[11px] font-bold text-slate-500 ring-1 ring-slate-200 active:scale-95">Ganti kelas</button>
                         </div>
                         {lastSaved && (
-                            <p className="text-[11px] text-amber-700">Terakhir diubah oleh {lastSaved.oleh || 'petugas'} pukul {lastSaved.done_at}. Perubahan butuh alasan.</p>
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                                <p className="text-xs font-bold text-amber-900">Mode koreksi</p>
+                                <p className="mt-0.5 text-[11px] text-amber-800">
+                                    Kelas ini sudah diisi oleh {lastSaved.oleh || 'petugas'} pukul {lastSaved.done_at}. Data sebelumnya akan diganti.
+                                </p>
+                                <label htmlFor="alasan-koreksi" className="mt-2 block text-[11px] font-bold text-amber-900">
+                                    Alasan perubahan <span className="text-rose-600">*</span>
+                                </label>
+                                <input
+                                    id="alasan-koreksi"
+                                    value={alasan}
+                                    onChange={(e) => setAlasan(e.target.value)}
+                                    placeholder="Contoh: koreksi status setelah surat dokter"
+                                    className="input-field mt-1 h-11 w-full text-xs"
+                                    maxLength={255}
+                                    aria-label="Alasan perubahan absen siswa"
+                                />
+                                <p className="mt-1 text-[10px] text-amber-700">Minimal 5 karakter.</p>
+                            </div>
                         )}
                         <div className="flex items-center justify-between gap-2">
                             <p className="text-[11px] text-slate-500">{siswa.length} siswa</p>
@@ -391,23 +417,18 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                             </p>
                             {konfirmasi.alpa > 0 && <p className="mt-1 text-[11px] font-semibold text-rose-600">Ada {konfirmasi.alpa} siswa alpa. Periksa kembali.</p>}
                             {lastSaved && (
-                                <input
-                                    value={alasan}
-                                    onChange={(e) => setAlasan(e.target.value)}
-                                    placeholder="Alasan perubahan (wajib, min. 5 karakter)"
-                                    className="input-field mt-2 h-11 w-full text-xs"
-                                />
+                                <p className="mt-1 text-[11px] text-amber-800">Alasan koreksi: {alasan || '-'}</p>
                             )}
                             <div className="mt-2 flex gap-2">
                                 <button type="button" onClick={() => setKonfirmasi(null)} className="btn-secondary min-h-11 flex-1">Periksa lagi</button>
                                 <button type="button" disabled={saving || (lastSaved && alasan.trim().length < 5)} onClick={kirim} className="btn-primary min-h-11 flex-1">
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
+                                    {saving ? 'Menyimpan...' : (lastSaved ? 'Simpan koreksi' : 'Simpan')}
                                 </button>
                             </div>
                         </div>
                     ) : (
-                        <button type="button" disabled={saving || loadingSiswa || siswa.length === 0} onClick={siapkanSimpan} className="min-h-12 w-full rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
-                            Periksa & simpan
+                        <button type="button" disabled={saving || loadingSiswa || siswa.length === 0 || (lastSaved && alasan.trim().length < 5)} onClick={siapkanSimpan} className="min-h-12 w-full rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
+                            {lastSaved ? 'Periksa & simpan koreksi' : 'Periksa & simpan'}
                         </button>
                     )}
                 </div>
@@ -731,7 +752,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                             <li key={t.pegawai_id} className="flex items-center justify-between gap-2 text-xs text-slate-600">
                                 <span className="min-w-0 truncate">
                                     <span className={`font-semibold ${t.pegawai_id === pegawai?.id ? 'text-primary' : 'text-slate-800'}`}>{t.nama}</span>
-                                    {t.area ? ` · ${t.area}` : ''}{t.peran === 'gerbang' ? ' · gerbang' : ''}
+                                    {t.area ? ` · ${t.area}` : ''}{t.peran === 'gerbang' ? ' · pos gerbang' : ''}
                                 </span>
                                 <span className="shrink-0 tabular-nums">{t.submitted ? 'terkirim' : `${t.selesai} item`}</span>
                             </li>
@@ -742,7 +763,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
 
             {v2 && posList.length > 0 && (
                 <Card className="mb-4 space-y-2">
-                    <p className="text-sm font-bold text-slate-800">Pos hari ini</p>
+                    <p className="text-sm font-bold text-slate-800">Pos & gerbang</p>
                     {posList.map((pos) => (
                         <PosItem key={pos.id} pos={pos} log={posLogs[pos.id]} sending={sending} onSave={kirimPos} />
                     ))}
@@ -772,7 +793,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                         <Card className="space-y-4">
                             {!v2 && (
                             <div>
-                                <p className="text-sm font-bold text-slate-800">Jaga gerbang {done('gerbang') && <span className="ml-1 text-xs font-semibold text-emerald-700">({items.gerbang.done_at?.substring(0, 5)}, {items.gerbang.terlambat_count ?? 0} terlambat)</span>}</p>
+                                <p className="text-sm font-bold text-slate-800">Pos gerbang: siswa terlambat {done('gerbang') && <span className="ml-1 text-xs font-semibold text-emerald-700">({items.gerbang.done_at?.substring(0, 5)}, {items.gerbang.terlambat_count ?? 0} terlambat)</span>}</p>
                                 {!done('gerbang') && (
                                     <div className="mt-2 flex items-center gap-2">
                                         <div className="flex-1">
@@ -790,62 +811,81 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
 
                             {tplAktif('cek_absen') && (
                             <div className="border-t border-slate-100 pt-3">
-                                <p className="text-sm font-bold text-slate-800">Cek guru berhalangan</p>
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <p className="text-sm font-bold text-slate-800">Cek guru berhalangan</p>
+                                    {(items.cek_absen?.entries ?? []).length > 0 && (
+                                        <Badge tone="slate">{(items.cek_absen?.entries ?? []).length} catatan</Badge>
+                                    )}
+                                </div>
+                                <p className="mt-1 text-xs text-slate-500">Cek pagi memulai sesi. Catatan guru yang berhalangan ditambahkan di bawah.</p>
                                 {!done('cek_absen') && (
                                     <button type="button" disabled={!pagiOpen || sending} onClick={() => kirim({ kode: 'cek_absen', mode: 'centang' })} className="mt-2 min-h-12 w-full rounded-xl bg-primary px-4 text-sm font-bold text-white active:scale-95 disabled:opacity-50">
-                                        {sending ? '...' : 'Catat cek pagi'}
+                                        {sending ? '...' : 'Mulai cek pagi'}
                                     </button>
                                 )}
+
                                 {(items.cek_absen?.entries ?? []).length > 0 && (
-                                    <ul className="mt-2 space-y-1.5">
-                                        {(items.cek_absen.entries ?? []).map((e, i) => (
-                                            <li key={i} className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                                                <span className="min-w-0"><span className="font-bold">{e.nama_guru}</span> ({e.created_at?.substring(0, 5)}): {e.keterangan}</span>
-                                                <HapusBtn kode="cek_absen" index={i} />
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    <div className="mt-3">
+                                        <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">Sudah dicatat</p>
+                                        <ul className="mt-1.5 space-y-1.5">
+                                            {(items.cek_absen.entries ?? []).map((e, i) => (
+                                                <li key={i} className="flex items-center justify-between gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2 text-xs text-slate-700">
+                                                    <span className="min-w-0">
+                                                        <span className="font-bold">{e.nama_guru}</span>
+                                                        <span className="text-slate-500"> · {e.created_at?.substring(0, 5)}</span>
+                                                        <span className="mt-0.5 block text-slate-600">{e.keterangan}</span>
+                                                    </span>
+                                                    <HapusBtn kode="cek_absen" index={i} />
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
                                 )}
+
                                 {done('cek_absen') && (
-                                    <div className="mt-2 grid grid-cols-1 gap-2">
-                                        <select
-                                            value={absenManual ? 'manual' : absenForm.guru_pegawai_id}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                if (value === 'manual') {
-                                                    setAbsenManual(true);
-                                                    setAbsenForm({ ...absenForm, guru_pegawai_id: '', nama_guru: '' });
-                                                    return;
-                                                }
-                                                setAbsenManual(false);
-                                                setAbsenForm({ ...absenForm, guru_pegawai_id: value, nama_guru: '' });
-                                            }}
-                                            className={inputCls}
-                                            aria-label="Guru berhalangan"
-                                        >
-                                            <option value="">Pilih guru</option>
-                                            {guruUnitAll.map((g) => <option key={g.id} value={g.id}>{g.nama_lengkap}</option>)}
-                                            <option value="manual">Guru tidak ada di daftar</option>
-                                        </select>
-                                        {absenManual && (
-                                            <input value={absenForm.nama_guru} onChange={(e) => setAbsenForm({ ...absenForm, nama_guru: e.target.value })} placeholder="Nama guru (manual)" className={inputCls} maxLength={100} aria-label="Nama guru manual" />
-                                        )}
-                                        <div className="flex gap-2">
-                                            <input value={absenForm.keterangan_absen} onChange={(e) => setAbsenForm({ ...absenForm, keterangan_absen: e.target.value })} placeholder="Keterangan" className={`${inputCls} flex-1`} maxLength={255} aria-label="Keterangan" />
-                                            <button
-                                                type="button"
-                                                disabled={sending || !absenForm.keterangan_absen.trim() || (!absenForm.guru_pegawai_id && !absenForm.nama_guru.trim())}
-                                                onClick={() => kirim({ kode: 'cek_absen', mode: 'tambah', ...absenForm })}
-                                                className="min-h-12 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95 disabled:opacity-50"
+                                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                        <p className="text-xs font-bold text-slate-800">Tambah guru berhalangan</p>
+                                        <p className="mt-0.5 text-[11px] text-slate-500">Pilih guru dari daftar. Gunakan input manual hanya jika tidak ada di daftar.</p>
+                                        <div className="mt-2 grid grid-cols-1 gap-2">
+                                            <select
+                                                value={absenManual ? 'manual' : absenForm.guru_pegawai_id}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    if (value === 'manual') {
+                                                        setAbsenManual(true);
+                                                        setAbsenForm({ ...absenForm, guru_pegawai_id: '', nama_guru: '' });
+                                                        return;
+                                                    }
+                                                    setAbsenManual(false);
+                                                    setAbsenForm({ ...absenForm, guru_pegawai_id: value, nama_guru: '' });
+                                                }}
+                                                className={inputCls}
+                                                aria-label="Guru berhalangan"
                                             >
-                                                Tambah
-                                            </button>
+                                                <option value="">Pilih guru</option>
+                                                {guruUnitAll.map((g) => <option key={g.id} value={g.id}>{g.nama_lengkap}</option>)}
+                                                <option value="manual">Guru tidak ada di daftar</option>
+                                            </select>
+                                            {absenManual && (
+                                                <input value={absenForm.nama_guru} onChange={(e) => setAbsenForm({ ...absenForm, nama_guru: e.target.value })} placeholder="Nama guru (manual)" className={inputCls} maxLength={100} aria-label="Nama guru manual" />
+                                            )}
+                                            <div className="flex gap-2">
+                                                <input value={absenForm.keterangan_absen} onChange={(e) => setAbsenForm({ ...absenForm, keterangan_absen: e.target.value })} placeholder="Keterangan (mis. sakit/izin)" className={`${inputCls} flex-1`} maxLength={255} aria-label="Keterangan" />
+                                                <button
+                                                    type="button"
+                                                    disabled={sending || !absenForm.keterangan_absen.trim() || (!absenForm.guru_pegawai_id && !absenForm.nama_guru.trim())}
+                                                    onClick={() => kirim({ kode: 'cek_absen', mode: 'tambah', ...absenForm })}
+                                                    className="min-h-12 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95 disabled:opacity-50"
+                                                >
+                                                    Tambah catatan
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
                             </div>
-
                             )}
+
                             {tplAktif('absen_siswa') && (
                             <AbsenSiswaCard
                                 key={assignmentVersion}
