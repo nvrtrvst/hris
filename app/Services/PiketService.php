@@ -702,9 +702,16 @@ class PiketService
             return null;
         }
 
-        $label = $belum->map(fn ($r) => 'Ronde '.$r->putaran)->implode(', ');
+        $now = Carbon::now()->format('H:i');
+        $label = $belum->map(function ($round) use ($now) {
+            $window = $round->jendela_mulai.'-'.$round->jendela_selesai;
 
-        return $label.' belum diselesaikan.';
+            return $now < $round->jendela_mulai
+                ? 'Ronde '.$round->putaran.' belum dibuka ('.$window.')'
+                : 'Ronde '.$round->putaran.' belum diselesaikan ('.$window.')';
+        })->implode('; ');
+
+        return $label.'.';
     }
 
     public static function sessionBlockReason(?LaporanPiket $laporan): ?string
