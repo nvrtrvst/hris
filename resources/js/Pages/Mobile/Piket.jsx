@@ -798,7 +798,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                             <p className="break-words"><span className="font-bold text-text-primary">Kelas belum diabsen:</span> {missingAbsen.join(', ')}</p>
                         )}
                         {pendingRounds.length > 0 && (
-                            <p><span className="font-bold text-text-primary">Penghalang:</span> {pendingRounds.map((r) => `Ronde ${r.putaran}`).join(', ')} belum selesai</p>
+                            <p className="break-words"><span className="font-bold text-text-primary">Penghalang:</span> {pendingRounds.map((r) => `Ronde ${r.putaran} (${r.jendela_mulai}-${r.jendela_selesai})`).join(', ')} belum selesai</p>
                         )}
                         {pendingPos.length > 0 && (
                             <p className="break-words"><span className="font-bold text-text-primary">Pos belum:</span> {pendingPos.join(', ')}</p>

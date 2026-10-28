@@ -1997,7 +1997,7 @@ class MobileController extends Controller
         $pendingRounds = $v2 && $sesi
             ? collect(PiketService::rounds($sesi))
                 ->filter(fn ($row) => $row['selesai_at'] === null)
-                ->map(fn ($row) => ['putaran' => $row['putaran'], 'area' => $row['area']])
+                ->map(fn ($row) => ['putaran' => $row['putaran'], 'area' => $row['area'], 'jendela_mulai' => $row['jendela_mulai'], 'jendela_selesai' => $row['jendela_selesai']])
                 ->values()
                 ->all()
             : [];
