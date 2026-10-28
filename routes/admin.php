@@ -329,6 +329,9 @@ Route::middleware('auth:web_admin')->group(function () {
 
     Route::get('laporan/pdf', [LaporanController::class, 'exportPdf'])->name('laporan.pdf');
     Route::get('laporan/piket', [LaporanController::class, 'laporanPiket'])->name('laporan.piket');
+    Route::post('laporan-piket/{laporan}/buat-izin', [LaporanController::class, 'buatIzinPiket'])
+        ->middleware(['can:create_izin_from_piket', 'throttle:30,1'])
+        ->name('laporan-piket.buat-izin');
     Route::middleware('can:view_absen_siswa')->group(function () {
         Route::get('laporan/absen-siswa', [LaporanAbsenSiswaController::class, 'index'])->name('laporan.absen-siswa');
         Route::get('laporan/absen-siswa/detail', [LaporanAbsenSiswaController::class, 'detail'])->name('laporan.absen-siswa.detail');
