@@ -78,9 +78,10 @@ const STATUS_SISWA = {
     alpa: { label: 'A', cls: 'bg-rose-700 text-white border-rose-700' },
 };
 const URUT_STATUS = ['hadir', 'telat', 'izin', 'sakit', 'alpa'];
+const STATUS_FULL = { hadir: 'Hadir', telat: 'Telat', izin: 'Izin', sakit: 'Sakit', alpa: 'Alpa' };
 
 
-// Ringkas status tersimpan: "H 20 · I 1 · S 2".
+// Ringkas status tersimpan.
 const ringkasStatus = (details = []) => {
     const hitung = details.reduce((acc, d) => ({ ...acc, [d.status]: (acc[d.status] ?? 0) + 1 }), {});
 
@@ -268,27 +269,33 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                 <ul className="mt-2 space-y-1.5">
                     {sesiTersimpan.map((s) => (
                         <li key={s.class_id} className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="min-w-0 truncate font-bold">{s.class_label}</span>
-                                {!submitted && (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            muatKelas();
-                                            setSelected({ id: s.class_id, name: s.class_label, grade: '', section: '' });
-                                            setSiswa(s.details.map((d) => ({ nis: d.nis, nama: d.nama, status: d.status, keterangan: d.keterangan ?? '' })));
-                                            setLastSaved(s);
-                                            setErr('');
-                                            setAlasan('');
-                                            setKonfirmasi(null);
-                                        }}
-                                        className="shrink-0 rounded-lg bg-white px-2 py-1 font-bold text-primary ring-1 ring-slate-200 active:scale-95"
-                                    >
-                                        Koreksi
-                                    </button>
-                                )}
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                    <p className="truncate font-bold">{s.class_label}</p>
+                                    <p className="mt-0.5 text-emerald-700">Sudah diabsen {s.done_at} oleh {s.oleh || 'petugas'}</p>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    <Badge tone="emerald" icon={CheckCircle2}>Tersimpan</Badge>
+                                    {!submitted && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                muatKelas();
+                                                setSelected({ id: s.class_id, name: s.class_label, grade: '', section: '' });
+                                                setSiswa(s.details.map((d) => ({ nis: d.nis, nama: d.nama, status: d.status, keterangan: d.keterangan ?? '' })));
+                                                setLastSaved(s);
+                                                setErr('');
+                                                setAlasan('');
+                                                setKonfirmasi(null);
+                                            }}
+                                            className="shrink-0 rounded-lg bg-white px-2 py-1 font-bold text-primary ring-1 ring-slate-200 active:scale-95"
+                                        >
+                                            Koreksi
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                            <p className="mt-0.5 text-slate-600">{ringkasStatus(s.details)} · {s.oleh || 'petugas'} {s.done_at}</p>
+                            <p className="mt-1 text-slate-600">{ringkasStatus(s.details)}</p>
                         </li>
                     ))}
                 </ul>
