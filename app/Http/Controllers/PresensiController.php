@@ -13,6 +13,7 @@ use App\Models\HariLibur;
 use App\Models\Jadwal;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
+use App\Models\PiketSiswaTerlambat;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Notifications\StatusLembur;
@@ -471,10 +472,15 @@ class PresensiController extends Controller
             ? UnitSekolah::orderBy('nama')->get(['id', 'nama'])
             : [];
 
+        $terlambatGerbang = PiketSiswaTerlambat::where('tanggal', $tanggal)
+            ->whereIn('unit_sekolah_id', $unitList->pluck('id'))
+            ->count();
+
         return inertia('AbsenSiswa/Index', [
             'sesi' => $sesi,
             'belum_diabsen' => $belum->sortBy('class_label')->values(),
             'integrasi_ok' => $integrasiOk,
+            'terlambat_gerbang' => $terlambatGerbang,
             'filters' => ['tanggal' => $tanggal, 'unit_id' => $request->unit_id],
             'units' => $units,
         ]);

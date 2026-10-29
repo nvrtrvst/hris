@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, usePage } from '@inertiajs/react';
-import { Download, Eye, FileText, Loader2, Search, X } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Clock3, Download, Eye, FileText, Loader2, Search, X } from 'lucide-react';
 
 const STATUS_LABEL = {
     hadir: 'Hadir',
@@ -194,6 +194,26 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
                         </div>
                     ))}
                 </div>
+
+                <Link
+                    href={route('laporan.keterlambatan-siswa', {
+                        start_date: filters.start_date,
+                        end_date: filters.end_date,
+                        unit_id: filters.unit_id || undefined,
+                        class_label: filters.class_label || undefined,
+                    })}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 transition-colors hover:bg-amber-50"
+                >
+                    <div className="min-w-0">
+                        <p className="flex items-center gap-1.5 text-sm font-bold text-amber-900">
+                            <Clock3 className="h-4 w-4 shrink-0" /> Terlambat gerbang
+                        </p>
+                        <p className="mt-0.5 text-xs text-amber-800/80">
+                            {summary.terlambat_gerbang ?? 0} siswa. Terpisah dari status kehadiran kelas.
+                        </p>
+                    </div>
+                    <span className="shrink-0 text-xs font-bold text-amber-800">Lihat laporan</span>
+                </Link>
 
                 {filters.mode === 'daily' ? (
                     <div className="page-card card-table">

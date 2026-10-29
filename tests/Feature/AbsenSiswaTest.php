@@ -8,6 +8,8 @@ use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\LaporanPiket;
 use App\Models\Pegawai;
+use App\Models\PiketSesi;
+use App\Models\PiketSiswaTerlambat;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
@@ -265,6 +267,51 @@ class AbsenSiswaTest extends TestCase
             ->get(route('absen-siswa.index', ['tanggal' => '2026-10-12']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->has('sesi', 2)->has('units', 2));
+    }
+
+    public function test_rekap_menampilkan_terlambat_gerbang_terpisah(): void
+    {
+        $pegawai = $this->makePegawai();
+        $tanggal = '2026-10-12';
+
+        $sesi = AbsenSiswaSesi::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'pegawai_id' => $pegawai->id,
+            'tanggal' => $tanggal,
+            'class_id' => '77',
+            'class_label' => 'VII A',
+        ]);
+        $sesi->details()->create(['nis' => '001', 'nama_snapshot' => 'Ani', 'status' => 'hadir']);
+
+        $piketSesi = PiketSesi::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => $tanggal,
+            'jam_mulai' => '07:00',
+            'jam_selesai' => '15:00',
+            'status' => 'open',
+        ]);
+        PiketSiswaTerlambat::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'piket_sesi_id' => $piketSesi->id,
+            'tanggal' => $tanggal,
+            'class_id' => '77',
+            'class_label' => 'VII A',
+            'nis' => '001',
+            'nama_snapshot' => 'Ani',
+            'jam_terlambat' => '07:15:00',
+        ]);
+
+        $super = User::factory()->create();
+        $super->assignRole('superadmin');
+
+        $this->actingAs($super, 'web_admin')
+            ->get(route('absen-siswa.index', ['tanggal' => $tanggal]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('AbsenSiswa/Index')
+                ->where('terlambat_gerbang', 1)
+                ->where('sesi.0.counts.telat', 0)
+                ->where('sesi.0.counts.hadir', 1));
     }
 
     public function test_rekap_butuh_permission(): void

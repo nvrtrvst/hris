@@ -5,7 +5,7 @@ import Modal from '@/Components/Modal';
 import { Head, Link, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale/id';
-import { ClipboardList, Search, History, Pencil, Eye, FileText, X } from 'lucide-react';
+import { ClipboardList, Search, History, Pencil, Eye, FileText, X, Clock3 } from 'lucide-react';
 
 const STATUS_META = {
     telat: { label: 'Telat', badge: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -33,7 +33,7 @@ const fmtTanggal = (d) => {
     }
 };
 
-export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_ok = true, filters = {}, units = [] }) {
+export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_ok = true, terlambat_gerbang = 0, filters = {}, units = [] }) {
     const [tanggal, setTanggal] = React.useState(filters.tanggal || format(new Date(), 'yyyy-MM-dd'));
     const [unitId, setUnitId] = React.useState(filters.unit_id || '');
     const [cari, setCari] = React.useState('');
@@ -120,7 +120,7 @@ export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_o
                         </div>
                     </FilterSheet>
 
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
                         <div className="rounded-xl border border-border bg-white p-3">
                             <p className="text-[11px] font-bold text-text-secondary">Kelas diabsen</p>
                             <p className="mt-1 text-xl font-bold tabular-nums text-text-primary">
@@ -138,6 +138,20 @@ export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_o
                                 <p className={`mt-1 text-xl font-bold tabular-nums ${k.cls}`}>{total[k.key]}</p>
                             </div>
                         ))}
+                        <Link
+                            href={route('laporan.keterlambatan-siswa', {
+                                start_date: tanggal,
+                                end_date: tanggal,
+                                unit_id: unitId || undefined,
+                            })}
+                            className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 transition-colors hover:bg-amber-50"
+                        >
+                            <p className="flex items-center gap-1 text-[11px] font-bold text-amber-800">
+                                <Clock3 className="h-3.5 w-3.5" /> Terlambat gerbang
+                            </p>
+                            <p className="mt-1 text-xl font-bold tabular-nums text-amber-700">{terlambat_gerbang}</p>
+                            <p className="text-[10px] font-semibold text-amber-700/80">Lihat laporan</p>
+                        </Link>
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2">
