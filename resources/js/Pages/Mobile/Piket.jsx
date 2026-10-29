@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -890,6 +890,8 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const [sending, setSending] = useState(false);
     const [locErr, setLocErr] = useState(null);
+    const [submitErr, setSubmitErr] = useState(null);
+    const submitErrRef = useRef(null);
     const [terlambat, setTerlambat] = useState(0);
     const [absenForm, setAbsenForm] = useState({ guru_pegawai_id: '', nama_guru: '', keterangan_absen: '' });
     const [absenManual, setAbsenManual] = useState(false);
@@ -1037,7 +1039,14 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                     : blockReason
                         ? 'Selesaikan penghalang dulu'
                         : 'Kirim laporan piket';
-    const errMsg = locErr || errors.geofence || errors.kode || errors.laporan || errors.round || errors.guru_pegawai_id || errors.keterangan_absen;
+    const submitErrMsg = submitErr || errors.laporan || errors.round;
+    const errMsg = locErr || errors.kode || errors.guru_pegawai_id || errors.keterangan_absen;
+
+    useEffect(() => {
+        if (submitErrMsg && submitErrRef.current) {
+            submitErrRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [submitErrMsg]);
 
     const kirim = async (payload, { geo = true } = {}) => {
         setLocErr(null);
@@ -1088,8 +1097,13 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     };
 
     const submit = () => {
+        setSubmitErr(null);
         setSending(true);
-        router.post(route('presensi.piket.submit'), {}, { preserveScroll: true, onFinish: () => setSending(false) });
+        router.post(route('presensi.piket.submit'), {}, {
+            preserveScroll: true,
+            onError: (errs) => setSubmitErr(Object.values(errs || {}).flat()[0] || 'Laporan gagal dikirim. Data yang sudah dicatat tetap tersimpan. Coba lagi.'),
+            onFinish: () => setSending(false),
+        });
     };
 
     const hapusEntry = (kode, index) => {
@@ -1134,8 +1148,8 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                 </div>
             </div>
 
-            {flash.message && <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-            {errMsg && <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{errMsg}</div>}
+            {flash.message && !submitted && <div role="status" className="mb-4 break-words rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
+            {errMsg && <div role="alert" className="mb-4 break-words rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{errMsg}</div>}
 
             <Card className="mb-4">
                 <div className="flex items-center justify-between gap-3">
@@ -1149,7 +1163,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                     <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.round((doneCount / wajib.length) * 100)}%` }} />
                 </div>
                 {hasBlockers && (
-                    <div className="mt-3 space-y-2 border-t border-border pt-2 text-xs text-text-secondary">
+                    <div className="mt-3 space-y-2 border-t border-border pt-2 text-sm leading-snug text-text-secondary">
                         {missingItems.length > 0 && (
                             <div>
                                 <p className="font-bold text-text-primary">Belum selesai</p>
@@ -1217,7 +1231,11 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                         <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
                         <div>
                             <p className="text-sm font-bold text-slate-800">Laporan terkirim dan terkunci.</p>
-                            <p className="mt-0.5 text-xs text-slate-600">Terima kasih, tugas piket hari ini tercatat lengkap.</p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                                {piket.sesi?.status === 'complete'
+                                    ? 'Sesi piket selesai. Terima kasih, tugas hari ini tercatat lengkap.'
+                                    : 'Laporan Anda terkirim. Sesi masih menunggu petugas lain.'}
+                            </p>
                         </div>
                     </div>
                 </Card>
@@ -1486,9 +1504,14 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                         </Card>
                     </section>
 
-                    <section aria-label="Kirim laporan">
+                    <section id="kirim-laporan" aria-label="Kirim laporan" className="scroll-mt-24 scroll-mb-24">
                         <SeksiHead icon={Send} title="Sore" win={[submitAfter, windows.sore[1]]} state={soreMulai ? 'open' : 'locked'} />
-                        {blockReason && !hasBlockers && <p className="mb-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{blockReason}</p>}
+                        {submitErrMsg && (
+                            <div ref={submitErrRef} role="alert" aria-live="assertive" className="mb-2 break-words rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold leading-snug text-rose-700">
+                                {submitErrMsg}
+                            </div>
+                        )}
+                        {blockReason && !hasBlockers && !submitErrMsg && <p className="mb-2 break-words rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{blockReason}</p>}
                         {hasBlockers && blockerTarget && (
                             <button type="button" onClick={lihatYangBelum} className="mb-2 min-h-11 w-full rounded-xl bg-white px-3 text-xs font-bold text-primary ring-1 ring-slate-200 active:scale-95">
                                 Lihat yang belum

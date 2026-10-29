@@ -18,7 +18,6 @@ use App\Models\PiketPetugas;
 use App\Models\PiketPos;
 use App\Models\PiketPosLog;
 use App\Models\PiketRound;
-use App\Models\PiketSesi;
 use App\Models\PiketSiswaTerlambat;
 use App\Models\Presensi;
 use App\Models\TugasLuar;
@@ -1860,13 +1859,12 @@ class MobileController extends Controller
         $slot = $piketJadwals->first();
         $unitId = $slot->unit_sekolah_id;
         $unit = $slot->unitSekolah;
-        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
-            ->where('tanggal', $today)
-            ->first();
-
         $v2 = PiketService::isAreaMode($unit);
-        $sesi = null;
-        $petugas = null;
+
+        $sesi = PiketService::sessionFor($pegawai, $slot);
+        $petugas = PiketService::petugasFor($sesi, $pegawai->id);
+        $laporan = $petugas?->laporan ?? PiketService::laporanFor($sesi, $pegawai->id);
+
         $area = null;
         $pos = [];
         $posLogs = [];
@@ -1875,15 +1873,15 @@ class MobileController extends Controller
         $requiredCodes = [];
         $mappedClasses = [];
         $blockReason = null;
-        $assignmentVersion = 1;
+        $assignmentVersion = (int) $sesi->assignment_version;
         $absenCoverage = ['assigned' => [], 'completed' => [], 'missing' => [], 'assigned_count' => 0, 'completed_count' => 0];
 
         if ($v2) {
-            $sesi = PiketService::sessionFor($pegawai, $slot);
             PiketService::ensureRounds($sesi, $slot);
             PiketService::ensureAbsenAssignments($sesi);
             PiketService::reassignAbsenIfNeeded($sesi);
             $petugas = PiketService::petugasFor($sesi, $pegawai->id);
+            $laporan = $petugas?->laporan ?? PiketService::laporanFor($sesi, $pegawai->id);
             $area = $petugas?->area_id ? PiketArea::find($petugas->area_id) : null;
             $pos = PiketService::posFor($unit, $petugas);
             $posLogs = PiketService::posLogs($sesi);
@@ -1896,9 +1894,6 @@ class MobileController extends Controller
             $absenCoverage = $petugas ? PiketService::absenCoverage($sesi, $petugas) : $absenCoverage;
             $assignmentVersion = (int) $sesi->assignment_version;
 
-            $laporan = $petugas?->laporan_piket_id
-                ? LaporanPiket::find($petugas->laporan_piket_id)
-                : $laporan;
             $blockReason = $laporan?->status === LaporanPiket::STATUS_DRAFT
                 ? PiketService::sessionBlockReason($laporan)
                 : null;
@@ -2015,8 +2010,7 @@ class MobileController extends Controller
             'pos' => $v2 && $sesi ? PiketService::unservedRequiredPos($sesi) : [],
         ];
 
-        $lateSesi = $sesi ?: PiketService::sessionFor($pegawai, $slot);
-        $lateStudents = PiketSiswaTerlambat::where('piket_sesi_id', $lateSesi->id)
+        $lateStudents = PiketSiswaTerlambat::where('piket_sesi_id', $sesi->id)
             ->orderBy('jam_terlambat')
             ->get()
             ->map(fn (PiketSiswaTerlambat $row) => [
@@ -2053,6 +2047,7 @@ class MobileController extends Controller
                 'team' => $team,
                 'templates' => $templates,
                 'block_reason' => $blockReason,
+                'blockers' => $blockers,
                 'area_kelas' => $mappedClasses,
                 'late_students' => $lateStudents,
             ],
@@ -2109,6 +2104,9 @@ class MobileController extends Controller
         // saja sampai submit (konfirmasi sore); item KBM boleh sejak seksi
         // KBM sampai laporan dikirim.
         $unit = $slot->unitSekolah;
+        $sesi = PiketService::sesiFor($slot);
+        $petugas = $sesi ? PiketService::petugasFor($sesi, $pegawai->id) : null;
+
         if (PiketService::isAreaMode($unit)) {
             $sesi = PiketService::sessionFor($pegawai, $slot);
             $petugas = PiketService::petugasFor($sesi, $pegawai->id);
@@ -2118,8 +2116,8 @@ class MobileController extends Controller
             }
         }
 
-        $unlocked = (bool) LaporanPiket::where('pegawai_id', $pegawai->id)
-            ->where('tanggal', $today)
+        $unlocked = $sesi && (bool) LaporanPiket::where('sesi_id', $sesi->id)
+            ->where('pegawai_id', $pegawai->id)
             ->where('status', LaporanPiket::STATUS_DRAFT)
             ->whereNotNull('unlocked_at')
             ->exists();
@@ -2132,7 +2130,19 @@ class MobileController extends Controller
             default => $now >= $windows['kbm'][0],
         };
         if (! $boleh) {
-            throw ValidationException::withMessages(['kode' => 'Seksi '.$seksi.' belum dibuka atau sudah lewat.']);
+            $labelSeksi = match ($seksi) {
+                LaporanPiket::SEKSI_PAGI => 'Pagi',
+                LaporanPiket::SEKSI_KBM => 'Jam Belajar',
+                default => 'Sore',
+            };
+            $jamSeksi = $windows[$seksi] ?? null;
+            $pesan = match (true) {
+                $jamSeksi === null => 'Bagian '.$labelSeksi.' belum dibuka.',
+                $now < $jamSeksi[0] => 'Bagian '.$labelSeksi.' dibuka pukul '.substr($jamSeksi[0], 0, 5).'.',
+                default => 'Bagian '.$labelSeksi.' sudah lewat pukul '.substr((string) $jamSeksi[1], 0, 5).'. Minta admin membuka jalur telat atau catat di bagian yang sesuai.',
+            };
+
+            throw ValidationException::withMessages(['kode' => $pesan]);
         }
 
         if ($mode === 'tambah') {
@@ -2146,9 +2156,13 @@ class MobileController extends Controller
             (float) $request->accuracy
         );
 
-        DB::transaction(function () use ($pegawai, $slot, $today, $kode, $mode, $request, $geo) {
-            $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
-                ->where('tanggal', $today)
+        if (! $sesi) {
+            $sesi = PiketService::sessionFor($pegawai, $slot);
+        }
+
+        DB::transaction(function () use ($pegawai, $slot, $sesi, $today, $kode, $mode, $request, $geo) {
+            $laporan = LaporanPiket::where('sesi_id', $sesi->id)
+                ->where('pegawai_id', $pegawai->id)
                 ->lockForUpdate()
                 ->first();
 
@@ -2157,6 +2171,7 @@ class MobileController extends Controller
                     'pegawai_id' => $pegawai->id,
                     'jadwal_id' => $slot->id,
                     'unit_sekolah_id' => $slot->unit_sekolah_id,
+                    'sesi_id' => $sesi->id,
                     'tanggal' => $today,
                     'status' => LaporanPiket::STATUS_DRAFT,
                 ]);
@@ -2327,9 +2342,7 @@ class MobileController extends Controller
             abort(403, 'Anda bukan petugas piket pada sesi ini.');
         }
 
-        $laporan = $petugas->laporan_piket_id
-            ? LaporanPiket::find($petugas->laporan_piket_id)
-            : LaporanPiket::where('pegawai_id', $pegawai->id)->whereDate('tanggal', Carbon::today())->first();
+        $laporan = PiketService::laporanFor($sesi, $pegawai->id);
 
         if ($laporan?->status === LaporanPiket::STATUS_SUBMITTED) {
             throw ValidationException::withMessages(['laporan' => 'Laporan piket sudah dikirim.']);
@@ -2405,9 +2418,7 @@ class MobileController extends Controller
             abort(403, 'Anda bukan petugas piket pada sesi ini.');
         }
 
-        $laporan = $petugas->laporan_piket_id
-            ? LaporanPiket::find($petugas->laporan_piket_id)
-            : LaporanPiket::where('pegawai_id', $pegawai->id)->whereDate('tanggal', Carbon::today())->first();
+        $laporan = PiketService::laporanFor($sesi, $pegawai->id);
 
         if ($laporan?->status === LaporanPiket::STATUS_SUBMITTED) {
             throw ValidationException::withMessages(['laporan' => 'Laporan piket sudah dikirim.']);
@@ -2476,9 +2487,7 @@ class MobileController extends Controller
             abort(403, 'Anda bukan petugas piket pada sesi ini.');
         }
 
-        $laporan = $petugas->laporan_piket_id
-            ? LaporanPiket::find($petugas->laporan_piket_id)
-            : LaporanPiket::where('pegawai_id', $pegawai->id)->whereDate('tanggal', Carbon::today())->first();
+        $laporan = PiketService::laporanFor($sesi, $pegawai->id);
 
         if ($laporan?->status === LaporanPiket::STATUS_SUBMITTED) {
             throw ValidationException::withMessages(['laporan' => 'Laporan piket sudah dikirim.']);
@@ -2498,9 +2507,9 @@ class MobileController extends Controller
             abort(403, 'Entry ini bukan milik Anda.');
         }
 
-        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
-            ->whereDate('tanggal', Carbon::today())
-            ->first();
+        $laporan = $late->sesi
+            ? PiketService::laporanFor($late->sesi, $pegawai->id)
+            : null;
 
         if ($late->sesi?->status === 'complete' || $laporan?->status === LaporanPiket::STATUS_SUBMITTED) {
             throw ValidationException::withMessages(['terlambat' => 'Laporan piket sudah dikirim.']);
@@ -2554,10 +2563,10 @@ class MobileController extends Controller
         $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
         $unit = $slot->unitSekolah;
 
-        $sesiPiket = null;
-        $petugasPiket = null;
+        $sesiPiket = PiketService::sessionFor($pegawai, $slot);
+        $petugasPiket = PiketService::petugasFor($sesiPiket, $pegawai->id);
+
         if (PiketService::isAreaMode($unit)) {
-            $sesiPiket = PiketService::sessionFor($pegawai, $slot);
             PiketService::ensureAbsenAssignments($sesiPiket);
             PiketService::reassignAbsenIfNeeded($sesiPiket);
             $petugasPiket = PiketService::petugasFor($sesiPiket, $pegawai->id);
@@ -2590,9 +2599,9 @@ class MobileController extends Controller
             }
         }
 
-        DB::transaction(function () use ($pegawai, $slot, $today, $validated) {
-            $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
-                ->where('tanggal', $today)
+        DB::transaction(function () use ($pegawai, $slot, $sesiPiket, $today, $validated) {
+            $laporan = LaporanPiket::where('sesi_id', $sesiPiket->id)
+                ->where('pegawai_id', $pegawai->id)
                 ->lockForUpdate()
                 ->first();
             if ($laporan?->status === LaporanPiket::STATUS_SUBMITTED) {
@@ -2636,22 +2645,21 @@ class MobileController extends Controller
             );
         });
 
-        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
-            ->whereDate('tanggal', $today)
-            ->first();
+        $laporan = PiketService::laporanFor($sesiPiket, $pegawai->id);
 
-        if ($petugasPiket) {
-            if ($laporan) {
-                PiketService::syncAbsenItem($laporan, $petugasPiket);
-            }
-        } elseif (! $laporan) {
+        if (! $laporan) {
             $laporan = LaporanPiket::create([
                 'pegawai_id' => $pegawai->id,
                 'unit_sekolah_id' => $slot->unit_sekolah_id,
+                'sesi_id' => $sesiPiket->id,
                 'tanggal' => $today,
                 'status' => LaporanPiket::STATUS_DRAFT,
                 'items' => [],
             ]);
+        }
+
+        if ($petugasPiket && PiketService::isAreaMode($unit)) {
+            PiketService::syncAbsenItem($laporan, $petugasPiket);
         }
 
         if (! PiketService::isAreaMode($unit)) {
@@ -2682,11 +2690,16 @@ class MobileController extends Controller
         ]);
 
         $today = Carbon::today()->toDateString();
-        DB::transaction(function () use ($request, $pegawai, $today) {
-            $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
-                ->where('tanggal', $today)
-                ->lockForUpdate()
-                ->first();
+        $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
+        $sesi = PiketService::sesiFor($slot);
+
+        DB::transaction(function () use ($request, $pegawai, $sesi) {
+            $laporan = $sesi
+                ? LaporanPiket::where('sesi_id', $sesi->id)
+                    ->where('pegawai_id', $pegawai->id)
+                    ->lockForUpdate()
+                    ->first()
+                : null;
             if (! $laporan) {
                 throw ValidationException::withMessages(['laporan' => 'Belum ada laporan piket hari ini.']);
             }
@@ -2739,20 +2752,23 @@ class MobileController extends Controller
 
         if ($now < $mulaiSore) {
             throw ValidationException::withMessages([
-                'laporan' => 'Pengiriman dibuka pukul '.substr($mulaiSore, 0, 5).'.',
+                'laporan' => 'Pengiriman dibuka pukul '.substr($mulaiSore, 0, 5).'. Sekarang '.$now.'.',
             ]);
         }
 
-        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
-            ->where('tanggal', Carbon::today()->toDateString())
+        $sesi = PiketService::sessionFor($pegawai, $slot);
+        $petugas = PiketService::petugasFor($sesi, $pegawai->id);
+        $laporan = LaporanPiket::where('sesi_id', $sesi->id)
+            ->where('pegawai_id', $pegawai->id)
             ->lockForUpdate()
             ->first();
 
         if (! $laporan) {
-            throw ValidationException::withMessages(['laporan' => 'Belum ada item yang dicatat.']);
+            throw ValidationException::withMessages(['laporan' => 'Belum ada item piket yang dicatat. Mulai dari bagian Pagi.']);
         }
         if ($laporan->status === LaporanPiket::STATUS_SUBMITTED) {
-            throw ValidationException::withMessages(['laporan' => 'Laporan sudah dikirim.']);
+            $pukul = $laporan->submitted_at?->format('H:i') ?: '-';
+            throw ValidationException::withMessages(['laporan' => 'Laporan sudah dikirim pukul '.$pukul.'.']);
         }
         if ($blokir = PiketService::sessionBlockReason($laporan)) {
             throw ValidationException::withMessages(['laporan' => $blokir]);
@@ -2760,45 +2776,48 @@ class MobileController extends Controller
 
         $unit = $slot->unitSekolah;
         if (PiketService::isAreaMode($unit)) {
-            $sesi = PiketService::sessionFor($pegawai, $slot);
-            $petugas = PiketService::petugasFor($sesi, $pegawai->id);
             $wajib = PiketService::requiredCodes($unit, $petugas);
             $kurang = array_values(array_filter($wajib, fn ($kode) => ! $laporan->isItemDone($kode)));
 
             if ($kurang !== []) {
                 $labels = array_map(fn ($k) => LaporanPiket::ITEM_LABEL[$k] ?? $k, $kurang);
-                throw ValidationException::withMessages(['laporan' => 'Belum lengkap: '.implode(', ', $labels).'.']);
+                throw ValidationException::withMessages(['laporan' => 'Laporan belum bisa dikirim. Lengkapi: '.implode(', ', $labels).'.']);
             }
         } elseif (! $laporan->isLengkap()) {
             $kurang = array_map(fn ($k) => LaporanPiket::ITEM_LABEL[$k], $laporan->kurangItems());
-            throw ValidationException::withMessages(['laporan' => 'Belum lengkap: '.implode(', ', $kurang).'.']);
+            throw ValidationException::withMessages(['laporan' => 'Laporan belum bisa dikirim. Lengkapi: '.implode(', ', $kurang).'.']);
         }
 
         $laporan->status = LaporanPiket::STATUS_SUBMITTED;
         $laporan->submitted_at = Carbon::now();
         $laporan->save();
 
-        if ($laporan->sesi_id) {
-            $sesi = PiketSesi::find($laporan->sesi_id);
-            $semua = PiketPetugas::where('sesi_id', $laporan->sesi_id)
-                ->where('status', '!=', 'tidak_hadir')
-                ->count();
-            $terkirim = LaporanPiket::where('sesi_id', $laporan->sesi_id)
-                ->where('status', LaporanPiket::STATUS_SUBMITTED)
-                ->count();
+        $semua = PiketPetugas::where('sesi_id', $sesi->id)
+            ->where('status', '!=', 'tidak_hadir')
+            ->count();
+        $terkirim = LaporanPiket::where('sesi_id', $sesi->id)
+            ->where('status', LaporanPiket::STATUS_SUBMITTED)
+            ->count();
 
-            if ($sesi && $terkirim >= $semua && PiketService::unservedRequiredPos($sesi) === []) {
-                $sesi->forceFill([
-                    'status' => 'complete',
-                    'ditutup_oleh' => auth()->id(),
-                    'ditutup_at' => now(),
-                ])->save();
-            } elseif ($sesi) {
-                $sesi->forceFill(['status' => 'incomplete'])->save();
-            }
+        if ($terkirim >= $semua && PiketService::unservedRequiredPos($sesi) === []) {
+            $sesi->forceFill([
+                'status' => 'complete',
+                'ditutup_oleh' => auth()->id(),
+                'ditutup_at' => now(),
+            ])->save();
+        } else {
+            $sesi->forceFill(['status' => 'incomplete'])->save();
         }
 
-        return back()->with('message', 'Laporan piket terkirim.');
+        $pesan = 'Laporan piket terkirim pukul '.$laporan->submitted_at->format('H:i').'.';
+        $menunggu = max(0, $semua - $terkirim);
+        if ($menunggu > 0) {
+            $pesan .= ' Menunggu '.$menunggu.' petugas lain.';
+        } elseif ($sesi->status === 'complete') {
+            $pesan .= ' Sesi piket selesai.';
+        }
+
+        return back()->with('message', $pesan);
     }
 
     /**
@@ -2839,9 +2858,14 @@ class MobileController extends Controller
         }
 
         $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
-            ->whereDate('tanggal', Carbon::today())
+            ->where('tanggal', Carbon::today()->toDateString())
+            ->where('status', '!=', LaporanPiket::STATUS_SUBMITTED)
+            ->orderBy('sesi_id')
             ->first();
-        if ($laporan && $laporan->status === LaporanPiket::STATUS_SUBMITTED) {
+
+        if (! $laporan && LaporanPiket::where('pegawai_id', $pegawai->id)
+            ->where('tanggal', Carbon::today()->toDateString())
+            ->exists()) {
             return ['blokir' => false, 'progress' => null, 'pesan' => null];
         }
 

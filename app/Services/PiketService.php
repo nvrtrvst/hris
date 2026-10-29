@@ -51,33 +51,44 @@ class PiketService
             ['status' => 'open'],
         );
 
-        $penugasan = PiketPenugasan::with('pegawai')
-            ->where('unit_sekolah_id', $slot->unit_sekolah_id)
-            ->where('aktif', true)
-            ->where(fn ($q) => $q->whereNull('tahun_ajaran')->orWhere('tahun_ajaran', $slot->tahun_ajaran))
-            ->where(fn ($q) => $q->whereNull('semester')->orWhere('semester', (string) $slot->semester))
-            ->get();
+        if (self::isAreaMode($slot->unitSekolah)) {
+            $penugasan = PiketPenugasan::with('pegawai')
+                ->where('unit_sekolah_id', $slot->unit_sekolah_id)
+                ->where('aktif', true)
+                ->where(fn ($q) => $q->whereNull('tahun_ajaran')->orWhere('tahun_ajaran', $slot->tahun_ajaran))
+                ->where(fn ($q) => $q->whereNull('semester')->orWhere('semester', (string) $slot->semester))
+                ->get();
 
-        if ($penugasan->isEmpty()) {
-            // Fallback: semua baris jadwal piket pada jam yang sama.
-            $jadwalPetugas = Jadwal::where('unit_sekolah_id', $slot->unit_sekolah_id)
-                ->where('jenis_jadwal', 'piket')
-                ->where('hari', $slot->hari)
-                ->where('jam_mulai', $slot->jam_mulai)
-                ->pluck('pegawai_id');
+            if ($penugasan->isEmpty()) {
+                // Fallback: semua baris jadwal piket pada jam yang sama.
+                $jadwalPetugas = Jadwal::where('unit_sekolah_id', $slot->unit_sekolah_id)
+                    ->where('jenis_jadwal', 'piket')
+                    ->where('hari', $slot->hari)
+                    ->where('jam_mulai', $slot->jam_mulai)
+                    ->pluck('pegawai_id');
 
-            foreach ($jadwalPetugas as $pegawaiId) {
-                self::linkPetugas($sesi, (int) $pegawaiId, null, null, 'area');
-            }
-        } else {
-            foreach ($penugasan as $row) {
-                self::linkPetugas($sesi, (int) $row->pegawai_id, $row->area_id, $row->pos_id, $row->peran ?: 'area');
+                foreach ($jadwalPetugas as $pegawaiId) {
+                    self::linkPetugas($sesi, (int) $pegawaiId, null, null, 'area');
+                }
+            } else {
+                foreach ($penugasan as $row) {
+                    self::linkPetugas($sesi, (int) $row->pegawai_id, $row->area_id, $row->pos_id, $row->peran ?: 'area');
+                }
             }
         }
 
         self::linkPetugas($sesi, $pegawai->id, null, null, 'area');
 
         return $sesi->fresh('petugas');
+    }
+
+    public static function sesiFor(Jadwal $slot): ?PiketSesi
+    {
+        return PiketSesi::where('unit_sekolah_id', $slot->unit_sekolah_id)
+            ->where('tanggal', Carbon::today()->toDateString())
+            ->where('jam_mulai', substr((string) $slot->jam_mulai, 0, 5))
+            ->where('jam_selesai', substr((string) $slot->jam_selesai, 0, 5))
+            ->first();
     }
 
     /** Bagi kelas area secara round-robin; pembagian yang sudah ada tidak diubah. */
@@ -147,7 +158,7 @@ class PiketService
     {
         $assigned = self::assignedClasses($sesi, $petugas);
         $saved = AbsenSiswaSesi::where('unit_sekolah_id', $sesi->unit_sekolah_id)
-            ->whereDate('tanggal', $sesi->tanggal)
+            ->where('tanggal', Carbon::parse($sesi->tanggal)->toDateString())
             ->pluck('class_label')
             ->all();
         $saved = array_map(fn ($label) => AbsenSiswaService::normalizeLabel((string) $label), $saved);
@@ -184,8 +195,15 @@ class PiketService
         }
 
         $items = $laporan->items ?? [];
-        $items['absen_siswa'] = array_merge($items['absen_siswa'] ?? [], [
-            'done_at' => Carbon::now()->format('H:i:s'),
+        $existing = $items['absen_siswa'] ?? [];
+        if (($existing['done_at'] ?? null)
+            && (int) ($existing['sesi_count'] ?? -1) === $coverage['completed_count']
+            && (int) ($existing['assigned_count'] ?? -1) === $coverage['assigned_count']) {
+            return;
+        }
+
+        $items['absen_siswa'] = array_merge($existing, [
+            'done_at' => $existing['done_at'] ?? Carbon::now()->format('H:i:s'),
             'sesi_count' => $coverage['completed_count'],
             'assigned_count' => $coverage['assigned_count'],
         ]);
@@ -204,7 +222,7 @@ class PiketService
         }
 
         $count = AbsenSiswaSesi::where('unit_sekolah_id', $unitId)
-            ->whereDate('tanggal', $tanggal)
+            ->where('tanggal', Carbon::parse($tanggal)->toDateString())
             ->count();
 
         if ($count === 0) {
@@ -212,8 +230,13 @@ class PiketService
         }
 
         $items = $laporan->items ?? [];
-        $items[LaporanPiket::ITEM_ABSEN_SISWA] = array_merge($items[LaporanPiket::ITEM_ABSEN_SISWA] ?? [], [
-            'done_at' => Carbon::now()->format('H:i:s'),
+        $existing = $items[LaporanPiket::ITEM_ABSEN_SISWA] ?? [];
+        if (($existing['done_at'] ?? null) && (int) ($existing['sesi_count'] ?? -1) === $count) {
+            return;
+        }
+
+        $items[LaporanPiket::ITEM_ABSEN_SISWA] = array_merge($existing, [
+            'done_at' => $existing['done_at'] ?? Carbon::now()->format('H:i:s'),
             'sesi_count' => $count,
         ]);
         $laporan->items = $items;
@@ -327,7 +350,7 @@ class PiketService
     private static function hasPresensi(int $pegawaiId, $tanggal): bool
     {
         return Presensi::where('pegawai_id', $pegawaiId)
-            ->whereDate('tanggal', $tanggal)
+            ->where('tanggal', Carbon::parse($tanggal)->toDateString())
             ->whereNotNull('jam_masuk')
             ->exists();
     }
@@ -360,28 +383,51 @@ class PiketService
     {
         $tanggal = $sesi->tanggal instanceof Carbon ? $sesi->tanggal->toDateString() : (string) $sesi->tanggal;
 
-        $laporan = LaporanPiket::firstOrCreate(
-            ['pegawai_id' => $pegawaiId, 'tanggal' => $tanggal],
-            [
+        $laporan = LaporanPiket::where('sesi_id', $sesi->id)
+            ->where('pegawai_id', $pegawaiId)
+            ->first();
+
+        if (! $laporan) {
+            $laporanLama = LaporanPiket::whereNull('sesi_id')
+                ->where('pegawai_id', $pegawaiId)
+                ->where('tanggal', $tanggal)
+                ->first();
+
+            if ($laporanLama) {
+                $laporanLama->forceFill([
+                    'sesi_id' => $sesi->id,
+                    'unit_sekolah_id' => $sesi->unit_sekolah_id,
+                    'area_id' => $areaId,
+                    'peran' => $peran,
+                ])->save();
+                $laporan = $laporanLama;
+            }
+        }
+
+        if (! $laporan) {
+            $laporan = LaporanPiket::create([
+                'pegawai_id' => $pegawaiId,
                 'jadwal_id' => null,
                 'unit_sekolah_id' => $sesi->unit_sekolah_id,
-                'status' => LaporanPiket::STATUS_DRAFT,
-                'items' => [],
-            ],
-        );
-
-        if ($laporan->sesi_id === null) {
-            $laporan->forceFill([
                 'sesi_id' => $sesi->id,
                 'area_id' => $areaId,
                 'peran' => $peran,
-            ])->save();
+                'tanggal' => $tanggal,
+                'status' => LaporanPiket::STATUS_DRAFT,
+                'items' => [],
+            ]);
         }
 
-        return PiketPetugas::firstOrCreate(
+        $petugas = PiketPetugas::firstOrCreate(
             ['sesi_id' => $sesi->id, 'pegawai_id' => $pegawaiId],
             ['area_id' => $areaId, 'pos_id' => $posId, 'peran' => $peran, 'laporan_piket_id' => $laporan->id],
         );
+
+        if ((int) $petugas->laporan_piket_id !== (int) $laporan->id) {
+            $petugas->forceFill(['laporan_piket_id' => $laporan->id])->save();
+        }
+
+        return $petugas;
     }
 
     public static function areaIdUntukPegawai(Pegawai $pegawai, UnitSekolah $unit): ?int
@@ -402,7 +448,7 @@ class PiketService
     public static function petugasHariIni(Pegawai $pegawai): ?PiketPetugas
     {
         return PiketPetugas::where('pegawai_id', $pegawai->id)
-            ->whereHas('sesi', fn ($q) => $q->whereDate('tanggal', Carbon::today()))
+            ->whereHas('sesi', fn ($q) => $q->where('tanggal', Carbon::today()->toDateString()))
             ->latest('id')
             ->first();
     }
@@ -410,6 +456,13 @@ class PiketService
     public static function petugasFor(PiketSesi $sesi, int $pegawaiId): ?PiketPetugas
     {
         return PiketPetugas::where('sesi_id', $sesi->id)
+            ->where('pegawai_id', $pegawaiId)
+            ->first();
+    }
+
+    public static function laporanFor(PiketSesi $sesi, int $pegawaiId): ?LaporanPiket
+    {
+        return LaporanPiket::where('sesi_id', $sesi->id)
             ->where('pegawai_id', $pegawaiId)
             ->first();
     }
@@ -721,9 +774,18 @@ class PiketService
             return null;
         }
 
+        $sesi = $laporan->relationLoaded('sesi')
+            ? $laporan->sesi
+            : PiketSesi::with('unitSekolah:id,piket_mode')->find($laporan->sesi_id);
+
+        if (! $sesi || ! self::isAreaMode($sesi->unitSekolah)) {
+            return null;
+        }
+
         $belum = PiketRound::where('sesi_id', $laporan->sesi_id)
             ->whereNull('selesai_at')
-            ->get();
+            ->orderBy('putaran')
+            ->get(['putaran', 'jendela_mulai', 'jendela_selesai']);
 
         if ($belum->isEmpty()) {
             return null;
@@ -747,7 +809,7 @@ class PiketService
             return 'Fase '.$round->putaran.' belum dibuka ('.$window.')';
         })->implode('; ');
 
-        return $label.'.';
+        return $label.'. Buka bagian Jam Belajar.';
     }
 
     public static function sessionBlockReason(?LaporanPiket $laporan): ?string
@@ -756,15 +818,22 @@ class PiketService
             return null;
         }
 
-        $sesi = PiketSesi::find($laporan->sesi_id);
+        $sesi = $laporan->relationLoaded('sesi')
+            ? $laporan->sesi
+            : PiketSesi::with('unitSekolah:id,piket_mode')->find($laporan->sesi_id);
+
         if (! $sesi) {
+            return null;
+        }
+
+        if (! self::isAreaMode($sesi->unitSekolah)) {
             return null;
         }
 
         $unserved = self::unservedRequiredPos($sesi);
 
         if ($unserved !== []) {
-            return 'Pos belum tercatat: '.implode(', ', $unserved).'.';
+            return 'Pos belum tercatat: '.implode(', ', $unserved).'. Catat dari bagian Pos & gerbang.';
         }
 
         return self::roundBlockReason($laporan);
