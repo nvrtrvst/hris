@@ -444,7 +444,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
     );
 }
 
-function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false }) {
+function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, doneAt = null }) {
     const [open, setOpen] = useState(false);
     const [classes, setClasses] = useState([]);
     const [loadingKelas, setLoadingKelas] = useState(false);
@@ -472,6 +472,14 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false }) {
     ));
     const selectedClass = classes.find((c) => String(c.id) === String(classId)) || null;
     const recorded = new Set(lateStudents.map((row) => String(row.nis)));
+    const statusText = submitted
+        ? 'Laporan terkirim'
+        : doneAt
+            ? `Sudah dicatat ${doneAt}`
+            : lateStudents.length > 0
+                ? 'Sudah dicatat'
+                : 'Belum dicatat';
+    const statusClass = submitted || doneAt || lateStudents.length > 0 ? 'text-emerald-700' : 'text-amber-700';
     const filtered = students.filter((row) => {
         const q = search.trim().toLowerCase();
 
@@ -574,13 +582,14 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false }) {
 
     return (
         <div className="border-t border-slate-100 pt-3">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
                 <p className="text-sm font-bold text-slate-800">Siswa terlambat</p>
                 <Badge tone={lateStudents.length > 0 ? 'amber' : 'slate'}>{lateStudents.length}</Badge>
             </div>
+            <p className={`mt-1 text-xs font-semibold ${statusClass}`}>{statusText}</p>
 
             {lateStudents.length === 0 ? (
-                <p className="mt-1 text-xs text-slate-600">Belum ada siswa terlambat.</p>
+                <p className="mt-1 text-xs text-slate-600">{doneAt || submitted ? 'Tidak ada siswa terlambat.' : 'Belum ada siswa terlambat.'}</p>
             ) : (
                 <ul className="mt-2 space-y-1.5">
                     {lateStudents.slice(0, 3).map((row) => (
@@ -616,9 +625,9 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false }) {
                     <button type="button" onClick={buka} className="btn-primary min-h-11 flex-1">
                         Tambah siswa terlambat
                     </button>
-                    {lateStudents.length === 0 && (
+                    {lateStudents.length === 0 && !doneAt && (
                         <button type="button" onClick={nihil} className="btn-secondary min-h-11 flex-1">
-                            Tidak ada
+                            Tandai tidak ada siswa terlambat
                         </button>
                     )}
                 </div>
@@ -1145,7 +1154,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                     <p className="text-sm font-bold text-slate-800">Pos & gerbang</p>
                     {posList.map((pos) => {
                         if (gatePos && pos.id === gatePos.id) {
-                            return <SiswaTerlambatCard key={pos.id} slotId={slot.id} lateStudents={lateStudents} submitted={submitted} />;
+                            return <SiswaTerlambatCard key={pos.id} slotId={slot.id} lateStudents={lateStudents} submitted={submitted} doneAt={posLogs[pos.id]?.done_at || null} />;
                         }
 
                         return <PosItem key={pos.id} pos={pos} log={posLogs[pos.id]} sending={sending} onSave={kirimPos} />;
@@ -1172,7 +1181,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                         )}
                         <Card className="space-y-4">
                             {!v2 && (
-                                <SiswaTerlambatCard slotId={slot.id} lateStudents={lateStudents} submitted={submitted} />
+                                <SiswaTerlambatCard slotId={slot.id} lateStudents={lateStudents} submitted={submitted} doneAt={items.gerbang?.done_at ? items.gerbang.done_at.substring(0, 5) : null} />
                             )}
 
                             {tplAktif('cek_absen') && (
