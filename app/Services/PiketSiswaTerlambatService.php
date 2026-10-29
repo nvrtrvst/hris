@@ -57,6 +57,66 @@ class PiketSiswaTerlambatService
         });
     }
 
+    /**
+     * @param  array<int, array{nis:string,nama_snapshot:string}>  $students
+     */
+    public static function addMany(PiketSesi $sesi, PiketPetugas $petugas, array $students, array $meta, User $user): int
+    {
+        return DB::transaction(function () use ($sesi, $petugas, $students, $meta, $user) {
+            $nisList = collect($students)->pluck('nis')->map(fn ($nis) => (string) $nis)->values();
+            if ($nisList->duplicates()->isNotEmpty()) {
+                throw ValidationException::withMessages(['nis' => 'Ada NIS yang dipilih lebih dari sekali.']);
+            }
+
+            $existing = PiketSiswaTerlambat::where('unit_sekolah_id', $sesi->unit_sekolah_id)
+                ->whereDate('tanggal', $sesi->tanggal)
+                ->whereIn('nis', $nisList->all())
+                ->pluck('nis')
+                ->all();
+
+            if ($existing !== []) {
+                throw ValidationException::withMessages([
+                    'nis' => 'Sudah tercatat terlambat: '.implode(', ', $existing).'.',
+                ]);
+            }
+
+            $pos = self::gatePos($sesi, $petugas);
+            $jam = Carbon::now()->format('H:i:s');
+            $created = [];
+
+            foreach ($students as $student) {
+                $late = PiketSiswaTerlambat::create([
+                    'unit_sekolah_id' => $sesi->unit_sekolah_id,
+                    'piket_sesi_id' => $sesi->id,
+                    'piket_pos_id' => $pos?->id,
+                    'pegawai_id' => $petugas->pegawai_id,
+                    'tanggal' => $sesi->tanggal,
+                    'class_id' => $meta['class_id'],
+                    'class_label' => $meta['class_label'],
+                    'nis' => (string) $student['nis'],
+                    'nama_snapshot' => $student['nama_snapshot'],
+                    'jam_terlambat' => $jam,
+                    'keterangan' => $meta['keterangan'] ?? null,
+                    'created_by' => $user->id,
+                ]);
+
+                $created[] = $late;
+            }
+
+            self::sync($sesi, $petugas);
+
+            foreach ($created as $late) {
+                AuditLog::log($late, 'catat_siswa_terlambat', [], [
+                    'nis' => $late->nis,
+                    'class_label' => $late->class_label,
+                    'jam_terlambat' => $late->jam_terlambat,
+                ]);
+            }
+
+            return count($created);
+        });
+    }
+
     public static function remove(PiketSiswaTerlambat $late, User $user): void
     {
         DB::transaction(function () use ($late, $user) {

@@ -1149,6 +1149,55 @@ class PiketV2Test extends TestCase
         ]);
     }
 
+    public function test_beberapa_siswa_terlambat_disimpan_sekaligus(): void
+    {
+        config(['keuangan.url' => 'http://keuangan.test', 'keuangan.key' => 'test-key']);
+        Carbon::setTestNow('2026-10-26 07:00:00');
+
+        $a = $this->pegawai('Petugas Gerbang');
+        $this->masuk($a);
+        $this->jadwal($a);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $a->id,
+            'area_id' => $this->area->id,
+            'pos_id' => $this->gerbang->id,
+            'peran' => 'gerbang',
+            'aktif' => true,
+        ]);
+
+        Http::fake([
+            '*/api/integration/siswa-by-class*' => Http::response([
+                'data' => ['students' => [
+                    ['nis' => '001', 'nama' => 'Siswa Satu'],
+                    ['nis' => '002', 'nama' => 'Siswa Dua'],
+                ]],
+            ]),
+        ]);
+
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.siswa-terlambat.batch'), [
+                'class_id' => 'cls-1',
+                'class_label' => '10 TKJ 1',
+                'tingkat' => '10',
+                'kelas' => 'TKJ 1',
+                'jurusan' => 'TKJ',
+                'nis' => ['001', '002'],
+                ...$this->geo(),
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('piket_siswa_terlambat', 2);
+        $this->assertDatabaseHas('piket_pos_log', [
+            'pos_id' => $this->gerbang->id,
+            'jumlah' => 2,
+        ]);
+    }
+
     public function test_siswa_terlambat_tidak_bisa_dicatat_dua_kali(): void
     {
         config(['keuangan.url' => 'http://keuangan.test', 'keuangan.key' => 'test-key']);

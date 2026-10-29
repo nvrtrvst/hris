@@ -455,7 +455,8 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
     const [loadingSiswa, setLoadingSiswa] = useState(false);
     const [search, setSearch] = useState('');
     const [keterangan, setKeterangan] = useState('');
-    const [savingNis, setSavingNis] = useState(null);
+    const [selectedNis, setSelectedNis] = useState(new Set());
+    const [savingBatch, setSavingBatch] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     const [err, setErr] = useState('');
 
@@ -508,6 +509,7 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
         setErr('');
         setSearch('');
         setKeterangan('');
+        setSelectedNis(new Set());
         setOpen(true);
         if (classes.length === 0) muatKelas();
     };
@@ -515,6 +517,7 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
     const pilihKelas = (id) => {
         setClassId(id);
         setStudents([]);
+        setSelectedNis(new Set());
         setSearch('');
         const c = classes.find((row) => String(row.id) === String(id));
         if (!c) return;
@@ -536,29 +539,51 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
             .finally(() => setLoadingSiswa(false));
     };
 
-    const catat = async (row) => {
-        if (!selectedClass || recorded.has(String(row.nis))) return;
-        setSavingNis(String(row.nis));
+    const pilihSiswa = (row) => {
+        const nis = String(row.nis);
+        if (recorded.has(nis)) return;
+
+        setSelectedNis((prev) => {
+            const next = new Set(prev);
+            if (next.has(nis)) {
+                next.delete(nis);
+            } else {
+                next.add(nis);
+            }
+
+            return next;
+        });
+    };
+
+    const simpanBatch = async () => {
+        if (!selectedClass || selectedNis.size === 0) return;
+
+        setSavingBatch(true);
         setErr('');
         try {
             const geo = await getPos();
-            router.post(route('presensi.piket.siswa-terlambat'), {
+            const rows = students
+                .filter((row) => selectedNis.has(String(row.nis)))
+                .map((row) => String(row.nis));
+
+            router.post(route('presensi.piket.siswa-terlambat.batch'), {
                 class_id: String(selectedClass.id),
                 class_label: labelKelas(selectedClass),
                 tingkat: String(selectedClass.grade ?? ''),
                 kelas: selectedClass.name ?? '',
                 jurusan: selectedClass.major_name ?? '',
-                nis: String(row.nis),
+                nis: rows,
                 keterangan: keterangan || null,
                 ...geo,
             }, {
                 preserveScroll: true,
+                onSuccess: () => setSelectedNis(new Set()),
                 onError: (errs) => setErr(Object.values(errs || {}).flat()[0] || 'Gagal mencatat siswa terlambat.'),
-                onFinish: () => setSavingNis(null),
+                onFinish: () => setSavingBatch(false),
             });
         } catch (e) {
             setErr(e.message);
-            setSavingNis(null);
+            setSavingBatch(false);
         }
     };
 
@@ -718,20 +743,22 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
                                             <ul className="max-h-[40dvh] space-y-1.5 overflow-y-auto overscroll-contain pr-1">
                                                 {filtered.map((row) => {
                                                     const sudah = recorded.has(String(row.nis));
+                                                    const dipilih = selectedNis.has(String(row.nis));
                                                     return (
                                                         <li key={row.nis}>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => catat(row)}
-                                                                disabled={sudah || savingNis === String(row.nis)}
-                                                                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2 text-left hover:bg-slate-50 disabled:cursor-default disabled:bg-slate-50"
+                                                                onClick={() => pilihSiswa(row)}
+                                                                disabled={sudah || savingBatch}
+                                                                aria-pressed={dipilih}
+                                                                className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left disabled:cursor-default disabled:bg-slate-50 ${dipilih ? 'border-primary bg-primary/5' : 'border-slate-200 hover:bg-slate-50'}`}
                                                             >
                                                                 <span className="min-w-0">
                                                                     <span className="block truncate text-sm font-bold text-slate-800">{row.nama}</span>
                                                                     <span className="block text-xs text-slate-600">NIS {row.nis}</span>
                                                                 </span>
-                                                                <span className={`shrink-0 text-xs font-bold ${sudah ? 'text-emerald-700' : 'text-primary'}`}>
-                                                                    {sudah ? 'Tercatat' : savingNis === String(row.nis) ? 'Menyimpan...' : 'Catat'}
+                                                                <span className={`shrink-0 text-xs font-bold ${sudah ? 'text-emerald-700' : dipilih ? 'text-primary' : 'text-slate-600'}`}>
+                                                                    {sudah ? 'Tercatat' : dipilih ? 'Dipilih' : 'Pilih'}
                                                                 </span>
                                                             </button>
                                                         </li>
@@ -746,6 +773,17 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
 
                         {err && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{err}</p>}
                     </div>
+
+                    {classId && (
+                        <div className="border-t border-border px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                            <div className="flex items-center justify-between gap-3">
+                                <p className="text-xs font-semibold text-slate-600">{selectedNis.size} siswa dipilih</p>
+                                <button type="button" onClick={simpanBatch} disabled={selectedNis.size === 0 || savingBatch} className="btn-primary min-h-11 px-4">
+                                    {savingBatch ? 'Menyimpan...' : `Simpan${selectedNis.size ? ` (${selectedNis.size})` : ''}`}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </Modal>
         </div>
