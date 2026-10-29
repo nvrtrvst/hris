@@ -1272,6 +1272,32 @@ class PiketV2Test extends TestCase
             );
     }
 
+    public function test_absen_siswa_mode_simple_menandai_item_piket(): void
+    {
+        Carbon::setTestNow('2026-10-26 07:00:00');
+        $this->unit->forceFill(['piket_mode' => 'simple'])->save();
+
+        $piket = $this->pegawai('Petugas Simple');
+        $this->masuk($piket);
+        $this->jadwal($piket);
+
+        $this->actingAs($piket->user, 'web_mobile')
+            ->post(route('presensi.piket.absen-siswa'), [
+                'class_id' => 'cls-simple',
+                'class_label' => '7 Ahmad',
+                'siswa' => [
+                    ['nis' => '001', 'nama' => 'Siswa', 'status' => 'hadir'],
+                ],
+                ...$this->geo(),
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $laporan = LaporanPiket::where('pegawai_id', $piket->id)->firstOrFail();
+        $this->assertNotNull($laporan->item('absen_siswa')['done_at'] ?? null);
+        $this->assertSame(1, $laporan->item('absen_siswa')['sesi_count'] ?? null);
+    }
+
     public function test_mode_simple_tidak_memblokir_pos_gerbang(): void
     {
         $this->unit->forceFill(['piket_mode' => 'simple'])->save();

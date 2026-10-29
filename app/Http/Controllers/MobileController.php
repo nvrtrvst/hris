@@ -1907,6 +1907,11 @@ class MobileController extends Controller
             }
         }
 
+        if (! $v2) {
+            PiketService::syncSimpleAbsenItem($laporan, $unitId, $today);
+            $laporan = $laporan?->fresh();
+        }
+
         $guruUnit = Pegawai::where('status_aktif', 'aktif')
             ->where('id', '!=', $pegawai->id)
             ->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitId))
@@ -2631,13 +2636,26 @@ class MobileController extends Controller
             );
         });
 
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
+            ->whereDate('tanggal', $today)
+            ->first();
+
         if ($petugasPiket) {
-            $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
-                ->whereDate('tanggal', $today)
-                ->first();
             if ($laporan) {
                 PiketService::syncAbsenItem($laporan, $petugasPiket);
             }
+        } elseif (! $laporan) {
+            $laporan = LaporanPiket::create([
+                'pegawai_id' => $pegawai->id,
+                'unit_sekolah_id' => $slot->unit_sekolah_id,
+                'tanggal' => $today,
+                'status' => LaporanPiket::STATUS_DRAFT,
+                'items' => [],
+            ]);
+        }
+
+        if (! PiketService::isAreaMode($unit)) {
+            PiketService::syncSimpleAbsenItem($laporan, $slot->unit_sekolah_id, $today);
         }
 
         return back()->with('message', 'Absen siswa tersimpan.');

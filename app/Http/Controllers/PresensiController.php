@@ -429,6 +429,15 @@ class PresensiController extends Controller
                         'keterangan' => $d->keterangan,
                     ])
                     ->values(),
+                'students' => $s->details
+                    ->sortBy('nama_snapshot')
+                    ->map(fn ($d) => [
+                        'nama' => $d->nama_snapshot,
+                        'nis' => $d->nis,
+                        'status' => $d->status,
+                        'keterangan' => $d->keterangan,
+                    ])
+                    ->values(),
             ];
         });
 

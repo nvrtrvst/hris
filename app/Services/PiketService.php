@@ -197,6 +197,29 @@ class PiketService
      * Tandai petugas yang tidak hadir/abai dan alihkan kelasnya ke petugas
      * yang hadir. Dipanggil lazy, tanpa scheduler.
      */
+    public static function syncSimpleAbsenItem(?LaporanPiket $laporan, int $unitId, string $tanggal): void
+    {
+        if (! $laporan || $laporan->status === LaporanPiket::STATUS_SUBMITTED) {
+            return;
+        }
+
+        $count = AbsenSiswaSesi::where('unit_sekolah_id', $unitId)
+            ->whereDate('tanggal', $tanggal)
+            ->count();
+
+        if ($count === 0) {
+            return;
+        }
+
+        $items = $laporan->items ?? [];
+        $items[LaporanPiket::ITEM_ABSEN_SISWA] = array_merge($items[LaporanPiket::ITEM_ABSEN_SISWA] ?? [], [
+            'done_at' => Carbon::now()->format('H:i:s'),
+            'sesi_count' => $count,
+        ]);
+        $laporan->items = $items;
+        $laporan->save();
+    }
+
     public static function reassignAbsenIfNeeded(PiketSesi $sesi): bool
     {
         if ($sesi->status !== 'open' || ! self::isAreaMode($sesi->unitSekolah)) {
