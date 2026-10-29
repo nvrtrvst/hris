@@ -19,11 +19,12 @@ class AbsenSiswaReportService
     public function report(User $user, array $filters): array
     {
         $mode = ($filters['mode'] ?? 'daily') === 'period' ? 'period' : 'daily';
+        $dailyDate = Carbon::parse($filters['tanggal'] ?? Carbon::today());
         $start = $mode === 'daily'
-            ? Carbon::today()
+            ? $dailyDate->copy()
             : Carbon::parse($filters['start_date'] ?? Carbon::today());
         $end = $mode === 'daily'
-            ? Carbon::today()
+            ? $dailyDate->copy()
             : Carbon::parse($filters['end_date'] ?? $start);
 
         $scope = $this->scope($user, $filters['unit_id'] ?? null);
@@ -342,6 +343,7 @@ class AbsenSiswaReportService
     {
         return [
             'mode' => $mode,
+            'tanggal' => $mode === 'daily' ? $start->toDateString() : null,
             'start_date' => $start->toDateString(),
             'end_date' => $end->toDateString(),
             'unit_id' => $filters['unit_id'] ?? null,

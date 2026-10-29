@@ -345,7 +345,7 @@ function LaporanDetail({ lap, label, canConvert = false, onConvert = () => {} })
                             </li>
                         ))}
                     </ul>
-                    <Link href={route('absen-siswa.index', { tanggal: lap.tanggal, unit_id: lap.unit_id })} className="mt-2 inline-flex text-xs font-bold text-primary underline-offset-2 hover:underline">
+                    <Link href={route('laporan.absen-siswa', { mode: 'daily', tanggal: lap.tanggal, unit_id: lap.unit_id })} className="mt-2 inline-flex text-xs font-bold text-primary underline-offset-2 hover:underline">
                         Lihat rekap absen
                     </Link>
                 </section>

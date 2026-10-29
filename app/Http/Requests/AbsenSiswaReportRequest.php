@@ -17,6 +17,7 @@ class AbsenSiswaReportRequest extends FormRequest
     {
         return [
             'mode' => 'nullable|in:daily,period',
+            'tanggal' => 'nullable|date',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'unit_id' => 'nullable|integer|exists:unit_sekolah,id',
