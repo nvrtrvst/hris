@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import MobileLayout from '@/Layouts/MobileLayout';
+import Modal from '@/Components/Modal';
 import { Card, Badge, Empty } from '@/Components/MobileUI';
 import useNowEveryMinute from '@/Utils/useNowEveryMinute';
 import {
@@ -443,6 +444,305 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
     );
 }
 
+function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false }) {
+    const [open, setOpen] = useState(false);
+    const [classes, setClasses] = useState([]);
+    const [loadingKelas, setLoadingKelas] = useState(false);
+    const [tingkat, setTingkat] = useState('');
+    const [jurusan, setJurusan] = useState('');
+    const [classId, setClassId] = useState('');
+    const [students, setStudents] = useState([]);
+    const [loadingSiswa, setLoadingSiswa] = useState(false);
+    const [search, setSearch] = useState('');
+    const [keterangan, setKeterangan] = useState('');
+    const [savingNis, setSavingNis] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
+    const [err, setErr] = useState('');
+
+    const grades = [...new Set(classes.map((c) => String(c.grade ?? '')).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const majors = [...new Set(classes
+        .filter((c) => !tingkat || String(c.grade ?? '') === tingkat)
+        .map((c) => String(c.major_name ?? ''))
+        .filter(Boolean))]
+        .sort();
+    const classOptions = classes.filter((c) => (
+        (!tingkat || String(c.grade ?? '') === tingkat)
+        && (!jurusan || String(c.major_name ?? '') === jurusan)
+    ));
+    const selectedClass = classes.find((c) => String(c.id) === String(classId)) || null;
+    const recorded = new Set(lateStudents.map((row) => String(row.nis)));
+    const filtered = students.filter((row) => {
+        const q = search.trim().toLowerCase();
+
+        return q === '' || String(row.nama).toLowerCase().includes(q) || String(row.nis).includes(q);
+    });
+
+    const muatKelas = () => {
+        if (loadingKelas) return;
+        setLoadingKelas(true);
+        setErr('');
+        fetch(`${route('presensi.jadwal.kelas')}?jadwal_id=${encodeURIComponent(slotId)}`)
+            .then((r) => bacaJson(r, 'Gagal memuat kelas. Coba lagi.'))
+            .then((d) => {
+                const rows = d.kelas || [];
+                setClasses(rows);
+                if (rows.length === 1) {
+                    setTingkat(String(rows[0].grade ?? ''));
+                    setJurusan(String(rows[0].major_name ?? ''));
+                }
+            })
+            .catch((e) => setErr(e.message))
+            .finally(() => setLoadingKelas(false));
+    };
+
+    const buka = () => {
+        setErr('');
+        setSearch('');
+        setKeterangan('');
+        setOpen(true);
+        if (classes.length === 0) muatKelas();
+    };
+
+    const pilihKelas = (id) => {
+        setClassId(id);
+        setStudents([]);
+        setSearch('');
+        const c = classes.find((row) => String(row.id) === String(id));
+        if (!c) return;
+
+        setLoadingSiswa(true);
+        setErr('');
+        const params = new URLSearchParams({
+            jadwal_id: String(slotId),
+            tingkat: String(c.grade ?? ''),
+            kelas: c.name ?? '',
+            jurusan: c.major_name ?? '',
+            class_id: c.id ?? '',
+        });
+
+        fetch(`${route('presensi.jadwal.siswa')}?${params.toString()}`)
+            .then((r) => bacaJson(r, 'Gagal memuat siswa. Coba lagi.'))
+            .then((d) => setStudents(d.siswa || []))
+            .catch((e) => setErr(e.message))
+            .finally(() => setLoadingSiswa(false));
+    };
+
+    const catat = async (row) => {
+        if (!selectedClass || recorded.has(String(row.nis))) return;
+        setSavingNis(String(row.nis));
+        setErr('');
+        try {
+            const geo = await getPos();
+            router.post(route('presensi.piket.siswa-terlambat'), {
+                class_id: String(selectedClass.id),
+                class_label: labelKelas(selectedClass),
+                tingkat: String(selectedClass.grade ?? ''),
+                kelas: selectedClass.name ?? '',
+                jurusan: selectedClass.major_name ?? '',
+                nis: String(row.nis),
+                keterangan: keterangan || null,
+                ...geo,
+            }, {
+                preserveScroll: true,
+                onError: (errs) => setErr(Object.values(errs || {}).flat()[0] || 'Gagal mencatat siswa terlambat.'),
+                onFinish: () => setSavingNis(null),
+            });
+        } catch (e) {
+            setErr(e.message);
+            setSavingNis(null);
+        }
+    };
+
+    const hapus = (row) => {
+        setDeletingId(row.id);
+        setErr('');
+        router.delete(route('presensi.piket.siswa-terlambat.hapus', row.id), {
+            preserveScroll: true,
+            onError: (errs) => setErr(Object.values(errs || {}).flat()[0] || 'Gagal menghapus entry.'),
+            onFinish: () => setDeletingId(null),
+        });
+    };
+
+    const nihil = () => {
+        setErr('');
+        router.post(route('presensi.piket.siswa-terlambat.nihil'), {}, {
+            preserveScroll: true,
+            onError: (errs) => setErr(Object.values(errs || {}).flat()[0] || 'Gagal menyimpan status gerbang.'),
+        });
+    };
+
+    return (
+        <div className="border-t border-slate-100 pt-3">
+            <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-bold text-slate-800">Siswa terlambat</p>
+                <Badge tone={lateStudents.length > 0 ? 'amber' : 'slate'}>{lateStudents.length}</Badge>
+            </div>
+
+            {lateStudents.length === 0 ? (
+                <p className="mt-1 text-xs text-slate-600">Belum ada siswa terlambat.</p>
+            ) : (
+                <ul className="mt-2 space-y-1.5">
+                    {lateStudents.slice(0, 3).map((row) => (
+                        <li key={row.id} className="flex min-h-11 items-center justify-between gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                            <span className="min-w-0">
+                                <span className="block truncate font-bold">{row.nama}</span>
+                                <span className="block text-amber-800">{row.class_label} · {row.jam_terlambat}</span>
+                            </span>
+                            {!submitted && (
+                                <button
+                                    type="button"
+                                    onClick={() => hapus(row)}
+                                    disabled={deletingId === row.id}
+                                    aria-label={`Hapus ${row.nama}`}
+                                    className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            {lateStudents.length > 3 && (
+                <button type="button" onClick={buka} className="mt-2 min-h-11 text-xs font-bold text-primary">
+                    Lihat semua ({lateStudents.length})
+                </button>
+            )}
+
+            {!submitted && (
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <button type="button" onClick={buka} className="btn-primary min-h-11 flex-1">
+                        Tambah siswa terlambat
+                    </button>
+                    {lateStudents.length === 0 && (
+                        <button type="button" onClick={nihil} className="btn-secondary min-h-11 flex-1">
+                            Tidak ada
+                        </button>
+                    )}
+                </div>
+            )}
+
+            <Modal show={open} onClose={() => setOpen(false)} maxWidth="2xl">
+                <div className="flex max-h-[90dvh] flex-col">
+                    <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+                        <div>
+                            <h3 className="text-base font-bold text-slate-800">Tambah siswa terlambat</h3>
+                            <p className="mt-0.5 text-xs text-slate-600">Pilih kelas, lalu cari nama atau NIS.</p>
+                        </div>
+                        <button type="button" onClick={() => setOpen(false)} aria-label="Tutup" className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100">
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+
+                    <div className="space-y-3 overflow-y-auto px-5 py-4">
+                        {loadingKelas ? (
+                            <p className="py-4 text-center text-sm text-slate-600">Memuat kelas...</p>
+                        ) : classes.length === 0 ? (
+                            <div className="space-y-2 py-4 text-center">
+                                <p className="text-sm text-slate-600">{err || 'Data kelas belum tersedia.'}</p>
+                                <button type="button" onClick={muatKelas} className="btn-secondary min-h-11">Coba lagi</button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label htmlFor="late-tingkat" className="form-label">Tingkat</label>
+                                        <select id="late-tingkat" value={tingkat} onChange={(e) => { setTingkat(e.target.value); setJurusan(''); setClassId(''); setStudents([]); }} className="select-field min-h-11 text-base sm:text-sm">
+                                            <option value="">Pilih tingkat</option>
+                                            {grades.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+                                        </select>
+                                    </div>
+                                    {majors.length > 0 && (
+                                        <div>
+                                            <label htmlFor="late-jurusan" className="form-label">Jurusan</label>
+                                            <select id="late-jurusan" value={jurusan} onChange={(e) => { setJurusan(e.target.value); setClassId(''); setStudents([]); }} className="select-field min-h-11 text-base sm:text-sm">
+                                                <option value="">Semua jurusan</option>
+                                                {majors.map((major) => <option key={major} value={major}>{major}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+                                    <div className={majors.length > 0 ? 'sm:col-span-2' : ''}>
+                                        <label htmlFor="late-kelas" className="form-label">Kelas</label>
+                                        <select id="late-kelas" value={classId} onChange={(e) => pilihKelas(e.target.value)} disabled={!tingkat} className="select-field min-h-11 text-base sm:text-sm disabled:opacity-50">
+                                            <option value="">Pilih kelas</option>
+                                            {classOptions.map((c) => <option key={c.id} value={c.id}>{labelKelas(c)}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {classId && (
+                                    <div className="space-y-3">
+                                        <div className="sticky top-0 z-10 bg-white pb-2">
+                                            <label htmlFor="late-cari" className="form-label">Cari siswa</label>
+                                            <input
+                                                id="late-cari"
+                                                type="search"
+                                                value={search}
+                                                onChange={(e) => setSearch(e.target.value)}
+                                                placeholder="Nama atau NIS"
+                                                className="input-field min-h-11 w-full text-base sm:text-sm"
+                                                enterKeyHint="search"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="late-keterangan" className="form-label">Keterangan (opsional)</label>
+                                            <input
+                                                id="late-keterangan"
+                                                value={keterangan}
+                                                onChange={(e) => setKeterangan(e.target.value)}
+                                                placeholder="cth. datang 07:20"
+                                                maxLength={255}
+                                                className="input-field min-h-11 w-full text-base sm:text-sm"
+                                            />
+                                        </div>
+
+                                        {loadingSiswa ? (
+                                            <p className="py-4 text-center text-sm text-slate-600">Memuat siswa...</p>
+                                        ) : filtered.length === 0 ? (
+                                            <p className="py-4 text-center text-sm text-slate-600">
+                                                {students.length === 0 ? 'Belum ada siswa di kelas ini.' : 'Nama atau NIS tidak ditemukan.'}
+                                            </p>
+                                        ) : (
+                                            <ul className="max-h-[40dvh] space-y-1.5 overflow-y-auto overscroll-contain pr-1">
+                                                {filtered.map((row) => {
+                                                    const sudah = recorded.has(String(row.nis));
+                                                    return (
+                                                        <li key={row.nis}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => catat(row)}
+                                                                disabled={sudah || savingNis === String(row.nis)}
+                                                                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2 text-left hover:bg-slate-50 disabled:cursor-default disabled:bg-slate-50"
+                                                            >
+                                                                <span className="min-w-0">
+                                                                    <span className="block truncate text-sm font-bold text-slate-800">{row.nama}</span>
+                                                                    <span className="block text-xs text-slate-600">NIS {row.nis}</span>
+                                                                </span>
+                                                                <span className={`shrink-0 text-xs font-bold ${sudah ? 'text-emerald-700' : 'text-primary'}`}>
+                                                                    {sudah ? 'Tercatat' : savingNis === String(row.nis) ? 'Menyimpan...' : 'Catat'}
+                                                                </span>
+                                                            </button>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        )}
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {err && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{err}</p>}
+                    </div>
+                </div>
+            </Modal>
+        </div>
+    );
+}
+
 function RoundCard({ round, hhmm, sending, onDone }) {
     const [alasan, setAlasan] = useState('');
     const selesai = Boolean(round.selesai_at);
@@ -627,6 +927,8 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     const team = piket.team ?? [];
     const posList = piket.pos ?? [];
     const posLogs = piket.pos_logs ?? {};
+    const lateStudents = piket.late_students ?? [];
+    const gatePos = posList.find((pos) => /gerbang/i.test(String(pos.nama ?? ''))) || null;
     const blockReason = piket.block_reason;
     const templates = piket.templates ?? [];
     const rounds = piket.rounds ?? [];
@@ -841,9 +1143,13 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
             {v2 && posList.length > 0 && (
                 <Card id="pos-gerbang" className="mb-4 scroll-mt-24 space-y-2">
                     <p className="text-sm font-bold text-slate-800">Pos & gerbang</p>
-                    {posList.map((pos) => (
-                        <PosItem key={pos.id} pos={pos} log={posLogs[pos.id]} sending={sending} onSave={kirimPos} />
-                    ))}
+                    {posList.map((pos) => {
+                        if (gatePos && pos.id === gatePos.id) {
+                            return <SiswaTerlambatCard key={pos.id} slotId={slot.id} lateStudents={lateStudents} submitted={submitted} />;
+                        }
+
+                        return <PosItem key={pos.id} pos={pos} log={posLogs[pos.id]} sending={sending} onSave={kirimPos} />;
+                    })}
                 </Card>
             )}
 
@@ -866,21 +1172,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                         )}
                         <Card className="space-y-4">
                             {!v2 && (
-                            <div>
-                                <p className="text-sm font-bold text-slate-800">Pos gerbang: siswa terlambat {done('gerbang') && <span className="ml-1 text-xs font-semibold text-emerald-700">({items.gerbang.done_at?.substring(0, 5)}, {items.gerbang.terlambat_count ?? 0} terlambat)</span>}</p>
-                                {!done('gerbang') && (
-                                    <div className="mt-2 flex items-center gap-2">
-                                        <div className="flex-1">
-                                            <label htmlFor="terlambat" className={labelCls}>Siswa terlambat</label>
-                                            <input id="terlambat" type="number" min="0" value={terlambat} onChange={(e) => setTerlambat(e.target.value)} className={inputCls} disabled={!pagiOpen || sending} />
-                                        </div>
-                                        <button type="button" disabled={!pagiOpen || sending} onClick={() => kirim({ kode: 'gerbang', mode: 'centang', terlambat_count: Number(terlambat) || 0 })} className="mt-6 min-h-12 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 active:scale-95 disabled:opacity-50">
-                                            {sending ? '...' : 'Catat'}
-                                        </button>
-                                    </div>
-                                )}
-                                {!pagiOpen && !done('gerbang') && <p className="mt-1 flex items-center gap-1 text-xs text-slate-600"><Clock3 className="h-3.5 w-3.5" /> Dibuka {windows.pagi[0]}-{windows.pagi[1]}.</p>}
-                            </div>
+                                <SiswaTerlambatCard slotId={slot.id} lateStudents={lateStudents} submitted={submitted} />
                             )}
 
                             {tplAktif('cek_absen') && (

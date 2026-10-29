@@ -11,6 +11,7 @@ use App\Http\Controllers\KomponenGajiController;
 use App\Http\Controllers\KpiController;
 use App\Http\Controllers\LaporanAbsenSiswaController;
 use App\Http\Controllers\LaporanController;
+use App\Http\Controllers\LaporanKeterlambatanSiswaController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PayrollReferenceTypeController;
@@ -329,6 +330,9 @@ Route::middleware('auth:web_admin')->group(function () {
 
     Route::get('laporan/pdf', [LaporanController::class, 'exportPdf'])->name('laporan.pdf');
     Route::get('laporan/piket', [LaporanController::class, 'laporanPiket'])->name('laporan.piket');
+    Route::get('laporan/keterlambatan-siswa', [LaporanKeterlambatanSiswaController::class, 'index'])->name('laporan.keterlambatan-siswa');
+    Route::get('laporan/keterlambatan-siswa/export', [LaporanKeterlambatanSiswaController::class, 'exportExcel'])->name('laporan.keterlambatan-siswa.export');
+    Route::get('laporan/keterlambatan-siswa/pdf', [LaporanKeterlambatanSiswaController::class, 'exportPdf'])->name('laporan.keterlambatan-siswa.pdf');
     Route::post('laporan-piket/{laporan}/buat-izin', [LaporanController::class, 'buatIzinPiket'])
         ->middleware(['can:create_izin_from_piket', 'throttle:30,1'])
         ->name('laporan-piket.buat-izin');

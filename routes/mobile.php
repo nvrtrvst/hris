@@ -120,6 +120,12 @@ Route::middleware('auth:web_mobile')->group(function () {
         ->middleware('throttle:30,1')->name('presensi.piket.absen-siswa');
     Route::post('/piket/pos', [MobileController::class, 'storePiketPos'])
         ->middleware('throttle:30,1')->name('presensi.piket.pos');
+    Route::post('/piket/siswa-terlambat', [MobileController::class, 'storeSiswaTerlambat'])
+        ->middleware('throttle:30,1')->name('presensi.piket.siswa-terlambat');
+    Route::post('/piket/siswa-terlambat/nihil', [MobileController::class, 'zeroSiswaTerlambat'])
+        ->middleware('throttle:30,1')->name('presensi.piket.siswa-terlambat.nihil');
+    Route::delete('/piket/siswa-terlambat/{late}', [MobileController::class, 'destroySiswaTerlambat'])
+        ->middleware('throttle:30,1')->name('presensi.piket.siswa-terlambat.hapus');
     Route::post('/piket/round/{round}', [MobileController::class, 'storePiketRound'])
         ->middleware('throttle:30,1')->name('presensi.piket.round');
     Route::post('/piket/submit', [MobileController::class, 'submitPiket'])

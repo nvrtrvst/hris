@@ -17,6 +17,7 @@ use App\Models\PiketPetugasKelas;
 use App\Models\PiketPos;
 use App\Models\PiketRound;
 use App\Models\PiketSesi;
+use App\Models\PiketSiswaTerlambat;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
@@ -1096,5 +1097,127 @@ class PiketV2Test extends TestCase
         $reason = PiketService::roundBlockReason($laporan);
         $this->assertStringContainsString('belum diselesaikan', $reason);
         $this->assertStringNotContainsString('belum dibuka', $reason);
+    }
+
+    public function test_siswa_terlambat_disimpan_dan_menghitung_gerbang(): void
+    {
+        Carbon::setTestNow('2026-10-26 07:00:00');
+
+        $a = $this->pegawai('Petugas Gerbang');
+        $this->masuk($a);
+        $this->jadwal($a);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $a->id,
+            'area_id' => $this->area->id,
+            'pos_id' => $this->gerbang->id,
+            'peran' => 'gerbang',
+            'aktif' => true,
+        ]);
+
+        Http::fake([
+            '*/api/integration/siswa-by-class*' => Http::response([
+                'data' => ['students' => [['nis' => '001', 'nama' => 'Siswa Terlambat']]],
+            ]),
+        ]);
+
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.siswa-terlambat'), [
+                'class_id' => 'cls-1',
+                'class_label' => '10 TKJ 1',
+                'tingkat' => '10',
+                'kelas' => 'TKJ 1',
+                'jurusan' => 'TKJ',
+                'nis' => '001',
+                ...$this->geo(),
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('piket_siswa_terlambat', [
+            'nis' => '001',
+            'nama_snapshot' => 'Siswa Terlambat',
+            'class_label' => '10 TKJ 1',
+        ]);
+        $this->assertDatabaseHas('piket_pos_log', [
+            'pos_id' => $this->gerbang->id,
+            'jumlah' => 1,
+        ]);
+    }
+
+    public function test_siswa_terlambat_tidak_bisa_dicatat_dua_kali(): void
+    {
+        Carbon::setTestNow('2026-10-26 07:00:00');
+
+        $a = $this->pegawai('Petugas Gerbang');
+        $this->masuk($a);
+        $this->jadwal($a);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $a->id,
+            'area_id' => $this->area->id,
+            'pos_id' => $this->gerbang->id,
+            'peran' => 'gerbang',
+            'aktif' => true,
+        ]);
+
+        Http::fake([
+            '*/api/integration/siswa-by-class*' => Http::response([
+                'data' => ['students' => [['nis' => '001', 'nama' => 'Siswa Terlambat']]],
+            ]),
+        ]);
+
+        $payload = [
+            'class_id' => 'cls-1',
+            'class_label' => '10 TKJ 1',
+            'tingkat' => '10',
+            'kelas' => 'TKJ 1',
+            'jurusan' => 'TKJ',
+            'nis' => '001',
+            ...$this->geo(),
+        ];
+
+        $this->actingAs($a->user, 'web_mobile')->post(route('presensi.piket.siswa-terlambat'), $payload);
+        $this->actingAs($a->user, 'web_mobile')
+            ->post(route('presensi.piket.siswa-terlambat'), $payload)
+            ->assertSessionHasErrors('nis');
+
+        $this->assertDatabaseCount('piket_siswa_terlambat', 1);
+    }
+
+    public function test_laporan_keterlambatan_menampilkan_data(): void
+    {
+        $late = PiketSiswaTerlambat::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'piket_sesi_id' => PiketSesi::create([
+                'unit_sekolah_id' => $this->unit->id,
+                'tanggal' => '2026-10-26',
+                'jam_mulai' => '07:30',
+                'jam_selesai' => '18:00',
+                'status' => 'open',
+            ])->id,
+            'pegawai_id' => $this->admin->pegawai?->id,
+            'tanggal' => '2026-10-26',
+            'class_id' => 'cls-1',
+            'class_label' => '10 TKJ 1',
+            'nis' => '001',
+            'nama_snapshot' => 'Siswa Terlambat',
+            'jam_terlambat' => '07:18:00',
+        ]);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->get(route('laporan.keterlambatan-siswa', ['start_date' => '2026-10-26', 'end_date' => '2026-10-26']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Laporan/KeterlambatanSiswa')
+                ->where('rows.0.nis', '001')
+                ->where('summary.total', 1)
+            );
     }
 }
