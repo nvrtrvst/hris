@@ -388,25 +388,23 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                         <ul className="max-h-[45dvh] space-y-1.5 overflow-y-auto pr-0.5">
                             {siswa.filter((s) => s.nama.toLowerCase().includes(cariSiswa.trim().toLowerCase()) || String(s.nis).includes(cariSiswa.trim())).map((s) => (
                                 <li key={s.nis} className="rounded-xl bg-slate-50 px-3 py-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="min-w-0">
-                                            <p className="truncate text-xs font-bold text-slate-800">{s.nama}</p>
-                                            <p className="text-xs text-slate-600">NIS {s.nis}</p>
-                                        </div>
-                                        <div className="flex shrink-0 gap-1">
-                                            {URUT_STATUS.map((st) => (
-                                                <button
-                                                    key={st}
-                                                    type="button"
-                                                    aria-label={`${s.nama}: ${st}`}
-                                                    aria-pressed={s.status === st}
-                                                    onClick={() => ubahStatus(s.nis, st)}
-                                                    className={`h-11 w-11 rounded-lg border text-xs font-bold leading-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${s.status === st ? STATUS_SISWA[st].cls : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
-                                                >
-                                                    {STATUS_SISWA[st].label}
-                                                </button>
-                                            ))}
-                                        </div>
+                                    <div className="min-w-0">
+                                        <p className="break-words text-xs font-bold leading-snug text-slate-800">{s.nama}</p>
+                                        <p className="break-all text-xs text-slate-600">NIS {s.nis}</p>
+                                    </div>
+                                    <div className="mt-2 grid grid-cols-5 gap-1.5">
+                                        {URUT_STATUS.map((st) => (
+                                            <button
+                                                key={st}
+                                                type="button"
+                                                aria-label={`${s.nama}: ${st}`}
+                                                aria-pressed={s.status === st}
+                                                onClick={() => ubahStatus(s.nis, st)}
+                                                className={`min-h-11 w-full rounded-lg border text-xs font-bold leading-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${s.status === st ? STATUS_SISWA[st].cls : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+                                            >
+                                                {STATUS_SISWA[st].label}
+                                            </button>
+                                        ))}
                                     </div>
                                     {['izin', 'sakit'].includes(s.status) && (
                                         <input
