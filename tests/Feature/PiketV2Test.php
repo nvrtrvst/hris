@@ -1101,6 +1101,7 @@ class PiketV2Test extends TestCase
 
     public function test_siswa_terlambat_disimpan_dan_menghitung_gerbang(): void
     {
+        config(['keuangan.url' => 'http://keuangan.test', 'keuangan.key' => 'test-key']);
         Carbon::setTestNow('2026-10-26 07:00:00');
 
         $a = $this->pegawai('Petugas Gerbang');
@@ -1150,6 +1151,7 @@ class PiketV2Test extends TestCase
 
     public function test_siswa_terlambat_tidak_bisa_dicatat_dua_kali(): void
     {
+        config(['keuangan.url' => 'http://keuangan.test', 'keuangan.key' => 'test-key']);
         Carbon::setTestNow('2026-10-26 07:00:00');
 
         $a = $this->pegawai('Petugas Gerbang');
