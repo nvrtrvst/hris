@@ -577,7 +577,13 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
                 ...geo,
             }, {
                 preserveScroll: true,
-                onSuccess: () => setSelectedNis(new Set()),
+                onSuccess: () => {
+                    setSelectedNis(new Set());
+                    setSearch('');
+                    setKeterangan('');
+                    setErr('');
+                    setOpen(false);
+                },
                 onError: (errs) => setErr(Object.values(errs || {}).flat()[0] || 'Gagal mencatat siswa terlambat.'),
                 onFinish: () => setSavingBatch(false),
             });
