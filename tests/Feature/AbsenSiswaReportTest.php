@@ -109,6 +109,25 @@ class AbsenSiswaReportTest extends TestCase
             );
     }
 
+    public function test_laporan_harian_menggunakan_tanggal_pilihan(): void
+    {
+        $this->sesi('X A', '2026-10-01', [
+            ['nis' => '001', 'nama' => 'Siswa Satu', 'status' => 'hadir'],
+        ]);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->get(route('laporan.absen-siswa', [
+                'mode' => 'daily',
+                'tanggal' => '2026-10-01',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.tanggal', '2026-10-01')
+                ->has('sessions', 1)
+                ->where('sessions.0.class_label', 'X A')
+            );
+    }
+
     public function test_keterlambatan_gerbang_dihitung_terpisah_dari_status_kelas(): void
     {
         $tanggal = now()->toDateString();
@@ -171,6 +190,20 @@ class AbsenSiswaReportTest extends TestCase
                 ->where('students.0.alpa', 1)
                 ->where('students.0.persen', 50)
             );
+    }
+
+    public function test_laporan_absen_cukup_dengan_permission_view_absen_siswa(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('view_absen_siswa');
+
+        $this->actingAs($user, 'web_admin')
+            ->get(route('laporan.absen-siswa', ['mode' => 'daily']))
+            ->assertOk();
+
+        $this->actingAs($user, 'web_admin')
+            ->get(route('absen-siswa.index'))
+            ->assertForbidden();
     }
 
     public function test_wali_kelas_hanya_melihat_kelas_binaan(): void

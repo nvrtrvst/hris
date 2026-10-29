@@ -25,6 +25,7 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
     const { flash } = usePage().props;
     const [form, setForm] = useState({
         mode: filters.mode || 'daily',
+        tanggal: filters.tanggal || filters.start_date,
         start_date: filters.start_date,
         end_date: filters.end_date,
         unit_id: filters.unit_id || '',
@@ -41,6 +42,8 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
         if (form.mode === 'period') {
             next.start_date = form.start_date;
             next.end_date = form.end_date;
+        } else {
+            next.tanggal = form.tanggal;
         }
         if (form.unit_id) next.unit_id = form.unit_id;
         if (form.class_label) next.class_label = form.class_label;
@@ -61,6 +64,8 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
         if (mode === 'period') {
             query.start_date = next.start_date;
             query.end_date = next.end_date;
+        } else {
+            query.tanggal = next.tanggal;
         }
         if (next.unit_id) query.unit_id = next.unit_id;
         if (next.class_label) query.class_label = next.class_label;
@@ -136,7 +141,7 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
 
                 <form onSubmit={submit} className="page-card p-4 sm:p-5">
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
-                        {filters.mode === 'period' && (
+                        {filters.mode === 'period' ? (
                             <>
                                 <label className="block">
                                     <span className="form-label">Dari tanggal</span>
@@ -147,6 +152,11 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
                                     <input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="input-field w-full" required />
                                 </label>
                             </>
+                        ) : (
+                            <label className="block">
+                                <span className="form-label">Tanggal</span>
+                                <input type="date" value={form.tanggal} onChange={(e) => setForm({ ...form, tanggal: e.target.value })} className="input-field w-full" required />
+                            </label>
                         )}
                         {canFilterUnit && (
                             <label className="block">
@@ -218,8 +228,8 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
                 {filters.mode === 'daily' ? (
                     <div className="page-card card-table">
                         <div className="border-b border-border px-4 py-3">
-                            <h3 className="section-title">Absensi Hari Ini</h3>
-                            <p className="mt-0.5 text-xs text-text-muted">{sessions.length} kelas tercatat</p>
+                            <h3 className="section-title">Absensi Harian</h3>
+                            <p className="mt-0.5 text-xs text-text-muted">{sessions.length} kelas tercatat{filters.tanggal ? ` pada ${filters.tanggal}` : ''}</p>
                         </div>
                         {sessions.length === 0 ? (
                             <p className="px-4 py-8 text-center text-sm text-text-muted">Belum ada absensi siswa pada filter ini.</p>
