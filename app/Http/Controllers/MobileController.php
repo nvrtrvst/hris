@@ -2338,7 +2338,10 @@ class MobileController extends Controller
         );
 
         $classPayload = $this->resolveClassPayload($slot, $validated);
-        $response = KeuanganClient::request('siswa-by-class', $classPayload);
+        $response = KeuanganClient::request('siswa-by-class', [
+            'unit' => $unit->nama ?: $unit->singkatan,
+            ...$classPayload,
+        ]);
 
         if (! $response?->successful()) {
             abort(502, 'Data siswa belum tersedia. Coba lagi.');
@@ -2366,6 +2369,92 @@ class MobileController extends Controller
         ], $request->user());
 
         return back()->with('message', 'Siswa terlambat dicatat.');
+    }
+
+    public function storeSiswaTerlambatBatch(Request $request)
+    {
+        $pegawai = $this->getPegawai();
+        $this->assertTidakSedangIzin($pegawai);
+        $this->assertSudahMasuk($pegawai->id);
+
+        $validated = $request->validate([
+            'tingkat' => 'required|string|max:20',
+            'kelas' => 'required|string|max:100',
+            'jurusan' => 'nullable|string|max:100',
+            'class_id' => 'required|string|max:50',
+            'class_label' => 'required|string|max:100',
+            'nis' => 'required|array|min:1|max:100',
+            'nis.*' => 'required|string|max:30|distinct',
+            'keterangan' => 'nullable|string|max:255',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'accuracy' => 'required|numeric|min:0',
+        ]);
+
+        $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
+        $unit = $slot->unitSekolah;
+        $sesi = PiketService::sessionFor($pegawai, $slot);
+        $petugas = PiketService::petugasFor($sesi, $pegawai->id);
+
+        if (! $petugas) {
+            abort(403, 'Anda bukan petugas piket pada sesi ini.');
+        }
+
+        $laporan = $petugas->laporan_piket_id
+            ? LaporanPiket::find($petugas->laporan_piket_id)
+            : LaporanPiket::where('pegawai_id', $pegawai->id)->whereDate('tanggal', Carbon::today())->first();
+
+        if ($laporan?->status === LaporanPiket::STATUS_SUBMITTED) {
+            throw ValidationException::withMessages(['laporan' => 'Laporan piket sudah dikirim.']);
+        }
+
+        $this->checkPiketGeofence(
+            $slot,
+            (float) $validated['latitude'],
+            (float) $validated['longitude'],
+            (float) $validated['accuracy']
+        );
+
+        $classPayload = $this->resolveClassPayload($slot, $validated);
+        $response = KeuanganClient::request('siswa-by-class', [
+            'unit' => $unit->nama ?: $unit->singkatan,
+            ...$classPayload,
+        ]);
+
+        if (! $response?->successful()) {
+            abort(502, 'Data siswa belum tersedia. Coba lagi.');
+        }
+
+        $students = collect($response->json('data.students') ?? [])->keyBy(fn ($row) => (string) ($row['nis'] ?? ''));
+        $rows = [];
+        $missing = [];
+
+        foreach ($validated['nis'] as $nis) {
+            $student = $students->get((string) $nis);
+            $nama = trim((string) ($student['nama'] ?? $student['name'] ?? ''));
+
+            if (! $student || $nama === '') {
+                $missing[] = $nis;
+
+                continue;
+            }
+
+            $rows[] = ['nis' => (string) $nis, 'nama_snapshot' => $nama];
+        }
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages([
+                'nis' => 'Siswa tidak ditemukan di kelas tersebut: '.implode(', ', $missing).'.',
+            ]);
+        }
+
+        $count = PiketSiswaTerlambatService::addMany($sesi, $petugas, $rows, [
+            'class_id' => (string) $validated['class_id'],
+            'class_label' => $validated['class_label'],
+            'keterangan' => $validated['keterangan'] ?? null,
+        ], $request->user());
+
+        return back()->with('message', $count.' siswa terlambat dicatat.');
     }
 
     public function zeroSiswaTerlambat(Request $request)
