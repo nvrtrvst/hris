@@ -483,6 +483,10 @@ class PiketService
     /** Posisi wajib yang belum punya catatan. */
     public static function unservedRequiredPos(PiketSesi $sesi): array
     {
+        if (! self::isAreaMode($sesi->unitSekolah)) {
+            return [];
+        }
+
         $served = PiketPosLog::where('sesi_id', $sesi->id)->pluck('pos_id')->all();
 
         return PiketPos::where('unit_sekolah_id', $sesi->unit_sekolah_id)

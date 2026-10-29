@@ -6,6 +6,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import Modal from '@/Components/Modal';
 import { Card, Badge, Empty } from '@/Components/MobileUI';
 import useNowEveryMinute from '@/Utils/useNowEveryMinute';
+import { labelKelas } from '@/Utils/kelas';
 import {
     AlertTriangle,
     ArrowLeft,
@@ -78,7 +79,6 @@ const STATUS_SISWA = {
 };
 const URUT_STATUS = ['hadir', 'telat', 'izin', 'sakit', 'alpa'];
 
-const labelKelas = (c) => `${c.grade ?? ''} ${c.name ?? ''}${c.section ? ` ${c.section}` : ''}`.trim();
 
 // Ringkas status tersimpan: "H 20 · I 1 · S 2".
 const ringkasStatus = (details = []) => {

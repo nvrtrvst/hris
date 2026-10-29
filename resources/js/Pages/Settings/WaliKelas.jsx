@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Save, UserRoundCheck } from 'lucide-react';
 
-const labelKelas = (c) => `${c.grade ?? ''} ${c.name ?? ''}${c.section ? ` ${c.section}` : ''}`.trim();
+import { labelKelas } from '@/Utils/kelas';
 
 export default function WaliKelas({ auth, units = [], mappings = [], pegawais = [], classes = [], filters = {}, defaults = {} }) {
     const { flash } = usePage().props;

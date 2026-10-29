@@ -677,7 +677,7 @@ class LaporanController extends Controller
 
         $laporan = LaporanPiket::with([
             'pegawai:id,nama_lengkap',
-            'unitSekolah:id,nama',
+            'unitSekolah:id,nama,piket_mode',
             'area:id,nama',
             'sesi.petugas.pegawai:id,nama_lengkap',
             'sesi.petugas.area:id,nama',
@@ -699,8 +699,9 @@ class LaporanController extends Controller
                     : LaporanPiket::ITEM_WAJIB;
 
                 $itemDone = count(array_filter($required, fn ($kode) => $lap->isItemDone($kode)));
-                $posBelum = $lap->sesi ? PiketService::unservedRequiredPos($lap->sesi) : [];
-                $posTotal = $lap->unitSekolah
+                $areaMode = $lap->unitSekolah && PiketService::isAreaMode($lap->unitSekolah);
+                $posBelum = $areaMode && $lap->sesi ? PiketService::unservedRequiredPos($lap->sesi) : [];
+                $posTotal = $areaMode && $lap->unitSekolah
                     ? PiketPos::where('unit_sekolah_id', $lap->unit_sekolah_id)->where('aktif', true)->where('is_wajib', true)->count()
                     : 0;
                 $rounds = $lap->sesi ? PiketService::rounds($lap->sesi) : [];

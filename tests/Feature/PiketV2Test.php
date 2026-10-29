@@ -1222,4 +1222,29 @@ class PiketV2Test extends TestCase
                 ->where('summary.total', 1)
             );
     }
+
+    public function test_mode_simple_tidak_memblokir_pos_gerbang(): void
+    {
+        $this->unit->forceFill(['piket_mode' => 'simple'])->save();
+
+        $piket = $this->pegawai('Petugas Simple');
+        $sesi = PiketSesi::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => now()->toDateString(),
+            'jam_mulai' => '07:00',
+            'jam_selesai' => '15:40',
+            'status' => 'open',
+        ]);
+        $laporan = LaporanPiket::create([
+            'pegawai_id' => $piket->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => now()->toDateString(),
+            'status' => LaporanPiket::STATUS_DRAFT,
+            'items' => [],
+        ]);
+        $laporan->forceFill(['sesi_id' => $sesi->id])->save();
+
+        $this->assertSame([], PiketService::unservedRequiredPos($sesi));
+        $this->assertNull(PiketService::sessionBlockReason($laporan));
+    }
 }
