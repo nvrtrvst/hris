@@ -18,9 +18,13 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     const { url } = usePage();
     const [expandedGroups, setExpandedGroups] = useState({
         'Layanan Pribadi': true,
-        'Modul Utama': true,
-        'Modul Penggajian': true,
-        'Modul Admin': true
+        'Ringkasan': true,
+        'Kepegawaian': true,
+        'Piket': true,
+        'Siswa': true,
+        'Payroll': true,
+        'Laporan': true,
+        'Pengaturan': false
     });
 
     const toggleGroup = (title) => {
@@ -101,54 +105,62 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
         menuGroups.push({ title: 'Layanan Pribadi', items: layananPribadi });
     }
 
-    const modulUtama = [];
-    if (permissions.includes('view_dashboard')) modulUtama.push({ name: 'Dashboard', href: route('dashboard'), icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' });
-    if (permissions.includes('view_all_units')) modulUtama.push({ name: 'Perbandingan Unit', href: route('dashboard.perbandingan-unit'), icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' });
-    if (permissions.includes('view_pegawai')) modulUtama.push({ name: 'Pegawai', href: route('pegawai.index'), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' });
-    if (permissions.includes('view_jadwal')) modulUtama.push({ name: 'Jadwal', href: route('jadwal.index'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' });
-    if (permissions.includes('view_presensi')) modulUtama.push({ name: 'Presensi', href: route('presensi.index'), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
-    if (permissions.includes('view_presensi')) modulUtama.push({ name: 'Lembur', href: route('lembur.index'), icon: 'M12 8v4l3 3M22 12a10 10 0 11-20 0 10 10 0 0120 0M5 3L2 6M19 3l3 3' });
-    if (permissions.includes('view_presensi')) modulUtama.push({ name: 'Absen Siswa', href: route('absen-siswa.index'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
-    if (permissions.includes('view_absen_siswa')) modulUtama.push({ name: 'Laporan Absen Siswa', href: route('laporan.absen-siswa'), icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
-    if (permissions.includes('view_presensi') || permissions.includes('view_piket')) modulUtama.push({ name: 'Laporan Piket', href: route('laporan.piket'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
-    if (permissions.includes('view_piket') || permissions.includes('view_presensi') || permissions.includes('view_absen_siswa')) modulUtama.push({ name: 'Laporan Keterlambatan', href: route('laporan.keterlambatan-siswa'), icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
-    if (permissions.includes('view_kpi') || permissions.includes('view_kpi_self')) modulUtama.push({ name: 'KPI Pegawai', href: route('kpi.index'), icon: 'M4 19V5m0 14h16M8 15V9m4 6V5m4 10v-4' });
-    if (permissions.includes('view_izin') || auth.is_approver) modulUtama.push({ name: 'Pengajuan Izin', href: route('pengajuan-izin.index'), icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.293.707l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
-    if (permissions.includes('view_izin') || auth.is_approver) modulUtama.push({ name: 'Koreksi Presensi', href: route('koreksi-presensi.index'), icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' });
-    if (permissions.includes('view_izin') || auth.is_approver) modulUtama.push({ name: 'Pulang Cepat', href: route('pulang-cepat.index'), icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
-    if (permissions.includes('view_dashboard') || permissions.includes('manage_master_data') || permissions.includes('manage_reminders')) modulUtama.push({ name: 'Pengumuman', href: route('pengumuman.index'), icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z' });
+    const ringkasan = [];
+    if (permissions.includes('view_dashboard')) ringkasan.push({ name: 'Dashboard', href: route('dashboard'), icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' });
+    if (permissions.includes('view_all_units')) ringkasan.push({ name: 'Perbandingan Unit', href: route('dashboard.perbandingan-unit'), icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' });
+    if (permissions.includes('view_dashboard') || permissions.includes('manage_master_data') || permissions.includes('manage_reminders')) ringkasan.push({ name: 'Pengumuman', href: route('pengumuman.index'), icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z' });
 
-    if (modulUtama.length > 0) {
-        menuGroups.push({ title: 'Modul Utama', items: modulUtama });
-    }
+    const kepegawaian = [];
+    if (permissions.includes('view_pegawai')) kepegawaian.push({ name: 'Pegawai', href: route('pegawai.index'), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' });
+    if (permissions.includes('view_jadwal')) kepegawaian.push({ name: 'Jadwal', href: route('jadwal.index'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' });
+    if (permissions.includes('view_presensi')) kepegawaian.push({ name: 'Presensi', href: route('presensi.index'), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
+    if (permissions.includes('view_presensi')) kepegawaian.push({ name: 'Lembur', href: route('lembur.index'), icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
+    if (permissions.includes('view_kpi') || permissions.includes('view_kpi_self')) kepegawaian.push({ name: 'KPI Pegawai', href: route('kpi.index'), icon: 'M4 19V5m0 14h16M8 15V9m4 6V5m4 10v-4' });
+    if (permissions.includes('view_izin') || auth.is_approver) kepegawaian.push({ name: 'Pengajuan Izin', href: route('pengajuan-izin.index'), icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.293.707l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
+    if (permissions.includes('view_izin') || auth.is_approver) kepegawaian.push({ name: 'Koreksi Presensi', href: route('koreksi-presensi.index'), icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' });
+    if (permissions.includes('view_izin') || auth.is_approver) kepegawaian.push({ name: 'Pulang Cepat', href: route('pulang-cepat.index'), icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
 
-    const modulPenggajian = [];
-    if (permissions.includes('manage_master_data')) modulPenggajian.push({ name: 'Komponen Gaji', href: route('komponen-gaji.index'), icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' });
-    if (permissions.includes('manage_master_data')) modulPenggajian.push({ name: 'Skala Masa Bakti', href: route('skala-masa-bakti.index'), icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' });
-    if (permissions.includes('view_payroll') || auth.is_payroll_operator) modulPenggajian.push({ name: 'Run Payroll', href: route('penggajian.run'), icon: 'M13 10V3L4 14h7v7l9-11h-7z' });
-    if (permissions.includes('view_payroll') || auth.is_payroll_operator) modulPenggajian.push({ name: 'Riwayat Payroll', href: route('penggajian.index'), icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' });
-    if (permissions.includes('view_payroll') || auth.is_payroll_operator || permissions.includes('view_dashboard')) modulPenggajian.push({ name: 'Laporan', href: route('laporan.index'), icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
-    if (permissions.includes('view_laporan_kcd')) modulPenggajian.push({ name: 'Laporan KCD', href: route('laporan.kcd'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' });
+    const piket = [];
+    if (permissions.includes('view_presensi')) piket.push({ name: 'Monitoring Piket', href: route('piket.index'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3' });
+    if (permissions.includes('view_presensi') || permissions.includes('view_piket')) piket.push({ name: 'Laporan Piket', href: route('laporan.piket'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
+    if (permissions.includes('view_piket') || permissions.includes('view_presensi') || permissions.includes('view_absen_siswa')) piket.push({ name: 'Laporan Keterlambatan', href: route('laporan.keterlambatan-siswa'), icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
 
-    if (modulPenggajian.length > 0) {
-        menuGroups.push({ title: 'Modul Penggajian', items: modulPenggajian });
-    }
+    const siswa = [];
+    if (permissions.includes('view_presensi')) siswa.push({ name: 'Absen Siswa', href: route('absen-siswa.index'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
+    if (permissions.includes('view_absen_siswa')) siswa.push({ name: 'Laporan Absen Siswa', href: route('laporan.absen-siswa'), icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
 
-    const modulAdmin = [];
-    if (permissions.includes('manage_users')) modulAdmin.push({ name: 'Manajemen User', href: route('users.index'), icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' });
-    if (permissions.includes('manage_users')) modulAdmin.push({ name: 'Manajemen Role', href: route('roles.index'), icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' });
-    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Unit Sekolah', href: route('unit-sekolah.index'), icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' });
-    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Mata Pelajaran', href: route('mata-pelajaran.index'), icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' });
-    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Jabatan', href: route('jabatan.index'), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' });
-    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Hari Libur', href: route('hari-libur.index'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' });
-    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Backup DB', href: route('backup.index'), icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' });
-    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Reminder', href: route('reminders.index'), icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' });
-    if (permissions.includes('view_presensi')) modulAdmin.push({ name: 'Piket', href: route('piket.index'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3' });
-    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Aturan Persetujuan', href: route('approval-policies.index'), icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' });
-    if (permissions.includes('manage_master_data')) modulAdmin.push({ name: 'Wali Kelas', href: route('wali-kelas.index'), icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' });
+    const payroll = [];
+    if (permissions.includes('manage_master_data')) payroll.push({ name: 'Komponen Gaji', href: route('komponen-gaji.index'), icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' });
+    if (permissions.includes('manage_master_data')) payroll.push({ name: 'Skala Masa Bakti', href: route('skala-masa-bakti.index'), icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' });
+    if (permissions.includes('view_payroll') || auth.is_payroll_operator) payroll.push({ name: 'Run Payroll', href: route('penggajian.run'), icon: 'M13 10V3L4 14h7v7l9-11h-7z' });
+    if (permissions.includes('view_payroll') || auth.is_payroll_operator) payroll.push({ name: 'Riwayat Payroll', href: route('penggajian.index'), icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' });
 
-    if (modulAdmin.length > 0) {
-        menuGroups.push({ title: 'Modul Admin', items: modulAdmin });
+    const laporan = [];
+    if (permissions.includes('view_payroll') || auth.is_payroll_operator || permissions.includes('view_dashboard')) laporan.push({ name: 'Laporan Payroll', href: route('laporan.index'), icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
+    if (permissions.includes('view_laporan_kcd')) laporan.push({ name: 'Laporan KCD', href: route('laporan.kcd'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' });
+
+    const pengaturan = [];
+    if (permissions.includes('manage_users')) pengaturan.push({ name: 'Manajemen User', href: route('users.index'), icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' });
+    if (permissions.includes('manage_users')) pengaturan.push({ name: 'Manajemen Role', href: route('roles.index'), icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' });
+    if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Unit Sekolah', href: route('unit-sekolah.index'), icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' });
+    if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Mata Pelajaran', href: route('mata-pelajaran.index'), icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' });
+    if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Jabatan', href: route('jabatan.index'), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' });
+    if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Hari Libur', href: route('hari-libur.index'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' });
+    if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Wali Kelas', href: route('wali-kelas.index'), icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' });
+    if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Aturan Persetujuan', href: route('approval-policies.index'), icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' });
+    if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Reminder', href: route('reminders.index'), icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' });
+    if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Backup DB', href: route('backup.index'), icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' });
+
+    for (const [title, items] of [
+        ['Ringkasan', ringkasan],
+        ['Kepegawaian', kepegawaian],
+        ['Piket', piket],
+        ['Siswa', siswa],
+        ['Payroll', payroll],
+        ['Laporan', laporan],
+        ['Pengaturan', pengaturan],
+    ]) {
+        if (items.length > 0) menuGroups.push({ title, items });
     }
 
     const pegawaiComplete = auth.pegawai_complete !== false;
