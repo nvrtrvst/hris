@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AbsenSiswaDetail;
 use App\Models\AbsenSiswaSesi;
 use App\Models\PegawaiKelasBinaan;
+use App\Models\PiketSiswaTerlambat;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Carbon\Carbon;
@@ -34,6 +35,13 @@ class AbsenSiswaReportService
         }
 
         $base = $this->sessionQuery($scope, $start, $end, $classFilter);
+        $lateTotal = PiketSiswaTerlambat::query()
+            ->whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
+            ->when($scope['unit_ids'] !== null, fn ($q) => $q->whereIn('unit_sekolah_id', $scope['unit_ids']))
+            ->when($scope['class_labels'] !== null, fn ($q) => $q->whereIn('class_label', $scope['class_labels']))
+            ->when($classFilter !== '', fn ($q) => $q->where('class_label', $classFilter))
+            ->count();
+
         $summary = [
             'sesi' => (clone $base)->count(),
             'siswa' => 0,
@@ -42,6 +50,7 @@ class AbsenSiswaReportService
             'izin' => 0,
             'sakit' => 0,
             'alpa' => 0,
+            'terlambat_gerbang' => $lateTotal,
             'persen' => 0,
         ];
 
@@ -105,6 +114,7 @@ class AbsenSiswaReportService
 
         $students = $this->periodStudents($scope, $start, $end, $classFilter, $filters);
         $summary = $this->summaryFromStudents($students, (clone $base)->count());
+        $summary['terlambat_gerbang'] = $lateTotal;
         $classSummary = $this->classSummary($students);
         $perhatian = $students
             ->filter(fn ($s) => $s['izin'] + $s['sakit'] + $s['alpa'] + $s['telat'] > 0)

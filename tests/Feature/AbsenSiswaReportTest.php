@@ -7,6 +7,8 @@ use App\Models\AbsenSiswaSesi;
 use App\Models\Jabatan;
 use App\Models\Pegawai;
 use App\Models\PegawaiKelasBinaan;
+use App\Models\PiketSesi;
+use App\Models\PiketSiswaTerlambat;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -104,6 +106,41 @@ class AbsenSiswaReportTest extends TestCase
                 ->where('summary.alpa', 1)
                 ->has('sessions', 1)
                 ->has('sessions.0.non_hadir', 2)
+            );
+    }
+
+    public function test_keterlambatan_gerbang_dihitung_terpisah_dari_status_kelas(): void
+    {
+        $tanggal = now()->toDateString();
+        $this->sesi('X A', $tanggal, [
+            ['nis' => '001', 'nama' => 'Siswa Satu', 'status' => 'hadir'],
+        ]);
+
+        $piketSesi = PiketSesi::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => $tanggal,
+            'jam_mulai' => '07:00',
+            'jam_selesai' => '15:00',
+            'status' => 'open',
+        ]);
+        PiketSiswaTerlambat::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'piket_sesi_id' => $piketSesi->id,
+            'tanggal' => $tanggal,
+            'class_id' => 'A',
+            'class_label' => 'X A',
+            'nis' => '001',
+            'nama_snapshot' => 'Siswa Satu',
+            'jam_terlambat' => '07:15:00',
+        ]);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->get(route('laporan.absen-siswa', ['mode' => 'daily']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('summary.hadir', 1)
+                ->where('summary.telat', 0)
+                ->where('summary.terlambat_gerbang', 1)
             );
     }
 

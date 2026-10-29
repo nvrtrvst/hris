@@ -36,12 +36,12 @@ export default function KeterlambatanSiswa({ auth, filters, rows = [], summary, 
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Laporan Keterlambatan Siswa</h2>}>
-            <Head title="Laporan Keterlambatan Siswa" />
+        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Laporan Keterlambatan Gerbang</h2>}>
+            <Head title="Laporan Keterlambatan Gerbang" />
 
             <div className="mx-auto w-full max-w-7xl space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm text-text-secondary">Catatan keterlambatan siswa di pos gerbang.</p>
+                        <p className="text-sm text-text-secondary">Catatan keterlambatan siswa di pos gerbang. Terpisah dari status kehadiran kelas.</p>
                     <div className="flex w-full gap-2 sm:w-auto">
                         <button type="button" onClick={() => unduh('export')} className="btn-secondary inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 sm:flex-none">
                             <Download className="h-4 w-4" /> Excel
@@ -105,7 +105,7 @@ export default function KeterlambatanSiswa({ auth, filters, rows = [], summary, 
 
                 <div className="page-card card-table">
                     <div className="border-b border-border px-4 py-3">
-                        <h3 className="section-title">Daftar Keterlambatan ({rows.length})</h3>
+                                <h3 className="section-title">Daftar Keterlambatan Gerbang ({rows.length})</h3>
                         <p className="mt-0.5 text-xs text-text-secondary">Data per siswa per hari.</p>
                     </div>
 
