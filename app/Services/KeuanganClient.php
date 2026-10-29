@@ -39,6 +39,18 @@ class KeuanganClient
         }
     }
 
+    public static function classLabel(array $class): string
+    {
+        $base = trim(($class['grade'] ?? '').' '.($class['name'] ?? ''));
+        $section = trim((string) ($class['section'] ?? ''));
+
+        if ($section !== '' && ! in_array($section, preg_split('/\s+/', $base) ?: [], true)) {
+            $base .= ' '.$section;
+        }
+
+        return trim($base);
+    }
+
     /**
      * Daftar kelas aktif satu unit dari aplikasi keuangan.
      * Null = integrasi gagal / belum dikonfigurasi.

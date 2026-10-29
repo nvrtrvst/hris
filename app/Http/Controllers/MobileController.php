@@ -365,7 +365,7 @@ class MobileController extends Controller
                 }
 
                 $kelas = array_values(array_filter($kelas, function ($c) use ($assigned) {
-                    $label = trim(implode(' ', array_filter([$c['grade'] ?? null, $c['name'] ?? null, $c['section'] ?? null])));
+                    $label = KeuanganClient::classLabel($c);
 
                     return AbsenSiswaService::labelDiizinkan($assigned, $label);
                 }));
@@ -378,7 +378,7 @@ class MobileController extends Controller
                 }
 
                 $kelas = array_values(array_filter($kelas, function ($c) use ($allowed) {
-                    $label = trim(implode(' ', array_filter([$c['grade'] ?? null, $c['name'] ?? null, $c['section'] ?? null])));
+                    $label = KeuanganClient::classLabel($c);
 
                     return AbsenSiswaService::labelDiizinkan($allowed, $label);
                 }));
