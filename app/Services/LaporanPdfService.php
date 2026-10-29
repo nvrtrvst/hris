@@ -106,6 +106,25 @@ class LaporanPdfService
         );
     }
 
+    public function generateKeterlambatanSiswa(array $validated, ?int $unitId, array $headings, array $rows): array
+    {
+        if (count($rows) > self::MAX_ROWS) {
+            throw new PdfTooLargeException(
+                'Data terlalu banyak untuk PDF ('.count($rows).' baris, maksimal '.self::MAX_ROWS.'). Gunakan filter yang lebih spesifik atau export ke Excel.'
+            );
+        }
+
+        return $this->renderDocument(
+            $validated,
+            $unitId,
+            $headings,
+            $rows,
+            'LAPORAN KETERLAMBATAN SISWA',
+            'Laporan_Keterlambatan_Siswa',
+            'keterlambatan_siswa',
+        );
+    }
+
     private function renderDocument(array $validated, ?int $unitId, array $headings, array $rows, string $title, string $filename, string $type): array
     {
         // Kop surat: unit terpilih (atau auto-resolved dari scope user) -> data unit itu;

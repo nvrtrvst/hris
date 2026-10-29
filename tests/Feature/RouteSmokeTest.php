@@ -26,6 +26,7 @@ use App\Models\PiketArea;
 use App\Models\PiketPenugasan;
 use App\Models\PiketPos;
 use App\Models\PiketSesi;
+use App\Models\PiketSiswaTerlambat;
 use App\Models\Presensi;
 use App\Models\Reminder;
 use App\Models\SkalaMasaBakti;
@@ -174,6 +175,7 @@ class RouteSmokeTest extends TestCase
         'laporan.rekap-detail' => 'Laporan/RekapDetail',
         'laporan.rekap-mengajar-detail' => 'Laporan/RekapMengajarDetail',
         'laporan.piket' => 'Laporan/Piket',
+        'laporan.keterlambatan-siswa' => 'Laporan/KeterlambatanSiswa',
         'laporan.absen-siswa' => 'Laporan/AbsenSiswa',
         'wali-kelas.index' => 'Settings/WaliKelas',
 
@@ -559,6 +561,8 @@ class RouteSmokeTest extends TestCase
 
     private PiketSesi $piketSesi;
 
+    private PiketSiswaTerlambat $piketSiswaTerlambat;
+
     private PiketPenugasan $piketPenugasan;
 
     protected function setUp(): void
@@ -638,6 +642,19 @@ class RouteSmokeTest extends TestCase
             'jam_selesai' => '15:00',
             'status' => 'open',
         ]);
+        $this->piketSiswaTerlambat = PiketSiswaTerlambat::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'piket_sesi_id' => $this->piketSesi->id,
+            'pegawai_id' => $this->pegawai->id,
+            'tanggal' => now()->toDateString(),
+            'class_id' => 'smoke-class',
+            'class_label' => 'Kelas Smoke',
+            'nis' => 'SMOKE-001',
+            'nama_snapshot' => 'Siswa Smoke',
+            'jam_terlambat' => '07:15:00',
+            'created_by' => $this->mobileUser->id,
+        ]);
+
         $this->piketPenugasan = PiketPenugasan::create([
             'unit_sekolah_id' => $this->unit->id,
             'tahun_ajaran' => '2026/2027',
@@ -1751,6 +1768,7 @@ class RouteSmokeTest extends TestCase
             'penugasan' => $this->piketPenugasan->id,
             'round' => 0,
             'laporan' => $this->laporanPiket->id,
+            'late' => $this->piketSiswaTerlambat->id,
             'reminder' => in_array($routeName, ['reminders.destroy', 'reminders.send'], true) ? $this->disposableReminder->id : $this->reminder->id,
             'lokasi' => $this->lokasi->id,
             'koreksi' => $this->koreksi->id,

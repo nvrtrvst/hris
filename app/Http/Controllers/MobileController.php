@@ -19,6 +19,7 @@ use App\Models\PiketPos;
 use App\Models\PiketPosLog;
 use App\Models\PiketRound;
 use App\Models\PiketSesi;
+use App\Models\PiketSiswaTerlambat;
 use App\Models\Presensi;
 use App\Models\TugasLuar;
 use App\Models\UnitLokasi;
@@ -27,6 +28,7 @@ use App\Services\AttestationService;
 use App\Services\GeocodingService;
 use App\Services\KeuanganClient;
 use App\Services\PiketService;
+use App\Services\PiketSiswaTerlambatService;
 use App\Services\SpoofDetector;
 use App\Support\HariKerja;
 use App\Traits\CalculatesDistance;
@@ -2008,6 +2010,20 @@ class MobileController extends Controller
             'pos' => $v2 && $sesi ? PiketService::unservedRequiredPos($sesi) : [],
         ];
 
+        $lateSesi = $sesi ?: PiketService::sessionFor($pegawai, $slot);
+        $lateStudents = PiketSiswaTerlambat::where('piket_sesi_id', $lateSesi->id)
+            ->orderBy('jam_terlambat')
+            ->get()
+            ->map(fn (PiketSiswaTerlambat $row) => [
+                'id' => $row->id,
+                'nis' => $row->nis,
+                'nama' => $row->nama_snapshot,
+                'class_label' => $row->class_label,
+                'jam_terlambat' => substr($row->jam_terlambat, 0, 5),
+                'keterangan' => $row->keterangan,
+            ])
+            ->values();
+
         return inertia('Mobile/Piket', [
             'pegawai' => $pegawai,
             'sudahMasuk' => $sudahMasuk,
@@ -2033,6 +2049,7 @@ class MobileController extends Controller
                 'templates' => $templates,
                 'block_reason' => $blockReason,
                 'area_kelas' => $mappedClasses,
+                'late_students' => $lateStudents,
             ],
             'guruUnit' => $guruUnit,
             'guruUnitAll' => $guruUnitAll,
@@ -2275,6 +2292,129 @@ class MobileController extends Controller
         ])->save();
 
         return back()->with('message', 'Fase selesai.');
+    }
+
+    public function storeSiswaTerlambat(Request $request)
+    {
+        $pegawai = $this->getPegawai();
+        $this->assertTidakSedangIzin($pegawai);
+        $this->assertSudahMasuk($pegawai->id);
+
+        $validated = $request->validate([
+            'tingkat' => 'required|string|max:20',
+            'kelas' => 'required|string|max:100',
+            'jurusan' => 'nullable|string|max:100',
+            'class_id' => 'required|string|max:50',
+            'class_label' => 'required|string|max:100',
+            'nis' => 'required|string|max:30',
+            'keterangan' => 'nullable|string|max:255',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'accuracy' => 'required|numeric|min:0',
+        ]);
+
+        $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
+        $unit = $slot->unitSekolah;
+        $sesi = PiketService::sessionFor($pegawai, $slot);
+        $petugas = PiketService::petugasFor($sesi, $pegawai->id);
+
+        if (! $petugas) {
+            abort(403, 'Anda bukan petugas piket pada sesi ini.');
+        }
+
+        $laporan = $petugas->laporan_piket_id
+            ? LaporanPiket::find($petugas->laporan_piket_id)
+            : LaporanPiket::where('pegawai_id', $pegawai->id)->whereDate('tanggal', Carbon::today())->first();
+
+        if ($laporan?->status === LaporanPiket::STATUS_SUBMITTED) {
+            throw ValidationException::withMessages(['laporan' => 'Laporan piket sudah dikirim.']);
+        }
+
+        $this->checkPiketGeofence(
+            $slot,
+            (float) $validated['latitude'],
+            (float) $validated['longitude'],
+            (float) $validated['accuracy']
+        );
+
+        $classPayload = $this->resolveClassPayload($slot, $validated);
+        $response = KeuanganClient::request('siswa-by-class', $classPayload);
+
+        if (! $response?->successful()) {
+            abort(502, 'Data siswa belum tersedia. Coba lagi.');
+        }
+
+        $students = collect($response->json('data.students') ?? []);
+        $student = $students->first(fn ($row) => (string) ($row['nis'] ?? '') === (string) $validated['nis']);
+
+        if (! $student) {
+            throw ValidationException::withMessages(['nis' => 'Siswa tidak ditemukan di kelas tersebut.']);
+        }
+
+        $nama = trim((string) ($student['nama'] ?? $student['name'] ?? ''));
+        if ($nama === '') {
+            throw ValidationException::withMessages(['nis' => 'Nama siswa tidak tersedia dari sim-keu.']);
+        }
+
+        PiketSiswaTerlambatService::add($sesi, $petugas, [
+            'class_id' => (string) $validated['class_id'],
+            'class_label' => $validated['class_label'],
+            'nis' => (string) $validated['nis'],
+            'nama_snapshot' => $nama,
+            'jam_terlambat' => Carbon::now()->format('H:i:s'),
+            'keterangan' => $validated['keterangan'] ?? null,
+        ], $request->user());
+
+        return back()->with('message', 'Siswa terlambat dicatat.');
+    }
+
+    public function zeroSiswaTerlambat(Request $request)
+    {
+        $pegawai = $this->getPegawai();
+        $this->assertTidakSedangIzin($pegawai);
+        $this->assertSudahMasuk($pegawai->id);
+
+        $slot = $this->resolvePiketSlot($pegawai, $this->hariIniIndo());
+        $sesi = PiketService::sessionFor($pegawai, $slot);
+        $petugas = PiketService::petugasFor($sesi, $pegawai->id);
+
+        if (! $petugas) {
+            abort(403, 'Anda bukan petugas piket pada sesi ini.');
+        }
+
+        $laporan = $petugas->laporan_piket_id
+            ? LaporanPiket::find($petugas->laporan_piket_id)
+            : LaporanPiket::where('pegawai_id', $pegawai->id)->whereDate('tanggal', Carbon::today())->first();
+
+        if ($laporan?->status === LaporanPiket::STATUS_SUBMITTED) {
+            throw ValidationException::withMessages(['laporan' => 'Laporan piket sudah dikirim.']);
+        }
+
+        PiketSiswaTerlambatService::zero($sesi, $petugas);
+
+        return back()->with('message', 'Tidak ada siswa terlambat.');
+    }
+
+    public function destroySiswaTerlambat(Request $request, PiketSiswaTerlambat $late)
+    {
+        $pegawai = $this->getPegawai();
+        $this->assertSudahMasuk($pegawai->id);
+
+        if ((int) $late->pegawai_id !== (int) $pegawai->id || ! $late->tanggal->isToday()) {
+            abort(403, 'Entry ini bukan milik Anda.');
+        }
+
+        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
+            ->whereDate('tanggal', Carbon::today())
+            ->first();
+
+        if ($late->sesi?->status === 'complete' || $laporan?->status === LaporanPiket::STATUS_SUBMITTED) {
+            throw ValidationException::withMessages(['terlambat' => 'Laporan piket sudah dikirim.']);
+        }
+
+        PiketSiswaTerlambatService::remove($late, $request->user());
+
+        return back()->with('message', 'Entry siswa terlambat dihapus.');
     }
 
     public function piketAssignmentVersion()
