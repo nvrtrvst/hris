@@ -753,11 +753,7 @@ class MobileController extends Controller
                 $request->input('captured_at')
             );
             if (! $attestation['valid']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => PresensiMessages::ATTESTATION_EXPIRED,
-                    'errors' => ['attestation' => 'Sesi habis. Silakan refresh halaman.'],
-                ], 422);
+                return $this->attestationErrorResponse($attestation);
             }
         }
 
@@ -1352,7 +1348,7 @@ class MobileController extends Controller
         if ($request->filled('attestation_token')) {
             $attestation = $this->attestationService->verify($request->input('attestation_token'), $request->input('captured_at'));
             if (! $attestation['valid']) {
-                return response()->json(['success' => false, 'message' => PresensiMessages::ATTESTATION_EXPIRED, 'errors' => ['attestation' => 'Sesi habis.']], 422);
+                return $this->attestationErrorResponse($attestation);
             }
         }
 
@@ -2903,6 +2899,34 @@ class MobileController extends Controller
             ->where('hari', $hariIni)
             ->where('jenis_jadwal', '!=', 'piket')
             ->exists();
+    }
+
+    private function attestationErrorResponse(array $attestation)
+    {
+        $code = $attestation['code'] ?? 'attestation_invalid';
+        $action = $attestation['action'] ?? 'retake_photo';
+        $difference = abs((int) ($attestation['difference_seconds'] ?? 0));
+        $duration = $difference < 60
+            ? 'kurang dari 1 menit'
+            : max(1, (int) round($difference / 60)).' menit';
+
+        $message = match ($code) {
+            'attestation_missing' => PresensiMessages::ATTESTATION_MISSING,
+            'attestation_used' => PresensiMessages::ATTESTATION_USED,
+            'attestation_captured_before' => PresensiMessages::ATTESTATION_CAPTURED_BEFORE,
+            'attestation_expired' => PresensiMessages::ATTESTATION_EXPIRED,
+            'device_clock_ahead' => sprintf(PresensiMessages::ATTESTATION_CLOCK_AHEAD, $duration),
+            'device_clock_behind' => sprintf(PresensiMessages::ATTESTATION_CLOCK_BEHIND, $duration),
+            default => PresensiMessages::ATTESTATION_INVALID,
+        };
+
+        return response()->json([
+            'success' => false,
+            'code' => $code,
+            'message' => $message,
+            'action' => $action,
+            'errors' => ['attestation' => [$message]],
+        ], 422);
     }
 
     private function hariIniIndo(): string

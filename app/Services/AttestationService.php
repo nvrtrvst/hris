@@ -21,9 +21,11 @@ class AttestationService
 {
     private const CACHE_PREFIX = 'attestation_nonce_';
 
+    private const USED_PREFIX = 'attestation_used_';
+
     private const TOKEN_TTL = 600; // 10 menit
 
-    private const MAX_CLOCK_SKEW = 60; // detik ke depan
+    private const MAX_CLOCK_SKEW = 60;
 
     /**
      * Terbitkan token untuk halaman absen.
@@ -52,53 +54,72 @@ class AttestationService
     public function verify(?string $token, ?string $capturedAt): array
     {
         if (! $token || ! $capturedAt) {
-            return ['valid' => false, 'reason' => 'Token atau captured_at tidak ada'];
+            return $this->failure('attestation_missing', 'Token atau captured_at tidak ada', 'retake_photo');
         }
 
         try {
             $decrypted = Crypt::decryptString($token);
             $payload = json_decode($decrypted, true);
         } catch (\Throwable $e) {
-            return ['valid' => false, 'reason' => 'Token tidak valid (rusak/di-tamper)'];
+            return $this->failure('attestation_invalid', 'Token tidak valid (rusak/di-tamper)', 'retake_photo');
         }
 
         if (! $payload || ! isset($payload['nonce'], $payload['issued_at'])) {
-            return ['valid' => false, 'reason' => 'Payload token tidak lengkap'];
+            return $this->failure('attestation_invalid', 'Payload token tidak lengkap', 'retake_photo');
         }
 
         $nonce = $payload['nonce'];
         $issuedAt = Carbon::createFromTimestamp($payload['issued_at']);
-
-        // Cek nonce replay (sudah dipakai?)
         $cacheKey = self::CACHE_PREFIX.$nonce;
+        $usedKey = self::USED_PREFIX.$nonce;
+
+        if (Cache::has($usedKey)) {
+            return $this->failure('attestation_used', 'Token sudah dipakai', 'go_to_history');
+        }
+
         if (! Cache::has($cacheKey)) {
-            return ['valid' => false, 'reason' => 'Token sudah kedaluwarsa atau sudah dipakai'];
+            return $this->failure('attestation_expired', 'Nonce sudah kedaluwarsa', 'retake_photo');
         }
 
-        // Hapus nonce setelah diverifikasi (sekali pakai)
-        Cache::forget($cacheKey);
-
-        // Cek expired (absolute diff — handle jika issuedAt di masa depan)
-        if ($issuedAt->isFuture() || Carbon::now()->diffInSeconds($issuedAt, true) > self::TOKEN_TTL) {
-            return ['valid' => false, 'reason' => 'Token kedaluwarsa atau tidak valid'];
+        if ($issuedAt->isFuture()
+            || Carbon::now()->timestamp - $issuedAt->timestamp > self::TOKEN_TTL) {
+            return $this->failure('attestation_expired', 'Token kedaluwarsa', 'retake_photo');
         }
 
-        // Cek captured_at tidak sebelum token diterbitkan
         try {
             $clientTime = Carbon::parse($capturedAt);
         } catch (\Throwable $e) {
-            return ['valid' => false, 'reason' => 'Format captured_at tidak valid'];
+            return $this->failure('attestation_invalid', 'Format captured_at tidak valid', 'retake_photo');
+        }
+
+        $skew = $clientTime->timestamp - Carbon::now()->timestamp;
+
+        if ($skew > self::MAX_CLOCK_SKEW) {
+            return $this->failure('device_clock_ahead', 'Waktu perangkat lebih cepat dari server', 'set_clock', $skew);
+        }
+
+        if ($skew < -self::MAX_CLOCK_SKEW) {
+            return $this->failure('device_clock_behind', 'Waktu perangkat lebih lambat dari server', 'set_clock', abs($skew));
         }
 
         if ($clientTime->lt($issuedAt)) {
-            return ['valid' => false, 'reason' => 'captured_at sebelum token diterbitkan (waktu HP mundur atau replay)'];
+            return $this->failure('captured_before_session', 'Waktu foto sebelum sesi diterbitkan', 'retake_photo');
         }
 
-        // Cek captured_at tidak terlalu ke depan (max 60 detik ke depan dari server)
-        if ($clientTime->diffInSeconds(Carbon::now(), false) > self::MAX_CLOCK_SKEW) {
-            return ['valid' => false, 'reason' => 'captured_at terlalu maju (>60 detik dari server)'];
-        }
+        Cache::put($usedKey, true, self::TOKEN_TTL);
+        Cache::forget($cacheKey);
 
         return ['valid' => true, 'reason' => null];
+    }
+
+    private function failure(string $code, string $reason, string $action, ?int $difference = null): array
+    {
+        return [
+            'valid' => false,
+            'code' => $code,
+            'reason' => $reason,
+            'action' => $action,
+            'difference_seconds' => $difference,
+        ];
     }
 }
