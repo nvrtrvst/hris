@@ -54,6 +54,11 @@
         'perlu_cek' => 'badge-info',
         'digantikan' => 'badge-info',
     ];
+    $fmtJp = function ($value) {
+        $value = round((float) $value, 2);
+
+        return $value == floor($value) ? (string) (int) $value : number_format($value, 2, ',', '.');
+    };
 @endphp
 
 <div class="header">
@@ -78,20 +83,20 @@
     <tr>
         <td><div class="label">Pegawai</div><div class="value">{{ number_format($summary['employees'], 0, ',', '.') }}</div></td>
         <td><div class="label">Hari Pegawai</div><div class="value">{{ number_format($summary['employee_days'], 0, ',', '.') }}</div></td>
-        <td><div class="label">Hadir</div><div class="value success">{{ number_format($summary['hadir'], 0, ',', '.') }}</div></td>
-        <td><div class="label">Telat</div><div class="value warning">{{ number_format($summary['telat'], 0, ',', '.') }}</div></td>
-        <td><div class="label">Izin / Sakit / Cuti</div><div class="value">{{ number_format($summary['izin_sakit_cuti'], 0, ',', '.') }}</div></td>
-        <td><div class="label">Alpa</div><div class="value danger">{{ number_format($summary['alpa'], 0, ',', '.') }}</div></td>
+        <td><div class="label">Hadir (hari)</div><div class="value success">{{ number_format($summary['hadir'], 0, ',', '.') }}</div></td>
+        <td><div class="label">Telat (hari)</div><div class="value warning">{{ number_format($summary['telat'], 0, ',', '.') }}</div></td>
+        <td><div class="label">Izin / Sakit / Cuti (hari)</div><div class="value">{{ number_format($summary['izin_sakit_cuti'], 0, ',', '.') }}</div></td>
+        <td><div class="label">Alpa (hari)</div><div class="value danger">{{ number_format($summary['alpa'], 0, ',', '.') }}</div></td>
     </tr>
 </table>
 
 <table style="margin-top:4px">
     <tr>
-        <td><strong>Hadir tanpa JP:</strong> {{ $summary['hadir_tanpa_jp'] }}</td>
-        <td><strong>JP kurang:</strong> {{ $summary['jp_kurang'] }}</td>
-        <td><strong>Izin tetapi mengajar:</strong> {{ $summary['izin_mengajar'] }}</td>
+        <td><strong>Hari hadir tanpa JP:</strong> {{ $summary['hadir_tanpa_jp'] }}</td>
+        <td><strong>Hari JP kurang:</strong> {{ $summary['jp_kurang'] }}</td>
+        <td><strong>Hari izin tetapi mengajar:</strong> {{ $summary['izin_mengajar'] }}</td>
         <td><strong>Kelas belum terpantau:</strong> {{ $summary['kelas_belum'] }}</td>
-        <td><strong>JP:</strong> {{ $summary['actual_jp'] }} / {{ $summary['scheduled_jp'] }} ({{ $summary['jp_percent'] ?? '-' }}%)</td>
+        <td><strong>JP (jam pelajaran):</strong> {{ $fmtJp($summary['actual_jp']) }} dari {{ $fmtJp($summary['scheduled_jp']) }} ({{ $summary['jp_percent'] ?? '-' }}%)</td>
     </tr>
 </table>
 
@@ -100,13 +105,13 @@
     <thead>
         <tr>
             <th style="width:22%">Pegawai / Unit</th>
-            <th style="width:8%" class="center">Hadir</th>
-            <th style="width:7%" class="center">Telat</th>
-            <th style="width:8%" class="center">Izin</th>
-            <th style="width:7%" class="center">Sakit</th>
-            <th style="width:7%" class="center">Cuti</th>
-            <th style="width:7%" class="center">Alpa</th>
-            <th style="width:9%" class="center">JP</th>
+            <th style="width:8%" class="center">Hadir (hari)</th>
+            <th style="width:7%" class="center">Telat (hari)</th>
+            <th style="width:8%" class="center">Izin (hari)</th>
+            <th style="width:7%" class="center">Sakit (hari)</th>
+            <th style="width:7%" class="center">Cuti (hari)</th>
+            <th style="width:7%" class="center">Alpa (hari)</th>
+            <th style="width:9%" class="center">JP (aktual/terjadwal)</th>
             <th style="width:25%">Temuan</th>
         </tr>
     </thead>
@@ -120,7 +125,7 @@
                 <td class="center">{{ $row['sakit'] }}</td>
                 <td class="center">{{ $row['cuti'] }}</td>
                 <td class="center">{{ $row['alpa'] }}</td>
-                <td class="center">{{ $row['is_guru'] ? $row['actual_jp'].' / '.$row['scheduled_jp'] : '-' }}</td>
+                <td class="center">{{ $row['is_guru'] ? $fmtJp($row['actual_jp']).' dari '.$fmtJp($row['scheduled_jp']) : '-' }}</td>
                 <td>{{ $row['temuan'] }}</td>
             </tr>
         @empty
@@ -185,25 +190,25 @@
         @endforelse
         @foreach ($details['hadir_tanpa_jp'] as $row)
             <tr>
-                <td>Hadir tanpa JP</td>
+                <td>Hari hadir tanpa JP</td>
                 <td>{{ $row['pegawai'] }}</td>
                 <td>{{ $row['unit'] }}</td>
                 <td>{{ \Carbon\Carbon::parse($row['tanggal'])->format('d/m/Y') }}</td>
-                <td>JP terjadwal {{ $row['scheduled_jp'] }}, JP aktual {{ $row['actual_jp'] }}</td>
+                <td>JP terjadwal {{ $fmtJp($row['scheduled_jp']) }}, JP aktual {{ $fmtJp($row['actual_jp']) }}</td>
             </tr>
         @endforeach
         @foreach ($details['jp_kurang'] as $row)
             <tr>
-                <td>JP kurang</td>
+                <td>Hari JP kurang</td>
                 <td>{{ $row['pegawai'] }}</td>
                 <td>{{ $row['unit'] }}</td>
                 <td>{{ \Carbon\Carbon::parse($row['tanggal'])->format('d/m/Y') }}</td>
-                <td>JP terjadwal {{ $row['scheduled_jp'] }}, JP aktual {{ $row['actual_jp'] }}, kurang {{ $row['kurang'] }}</td>
+                <td>JP terjadwal {{ $fmtJp($row['scheduled_jp']) }}, JP aktual {{ $fmtJp($row['actual_jp']) }}, kurang {{ $fmtJp($row['kurang']) }}</td>
             </tr>
         @endforeach
         @foreach ($details['izin_mengajar'] as $row)
             <tr>
-                <td>Izin tetapi mengajar</td>
+                <td>Hari izin tetapi mengajar</td>
                 <td>{{ $row['pegawai'] }}</td>
                 <td>{{ $row['unit'] }}</td>
                 <td>{{ \Carbon\Carbon::parse($row['tanggal'])->format('d/m/Y') }}</td>
@@ -214,7 +219,7 @@
 </table>
 
 <div class="footer">
-    Sumber: Jadwal mengajar, Presensi per JP, Pengajuan Izin disetujui, dan Laporan Piket submitted. Alpa dihitung dari hari kerja tanpa presensi dan tanpa izin.
+    Sumber: Jadwal mengajar, Presensi per JP, Pengajuan Izin disetujui, dan Laporan Piket submitted. Alpa dihitung dari hari kerja tanpa presensi dan tanpa izin. JP = jam pelajaran; durasi mengikuti durasi JP unit.
 </div>
 </body>
 </html>

@@ -116,12 +116,14 @@ class LaporanPengawasanService
                 $leave = $leaveMap[$pegawai->id][$date] ?? null;
                 $status = $this->dayStatus($rows, $leave);
                 $scheduledSlots = $schedulesByEmployeeDay->get($pegawai->id.'|'.$dayName, collect());
-                $scheduledJp = $scheduledSlots->count();
-                $actualJp = $rows
+                $scheduledJp = round($scheduledSlots->sum(fn (Jadwal $slot) => JpCalculator::weightFromJadwal($slot)), 2);
+                $actualJadwalIds = $rows
                     ->filter(fn (Presensi $presensi) => $presensi->jadwal_id && in_array($presensi->status, ['hadir', 'telat'], true))
                     ->pluck('jadwal_id')
-                    ->unique()
-                    ->count();
+                    ->unique();
+                $actualJp = round($scheduledSlots
+                    ->filter(fn (Jadwal $slot) => $actualJadwalIds->contains($slot->id))
+                    ->sum(fn (Jadwal $slot) => JpCalculator::weightFromJadwal($slot)), 2);
                 $actualPresence = in_array($status, ['hadir', 'telat'], true);
 
                 $stats['employee_days']++;
@@ -147,11 +149,11 @@ class LaporanPengawasanService
                         'unit' => $unit->nama,
                         'tanggal' => $date,
                         'izin' => $leave,
-                        'realisasi' => $actualJp.' JP',
+                        'realisasi' => $this->formatJp($actualJp).' JP',
                     ];
                 }
 
-                if ($isGuru && $actualPresence && $scheduledJp > 0 && $actualJp === 0) {
+                if ($isGuru && $actualPresence && $scheduledJp > 0 && $actualJp <= 0) {
                     $stats['hadir_tanpa_jp']++;
                     $hadirTanpaJpRows[] = [
                         'pegawai_id' => $pegawai->id,
@@ -172,7 +174,7 @@ class LaporanPengawasanService
                         'tanggal' => $date,
                         'scheduled_jp' => $scheduledJp,
                         'actual_jp' => $actualJp,
-                        'kurang' => $scheduledJp - $actualJp,
+                        'kurang' => round($scheduledJp - $actualJp, 2),
                     ];
                 }
 
@@ -225,10 +227,10 @@ class LaporanPengawasanService
                 $findings[] = $stats['hadir_tanpa_jp'].' hari hadir tanpa JP';
             }
             if ($stats['jp_kurang'] > 0) {
-                $findings[] = $stats['jp_kurang'].' kejadian JP kurang';
+                $findings[] = $stats['jp_kurang'].' hari JP kurang';
             }
             if ($stats['izin_mengajar'] > 0) {
-                $findings[] = $stats['izin_mengajar'].' izin tetapi mengajar';
+                $findings[] = $stats['izin_mengajar'].' hari izin tetapi mengajar';
             }
 
             $matrix[] = [
@@ -290,7 +292,7 @@ class LaporanPengawasanService
                 'label' => $from->isSameDay($to)
                     ? $from->locale('id')->translatedFormat('l, d F Y')
                     : $from->locale('id')->translatedFormat('d F Y').' - '.$to->locale('id')->translatedFormat('d F Y'),
-                'days' => $from->diffInDays($to) + 1,
+                'days' => (int) $from->startOfDay()->diffInDays($to->copy()->startOfDay()) + 1,
                 'tahun_ajaran' => $tahunAjaran,
                 'semester' => $semester,
             ],
@@ -473,7 +475,7 @@ class LaporanPengawasanService
             ->where('jenis_jadwal', 'mengajar')
             ->where('tahun_ajaran', $tahunAjaran)
             ->where('semester', $semester)
-            ->with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama'])
+            ->with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama', 'unitSekolah:id,durasi_jp'])
             ->get(['id', 'pegawai_id', 'unit_sekolah_id', 'kelas_label', 'pegawai_mapel_id', 'hari', 'jam_mulai', 'jam_selesai']);
     }
 
@@ -556,5 +558,14 @@ class LaporanPengawasanService
         return $date->month >= 7
             ? $date->year.'/'.($date->year + 1)
             : ($date->year - 1).'/'.$date->year;
+    }
+
+    private function formatJp(float $value): string
+    {
+        $value = round($value, 2);
+
+        return $value == floor($value)
+            ? (string) (int) $value
+            : number_format($value, 2, ',', '.');
     }
 }

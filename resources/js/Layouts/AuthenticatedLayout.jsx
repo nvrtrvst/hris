@@ -43,6 +43,22 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                 ? 'tu_kependidikan'
                 : 'pegawai';
 
+    const currentPath = (url.split('?')[0].split('#')[0] || '/').replace(/\/+$/, '') || '/';
+    const pathOf = (href) => {
+        try {
+            return new URL(href, 'http://localhost').pathname.replace(/\/+$/, '') || '/';
+        } catch {
+            return '/';
+        }
+    };
+    const isMenuActive = (menu) => {
+        const target = pathOf(menu.href);
+
+        return menu.exact
+            ? currentPath === target
+            : currentPath === target || currentPath.startsWith(`${target}/`);
+    };
+
     const bottomNavItems = [];
     if (permissions.includes('view_dashboard')) {
         bottomNavItems.push({
@@ -136,7 +152,8 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     if (permissions.includes('view_payroll') || auth.is_payroll_operator) payroll.push({ name: 'Riwayat Payroll', href: route('penggajian.index'), icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' });
 
     const laporan = [];
-    if (permissions.includes('view_payroll') || auth.is_payroll_operator || permissions.includes('view_dashboard')) laporan.push({ name: 'Laporan Payroll', href: route('laporan.index'), icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
+    if (permissions.includes('view_payroll') || auth.is_payroll_operator || permissions.includes('view_dashboard')) laporan.push({ name: 'Laporan Payroll', href: route('laporan.index'), exact: true, icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
+    if (permissions.includes('view_presensi')) laporan.push({ name: 'Pengawasan', href: route('laporan.pengawasan'), icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' });
     if (permissions.includes('view_presensi')) laporan.push({ name: 'Presensi Guru', href: route('laporan.presensi-guru'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
     if (permissions.includes('view_laporan_kcd')) laporan.push({ name: 'Laporan KCD', href: route('laporan.kcd'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' });
 
@@ -189,7 +206,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                 <div className="flex-1 overflow-y-auto py-3 px-2 space-y-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                     {displayGroups.map((group, index) => {
                         const isExpanded = expandedGroups[group.title];
-                        const isActive = group.items.some(m => url.startsWith(new URL(m.href).pathname));
+                        const isActive = group.items.some(isMenuActive);
                         return (
                             <div key={index} className="space-y-0.5">
                                 {isSidebarOpen && (
@@ -206,7 +223,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                                 )}
                                 <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${isExpanded || !isSidebarOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}>
                                     {group.items.map((menu, i) => {
-                                        const isLinkActive = url.startsWith(new URL(menu.href).pathname);
+                                        const isLinkActive = isMenuActive(menu);
                                         return (
                                             <Link key={i} href={menu.href} title={menu.name}
                                                 className={`flex items-center rounded-lg transition-all duration-150 group ${isSidebarOpen ? 'px-3 py-2 gap-3' : 'justify-center py-2.5'
@@ -338,7 +355,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                                 </button>
                                 <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                                     {group.items.map((menu, i) => {
-                                        const isActive = url.startsWith(new URL(menu.href).pathname);
+                                        const isActive = isMenuActive(menu);
                                         return (
                                             <Link key={i} href={menu.href}
                                                 className={`flex min-h-11 items-center px-3 rounded-lg text-sm font-medium transition-all duration-150 ${isActive
