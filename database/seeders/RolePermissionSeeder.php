@@ -33,6 +33,7 @@ class RolePermissionSeeder extends Seeder
             'view_absen_siswa',
             'view_izin',
             'create_izin_from_piket',
+            'manage_tugas_piket',
             'view_payroll',
             'view_kpi',
             'view_kpi_self',
@@ -67,6 +68,7 @@ class RolePermissionSeeder extends Seeder
             'view_absen_siswa',
             'view_izin',
             'create_izin_from_piket',
+            'manage_tugas_piket',
             'view_kpi',
             'evaluate_kpi',
             'manage_reminders',
@@ -82,7 +84,10 @@ class RolePermissionSeeder extends Seeder
             'view_piket',
             'view_izin',
             'create_izin_from_piket',
+            'manage_tugas_piket',
         ]);
+
+        Role::where('name', 'tu_kepegawaian')->first()?->givePermissionTo('manage_tugas_piket');
 
         $rolePegawai = Role::firstOrCreate(['name' => 'pegawai', 'guard_name' => 'web']);
         $rolePegawai->syncPermissions(['view_kpi_self']);

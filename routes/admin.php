@@ -344,6 +344,9 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::get('laporan/presensi-guru/pdf', [LaporanPresensiGuruController::class, 'pdf'])
             ->middleware('throttle:30,1')
             ->name('laporan.presensi-guru.pdf');
+        Route::post('laporan/presensi-guru/tugas', [LaporanPresensiGuruController::class, 'updateTugas'])
+            ->middleware(['can:manage_tugas_piket', 'throttle:30,1'])
+            ->name('laporan.presensi-guru.tugas');
 
         Route::get('laporan/pengawasan', [LaporanPengawasanController::class, 'index'])->name('laporan.pengawasan');
         Route::get('laporan/pengawasan/preview', [LaporanPengawasanController::class, 'preview'])->name('laporan.pengawasan.preview');

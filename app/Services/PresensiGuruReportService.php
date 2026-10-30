@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\HariLibur;
 use App\Models\Jadwal;
+use App\Models\LaporanPiket;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
+use App\Models\PiketTugasOverride;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
@@ -46,6 +48,13 @@ class PresensiGuruReportService
             ->groupBy(fn (Presensi $row) => Carbon::parse($row->tanggal)->toDateString());
 
         $izinMap = $this->izinMap($pegawai, $start, $end);
+        $piketTugasMap = $this->piketTugasMap($pegawai, $unit, $start, $end);
+        $tugasOverrides = PiketTugasOverride::query()
+            ->where('pegawai_id', $pegawai->id)
+            ->whereDate('tanggal', '>=', $start->toDateString())
+            ->whereDate('tanggal', '<=', $end->toDateString())
+            ->get()
+            ->keyBy(fn (PiketTugasOverride $override) => $override->tanggal->toDateString());
         $bobot = $unit->bobotHadiran();
         $sakitWajibTugas = $unit->sakitWajibTugas();
         $holidays = HariLibur::forUnit($unit->id)
@@ -89,6 +98,19 @@ class PresensiGuruReportService
             );
             $ph = $attendanceWeight === null ? null : (int) round($attendanceWeight * 100);
 
+            $piketTugas = $piketTugasMap[$date] ?? null;
+            $override = $tugasOverrides->get($date);
+            $tugas = $override
+                ? (bool) $override->ada_amanat
+                : (bool) ($piketTugas['ada_amanat'] ?? false);
+            $tugasTersampaikan = $override
+                ? (bool) $override->tersampaikan
+                : (bool) ($piketTugas['tersampaikan'] ?? false);
+            $tugasSumber = $override ? 'operator' : ($piketTugas ? 'piket' : null);
+            $tugasLuar = $dayRows->contains(
+                fn (Presensi $row) => $row->is_tugas_luar && $row->tugas_luar_status === 'disetujui'
+            );
+
             $slots = [];
             foreach ($actual->unique('jadwal_id') as $presensi) {
                 $time = substr((string) $presensi->jadwal?->jam_mulai, 0, 5);
@@ -111,7 +133,10 @@ class PresensiGuruReportService
                 's' => $code === 'S',
                 'i' => $code === 'I',
                 'tk' => $code === 'TK',
-                'tugas' => $code === 'TUGAS',
+                'tugas' => $tugas,
+                'tugas_luar' => $tugasLuar,
+                'tugas_tersampaikan' => $tugasTersampaikan,
+                'tugas_sumber' => $tugasSumber,
                 'keterangan' => $code,
             ];
         }
@@ -186,10 +211,6 @@ class PresensiGuruReportService
 
     private function keterangan(Collection $rows, string $date, string $today, array $izinMap): ?string
     {
-        if ($rows->contains(fn (Presensi $row) => $row->is_tugas_luar && $row->tugas_luar_status === 'disetujui')) {
-            return 'TUGAS';
-        }
-
         $row = $rows->sortBy(fn (Presensi $row) => self::STATUS_PRIORITY[$row->status] ?? 9)->first();
         if ($row) {
             return match ($row->status) {
@@ -208,6 +229,39 @@ class PresensiGuruReportService
         return $date < $today ? 'TK' : null;
     }
 
+    private function piketTugasMap(Pegawai $pegawai, UnitSekolah $unit, Carbon $start, Carbon $end): array
+    {
+        $map = [];
+
+        LaporanPiket::query()
+            ->where('unit_sekolah_id', $unit->id)
+            ->where('status', LaporanPiket::STATUS_SUBMITTED)
+            ->whereDate('tanggal', '>=', $start->toDateString())
+            ->whereDate('tanggal', '<=', $end->toDateString())
+            ->get(['tanggal', 'items'])
+            ->each(function (LaporanPiket $laporan) use (&$map, $pegawai) {
+                $date = $laporan->tanggal->toDateString();
+                $entries = $laporan->items[LaporanPiket::ITEM_KELAS_KOSONG]['entries'] ?? [];
+
+                foreach ($entries as $entry) {
+                    if ((int) ($entry['guru_pegawai_id'] ?? 0) !== (int) $pegawai->id) {
+                        continue;
+                    }
+
+                    $adaAmanat = (bool) ($entry['ada_amanat'] ?? false);
+                    if (! isset($map[$date]) || ($adaAmanat && ! $map[$date]['ada_amanat'])) {
+                        $map[$date] = [
+                            'ada_amanat' => $adaAmanat,
+                            'tersampaikan' => (bool) ($entry['tersampaikan'] ?? false),
+                            'catatan' => $entry['detail_amanat'] ?? null,
+                        ];
+                    }
+                }
+            });
+
+        return $map;
+    }
+
     /**
      * Bobot kehadiran harian dari status + aturan unit.
      * Null berarti hari belum selesai (hari ini tanpa presensi).
@@ -219,6 +273,10 @@ class PresensiGuruReportService
         array $bobot,
         bool $sakitWajibTugas,
     ): ?float {
+        if ($rows->contains(fn (Presensi $row) => $row->is_tugas_luar && $row->tugas_luar_status === 'disetujui')) {
+            return 1.0;
+        }
+
         if ($code === null) {
             return $rows->contains(fn (Presensi $row) => in_array($row->status, ['hadir', 'telat'], true)) ? 1.0 : null;
         }
