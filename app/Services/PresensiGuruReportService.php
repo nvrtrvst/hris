@@ -89,14 +89,6 @@ class PresensiGuruReportService
             $code = $this->keterangan($dayRows, $date, $today->toDateString(), $izinMap);
             $actualJp = $actualIds->count();
             $scheduledJp = $scheduledIds->count();
-            $attendanceWeight = $this->attendanceWeight(
-                $code,
-                $dayRows,
-                $izinMap[$date] ?? null,
-                $bobot,
-                $sakitWajibTugas,
-            );
-            $ph = $attendanceWeight === null ? null : (int) round($attendanceWeight * 100);
 
             $piketTugas = $piketTugasMap[$date] ?? null;
             $override = $tugasOverrides->get($date);
@@ -110,6 +102,16 @@ class PresensiGuruReportService
             $tugasLuar = $dayRows->contains(
                 fn (Presensi $row) => $row->is_tugas_luar && $row->tugas_luar_status === 'disetujui'
             );
+
+            $attendanceWeight = $this->attendanceWeight(
+                $code,
+                $dayRows,
+                $izinMap[$date] ?? null,
+                $bobot,
+                $sakitWajibTugas,
+                $tugas,
+            );
+            $ph = $attendanceWeight === null ? null : (int) round($attendanceWeight * 100);
 
             $slots = [];
             foreach ($actual->unique('jadwal_id') as $presensi) {
@@ -272,6 +274,7 @@ class PresensiGuruReportService
         ?array $leave,
         array $bobot,
         bool $sakitWajibTugas,
+        bool $tugas,
     ): ?float {
         if ($rows->contains(fn (Presensi $row) => $row->is_tugas_luar && $row->tugas_luar_status === 'disetujui')) {
             return 1.0;
@@ -290,12 +293,13 @@ class PresensiGuruReportService
         }
 
         if ($code === 'S') {
-            $surat = $leave && (
+            $punyaTugas = $tugas || ! empty($leave['tugas_terverifikasi'] ?? null);
+            $lengkap = $leave && (
                 ! empty($leave['dengan_surat_dokter'])
-                || ($sakitWajibTugas && ! empty($leave['tugas_terverifikasi']))
+                || ($sakitWajibTugas && $punyaTugas)
             );
 
-            return $surat ? (float) $bobot['sakit_surat'] : (float) $bobot['sakit_tanpa_surat'];
+            return $lengkap ? (float) $bobot['sakit_surat'] : (float) $bobot['sakit_tanpa_surat'];
         }
 
         if ($code === 'I') {
