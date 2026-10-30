@@ -46,6 +46,8 @@ class PresensiGuruReportService
             ->groupBy(fn (Presensi $row) => Carbon::parse($row->tanggal)->toDateString());
 
         $izinMap = $this->izinMap($pegawai, $start, $end);
+        $bobot = $unit->bobotHadiran();
+        $sakitWajibTugas = $unit->sakitWajibTugas();
         $holidays = HariLibur::forUnit($unit->id)
             ->whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
             ->pluck('tanggal')
@@ -75,13 +77,17 @@ class PresensiGuruReportService
                 && in_array($row->status, ['hadir', 'telat'], true));
             $actualIds = $actual->pluck('jadwal_id')->unique()->values();
 
-            $code = $this->keterangan($dayRows, $scheduledIds->isNotEmpty(), $date, $today->toDateString(), $izinMap);
+            $code = $this->keterangan($dayRows, $date, $today->toDateString(), $izinMap);
             $actualJp = $actualIds->count();
             $scheduledJp = $scheduledIds->count();
-            $ph = null;
-            if ($scheduledJp > 0 && ! ($code && $actualJp === 0)) {
-                $ph = (int) round(($actualJp / $scheduledJp) * 100);
-            }
+            $attendanceWeight = $this->attendanceWeight(
+                $code,
+                $dayRows,
+                $izinMap[$date] ?? null,
+                $bobot,
+                $sakitWajibTugas,
+            );
+            $ph = $attendanceWeight === null ? null : (int) round($attendanceWeight * 100);
 
             $slots = [];
             foreach ($actual->unique('jadwal_id') as $presensi) {
@@ -100,6 +106,7 @@ class PresensiGuruReportService
                 'slots' => $slots,
                 'jumlah_jp' => $actualJp,
                 'scheduled_jp' => $scheduledJp,
+                'attendance_weight' => $attendanceWeight,
                 'ph' => $ph,
                 's' => $code === 'S',
                 'i' => $code === 'I',
@@ -112,6 +119,9 @@ class PresensiGuruReportService
         $weeks = $this->weeks($rows);
         $actualTotal = array_sum(array_column($rows, 'jumlah_jp'));
         $scheduledTotal = array_sum(array_column($rows, 'scheduled_jp'));
+        $attendanceWeights = collect($rows)
+            ->pluck('attendance_weight')
+            ->filter(fn ($value) => $value !== null);
 
         return [
             'unit' => [
@@ -139,7 +149,9 @@ class PresensiGuruReportService
             'summary' => [
                 'actual_jp' => $actualTotal,
                 'scheduled_jp' => $scheduledTotal,
-                'b' => $this->percentage($actualTotal, $scheduledTotal),
+                'b' => $attendanceWeights->isNotEmpty()
+                    ? (int) round($attendanceWeights->sum() * 100 / $attendanceWeights->count())
+                    : null,
             ],
             'officials' => $this->officials($unit, $pegawai),
         ];
@@ -157,11 +169,14 @@ class PresensiGuruReportService
         foreach ($groups as $weekRows) {
             $actual = array_sum(array_column($weekRows->all(), 'jumlah_jp'));
             $scheduled = array_sum(array_column($weekRows->all(), 'scheduled_jp'));
+            $weights = $weekRows->pluck('attendance_weight')->filter(fn ($value) => $value !== null);
 
             $weeks[] = [
                 'label' => 'Minggu '.$number++,
                 'rows' => $weekRows->values()->all(),
-                'm' => $this->percentage($actual, $scheduled),
+                'm' => $weights->isNotEmpty()
+                    ? (int) round($weights->sum() * 100 / $weights->count())
+                    : null,
                 'actual_jp' => $actual,
                 'scheduled_jp' => $scheduled,
             ];
@@ -170,12 +185,7 @@ class PresensiGuruReportService
         return $weeks;
     }
 
-    private function percentage(int $actual, int $scheduled): ?int
-    {
-        return $scheduled > 0 ? (int) round(($actual / $scheduled) * 100) : null;
-    }
-
-    private function keterangan(Collection $rows, bool $hasSchedule, string $date, string $today, array $izinMap): ?string
+    private function keterangan(Collection $rows, string $date, string $today, array $izinMap): ?string
     {
         if ($rows->contains(fn (Presensi $row) => $row->is_tugas_luar && $row->tugas_luar_status === 'disetujui')) {
             return 'TUGAS';
@@ -193,11 +203,54 @@ class PresensiGuruReportService
 
         $izin = $izinMap[$date] ?? null;
         if ($izin) {
-            return $izin === 'sakit' ? 'S' : 'I';
+            return $izin['jenis_izin'] === 'sakit' ? 'S' : 'I';
         }
 
-        if ($hasSchedule && $date < $today) {
-            return 'TK';
+        return $date < $today ? 'TK' : null;
+    }
+
+    /**
+     * Bobot kehadiran harian dari status + aturan unit.
+     * Null berarti hari belum selesai (hari ini tanpa presensi).
+     */
+    private function attendanceWeight(
+        ?string $code,
+        Collection $rows,
+        ?array $leave,
+        array $bobot,
+        bool $sakitWajibTugas,
+    ): ?float {
+        if ($code === null) {
+            return $rows->contains(fn (Presensi $row) => in_array($row->status, ['hadir', 'telat'], true)) ? 1.0 : null;
+        }
+
+        if ($code === 'TUGAS') {
+            return 1.0;
+        }
+
+        if ($code === 'TK') {
+            return 0.0;
+        }
+
+        if ($code === 'S') {
+            $surat = $leave && (
+                ! empty($leave['dengan_surat_dokter'])
+                || ($sakitWajibTugas && ! empty($leave['tugas_terverifikasi']))
+            );
+
+            return $surat ? (float) $bobot['sakit_surat'] : (float) $bobot['sakit_tanpa_surat'];
+        }
+
+        if ($code === 'I') {
+            if ($rows->contains('status', 'cuti') || ($leave['jenis_izin'] ?? null) === 'cuti') {
+                return (float) $bobot['cuti'];
+            }
+
+            if (! empty($leave['dihitung_setengah'])) {
+                return (float) $bobot['izin_setengah'];
+            }
+
+            return (float) $bobot['izin'];
         }
 
         return null;
@@ -210,15 +263,27 @@ class PresensiGuruReportService
         PengajuanIzin::query()
             ->where('pegawai_id', $pegawai->id)
             ->where('status', 'disetujui')
-            ->where('tanggal_mulai', '<=', $end->toDateString())
-            ->where('tanggal_selesai', '>=', $start->toDateString())
-            ->get(['jenis_izin', 'tanggal_mulai', 'tanggal_selesai'])
+            ->whereDate('tanggal_mulai', '<=', $end->toDateString())
+            ->whereDate('tanggal_selesai', '>=', $start->toDateString())
+            ->get([
+                'jenis_izin',
+                'tanggal_mulai',
+                'tanggal_selesai',
+                'dengan_surat_dokter',
+                'dihitung_setengah',
+                'tugas_terverifikasi',
+            ])
             ->each(function (PengajuanIzin $izin) use (&$map) {
                 $cursor = Carbon::parse($izin->tanggal_mulai);
                 $end = Carbon::parse($izin->tanggal_selesai);
 
                 while ($cursor->lte($end)) {
-                    $map[$cursor->toDateString()] = $izin->jenis_izin;
+                    $map[$cursor->toDateString()] = [
+                        'jenis_izin' => $izin->jenis_izin,
+                        'dengan_surat_dokter' => (bool) $izin->dengan_surat_dokter,
+                        'dihitung_setengah' => (bool) $izin->dihitung_setengah,
+                        'tugas_terverifikasi' => (bool) $izin->tugas_terverifikasi,
+                    ];
                     $cursor->addDay();
                 }
             });

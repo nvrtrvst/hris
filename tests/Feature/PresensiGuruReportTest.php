@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\Pegawai;
+use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
@@ -78,9 +79,74 @@ class PresensiGuruReportTest extends TestCase
         $this->assertSame(1, $row['jumlah_jp']);
         $this->assertSame(1, $row['scheduled_jp']);
         $this->assertSame(100, $row['ph']);
-        $this->assertSame(100, $data['summary']['b']);
+        $this->assertSame(50, $data['summary']['b']);
 
         Carbon::setTestNow();
+    }
+
+    public function test_ph_dan_b_memakai_bobot_kehadiran_unit(): void
+    {
+        Carbon::setTestNow('2026-11-05 12:00:00');
+
+        foreach (['2026-11-03' => true, '2026-11-04' => false] as $date => $denganSurat) {
+            $presensi = Presensi::create([
+                'pegawai_id' => $this->guru->id,
+                'unit_sekolah_id' => $this->unit->id,
+                'tipe_presensi' => 'kantor',
+                'tanggal' => $date,
+                'jam_masuk' => '06:50:00',
+            ]);
+            $presensi->forceFill(['status' => 'sakit'])->save();
+
+            $izin = PengajuanIzin::create([
+                'pegawai_id' => $this->guru->id,
+                'jenis_izin' => 'sakit',
+                'tanggal_mulai' => $date,
+                'tanggal_selesai' => $date,
+                'alasan' => 'Demam',
+                'dengan_surat_dokter' => $denganSurat,
+            ]);
+            $izin->forceFill(['status' => 'disetujui'])->save();
+        }
+
+        $data = app(PresensiGuruReportService::class)->build(
+            $this->guru,
+            $this->unit,
+            '2026-11',
+            '2025/2026',
+            1,
+        );
+
+        $this->assertSame(100, collect($data['rows'])->firstWhere('tanggal_iso', '2026-11-03')['ph']);
+        $this->assertSame(50, collect($data['rows'])->firstWhere('tanggal_iso', '2026-11-04')['ph']);
+        $this->assertSame(50, $data['summary']['b']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_non_guru_masuk_dalam_daftar_pegawai(): void
+    {
+        $staf = $this->pegawai('Staf Administrasi', false);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->get(route('laporan.presensi-guru'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Laporan/PresensiGuru')
+                ->has('gurus', 2)
+                ->where('gurus.1.id', $staf->id)
+            );
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->get(route('laporan.presensi-guru.preview', [
+                'unit_sekolah_id' => $this->unit->id,
+                'pegawai_id' => $staf->id,
+                'periode' => '2026-11',
+                'tahun_ajaran' => '2025/2026',
+                'semester' => 1,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('pegawai.id', $staf->id);
     }
 
     public function test_halaman_dan_pdf_presensi_guru_bisa_diakses(): void
@@ -123,9 +189,12 @@ class PresensiGuruReportTest extends TestCase
             ->assertHeader('content-type', 'application/pdf');
     }
 
-    private function pegawai(string $nama): Pegawai
+    private function pegawai(string $nama, bool $isGuru = true): Pegawai
     {
-        $jabatan = Jabatan::firstOrCreate(['nama' => 'Guru Mata Pelajaran'], ['is_guru' => true]);
+        $jabatan = Jabatan::firstOrCreate(
+            ['nama' => $isGuru ? 'Guru Mata Pelajaran' : 'Tenaga Administrasi'],
+            ['is_guru' => $isGuru],
+        );
         $user = User::factory()->create();
 
         $pegawai = Pegawai::create([
@@ -133,7 +202,7 @@ class PresensiGuruReportTest extends TestCase
             'nik' => '3273'.str_pad((string) random_int(0, 999999999999), 12, '0', STR_PAD_LEFT),
             'nama_lengkap' => $nama,
             'jenis_kelamin' => 'L',
-            'status_kepegawaian' => 'guru_pemula',
+            'status_kepegawaian' => $isGuru ? 'guru_pemula' : 'pegawai_pemula',
             'status_aktif' => 'aktif',
             'tmt_mengajar' => '2020-01-01',
         ]);

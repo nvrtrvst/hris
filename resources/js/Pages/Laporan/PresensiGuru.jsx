@@ -65,14 +65,14 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h1 className="page-title">Laporan Presensi Guru</h1>}>
-            <Head title="Laporan Presensi Guru" />
+        <AuthenticatedLayout user={auth.user} header={<h1 className="page-title">Laporan Presensi Pegawai</h1>}>
+            <Head title="Laporan Presensi Pegawai" />
             <div className="min-h-screen bg-surface py-8">
                 <div className="mx-auto max-w-7xl space-y-4 px-4 sm:px-6 lg:px-8">
                     <div>
-                        <h2 className="text-xl font-extrabold text-text-primary">Presensi Guru Bulanan</h2>
+                        <h2 className="text-xl font-extrabold text-text-primary">Presensi Pegawai Bulanan</h2>
                         <p className="text-sm text-text-muted">
-                            Laporan per guru dengan JP aktual, persentase harian, mingguan, dan bulanan.
+                            Laporan per pegawai dengan JP aktual, persentase kehadiran harian, mingguan, dan bulanan.
                         </p>
                     </div>
 
@@ -88,11 +88,11 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                 </div>
                             </Field>
 
-                            <Field label="Guru">
+                            <Field label="Pegawai">
                                 <div className="relative">
                                     <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <select id={fieldId('Guru')} className="select-field pl-9" value={pegawaiId} onChange={(e) => { setPegawaiId(e.target.value); setPreview(null); }}>
-                                        <option value="">Pilih guru</option>
+                                    <select id={fieldId('Pegawai')} className="select-field pl-9" value={pegawaiId} onChange={(e) => { setPegawaiId(e.target.value); setPreview(null); }}>
+                                        <option value="">Pilih pegawai</option>
                                         {guruOptions.map((guru) => <option key={guru.id} value={guru.id}>{guru.nama}</option>)}
                                     </select>
                                 </div>
@@ -158,7 +158,7 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                 <div className="flex gap-3 text-xs font-bold text-text-secondary">
                                     <span>JP aktual: {preview.summary.actual_jp}</span>
                                     <span>JP terjadwal: {preview.summary.scheduled_jp}</span>
-                                    <span>B: {preview.summary.b ?? '-'}</span>
+                                    <span>B (bulan): {preview.summary.b !== null ? `${preview.summary.b}%` : '-'}</span>
                                 </div>
                             </div>
 
@@ -216,7 +216,7 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                             ))}
 
                             <p className="text-xs text-text-muted">
-                                PH = JP aktual / JP terjadwal per hari. M = agregat mingguan. B = agregat bulanan.
+                                PH = persentase kehadiran harian berbobot unit. M = persentase kehadiran mingguan. B = persentase kehadiran bulanan. JP tetap dihitung dari presensi per jadwal.
                             </p>
                         </div>
                     )}

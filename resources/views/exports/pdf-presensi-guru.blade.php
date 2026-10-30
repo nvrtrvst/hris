@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<title>Presensi Guru - {{ $pegawai['nama'] }}</title>
+<title>Presensi Pegawai - {{ $pegawai['nama'] }}</title>
 <style>
     @page { size: A4 landscape; margin: 8mm; }
     * { box-sizing: border-box; }
@@ -66,7 +66,7 @@
         </div>
     </div>
 
-    <div class="title">Presensi Guru</div>
+    <div class="title">Presensi Pegawai</div>
     <div class="meta">
         Tahun Pelajaran {{ $tahun_ajaran }} &nbsp;|&nbsp;
         Semester {{ $semester }} &nbsp;|&nbsp;
@@ -147,8 +147,8 @@
     </table>
 
     <div class="note">
-        PH = JP aktual / JP terjadwal per hari. M = agregat JP aktual / JP terjadwal per minggu.
-        B = agregat JP aktual / JP terjadwal per bulan. TK = tidak ada keterangan.
+        PH = persentase kehadiran harian berbobot unit. M = persentase kehadiran mingguan.
+        B = persentase kehadiran bulanan. JP tetap dihitung dari presensi per jadwal. TK = tidak ada keterangan.
     </div>
 
     <table class="signature-table">
@@ -169,7 +169,7 @@
                 <div class="name">{{ $officials['kepegawaian'] ?? '' }}</div>
             </td>
             <td>
-                <div class="role">GURU YANG BERSANGKUTAN</div>
+                <div class="role">PEGAWAI YANG BERSANGKUTAN</div>
                 <div class="space"></div>
                 <div class="name">{{ $officials['guru'] }}</div>
             </td>

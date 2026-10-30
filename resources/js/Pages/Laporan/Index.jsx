@@ -155,8 +155,8 @@ export default function LaporanIndex({ auth, units }) {
             Icon: ShieldCheck,
         },
         {
-            name: 'Presensi Guru',
-            description: 'Presensi bulanan per guru: JP aktual, PH, M, dan B.',
+            name: 'Presensi Pegawai',
+            description: 'Presensi bulanan per pegawai: JP aktual, PH, M, dan B.',
             href: route('laporan.presensi-guru'),
             visible: permissions.includes('view_presensi'),
             Icon: UserCheck,
