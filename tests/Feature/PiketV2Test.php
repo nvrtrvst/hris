@@ -739,6 +739,65 @@ class PiketV2Test extends TestCase
         $this->assertSame('daftar', $entry['sumber']);
     }
 
+    public function test_cek_absen_sakit_konflik_dengan_presensi_hadir(): void
+    {
+        Carbon::setTestNow('2026-10-26 07:00:00');
+
+        $piket = $this->pegawai('Petugas Piket');
+        $guru = $this->pegawai('Guru Sakit');
+        $this->masuk($piket);
+        $this->jadwal($piket);
+
+        PiketPenugasan::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+            'pegawai_id' => $piket->id,
+            'area_id' => $this->area->id,
+            'peran' => 'area',
+            'aktif' => true,
+        ]);
+        PiketItemTemplate::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'kode' => 'cek_absen',
+            'label' => 'Cek guru',
+            'seksi' => 'pagi',
+            'scope' => 'area',
+            'tipe' => 'tambah',
+            'wajib' => true,
+            'urutan' => 2,
+        ]);
+
+        $presensi = Presensi::create([
+            'pegawai_id' => $guru->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tipe_presensi' => 'kantor',
+            'tanggal' => '2026-10-26',
+            'jam_masuk' => '06:45:00',
+        ]);
+        $presensi->forceFill(['status' => 'hadir'])->save();
+
+        $this->actingAs($piket->user, 'web_mobile')
+            ->post(route('presensi.piket.item'), [
+                'kode' => 'cek_absen',
+                'mode' => 'tambah',
+                'guru_pegawai_id' => $guru->id,
+                'status_absen' => 'sakit',
+                'keterangan_absen' => 'Sakit, tidak masuk kelas.',
+                ...$this->geo(),
+            ])
+            ->assertRedirect();
+
+        $entry = LaporanPiket::where('pegawai_id', $piket->id)->firstOrFail()
+            ->items['cek_absen']['entries'][0];
+
+        $this->assertSame('sakit', $entry['status_absen']);
+        $this->assertSame('perlu_cek', $entry['validasi']);
+        $this->assertStringContainsString('Presensi hadir 06:45', $entry['validasi_catatan']);
+
+        Carbon::setTestNow();
+    }
+
     public function test_validasi_kelas_kosong_memakai_presensi_slot_bukan_harian(): void
     {
         Carbon::setTestNow('2026-10-26 10:00:00');

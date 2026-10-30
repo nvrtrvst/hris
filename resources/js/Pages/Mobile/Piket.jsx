@@ -20,6 +20,15 @@ import {
     X,
 } from 'lucide-react';
 
+const ABSEN_STATUS_LABEL = {
+    sakit: 'Sakit',
+    izin: 'Izin',
+    cuti: 'Cuti',
+    alpa: 'Alpa',
+    hadir: 'Hadir',
+    lainnya: 'Lainnya',
+};
+
 // Endpoint JSON bisa membalas HTML saat sesi habis atau server error;
 // jangan biarkan .json() melempar "Unexpected token '<'".
 async function bacaJson(response, pesanGagal) {
@@ -893,7 +902,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     const [submitErr, setSubmitErr] = useState(null);
     const submitErrRef = useRef(null);
     const [terlambat, setTerlambat] = useState(0);
-    const [absenForm, setAbsenForm] = useState({ guru_pegawai_id: '', nama_guru: '', keterangan_absen: '' });
+    const [absenForm, setAbsenForm] = useState({ guru_pegawai_id: '', nama_guru: '', status_absen: '', keterangan_absen: '' });
     const [absenManual, setAbsenManual] = useState(false);
     const [kkForm, setKkForm] = useState({ slot_jadwal_id: '', kelas: '', guru_pegawai_id: '', mapel_id: '', ada_amanat: false, jenis_amanat: 'tugas', detail_amanat: '', tersampaikan: false });
     const kkSlot = slotKosong.find((s) => String(s.jadwal_id) === String(kkForm.slot_jadwal_id));
@@ -1270,16 +1279,25 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                     <div className="mt-3">
                                         <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Sudah dicatat</p>
                                         <ul className="mt-1.5 space-y-1.5">
-                                            {(items.cek_absen.entries ?? []).map((e, i) => (
-                                                <li key={i} className="flex items-center justify-between gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2 text-xs text-slate-700">
-                                                    <span className="min-w-0">
-                                                        <span className="font-bold">{e.nama_guru}</span>
-                                                        <span className="text-slate-600"> · {e.created_at?.substring(0, 5)}</span>
-                                                        <span className="mt-0.5 block text-slate-600">{e.keterangan}</span>
-                                                    </span>
-                                                    <HapusBtn kode="cek_absen" index={i} />
-                                                </li>
-                                            ))}
+                                            {(items.cek_absen.entries ?? []).map((e, i) => {
+                                                const konflik = !e.verified_at && (e.validasi === 'perlu_cek' || e.konflik_presensi?.perlu_cek);
+                                                const catatan = e.validasi_catatan || e.konflik_presensi?.catatan;
+
+                                                return (
+                                                    <li key={i} className="flex items-center justify-between gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2 text-xs text-slate-700">
+                                                        <span className="min-w-0">
+                                                            <span className="font-bold">{e.nama_guru}</span>
+                                                            <span className="text-slate-600"> · {e.created_at?.substring(0, 5)}</span>
+                                                            <span className="mt-0.5 block text-slate-600">
+                                                                {e.status_absen ? `${ABSEN_STATUS_LABEL[e.status_absen] || e.status_absen} - ` : ''}{e.keterangan}
+                                                            </span>
+                                                            {konflik && <span className="mt-0.5 block font-bold text-amber-700">Perlu dicek</span>}
+                                                            {konflik && catatan && <span className="mt-0.5 block text-amber-700">{catatan}</span>}
+                                                        </span>
+                                                        <HapusBtn kode="cek_absen" index={i} />
+                                                    </li>
+                                                );
+                                            })}
                                         </ul>
                                     </div>
                                 )}
@@ -1311,11 +1329,25 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                             {absenManual && (
                                                 <input value={absenForm.nama_guru} onChange={(e) => setAbsenForm({ ...absenForm, nama_guru: e.target.value })} placeholder="Nama guru (manual)" className={inputCls} maxLength={100} aria-label="Nama guru manual" />
                                             )}
+                                            <select
+                                                value={absenForm.status_absen}
+                                                onChange={(e) => setAbsenForm({ ...absenForm, status_absen: e.target.value })}
+                                                className={inputCls}
+                                                aria-label="Status kehadiran guru"
+                                            >
+                                                <option value="">Pilih status</option>
+                                                <option value="sakit">Sakit</option>
+                                                <option value="izin">Izin</option>
+                                                <option value="cuti">Cuti</option>
+                                                <option value="alpa">Alpa</option>
+                                                <option value="hadir">Hadir</option>
+                                                <option value="lainnya">Lainnya</option>
+                                            </select>
                                             <div className="flex gap-2">
-                                                <input value={absenForm.keterangan_absen} onChange={(e) => setAbsenForm({ ...absenForm, keterangan_absen: e.target.value })} placeholder="Keterangan (mis. sakit/izin)" className={`${inputCls} flex-1`} maxLength={255} aria-label="Keterangan" />
+                                                <input value={absenForm.keterangan_absen} onChange={(e) => setAbsenForm({ ...absenForm, keterangan_absen: e.target.value })} placeholder="Keterangan tambahan" className={`${inputCls} flex-1`} maxLength={255} aria-label="Keterangan" />
                                                 <button
                                                     type="button"
-                                                    disabled={sending || !absenForm.keterangan_absen.trim() || (!absenForm.guru_pegawai_id && !absenForm.nama_guru.trim())}
+                                                    disabled={sending || !absenForm.keterangan_absen.trim() || !absenForm.status_absen || (!absenForm.guru_pegawai_id && !absenForm.nama_guru.trim())}
                                                     onClick={() => kirim({ kode: 'cek_absen', mode: 'tambah', ...absenForm })}
                                                     className="min-h-12 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95 disabled:opacity-50"
                                                 >

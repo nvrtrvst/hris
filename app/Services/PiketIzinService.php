@@ -6,7 +6,6 @@ use App\Models\AuditLog;
 use App\Models\LaporanPiket;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
-use App\Models\Presensi;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -65,12 +64,7 @@ class PiketIzinService
                 $selesai = Carbon::parse($data['tanggal_selesai']);
 
                 for ($tanggal = $mulai->copy(); $tanggal->lte($selesai); $tanggal->addDay()) {
-                    $presensiHadir = Presensi::where('pegawai_id', $guru->id)
-                        ->whereDate('tanggal', $tanggal->toDateString())
-                        ->whereIn('status', ['hadir', 'telat'])
-                        ->exists();
-
-                    if ($presensiHadir) {
+                    if (PiketPresensiService::hasPresence($guru->id, $tanggal->toDateString())) {
                         throw ValidationException::withMessages(['guru_pegawai_id' => 'Guru sudah tercatat hadir pada tanggal '.$tanggal->format('Y-m-d').'.']);
                     }
                 }

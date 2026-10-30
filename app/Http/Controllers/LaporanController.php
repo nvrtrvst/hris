@@ -28,6 +28,7 @@ use App\Models\UnitSekolah;
 use App\Services\KcdReportService;
 use App\Services\LaporanPdfService;
 use App\Services\PiketIzinService;
+use App\Services\PiketPresensiService;
 use App\Services\PiketService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -804,22 +805,29 @@ class LaporanController extends Controller
             ? collect()
             : PengajuanIzin::whereIn('id', $izinIds)->get(['id', 'status', 'jenis_izin'])->keyBy('id');
 
-        if ($izinMap->isNotEmpty()) {
-            $laporan = $laporan->map(function ($lap) use ($izinMap) {
-                $entries = $lap['items'][LaporanPiket::ITEM_CEK_ABSEN]['entries'] ?? [];
+        $laporan = $laporan->map(function ($lap) use ($izinMap) {
+            $entries = $lap['items'][LaporanPiket::ITEM_CEK_ABSEN]['entries'] ?? [];
 
-                foreach ($entries as $index => $entry) {
-                    $izin = $izinMap->get($entry['pengajuan_izin_id'] ?? null);
-                    if ($izin) {
-                        $entries[$index]['pengajuan_izin'] = $izin->only(['id', 'status', 'jenis_izin']);
-                    }
+            foreach ($entries as $index => $entry) {
+                $izin = $izinMap->get($entry['pengajuan_izin_id'] ?? null);
+                if ($izin) {
+                    $entries[$index]['pengajuan_izin'] = $izin->only(['id', 'status', 'jenis_izin']);
                 }
 
-                $lap['items'][LaporanPiket::ITEM_CEK_ABSEN]['entries'] = $entries;
+                if (! empty($entry['guru_pegawai_id'])) {
+                    $entries[$index]['konflik_presensi'] = PiketPresensiService::conflict(
+                        (int) $entry['guru_pegawai_id'],
+                        (string) $lap['tanggal'],
+                        $entry['status_absen'] ?? null,
+                        $entry['created_at'] ?? null,
+                    );
+                }
+            }
 
-                return $lap;
-            });
-        }
+            $lap['items'][LaporanPiket::ITEM_CEK_ABSEN]['entries'] = $entries;
+
+            return $lap;
+        });
 
         if ($status === 'draft' || $status === 'submitted') {
             $laporan = $laporan->where('status', $status)->values();
