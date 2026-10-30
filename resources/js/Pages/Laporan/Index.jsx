@@ -2,7 +2,7 @@ import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import FilterSheet from '@/Components/FilterSheet';
 import { Head, Link } from '@inertiajs/react';
-import { Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users, X } from 'lucide-react';
+import { Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users, X, ClipboardList, Clock3, UserCheck } from 'lucide-react';
 import axios from 'axios';
 import ComboSelect from '@/Components/ComboSelect';
 import HarianDetail from '@/Pages/Laporan/Partials/Preview/HarianDetail';
@@ -144,6 +144,45 @@ export default function LaporanIndex({ auth, units }) {
         lembur_status: '',
         search: '',
     });
+
+    const permissions = auth.permissions || [];
+    const reportLinks = [
+        {
+            name: 'Presensi Guru',
+            description: 'Presensi bulanan per guru: JP aktual, PH, M, dan B.',
+            href: route('laporan.presensi-guru'),
+            visible: permissions.includes('view_presensi'),
+            Icon: UserCheck,
+        },
+        {
+            name: 'Laporan Piket',
+            description: 'Laporan piket, petugas, pos, fase, dan absen siswa.',
+            href: route('laporan.piket'),
+            visible: permissions.includes('view_presensi') || permissions.includes('view_piket'),
+            Icon: ClipboardList,
+        },
+        {
+            name: 'Laporan Absen Siswa',
+            description: 'Rekap kehadiran siswa per kelas dan periode.',
+            href: route('laporan.absen-siswa'),
+            visible: permissions.includes('view_absen_siswa'),
+            Icon: FileText,
+        },
+        {
+            name: 'Keterlambatan Gerbang',
+            description: 'Catatan siswa terlambat di pos gerbang.',
+            href: route('laporan.keterlambatan-siswa'),
+            visible: permissions.includes('view_piket') || permissions.includes('view_presensi') || permissions.includes('view_absen_siswa'),
+            Icon: Clock3,
+        },
+        {
+            name: 'Laporan KCD',
+            description: 'Daftar hadir bulanan untuk sertifikasi KCD.',
+            href: route('laporan.kcd'),
+            visible: permissions.includes('view_laporan_kcd'),
+            Icon: FileSpreadsheet,
+        },
+    ].filter((link) => link.visible);
 
     const handlePreview = async () => {
         setLoading(true);
@@ -374,6 +413,28 @@ export default function LaporanIndex({ auth, units }) {
                         </div>
                         {auth.permissions?.includes('view_kpi') && <Link href={route('kpi.index')} className="btn-secondary">Laporan KPI Pegawai</Link>}
                     </div>
+
+                    {reportLinks.length > 0 && (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                            {reportLinks.map(({ name, description, href, Icon }) => (
+                                <Link
+                                    key={name}
+                                    href={href}
+                                    className="group rounded-xl border border-border bg-white p-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                            <Icon className="h-4 w-4" />
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-text-primary group-hover:text-primary">{name}</p>
+                                            <p className="mt-1 text-xs leading-relaxed text-text-muted">{description}</p>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Filter: sheet di mobile, kartu di desktop */}
                     <FilterSheet
