@@ -294,10 +294,8 @@ class PresensiGuruReportService
 
         if ($code === 'S') {
             $punyaTugas = $tugas || ! empty($leave['tugas_terverifikasi'] ?? null);
-            $lengkap = $leave && (
-                ! empty($leave['dengan_surat_dokter'])
-                || ($sakitWajibTugas && $punyaTugas)
-            );
+            $lengkap = ($sakitWajibTugas && $punyaTugas)
+                || ($leave && ! empty($leave['dengan_surat_dokter']));
 
             return $lengkap ? (float) $bobot['sakit_surat'] : (float) $bobot['sakit_tanpa_surat'];
         }
