@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ApprovalHelper;
+use App\Helpers\DownloadFilename;
 use App\Helpers\NotificationHelper;
 use App\Models\AuditPresensi;
 use App\Models\PengajuanKoreksi;
@@ -215,7 +216,7 @@ class PengajuanKoreksiController extends Controller
         ])->setPaper('A4', 'portrait');
 
         // Nomor berisi '/' — tidak sah sebagai nama file HTTP disposition.
-        $nama = 'Koreksi_Presensi_'.str_replace('/', '-', $koreksi->nomor).'.pdf';
+        $nama = DownloadFilename::person('Koreksi_Presensi', $koreksi->pegawai, $koreksi->nomor, 'pdf');
 
         // unduh=1 -> attachment (mobile: file masuk Downloads). Tanpa itu tetap inline untuk cetak.
         return $request->boolean('unduh') ? $pdf->download($nama) : $pdf->stream($nama);
