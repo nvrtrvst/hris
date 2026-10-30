@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Jabatan;
 use App\Models\Jadwal;
+use App\Models\LaporanPiket;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
+use App\Models\PiketTugasOverride;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
@@ -149,6 +151,85 @@ class PresensiGuruReportTest extends TestCase
         $this->assertSame(20, $data['summary']['b']);
 
         Carbon::setTestNow();
+    }
+
+    public function test_tugas_diambil_dari_piket_dan_bisa_di_override_operator(): void
+    {
+        Carbon::setTestNow('2026-11-03 12:00:00');
+
+        LaporanPiket::create([
+            'pegawai_id' => $this->guru->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-11-03',
+            'status' => LaporanPiket::STATUS_SUBMITTED,
+            'items' => [
+                LaporanPiket::ITEM_KELAS_KOSONG => [
+                    'entries' => [[
+                        'guru_pegawai_id' => $this->guru->id,
+                        'ada_amanat' => true,
+                        'tersampaikan' => false,
+                    ]],
+                ],
+            ],
+        ]);
+
+        $data = app(PresensiGuruReportService::class)->build(
+            $this->guru,
+            $this->unit,
+            '2026-11',
+            '2025/2026',
+            1,
+        );
+
+        $row = collect($data['rows'])->firstWhere('tanggal_iso', '2026-11-03');
+        $this->assertTrue($row['tugas']);
+        $this->assertFalse($row['tugas_tersampaikan']);
+        $this->assertSame('piket', $row['tugas_sumber']);
+
+        PiketTugasOverride::create([
+            'pegawai_id' => $this->guru->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-11-03',
+            'ada_amanat' => true,
+            'tersampaikan' => true,
+        ]);
+
+        $data = app(PresensiGuruReportService::class)->build(
+            $this->guru,
+            $this->unit,
+            '2026-11',
+            '2025/2026',
+            1,
+        );
+
+        $row = collect($data['rows'])->firstWhere('tanggal_iso', '2026-11-03');
+        $this->assertTrue($row['tugas']);
+        $this->assertTrue($row['tugas_tersampaikan']);
+        $this->assertSame('operator', $row['tugas_sumber']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_operator_bisa_override_tugas(): void
+    {
+        $this->actingAs($this->admin, 'web_admin')
+            ->post(route('laporan.presensi-guru.tugas'), [
+                'unit_sekolah_id' => $this->unit->id,
+                'pegawai_id' => $this->guru->id,
+                'tanggal' => '2026-11-03',
+                'ada_amanat' => true,
+                'tersampaikan' => true,
+                'catatan' => 'Piket lupa mencatat tugas.',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('piket_tugas_overrides', [
+            'pegawai_id' => $this->guru->id,
+            'tanggal' => '2026-11-03',
+            'ada_amanat' => true,
+            'tersampaikan' => true,
+        ]);
+        $this->assertDatabaseHas('audit_logs', ['aksi' => 'ubah_tugas_piket']);
     }
 
     public function test_non_guru_masuk_dalam_daftar_pegawai(): void

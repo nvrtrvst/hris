@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Http\Requests\PresensiGuruReportRequest;
+use App\Models\AuditLog;
 use App\Models\Jadwal;
 use App\Models\Pegawai;
+use App\Models\PiketTugasOverride;
 use App\Models\UnitSekolah;
 use App\Services\LaporanPdfService;
 use App\Services\PresensiGuruReportService;
@@ -90,6 +92,56 @@ class LaporanPresensiGuruController extends Controller
         return Pdf::loadView('exports.pdf-presensi-guru', $data)
             ->setPaper('A4', 'landscape')
             ->download('Presensi_Pegawai_'.$pegawai->id.'_'.$request->validated('periode').'.pdf');
+    }
+
+    public function updateTugas(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user?->can('manage_tugas_piket'), 403);
+
+        $validated = $request->validate([
+            'unit_sekolah_id' => 'required|integer|exists:unit_sekolah,id',
+            'pegawai_id' => 'required|integer|exists:pegawai,id',
+            'tanggal' => 'required|date',
+            'ada_amanat' => 'required|boolean',
+            'tersampaikan' => 'nullable|boolean',
+            'catatan' => 'nullable|string|max:500',
+        ]);
+
+        $unit = UnitSekolah::findOrFail($validated['unit_sekolah_id']);
+        $pegawai = Pegawai::with('units')->findOrFail($validated['pegawai_id']);
+
+        abort_unless($pegawai->units->contains('id', $unit->id), 403, 'Pegawai tidak berada di unit ini.');
+
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')
+            && (int) $user->unit_sekolah_id !== (int) $unit->id) {
+            abort(403, 'Unit tidak sesuai dengan akses Anda.');
+        }
+
+        if ($this->isPimpinanReadOnly($user) && ! $this->isKepsek($user)
+            && (int) $pegawai->atasan_langsung_id !== (int) $user->pegawai?->id) {
+            abort(403, 'Pegawai bukan bawahan langsung Anda.');
+        }
+
+        $override = PiketTugasOverride::firstOrNew([
+            'pegawai_id' => $pegawai->id,
+            'tanggal' => $validated['tanggal'],
+        ]);
+        $old = $override->exists ? $override->only(['ada_amanat', 'tersampaikan', 'catatan']) : null;
+
+        $override->fill([
+            'unit_sekolah_id' => $unit->id,
+            'ada_amanat' => (bool) $validated['ada_amanat'],
+            'tersampaikan' => (bool) $validated['ada_amanat'] && (bool) ($validated['tersampaikan'] ?? false),
+            'catatan' => $validated['catatan'] ?? null,
+            'created_by' => $override->created_by ?? $user->id,
+            'updated_by' => $user->id,
+        ]);
+        $override->save();
+
+        AuditLog::log($override, 'ubah_tugas_piket', $old, $override->only(['ada_amanat', 'tersampaikan', 'catatan']));
+
+        return back()->with('message', 'Tugas piket berhasil diperbarui.');
     }
 
     private function units($user)

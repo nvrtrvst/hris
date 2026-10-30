@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import Modal from '@/Components/Modal';
+import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
 import { Building2, Calendar, Download, Loader2, Search, UserRound, X } from 'lucide-react';
 
@@ -26,6 +27,11 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
     const [preview, setPreview] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [tugasRow, setTugasRow] = useState(null);
+    const [tugasForm, setTugasForm] = useState({ ada_amanat: false, tersampaikan: false, catatan: '' });
+    const [tugasError, setTugasError] = useState('');
+    const [tugasSending, setTugasSending] = useState(false);
+    const canManageTugas = auth.permissions?.includes('manage_tugas_piket');
 
     const guruOptions = useMemo(
         () => gurus.filter((guru) => !unitId || guru.unit_ids.includes(Number(unitId))),
@@ -62,6 +68,39 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
     const handleDownload = () => {
         const query = new URLSearchParams(params()).toString();
         window.location.href = `${route('laporan.presensi-guru.pdf')}?${query}`;
+    };
+
+    const openTugas = (row) => {
+        setTugasError('');
+        setTugasForm({
+            ada_amanat: Boolean(row.tugas),
+            tersampaikan: Boolean(row.tugas_tersampaikan),
+            catatan: '',
+        });
+        setTugasRow(row);
+    };
+
+    const simpanTugas = (event) => {
+        event.preventDefault();
+        if (!tugasRow) return;
+
+        setTugasSending(true);
+        setTugasError('');
+        router.post(route('laporan.presensi-guru.tugas'), {
+            unit_sekolah_id: unitId,
+            pegawai_id: preview.pegawai.id,
+            tanggal: tugasRow.tanggal_iso,
+            ...tugasForm,
+        }, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                setTugasRow(null);
+                handlePreview();
+            },
+            onError: (errors) => setTugasError(Object.values(errors || {}).flat()[0] || 'Gagal menyimpan tugas.'),
+            onFinish: () => setTugasSending(false),
+        });
     };
 
     return (
@@ -186,6 +225,7 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                                     <th className="px-1.5 py-2 text-center font-bold text-text-muted">I</th>
                                                     <th className="px-1.5 py-2 text-center font-bold text-text-muted">TK</th>
                                                     <th className="px-1.5 py-2 text-center font-bold text-text-muted">Tugas</th>
+                                                    <th className="px-1.5 py-2 text-center font-bold text-text-muted">TL</th>
                                                     <th className="px-2 py-2 text-center font-bold text-text-muted">Pulang</th>
                                                     <th className="px-2 py-2 text-center font-bold text-text-muted">PH</th>
                                                 </tr>
@@ -204,7 +244,21 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                                         <Cell>{row.s ? '✓' : ''}</Cell>
                                                         <Cell>{row.i ? '✓' : ''}</Cell>
                                                         <Cell>{row.tk ? '✓' : ''}</Cell>
-                                                        <Cell>{row.tugas ? 'TUGAS' : ''}</Cell>
+                                                        <Cell>
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <span>{row.tugas ? `TUGAS${row.tugas_tersampaikan ? '' : '!'}` : '-'}</span>
+                                                                {canManageTugas && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => openTugas(row)}
+                                                                        className="text-[10px] font-bold text-primary underline underline-offset-2"
+                                                                    >
+                                                                        Atur
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </Cell>
+                                                        <Cell>{row.tugas_luar ? 'TL' : ''}</Cell>
                                                         <Cell>{row.jam_pulang || '-'}</Cell>
                                                         <Cell>{row.ph !== null ? `${row.ph}%` : '-'}</Cell>
                                                     </tr>
@@ -222,6 +276,61 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                     )}
                 </div>
             </div>
+
+            <Modal show={tugasRow !== null} onClose={() => !tugasSending && setTugasRow(null)} maxWidth="md" closeable={!tugasSending}>
+                <form onSubmit={simpanTugas} className="space-y-4 p-5">
+                    <div>
+                        <h3 className="text-base font-bold text-text-primary">Atur Tugas Piket</h3>
+                        <p className="mt-0.5 text-sm text-text-secondary">
+                            {preview?.pegawai?.nama} · {tugasRow?.tanggal}
+                        </p>
+                    </div>
+
+                    <label className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+                        <input
+                            type="checkbox"
+                            checked={tugasForm.ada_amanat}
+                            onChange={(e) => setTugasForm({ ...tugasForm, ada_amanat: e.target.checked, tersampaikan: e.target.checked ? tugasForm.tersampaikan : false })}
+                            className="h-4 w-4 accent-[#0F3D3E]"
+                        />
+                        Piket memberikan tugas / amanat
+                    </label>
+
+                    <label className={`flex items-center gap-2 text-sm font-semibold ${tugasForm.ada_amanat ? 'text-text-primary' : 'text-text-muted'}`}>
+                        <input
+                            type="checkbox"
+                            disabled={!tugasForm.ada_amanat}
+                            checked={tugasForm.tersampaikan}
+                            onChange={(e) => setTugasForm({ ...tugasForm, tersampaikan: e.target.checked })}
+                            className="h-4 w-4 accent-[#0F3D3E]"
+                        />
+                        Tugas sudah tersampaikan ke kelas
+                    </label>
+
+                    <div>
+                        <label className="form-label text-xs" htmlFor="tugas-catatan">Catatan</label>
+                        <textarea
+                            id="tugas-catatan"
+                            value={tugasForm.catatan}
+                            onChange={(e) => setTugasForm({ ...tugasForm, catatan: e.target.value })}
+                            className="input-field mt-1 min-h-20"
+                            maxLength={500}
+                            placeholder="Contoh: guru lupa mencatat, kelas diberi tugas halaman 12"
+                        />
+                    </div>
+
+                    {tugasError && <p className="form-error">{tugasError}</p>}
+
+                    <div className="flex justify-end gap-2 border-t border-border pt-4">
+                        <button type="button" className="btn-secondary" disabled={tugasSending} onClick={() => setTugasRow(null)}>
+                            Batal
+                        </button>
+                        <button type="submit" className="btn-primary" disabled={tugasSending}>
+                            {tugasSending ? 'Menyimpan...' : 'Simpan'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

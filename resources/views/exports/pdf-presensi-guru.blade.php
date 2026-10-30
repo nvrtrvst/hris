@@ -36,6 +36,7 @@
     .summary-row td { background: #f3f4f6; font-weight: 800; }
     .b-col { border: 0; border-right: 1px solid #374151; border-bottom: 1px solid #374151; font-weight: 800; vertical-align: middle; }
     .b-head { border: 0; border-top: 1px solid #374151; border-right: 1px solid #374151; }
+    .m-col { text-align: center; vertical-align: middle; font-weight: 800; }
     .signature-table { width: 100%; border-collapse: collapse; margin-top: 18px; }
     .signature-table td { width: 25%; border: 0; padding: 0 12px; text-align: center; vertical-align: top; font-size: 8px; }
     .signature-table .role { font-weight: 800; text-transform: uppercase; }
@@ -84,7 +85,7 @@
                 <th class="time" rowspan="2">JAM DATANG</th>
                 <th colspan="{{ $slot_count }}">MENGAJAR JAM KE (AKTUAL)</th>
                 <th class="total" rowspan="2">JUMLAH JAM PERHARI</th>
-                <th colspan="4">KETERANGAN</th>
+                <th colspan="5">KETERANGAN</th>
                 <th class="time" rowspan="2">JAM PULANG</th>
                 <th colspan="3">PERSENTASE</th>
             </tr>
@@ -96,6 +97,7 @@
                 <th class="status">I</th>
                 <th class="status">TK</th>
                 <th class="status">TUGAS</th>
+                <th class="status">TL</th>
                 <th class="percent">PH</th>
                 <th class="percent">M</th>
                 <th class="percent b-head">B</th>
@@ -120,10 +122,13 @@
                         <td>@if($row['s'])&#10003;@endif</td>
                         <td>@if($row['i'])&#10003;@endif</td>
                         <td>@if($row['tk'])&#10003;@endif</td>
-                        <td>{{ $row['tugas'] ? 'TUGAS' : '' }}</td>
+                        <td>{{ $row['tugas'] ? 'TUGAS'.($row['tugas_tersampaikan'] ? '' : '!') : '' }}</td>
+                        <td>{{ $row['tugas_luar'] ? 'TL' : '' }}</td>
                         <td>{{ $row['jam_pulang'] ?? '-' }}</td>
                         <td>{{ $row['ph'] !== null ? $row['ph'].'%' : '-' }}</td>
-                        <td></td>
+                        @if($loop->first)
+                            <td class="m-col" rowspan="{{ count($week['rows']) }}">{{ $week['m'] !== null ? $week['m'].'%' : '-' }}</td>
+                        @endif
                         <td class="b-col"></td>
                     </tr>
                 @endforeach
@@ -132,15 +137,15 @@
                     <td colspan="4">KEHADIRAN / MINGGU</td>
                     <td colspan="{{ $slot_count }}">{{ $week['actual_jp'] }} / {{ $week['scheduled_jp'] }} JP</td>
                     <td>{{ $week['actual_jp'] }}</td>
-                    <td colspan="4"></td>
+                    <td colspan="5"></td>
                     <td></td>
                     <td></td>
-                    <td>{{ $week['m'] !== null ? $week['m'].'%' : '-' }}</td>
+                    <td></td>
                     <td class="b-col">{{ $loop->last ? ($summary['b'] ?? '-') : '' }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ $slot_count + 13 }}" class="muted">Tidak ada hari kerja pada periode ini.</td>
+                    <td colspan="{{ $slot_count + 14 }}" class="muted">Tidak ada hari kerja pada periode ini.</td>
                 </tr>
             @endforelse
         </tbody>
@@ -149,6 +154,7 @@
     <div class="note">
         PH = persentase kehadiran harian berbobot unit. M = persentase kehadiran mingguan.
         B = persentase kehadiran bulanan. JP tetap dihitung dari presensi per jadwal. TK = tidak ada keterangan.
+        TUGAS = amanat/tugas dari piket; tanda ! berarti belum tersampaikan. TL = tugas luar resmi.
     </div>
 
     <table class="signature-table">
