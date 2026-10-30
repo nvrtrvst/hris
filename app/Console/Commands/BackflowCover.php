@@ -15,34 +15,38 @@ class BackflowCover extends Command
      * Backfill auto-cover JP lanjutan untuk honorer flow A pada tanggal tertentu.
      *
      * Hanya insert JP setelah anchor yang HADIR/TELAT dalam sesi mengajar
-     * (pegawai_mapel_id + kelas_label + unit_sekolah_id + hari sama, gap <= 60 menit).
+     * (pegawai_mapel_id + kelas_label + unit_sekolah_id + hari sama, gap <=
+     * max_jeda_sesi_menit unit, default 120).
      * Forward-only: JP sebelum anchor TIDAK di-cover (tetap alpa di histori).
      *
      * --execute menulis ke DB; tanpa flag = dry-run (default aman).
+     * --all memproses semua pegawai, bukan hanya honorer GTTY.
      */
     protected $signature = 'presensi:backflow-cover
         {--date= : Tanggal target (Y-m-d). Default: hari ini.}
+        {--all : Proses semua pegawai, bukan hanya honorer GTTY.}
         {--execute : Tulis ke DB (tanpa flag = dry-run).}';
 
-    protected $description = 'Backfill cover JP lanjutan honorer flow A pada tanggal tertentu (default dry-run).';
+    protected $description = 'Backfill cover JP lanjutan pada tanggal tertentu (default dry-run).';
 
     private const HONORER_KODE = 'GTTY';
 
-    private const GAP_SESI_MENIT = 60;
+    private const GAP_SESI_MENIT = 120;
 
     public function handle(): int
     {
         $tanggal = $this->option('date') ?: Carbon::now()->toDateString();
         $execute = (bool) $this->option('execute');
+        $all = (bool) $this->option('all');
         $hari = $this->hariIndonesia(Carbon::parse($tanggal));
 
-        $this->info("Backflow cover: tanggal={$tanggal} hari={$hari} mode=".($execute ? 'EXECUTE' : 'DRY-RUN'));
+        $this->info("Backflow cover: tanggal={$tanggal} hari={$hari} mode=".($execute ? 'EXECUTE' : 'DRY-RUN').($all ? ' semua-pegawai' : ' honorer'));
 
         $jadwals = Jadwal::query()
             ->where('hari', $hari)
             ->where('jenis_jadwal', 'mengajar')
-            ->whereHas('pegawai', fn ($q) => $q->where('status_kepegawaian', self::HONORER_KODE))
-            ->with('pegawai')
+            ->when(! $all, fn ($q) => $q->whereHas('pegawai', fn ($q) => $q->where('status_kepegawaian', self::HONORER_KODE)))
+            ->with(['pegawai', 'unitSekolah:id,durasi_jp,max_jeda_sesi_menit'])
             ->orderBy('pegawai_id')
             ->orderBy('jam_mulai')
             ->get();
@@ -151,10 +155,11 @@ class BackflowCover extends Command
         }
 
         $chain = collect([$sesi[$anchorIdx]]);
+        $gapMax = (int) ($anchor->unitSekolah?->max_jeda_sesi_menit ?? self::GAP_SESI_MENIT);
         for ($i = $anchorIdx + 1; $i < $sesi->count(); $i++) {
             $prev = $sesi[$i - 1];
             $cur = $sesi[$i];
-            if ($this->toMinutes($cur->jam_mulai) - $this->toMinutes($prev->jam_selesai) <= self::GAP_SESI_MENIT) {
+            if ($this->toMinutes($cur->jam_mulai) - $this->toMinutes($prev->jam_selesai) <= $gapMax) {
                 $chain->push($cur);
             } else {
                 break;

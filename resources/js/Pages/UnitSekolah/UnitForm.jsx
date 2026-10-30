@@ -162,6 +162,14 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field label="Jeda Sesi Maksimum (Menit)" error={errors.max_jeda_sesi_menit}
+                        hint="Jarak maksimal antar JP dalam satu sesi mengajar, termasuk istirahat. Default 120.">
+                        <input type="number" min="0" max="240" value={data.max_jeda_sesi_menit ?? 120}
+                            onChange={(e) => setData('max_jeda_sesi_menit', e.target.value)} className={inputClass} />
+                    </Field>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border bg-surface p-3">
                             <input type="checkbox" checked={Boolean(data.wajib_pulang_mengajar)}

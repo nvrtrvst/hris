@@ -597,10 +597,61 @@ class PresensiSlideMultiJadwalTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_gap_100_menit_istirahat_tetap_satu_sesi(): void
+    {
+        // JP 10:40-11:20, istirahat 11:20-13:00 (100 menit), JP 13:00-13:40,
+        // lalu 13:40-14:20. Unit default max_jeda_sesi_menit = 120.
+        $hari = $this->hariIniIndo();
+        Carbon::setTestNow(Carbon::today()->setTime(10, 45));
+
+        $pegawai = $this->makePegawaiTetap();
+        $pegawaiMapel = $this->makeMapel($pegawai, $this->unitA);
+        $jpA1 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '10:40:00', '11:20:00');
+        $jpA2 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '13:00:00', '13:40:00');
+        $jpA3 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '13:40:00', '14:20:00');
+
+        $this->postSlide($jpA1)->assertOk();
+
+        foreach ([$jpA1, $jpA2, $jpA3] as $jp) {
+            $this->assertDatabaseHas('presensi', [
+                'pegawai_id' => $pegawai->id,
+                'jadwal_id' => $jp->id,
+            ]);
+        }
+
+        Carbon::setTestNow();
+    }
+
+    public function test_unit_gap_60_tidak_menggabungkan_istirahat_100_menit(): void
+    {
+        $this->unitA->update(['max_jeda_sesi_menit' => 60]);
+
+        $hari = $this->hariIniIndo();
+        Carbon::setTestNow(Carbon::today()->setTime(10, 45));
+
+        $pegawai = $this->makePegawaiTetap();
+        $pegawaiMapel = $this->makeMapel($pegawai, $this->unitA);
+        $jpA1 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '10:40:00', '11:20:00');
+        $jpA2 = $this->makeJadwal($pegawai, $pegawaiMapel, $this->unitA, $hari, '13:00:00', '13:40:00');
+
+        $this->postSlide($jpA1)->assertOk();
+
+        $this->assertDatabaseHas('presensi', [
+            'pegawai_id' => $pegawai->id,
+            'jadwal_id' => $jpA1->id,
+        ]);
+        $this->assertDatabaseMissing('presensi', [
+            'pegawai_id' => $pegawai->id,
+            'jadwal_id' => $jpA2->id,
+        ]);
+
+        Carbon::setTestNow();
+    }
+
     public function test_gap_4_jam_pisah_sesi_terpisah(): void
     {
         // JP A1 08:00-08:45, istirahat 4 jam, JP A2 12:45-13:30.
-        // Slide A1 jam 08:10 → HANYA cover A1 (gap 240 > 60 → sesi terpisah).
+        // Slide A1 jam 08:10 → HANYA cover A1 (gap 240 > 120 → sesi terpisah).
         $hari = $this->hariIniIndo();
         Carbon::setTestNow(Carbon::today()->setTime(8, 10));
 
