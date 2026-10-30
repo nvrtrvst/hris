@@ -1755,6 +1755,8 @@ class MobileController extends Controller
      */
     private function sesiMengajar(Pegawai $pegawai, Jadwal $anchor, string $hari): Collection
     {
+        $anchor->loadMissing('unitSekolah');
+
         $kandidat = Jadwal::with('unitSekolah')->where('pegawai_id', $pegawai->id)
             ->where('hari', $hari)
             ->where('jenis_jadwal', 'mengajar')
@@ -1769,7 +1771,7 @@ class MobileController extends Controller
             return collect([$anchor]);
         }
 
-        $gapMax = PresensiMessages::GAP_SESI_MENIT;
+        $gapMax = (int) ($anchor->unitSekolah?->max_jeda_sesi_menit ?? PresensiMessages::GAP_SESI_MENIT);
         $chain = collect([$kandidat[$anchorIdx]]);
 
         // Forward: extend ke JP berikutnya selama gap ≤ gapMax

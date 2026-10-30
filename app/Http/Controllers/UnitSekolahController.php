@@ -53,6 +53,7 @@ class UnitSekolahController extends Controller
             'max_jam_minggu' => 'nullable|integer|min:1|max:168',
             'toleransi_menit' => 'nullable|integer|min:0|max:60',
             'toleransi_slide_menit' => 'nullable|integer|min:0|max:60',
+            'max_jeda_sesi_menit' => 'nullable|integer|min:0|max:240',
             'bobot_sakit_surat' => 'nullable|numeric|between:0,1',
             'bobot_sakit_tanpa_surat' => 'nullable|numeric|between:0,1',
             'bobot_izin' => 'nullable|numeric|between:0,1',
@@ -76,6 +77,7 @@ class UnitSekolahController extends Controller
 
         $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;
         $validated['toleransi_slide_menit'] = $validated['toleransi_slide_menit'] ?? 15;
+        $validated['max_jeda_sesi_menit'] = $validated['max_jeda_sesi_menit'] ?? 120;
         $validated['wajib_pulang_mengajar'] = (bool) ($validated['wajib_pulang_mengajar'] ?? false);
         $validated['sakit_wajib_tugas'] = (bool) ($validated['sakit_wajib_tugas'] ?? false);
         $validated['pulang_sebelum_menit'] = $validated['pulang_sebelum_menit'] ?? 20;
@@ -121,6 +123,7 @@ class UnitSekolahController extends Controller
             'max_jam_minggu' => 'nullable|integer|min:1|max:168',
             'toleransi_menit' => 'nullable|integer|min:0|max:60',
             'toleransi_slide_menit' => 'nullable|integer|min:0|max:60',
+            'max_jeda_sesi_menit' => 'nullable|integer|min:0|max:240',
             'bobot_sakit_surat' => 'nullable|numeric|between:0,1',
             'bobot_sakit_tanpa_surat' => 'nullable|numeric|between:0,1',
             'bobot_izin' => 'nullable|numeric|between:0,1',
@@ -146,6 +149,7 @@ class UnitSekolahController extends Controller
 
         $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;
         $validated['toleransi_slide_menit'] = $validated['toleransi_slide_menit'] ?? $unit_sekolah->toleransi_slide_menit ?? 15;
+        $validated['max_jeda_sesi_menit'] = $validated['max_jeda_sesi_menit'] ?? $unit_sekolah->max_jeda_sesi_menit ?? 120;
         if (array_key_exists('wajib_pulang_mengajar', $validated)) {
             $validated['wajib_pulang_mengajar'] = (bool) $validated['wajib_pulang_mengajar'];
         }
