@@ -74,6 +74,12 @@ Route::middleware('auth:web_admin')->group(function () {
 
     // Presensi — index bisa diakses staff (lihat presensi sendiri)
     Route::get('presensi', [PresensiController::class, 'index'])->name('presensi.index');
+    Route::get('presensi/laporan-saya/excel', [PresensiController::class, 'exportPersonalPresensiExcel'])
+        ->middleware('throttle:10,1')
+        ->name('presensi.laporan-saya.excel');
+    Route::get('presensi/laporan-saya/pdf', [PresensiController::class, 'exportPersonalPresensiPdf'])
+        ->middleware('throttle:10,1')
+        ->name('presensi.laporan-saya.pdf');
     Route::get('lembur', [PresensiController::class, 'lemburIndex'])
         ->middleware('can:view_presensi')
         ->name('lembur.index');

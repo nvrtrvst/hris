@@ -1128,6 +1128,13 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     ];
 
     const statsCards = is_personal ? personalStatsCards : adminStatsCards;
+    const personalExportStatus = ['hadir', 'telat', 'sakit', 'izin', 'cuti', 'alpa'].includes(statusFilter) ? statusFilter : undefined;
+    const personalExportParams = {
+        start_date: startDate || todayStr,
+        end_date: endDate || todayStr,
+        ...(personalExportStatus ? { status: personalExportStatus } : {}),
+    };
+    const canExportPersonal = is_personal && statusFilter !== 'belum_presensi';
 
     const filterSelect = 'select-field text-xs h-11 w-full';
 
@@ -1147,6 +1154,31 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 lg:grid-cols-5">
                         {statsCards.map((card) => <div key={card.label} className="min-h-[88px] w-[168px] shrink-0 snap-start md:w-auto md:min-w-0"><StatCard {...card} onClick={() => applyStatFilter(card.filter)} /></div>)}
                     </div>
+
+                    {is_personal && (
+                        <div className="page-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-sm font-bold text-text-primary">Laporan Saya</p>
+                                <p className="mt-0.5 text-xs text-text-secondary">
+                                    Rekap dan rincian presensi pribadi untuk periode yang dipilih.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {canExportPersonal ? (
+                                    <>
+                                        <a href={route('presensi.laporan-saya.excel', personalExportParams)} className="btn-secondary inline-flex min-h-11 items-center gap-1.5 px-4 text-sm">
+                                            <FileDown className="h-4 w-4" /> Excel
+                                        </a>
+                                        <a href={route('presensi.laporan-saya.pdf', personalExportParams)} className="btn-primary inline-flex min-h-11 items-center gap-1.5 px-4 text-sm">
+                                            <FileText className="h-4 w-4" /> PDF
+                                        </a>
+                                    </>
+                                ) : (
+                                    <p className="text-xs font-semibold text-text-secondary">Export tidak tersedia untuk filter Belum Presensi.</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Kepsek view mode toggle */}
                     {is_pimpinan && (

@@ -16,6 +16,8 @@
     .kop-contact { font-size: 9px; color: #6b7280; margin-top: 2px; }
     .doc-title { text-align: center; font-size: 14px; font-weight: 800; margin: 10px 0 2px; text-transform: uppercase; }
     .doc-meta { text-align: center; font-size: 10px; color: #374151; margin-bottom: 10px; }
+    .summary { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; padding: 7px 9px; border: 1px solid #d1d5db; background: #f9fafb; font-size: 9.5px; color: #374151; }
+    .summary strong { color: #0f3d3e; }
     table { width: 100%; border-collapse: collapse; }
     thead th { background: #0f3d3e; color: #fff; font-size: 9.5px; text-transform: uppercase; padding: 6px 5px; text-align: left; }
     tbody td { border: 1px solid #d1d5db; padding: 4px 5px; font-size: 9.5px; vertical-align: top; }
@@ -38,6 +40,18 @@
 
     <div class="doc-title">{{ $title }}</div>
     <div class="doc-meta">Periode: {{ $periodeStr }} &nbsp;|&nbsp; Unit: {{ $unitName }}</div>
+
+    @if(!empty($summary))
+    <div class="summary">
+        <span>Hari Tercatat: <strong>{{ $summary['total'] ?? 0 }}</strong></span>
+        <span>Hadir: <strong>{{ $summary['hadir'] ?? 0 }}</strong></span>
+        <span>Terlambat: <strong>{{ $summary['telat'] ?? 0 }}</strong></span>
+        <span>Sakit: <strong>{{ $summary['sakit'] ?? 0 }}</strong></span>
+        <span>Izin: <strong>{{ $summary['izin'] ?? 0 }}</strong></span>
+        <span>Cuti: <strong>{{ $summary['cuti'] ?? 0 }}</strong></span>
+        <span>Alpa: <strong>{{ $summary['alpa'] ?? 0 }}</strong></span>
+    </div>
+    @endif
 
     @if(in_array($type, ['rekap_kehadiran', 'rekap_kehadiran_harian']))
     <div style="font-size:9px;color:#6b7280;font-style:italic;margin-bottom:6px;">

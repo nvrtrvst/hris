@@ -11,6 +11,7 @@ use App\Exports\LaporanPresensiExport;
 use App\Exports\LaporanRekapKehadiranExport;
 use App\Exports\LaporanRekapKehadiranHarianExport;
 use App\Exports\LaporanRekapMengajarExport;
+use App\Models\Pegawai;
 use App\Models\UnitSekolah;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -87,6 +88,45 @@ class LaporanPdfService
         return $this->renderDocument($validated, $unitId, $headings, $rows, $title, $filename, $type);
     }
 
+    public function generatePresensiPribadi(array $validated, Pegawai $pegawai, array $summary): array
+    {
+        set_time_limit(900);
+        ini_set('memory_limit', '1G');
+
+        $export = new LaporanPresensiExport(
+            $validated['start_date'],
+            $validated['end_date'],
+            null,
+            null,
+            null,
+            null,
+            $validated['status'] ?? null,
+            null,
+            $pegawai->id,
+        );
+
+        $total = $export->collection()->count();
+        if ($total > self::MAX_ROWS) {
+            throw new PdfTooLargeException(
+                'Data terlalu banyak untuk PDF ('.$total.' baris, maksimal '.self::MAX_ROWS.'). Gunakan rentang lebih pendek atau unduh Excel.'
+            );
+        }
+
+        $pegawai->loadMissing('units');
+        $unit = $pegawai->units->firstWhere('pivot.is_primary', true) ?? $pegawai->units->first();
+
+        return $this->renderDocument(
+            $validated,
+            $unit?->id,
+            $export->headings(),
+            $export->collection()->map(fn ($item) => $export->map($item))->all(),
+            'LAPORAN PRESENSI PRIBADI - '.strtoupper($pegawai->nama_lengkap),
+            'Laporan_Presensi_Pribadi',
+            'presensi_pribadi',
+            $summary,
+        );
+    }
+
     public function generateAbsenSiswa(array $validated, ?int $unitId, array $headings, array $rows): array
     {
         if (count($rows) > self::MAX_ROWS) {
@@ -125,7 +165,7 @@ class LaporanPdfService
         );
     }
 
-    private function renderDocument(array $validated, ?int $unitId, array $headings, array $rows, string $title, string $filename, string $type): array
+    private function renderDocument(array $validated, ?int $unitId, array $headings, array $rows, string $title, string $filename, string $type, ?array $summary = null): array
     {
         // Kop surat: unit terpilih (atau auto-resolved dari scope user) -> data unit itu;
         // semua unit (superadmin) -> unit induk "Yayasan"; fallback terakhir -> config env.
@@ -158,7 +198,7 @@ class LaporanPdfService
 
         $unitSlug = $this->resolveUnitSlug($unitId);
 
-        $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop', 'type'))
+        $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop', 'type', 'summary'))
             ->setPaper('A4', 'landscape');
 
         return [
