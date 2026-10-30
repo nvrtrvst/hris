@@ -206,7 +206,7 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                                         <Cell>{row.tk ? '✓' : ''}</Cell>
                                                         <Cell>{row.tugas ? 'TUGAS' : ''}</Cell>
                                                         <Cell>{row.jam_pulang || '-'}</Cell>
-                                                        <Cell>{row.ph ?? '-'}</Cell>
+                                                        <Cell>{row.ph !== null ? `${row.ph}%` : '-'}</Cell>
                                                     </tr>
                                                 ))}
                                             </tbody>

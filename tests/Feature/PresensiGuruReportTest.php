@@ -119,7 +119,34 @@ class PresensiGuruReportTest extends TestCase
 
         $this->assertSame(100, collect($data['rows'])->firstWhere('tanggal_iso', '2026-11-03')['ph']);
         $this->assertSame(50, collect($data['rows'])->firstWhere('tanggal_iso', '2026-11-04')['ph']);
-        $this->assertSame(50, $data['summary']['b']);
+        $this->assertSame(38, $data['summary']['b']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_m_menghitung_lima_hari_walau_hari_ini_belum_terisi(): void
+    {
+        Carbon::setTestNow('2026-11-06 12:00:00');
+
+        $presensi = Presensi::create([
+            'pegawai_id' => $this->guru->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tipe_presensi' => 'kantor',
+            'tanggal' => '2026-11-03',
+            'jam_masuk' => '06:50:00',
+        ]);
+        $presensi->forceFill(['status' => 'hadir'])->save();
+
+        $data = app(PresensiGuruReportService::class)->build(
+            $this->guru,
+            $this->unit,
+            '2026-11',
+            '2025/2026',
+            1,
+        );
+
+        $this->assertSame(20, $data['weeks'][0]['m']);
+        $this->assertSame(20, $data['summary']['b']);
 
         Carbon::setTestNow();
     }

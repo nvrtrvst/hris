@@ -120,8 +120,7 @@ class PresensiGuruReportService
         $actualTotal = array_sum(array_column($rows, 'jumlah_jp'));
         $scheduledTotal = array_sum(array_column($rows, 'scheduled_jp'));
         $attendanceWeights = collect($rows)
-            ->pluck('attendance_weight')
-            ->filter(fn ($value) => $value !== null);
+            ->map(fn (array $row) => (float) ($row['attendance_weight'] ?? 0));
 
         return [
             'unit' => [
@@ -169,7 +168,7 @@ class PresensiGuruReportService
         foreach ($groups as $weekRows) {
             $actual = array_sum(array_column($weekRows->all(), 'jumlah_jp'));
             $scheduled = array_sum(array_column($weekRows->all(), 'scheduled_jp'));
-            $weights = $weekRows->pluck('attendance_weight')->filter(fn ($value) => $value !== null);
+            $weights = $weekRows->map(fn (array $row) => (float) ($row['attendance_weight'] ?? 0));
 
             $weeks[] = [
                 'label' => 'Minggu '.$number++,
