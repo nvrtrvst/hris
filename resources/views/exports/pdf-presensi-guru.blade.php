@@ -8,8 +8,11 @@
     * { box-sizing: border-box; }
     body { margin: 0; color: #111827; font-family: DejaVu Sans, Arial, sans-serif; font-size: 8px; }
     .kop { text-align: center; border-bottom: 2px solid #374151; padding-bottom: 5px; }
-    .kop-brand { display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-align: left; }
-    .kop-logo { width: 52px; height: 52px; object-fit: contain; }
+    .kop-table { width: 100%; border-collapse: collapse; }
+    .kop-table td { border: 0; padding: 0; vertical-align: middle; }
+    .kop-logo-cell { width: 58px; }
+    .kop-logo { width: 52px; height: 52px; }
+    .kop-text-cell { text-align: left; }
     .kop-name { font-size: 13px; font-weight: 800; line-height: 1.2; }
     .kop-unit { font-size: 11px; font-weight: 800; line-height: 1.2; }
     .kop-contact { margin-top: 3px; color: #6b7280; font-size: 7.5px; }
@@ -28,30 +31,34 @@
     .total { width: 40px; }
     .status { width: 24px; }
     .percent { width: 34px; }
-    .mark { font-size: 11px; font-weight: 800; }
+    .mark { font-size: 11px; font-weight: normal; }
     .muted { color: #6b7280; }
     .summary-row td { background: #f3f4f6; font-weight: 800; }
     .b-col { border: 0; border-right: 1px solid #374151; border-bottom: 1px solid #374151; font-weight: 800; vertical-align: middle; }
     .b-head { border: 0; border-top: 1px solid #374151; border-right: 1px solid #374151; }
-    .signature { display: flex; justify-content: space-between; margin-top: 18px; padding: 0 30px; font-size: 8px; }
-    .signature .box { width: 21%; text-align: center; }
-    .signature .role { font-weight: 800; text-transform: uppercase; }
-    .signature .space { height: 30px; }
-    .signature .name { border-top: 1px solid #374151; padding-top: 2px; margin-top: 30px; }
+    .signature-table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+    .signature-table td { width: 25%; border: 0; padding: 0 12px; text-align: center; vertical-align: top; font-size: 8px; }
+    .signature-table .role { font-weight: 800; text-transform: uppercase; }
+    .signature-table .space { height: 30px; }
+    .signature-table .name { border-top: 1px solid #374151; padding-top: 2px; margin-top: 30px; }
     .note { margin-top: 6px; color: #6b7280; font-size: 7px; }
 </style>
 </head>
 <body>
     <div class="kop">
-        <div class="kop-brand">
-            @if(!empty($unit['logo_path']))
-                <img class="kop-logo" src="{{ $unit['logo_path'] }}" alt="Logo">
-            @endif
-            <div>
-                <div class="kop-name">YAYASAN NUURUL MUTTAQIN</div>
-                <div class="kop-unit">{{ strtoupper($unit['nama']) }}</div>
-            </div>
-        </div>
+        <table class="kop-table">
+            <tr>
+                @if(!empty($unit['logo_path']))
+                    <td class="kop-logo-cell">
+                        <img class="kop-logo" src="{{ $unit['logo_path'] }}" alt="Logo">
+                    </td>
+                @endif
+                <td class="kop-text-cell">
+                    <div class="kop-name">YAYASAN NUURUL MUTTAQIN</div>
+                    <div class="kop-unit">{{ strtoupper($unit['nama']) }}</div>
+                </td>
+            </tr>
+        </table>
         <div class="kop-contact">
             @if($unit['alamat']){{ $unit['alamat'] }}@endif
             @if($unit['telepon']) &nbsp;|&nbsp; Telp: {{ $unit['telepon'] }}@endif
@@ -97,8 +104,6 @@
         <tbody>
             @php
                 $no = 1;
-                $firstRow = true;
-                $monthlyRows = collect($weeks)->sum(fn ($week) => count($week['rows'])) + count($weeks);
             @endphp
 
             @forelse($weeks as $week)
@@ -109,20 +114,17 @@
                         <td>{{ $row['hari'] }}</td>
                         <td>{{ $row['jam_datang'] ?? '-' }}</td>
                         @for($jp = 1; $jp <= $slot_count; $jp++)
-                            <td class="mark">{{ isset($row['slots'][$jp]) ? '✓' : '' }}</td>
+                            <td class="mark">@if(isset($row['slots'][$jp]))&#10003;@endif</td>
                         @endfor
                         <td>{{ $row['jumlah_jp'] }}</td>
-                        <td>{{ $row['s'] ? '✓' : '' }}</td>
-                        <td>{{ $row['i'] ? '✓' : '' }}</td>
-                        <td>{{ $row['tk'] ? '✓' : '' }}</td>
+                        <td>@if($row['s'])&#10003;@endif</td>
+                        <td>@if($row['i'])&#10003;@endif</td>
+                        <td>@if($row['tk'])&#10003;@endif</td>
                         <td>{{ $row['tugas'] ? 'TUGAS' : '' }}</td>
                         <td>{{ $row['jam_pulang'] ?? '-' }}</td>
                         <td>{{ $row['ph'] ?? '-' }}</td>
                         <td></td>
-                        @if($firstRow)
-                            <td class="b-col" rowspan="{{ $monthlyRows }}">{{ $summary['b'] ?? '-' }}</td>
-                            @php $firstRow = false; @endphp
-                        @endif
+                        <td class="b-col"></td>
                     </tr>
                 @endforeach
 
@@ -134,6 +136,7 @@
                     <td></td>
                     <td></td>
                     <td>{{ $week['m'] !== null ? $week['m'].'%' : '-' }}</td>
+                    <td class="b-col">{{ $loop->last ? ($summary['b'] ?? '-') : '' }}</td>
                 </tr>
             @empty
                 <tr>
@@ -148,27 +151,29 @@
         B = agregat JP aktual / JP terjadwal per bulan. TK = tidak ada keterangan.
     </div>
 
-    <div class="signature">
-        <div class="box">
-            <div class="role">KEPALA SEKOLAH</div>
-            <div class="space"></div>
-            <div class="name">{{ $officials['kepala'] ?? '' }}</div>
-        </div>
-        <div class="box">
-            <div class="role">KEPALA TU</div>
-            <div class="space"></div>
-            <div class="name">{{ $officials['kepala_tu'] ?? '' }}</div>
-        </div>
-        <div class="box">
-            <div class="role">KEPEGAWAIAN</div>
-            <div class="space"></div>
-            <div class="name">{{ $officials['kepegawaian'] ?? '' }}</div>
-        </div>
-        <div class="box">
-            <div class="role">GURU YANG BERSANGKUTAN</div>
-            <div class="space"></div>
-            <div class="name">{{ $officials['guru'] }}</div>
-        </div>
-    </div>
+    <table class="signature-table">
+        <tr>
+            <td>
+                <div class="role">KEPALA SEKOLAH</div>
+                <div class="space"></div>
+                <div class="name">{{ $officials['kepala'] ?? '' }}</div>
+            </td>
+            <td>
+                <div class="role">KEPALA TU</div>
+                <div class="space"></div>
+                <div class="name">{{ $officials['kepala_tu'] ?? '' }}</div>
+            </td>
+            <td>
+                <div class="role">KEPEGAWAIAN</div>
+                <div class="space"></div>
+                <div class="name">{{ $officials['kepegawaian'] ?? '' }}</div>
+            </td>
+            <td>
+                <div class="role">GURU YANG BERSANGKUTAN</div>
+                <div class="space"></div>
+                <div class="name">{{ $officials['guru'] }}</div>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
