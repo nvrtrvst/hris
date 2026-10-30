@@ -846,8 +846,9 @@ const JadwalStatusBadge = ({ p, now }) => {
 const fmtDateInput = (d) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-export default function Index({ auth, presensis, pegawai, filters = {}, units, stats }) {
+export default function Index({ auth, presensis, pegawai, filters = {}, units, stats, is_personal = false, is_pimpinan = false }) {
     const isAdmin = auth.permissions?.includes('view_presensi');
+    const canManage = isAdmin && !is_personal;
     const { flash = {} } = usePage().props;
     const [processing, setProcessing] = React.useState(false);
     // Jam "sekarang" yang live — dipakai badge Mengajar/Selesai biar berganti otomatis.
@@ -867,8 +868,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const [statusFilter, setStatusFilter] = React.useState(filters?.status_filter || '');
     const [jadwalFilter, setJadwalFilter] = React.useState(filters?.jadwal_filter || '');
     const [jenisFilter, setJenisFilter] = React.useState(filters?.jenis_filter || '');
-    const isPimpinan = isAdmin && !auth.permissions?.includes('manage_master_data');
-    const [dataViewMode, setDataViewMode] = React.useState(filters?.view_mode || (isPimpinan ? 'all' : ''));
+    const [dataViewMode, setDataViewMode] = React.useState(filters?.view_mode || (is_pimpinan ? 'all' : ''));
     const [viewMode, setViewMode] = React.useState('ringkas');
     const [expanded, setExpanded] = React.useState({});
     const [search, setSearch] = React.useState(filters?.search || '');
@@ -1104,7 +1104,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
     const s = stats || { total: 0, hadir: 0, telat: 0, sakit: 0, izin: 0, cuti: 0, alpa: 0, belum_presensi: 0, lembur_pending: 0, perlu_review: 0 };
 
-    const statsCards = [
+    const adminStatsCards = [
         { key: 'total', label: 'Total Pegawai', value: s.total, Icon: Users, iconBg: 'bg-primary/10', iconCls: 'text-primary', filter: { status_filter: '', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: !statusFilter && !lemburFilter && !lokasiFilter && !suspiciousFilter },
         { key: 'hadir', label: 'Hadir', value: s.hadir, Icon: CheckCircle2, iconBg: 'bg-emerald-100', iconCls: 'text-emerald-600', filter: { status_filter: 'hadir', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'hadir' },
         { key: 'telat', label: 'Terlambat', value: s.telat, Icon: AlarmClock, iconBg: 'bg-amber-100', iconCls: 'text-amber-600', filter: { status_filter: 'telat', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'telat' },
@@ -1117,12 +1117,24 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         { key: 'perlu_review', label: 'Perlu Review', value: s.perlu_review, Icon: ShieldAlert, iconBg: 'bg-rose-100', iconCls: 'text-rose-600', filter: { status_filter: '', lembur_filter: '', lokasi_filter: 'perlu_review', suspicious_filter: '' }, active: lokasiFilter === 'perlu_review' },
     ];
 
+    const personalStatsCards = [
+        { key: 'total', label: 'Hari Tercatat', value: s.total, Icon: CalendarDays, iconBg: 'bg-primary/10', iconCls: 'text-primary', filter: { status_filter: '', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: !statusFilter && !lemburFilter && !lokasiFilter && !suspiciousFilter },
+        { key: 'hadir', label: 'Hadir', value: s.hadir, Icon: CheckCircle2, iconBg: 'bg-emerald-100', iconCls: 'text-emerald-600', filter: { status_filter: 'hadir', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'hadir' },
+        { key: 'telat', label: 'Terlambat', value: s.telat, Icon: AlarmClock, iconBg: 'bg-amber-100', iconCls: 'text-amber-600', filter: { status_filter: 'telat', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'telat' },
+        { key: 'sakit', label: 'Sakit', value: s.sakit, Icon: HeartPulse, iconBg: 'bg-purple-100', iconCls: 'text-purple-600', filter: { status_filter: 'sakit', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'sakit' },
+        { key: 'izin', label: 'Izin', value: s.izin, Icon: FileText, iconBg: 'bg-blue-100', iconCls: 'text-blue-600', filter: { status_filter: 'izin', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'izin' },
+        { key: 'cuti', label: 'Cuti', value: s.cuti, Icon: CalendarOff, iconBg: 'bg-cyan-100', iconCls: 'text-cyan-600', filter: { status_filter: 'cuti', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'cuti' },
+        { key: 'alpa', label: 'Alpa', value: s.alpa, Icon: UserX, iconBg: 'bg-rose-100', iconCls: 'text-rose-600', filter: { status_filter: 'alpa', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'alpa' },
+    ];
+
+    const statsCards = is_personal ? personalStatsCards : adminStatsCards;
+
     const filterSelect = 'select-field text-xs h-11 w-full';
 
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="page-title">{isAdmin ? 'Kehadiran Harian' : `Riwayat Absensi${pegawai ? `, ${pegawai.nama_lengkap}` : ''}`}</h2>}
+            header={<h2 className="page-title">{is_personal ? `Riwayat Absensi${pegawai ? `, ${pegawai.nama_lengkap}` : ''}` : 'Kehadiran Harian'}</h2>}
         >
             <Head title="Presensi" />
             <div className="bg-surface min-h-screen">
@@ -1137,7 +1149,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     </div>
 
                     {/* Kepsek view mode toggle */}
-                    {isPimpinan && (
+                    {is_pimpinan && (
                         <div className="flex gap-1 rounded-lg bg-surface p-1 w-fit">
                             <button
                                 onClick={() => setDataViewMode('all')}
@@ -1156,7 +1168,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                     {/* Baris ringkas mobile: pencarian + tombol filter */}
                     <div className="flex items-center gap-2 md:hidden">
-                        {isAdmin && (
+                        {canManage && (
                             <div className="relative flex-1">
                                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                 <input
@@ -1198,7 +1210,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         </div>
                         {/* Row 1: Search + Quick Filters */}
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                            {isAdmin && (
+                            {canManage && (
                                 <div className="relative">
                                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                                     <input
@@ -1218,7 +1230,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     {Object.entries(STATUS_META).map(([key, m]) => <option key={key} value={key}>{m.label}</option>)}
                                 </select>
                             </label>
-                            {isAdmin && auth.permissions?.includes('view_all_units') && (
+                            {canManage && auth.permissions?.includes('view_all_units') && (
                                 <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
                                     <span>Unit</span>
                                     <select className={filterSelect} value={unitId} onChange={(e) => setUnitId(e.target.value)} aria-label="Filter unit">
@@ -1227,7 +1239,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     </select>
                                 </label>
                             )}
-                            {isAdmin && (
+                            {canManage && (
                                 <ChipFilter
                                     label="Jenis"
                                     value={jenisFilter}
@@ -1241,7 +1253,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             )}
 
                             {/* Row 2: Extended Filters (admin only) */}
-                            {isAdmin && (
+                            {canManage && (
                                 <>
                                 <ChipFilter
                                     label="Jadwal"
@@ -1331,7 +1343,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             </div>
 
                             <div className="flex items-center gap-2">
-                                {isAdmin && statusFilter === 'belum_presensi' && (
+                                {canManage && statusFilter === 'belum_presensi' && (
                                     <button
                                         type="button"
                                         onClick={downloadBelumPresensiPdf}
@@ -1359,22 +1371,24 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     {/* View mode + periode + Tugas Luar */}
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
-                            <div className="inline-flex rounded-xl border border-border p-1">
-                                <button
-                                    type="button"
-                                    onClick={() => setViewMode('detail')}
-                                    className={`min-h-11 rounded-lg px-3.5 text-xs font-bold transition-colors md:min-h-0 md:py-1.5 ${viewMode === 'detail' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
-                                >
-                                    Detail
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setViewMode('ringkas')}
-                                    className={`min-h-11 rounded-lg px-3.5 text-xs font-bold transition-colors md:min-h-0 md:py-1.5 ${viewMode === 'ringkas' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
-                                >
-                                    Ringkas
-                                </button>
-                            </div>
+                            {!is_personal && (
+                                <div className="inline-flex rounded-xl border border-border p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('detail')}
+                                        className={`min-h-11 rounded-lg px-3.5 text-xs font-bold transition-colors md:min-h-0 md:py-1.5 ${viewMode === 'detail' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
+                                    >
+                                        Detail
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('ringkas')}
+                                        className={`min-h-11 rounded-lg px-3.5 text-xs font-bold transition-colors md:min-h-0 md:py-1.5 ${viewMode === 'ringkas' ? 'bg-primary text-white' : 'text-text-secondary hover:text-primary'}`}
+                                    >
+                                        Ringkas
+                                    </button>
+                                </div>
+                            )}
 
                             {/* Desktop: ringkasan periode */}
                             <p className="hidden items-center gap-2 text-xs font-medium text-text-secondary md:flex">
@@ -1421,7 +1435,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                 </div>
                             </div>
                         </div>
-                        {isAdmin && (
+                        {canManage && (
                             <Link href={route('tugas-luar.index')} className="btn-secondary flex min-h-11 items-center gap-1.5 md:min-h-0 md:py-1.5 md:text-xs">
                                 <CalendarDays className="h-3.5 w-3.5" /> Kelola Tugas Luar
                             </Link>
@@ -1454,7 +1468,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             if (sortKey !== col) return <span className="ml-1 text-text-muted">↕</span>;
                             return <span className="ml-1 text-primary">{sortDir === 'asc' ? '↑' : '↓'}</span>;
                         };
-                    return isAdmin ? (
+                    return isAdmin && !is_personal ? (
                         <div className="card p-0 overflow-hidden">
                             <StatusDistribution stats={s} />
                             {viewMode === 'ringkas' && (
