@@ -70,6 +70,8 @@ class RouteSmokeTest extends TestCase
         'laporan.absen-siswa.detail', // butuh nis + rentang tanggal
         'presensi.laporan-saya.excel', // butuh data pegawai milik user
         'presensi.laporan-saya.pdf',   // butuh data pegawai milik user
+        'laporan.presensi-guru.preview', // butuh unit + guru + periode
+        'laporan.presensi-guru.pdf',     // side-effect: generate PDF download
     ];
 
     /** Route yang bergantung pada API eksternal (keuangan) — bukan bug 500. */
@@ -174,6 +176,7 @@ class RouteSmokeTest extends TestCase
         'piket.settings.index' => 'Piket/Settings',
         'approval-policies.index' => 'Settings/ApprovalPolicies',
         'laporan.kcd' => 'Laporan/Kcd',
+        'laporan.presensi-guru' => 'Laporan/PresensiGuru',
         'laporan.rekap-detail' => 'Laporan/RekapDetail',
         'laporan.rekap-mengajar-detail' => 'Laporan/RekapMengajarDetail',
         'laporan.piket' => 'Laporan/Piket',
