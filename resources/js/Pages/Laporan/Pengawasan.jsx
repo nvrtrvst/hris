@@ -55,11 +55,17 @@ const fmtDate = (value) => {
     return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
 };
 
+const fmtJp = (value) => {
+    const number = Number(value) || 0;
+
+    return Number.isInteger(number) ? String(number) : number.toFixed(2).replace('.', ',');
+};
+
 const metricLabel = {
     alpa: 'Alpa',
-    hadir_tanpa_jp: 'Hadir tanpa JP',
-    jp_kurang: 'JP kurang dari jadwal',
-    izin_mengajar: 'Izin tetapi mengajar',
+    hadir_tanpa_jp: 'Hari hadir tanpa JP',
+    jp_kurang: 'Hari JP kurang',
+    izin_mengajar: 'Hari izin tetapi mengajar',
     kelas_belum: 'Kelas belum terpantau',
 };
 
@@ -134,8 +140,8 @@ const DetailTable = ({ metric, rows }) => {
                             <td className="whitespace-nowrap px-3 py-2">{fmtDate(row.tanggal)}</td>
                             <td className="px-3 py-2 text-text-secondary">
                                 {metric === 'alpa' && row.sumber}
-                                {metric === 'hadir_tanpa_jp' && `JP terjadwal ${row.scheduled_jp}, JP aktual ${row.actual_jp}`}
-                                {metric === 'jp_kurang' && `JP terjadwal ${row.scheduled_jp}, JP aktual ${row.actual_jp}, kurang ${row.kurang}`}
+                                {metric === 'hadir_tanpa_jp' && `JP terjadwal ${fmtJp(row.scheduled_jp)}, JP aktual ${fmtJp(row.actual_jp)}`}
+                                {metric === 'jp_kurang' && `JP terjadwal ${fmtJp(row.scheduled_jp)}, JP aktual ${fmtJp(row.actual_jp)}, kurang ${fmtJp(row.kurang)} JP`}
                                 {metric === 'izin_mengajar' && `Izin ${row.izin}, realisasi ${row.realisasi}`}
                             </td>
                         </tr>
@@ -203,9 +209,9 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
     const summary = preview?.summary;
     const cards = summary ? [
         { key: 'alpa', label: 'Alpa', value: summary.alpa, description: 'Tanpa presensi dan tanpa izin' },
-        { key: 'hadir_tanpa_jp', label: 'Hadir tanpa JP', value: summary.hadir_tanpa_jp, description: 'Guru hadir, JP kosong' },
-        { key: 'jp_kurang', label: 'JP kurang', value: summary.jp_kurang, description: 'JP aktual kurang dari jadwal' },
-        { key: 'izin_mengajar', label: 'Izin tetapi mengajar', value: summary.izin_mengajar, description: 'Approval dan realisasi berbeda' },
+        { key: 'hadir_tanpa_jp', label: 'Hari hadir tanpa JP', value: summary.hadir_tanpa_jp, description: 'Guru hadir, JP kosong' },
+        { key: 'jp_kurang', label: 'Hari JP kurang', value: summary.jp_kurang, description: 'JP aktual kurang dari jadwal' },
+        { key: 'izin_mengajar', label: 'Hari izin tetapi mengajar', value: summary.izin_mengajar, description: 'Approval dan realisasi berbeda' },
         { key: 'kelas_belum', label: 'Kelas belum terpantau', value: summary.kelas_belum, description: 'Jadwal tanpa presensi dan piket' },
     ] : [];
 
@@ -315,7 +321,7 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                     <div className="rounded-lg border border-border p-3"><p className="text-[10px] font-bold uppercase text-text-muted">Telat</p><p className="text-xl font-extrabold text-warning">{summary.telat}</p></div>
                                     <div className="rounded-lg border border-border p-3"><p className="text-[10px] font-bold uppercase text-text-muted">Izin/Sakit/Cuti</p><p className="text-xl font-extrabold">{summary.izin_sakit_cuti}</p></div>
                                     <div className="rounded-lg border border-border p-3"><p className="text-[10px] font-bold uppercase text-text-muted">Alpa</p><p className="text-xl font-extrabold text-danger">{summary.alpa}</p></div>
-                                    <div className="rounded-lg border border-border p-3"><p className="text-[10px] font-bold uppercase text-text-muted">JP</p><p className="text-xl font-extrabold">{summary.actual_jp} / {summary.scheduled_jp}</p></div>
+                                    <div className="rounded-lg border border-border p-3"><p className="text-[10px] font-bold uppercase text-text-muted">JP (jam pelajaran)</p><p className="text-xl font-extrabold">{fmtJp(summary.actual_jp)} dari {fmtJp(summary.scheduled_jp)}</p></div>
                                 </div>
                             </div>
 
@@ -359,7 +365,7 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                             <div className="card overflow-hidden">
                                 <div className="border-b border-border bg-surface px-4 py-3">
                                     <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary">Matriks Pegawai</h3>
-                                    <p className="text-xs text-text-muted">{preview.period.days} hari · JP hanya untuk guru</p>
+                                    <p className="text-xs text-text-muted">{Math.round(preview.period.days)} hari · JP hanya untuk guru</p>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-border text-xs">
@@ -367,11 +373,11 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                             <tr>
                                                 <th className="px-3 py-2 text-left font-bold text-text-muted">Pegawai</th>
                                                 <th className="px-3 py-2 text-left font-bold text-text-muted">Unit</th>
-                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Hadir</th>
-                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Telat</th>
-                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Izin/Sakit/Cuti</th>
-                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Alpa</th>
-                                                <th className="px-3 py-2 text-center font-bold text-text-muted">JP</th>
+                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Hadir (hari)</th>
+                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Telat (hari)</th>
+                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Izin/Sakit/Cuti (hari)</th>
+                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Alpa (hari)</th>
+                                                <th className="px-3 py-2 text-center font-bold text-text-muted">JP (aktual/terjadwal)</th>
                                                 <th className="px-3 py-2 text-left font-bold text-text-muted">Temuan</th>
                                             </tr>
                                         </thead>
@@ -384,19 +390,22 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                                     <td className="px-3 py-2 text-center">{row.telat}</td>
                                                     <td className="px-3 py-2 text-center">{row.izin + row.sakit + row.cuti}</td>
                                                     <td className="px-3 py-2 text-center">{row.alpa}</td>
-                                                    <td className="px-3 py-2 text-center">{row.is_guru ? `${row.actual_jp} / ${row.scheduled_jp}` : '-'}</td>
+                                                    <td className="px-3 py-2 text-center">{row.is_guru ? `${fmtJp(row.actual_jp)} dari ${fmtJp(row.scheduled_jp)}` : '-'}</td>
                                                     <td className="px-3 py-2 text-text-secondary">{row.temuan}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
                                 </div>
+                                <p className="border-t border-border px-4 py-3 text-[10px] text-text-muted">
+                                    Hadir/Telat/Izin/Alpa dihitung per hari. JP = jam pelajaran; durasi mengikuti durasi JP unit.
+                                </p>
                             </div>
 
                             <div className="card overflow-hidden">
                                 <div className="border-b border-border bg-surface px-4 py-3">
                                     <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary">Kelas &amp; Mengajar</h3>
-                                    <p className="text-xs text-text-muted">Hanya slot yang bermasalah</p>
+                                    <p className="text-xs text-text-muted">Hanya jadwal yang bermasalah</p>
                                 </div>
                                 {preview.class_issues.length === 0 ? (
                                     <div className="p-6 text-center text-xs text-text-muted">Tidak ada kelas bermasalah pada filter ini.</div>

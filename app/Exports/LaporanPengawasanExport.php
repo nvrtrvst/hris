@@ -25,7 +25,7 @@ class LaporanPengawasanExport implements FromArray, WithColumnWidths, WithStyles
         $rows[] = ['Tahun Pelajaran', $period['tahun_ajaran'].' · Semester '.$period['semester']];
         $rows[] = [];
         $rows[] = ['RINGKASAN'];
-        $rows[] = ['Pegawai', 'Hari Pegawai', 'Hadir', 'Telat', 'Izin/Sakit/Cuti', 'Alpa', 'JP Aktual', 'JP Terjadwal', 'JP %'];
+        $rows[] = ['Pegawai', 'Hari Pegawai', 'Hadir (hari)', 'Telat (hari)', 'Izin/Sakit/Cuti (hari)', 'Alpa (hari)', 'JP Aktual', 'JP Terjadwal', 'JP %'];
         $rows[] = [
             $summary['employees'],
             $summary['employee_days'],
@@ -39,14 +39,14 @@ class LaporanPengawasanExport implements FromArray, WithColumnWidths, WithStyles
         ];
         $rows[] = [];
         $rows[] = ['TEMUAN'];
-        $rows[] = ['Alpa', $summary['alpa']];
-        $rows[] = ['Hadir tanpa JP', $summary['hadir_tanpa_jp']];
-        $rows[] = ['JP kurang dari jadwal', $summary['jp_kurang']];
-        $rows[] = ['Izin tetapi mengajar', $summary['izin_mengajar']];
+        $rows[] = ['Alpa (hari)', $summary['alpa']];
+        $rows[] = ['Hari hadir tanpa JP', $summary['hadir_tanpa_jp']];
+        $rows[] = ['Hari JP kurang', $summary['jp_kurang']];
+        $rows[] = ['Hari izin tetapi mengajar', $summary['izin_mengajar']];
         $rows[] = ['Kelas belum terpantau', $summary['kelas_belum']];
         $rows[] = [];
         $rows[] = ['MATRIKS PEGAWAI'];
-        $rows[] = ['Pegawai', 'Unit', 'Hadir', 'Telat', 'Izin', 'Sakit', 'Cuti', 'Alpa', 'JP Aktual', 'JP Terjadwal', 'Temuan'];
+        $rows[] = ['Pegawai', 'Unit', 'Hadir (hari)', 'Telat (hari)', 'Izin (hari)', 'Sakit (hari)', 'Cuti (hari)', 'Alpa (hari)', 'JP Aktual', 'JP Terjadwal', 'Temuan'];
 
         foreach ($this->data['matrix'] as $employee) {
             $rows[] = [
@@ -97,27 +97,27 @@ class LaporanPengawasanExport implements FromArray, WithColumnWidths, WithStyles
 
         foreach ($this->data['details']['hadir_tanpa_jp'] as $detail) {
             $rows[] = [
-                'Hadir tanpa JP',
+                'Hari hadir tanpa JP',
                 $detail['pegawai'],
                 $detail['unit'],
                 $detail['tanggal'],
-                'JP terjadwal '.$detail['scheduled_jp'].', JP aktual '.$detail['actual_jp'],
+                'JP terjadwal '.$this->fmtJp($detail['scheduled_jp']).', JP aktual '.$this->fmtJp($detail['actual_jp']),
             ];
         }
 
         foreach ($this->data['details']['jp_kurang'] as $detail) {
             $rows[] = [
-                'JP kurang',
+                'Hari JP kurang',
                 $detail['pegawai'],
                 $detail['unit'],
                 $detail['tanggal'],
-                'JP terjadwal '.$detail['scheduled_jp'].', JP aktual '.$detail['actual_jp'].', kurang '.$detail['kurang'],
+                'JP terjadwal '.$this->fmtJp($detail['scheduled_jp']).', JP aktual '.$this->fmtJp($detail['actual_jp']).', kurang '.$this->fmtJp($detail['kurang']),
             ];
         }
 
         foreach ($this->data['details']['izin_mengajar'] as $detail) {
             $rows[] = [
-                'Izin tetapi mengajar',
+                'Hari izin tetapi mengajar',
                 $detail['pegawai'],
                 $detail['unit'],
                 $detail['tanggal'],
@@ -165,5 +165,14 @@ class LaporanPengawasanExport implements FromArray, WithColumnWidths, WithStyles
             'digantikan' => 'Digantikan',
             default => ucfirst(str_replace('_', ' ', $status)),
         };
+    }
+
+    private function fmtJp(float|int $value): string
+    {
+        $value = round((float) $value, 2);
+
+        return $value == floor($value)
+            ? (string) (int) $value
+            : number_format($value, 2, ',', '.');
     }
 }

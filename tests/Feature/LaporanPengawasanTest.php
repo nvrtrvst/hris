@@ -109,15 +109,40 @@ class LaporanPengawasanTest extends TestCase
 
         $this->assertSame(6, $data['summary']['employees']);
         $this->assertSame(6, $data['summary']['employee_days']);
+        $this->assertSame(1, $data['period']['days']);
         $this->assertSame(2, $data['summary']['hadir']);
         $this->assertSame(3, $data['summary']['alpa']);
         $this->assertSame(1, $data['summary']['izin_sakit_cuti']);
         $this->assertSame(1, $data['summary']['hadir_tanpa_jp']);
         $this->assertSame(3, $data['summary']['kelas_belum']);
-        $this->assertSame(1, $data['summary']['actual_jp']);
-        $this->assertSame(5, $data['summary']['scheduled_jp']);
+        $this->assertEquals(1, $data['summary']['actual_jp']);
+        $this->assertEquals(5, $data['summary']['scheduled_jp']);
         $this->assertCount(3, $data['details']['alpa']);
         $this->assertCount(4, $data['class_issues']);
+    }
+
+    public function test_jp_blok_dan_bahasa_temuan_memakai_hari(): void
+    {
+        $guru = $this->pegawai('Guru Blok', true);
+        $this->jadwal($guru, 'Kelas Blok 1', '07:00:00', '07:45:00');
+        $this->jadwal($guru, 'Kelas Blok 2', '07:45:00', '09:15:00');
+
+        $this->presensi($guru, Jadwal::where('pegawai_id', $guru->id)->first()->id, 'hadir');
+
+        $data = app(LaporanPengawasanService::class)->build([
+            'from' => $this->date,
+            'to' => $this->date,
+            'unit_sekolah_id' => $this->unit->id,
+            'jenis_pegawai' => 'all',
+        ], $this->admin);
+
+        $this->assertSame(1, $data['period']['days']);
+        $this->assertEquals(1, $data['summary']['actual_jp']);
+        $this->assertEquals(3, $data['summary']['scheduled_jp']);
+        $this->assertSame(1, $data['summary']['jp_kurang']);
+
+        $row = collect($data['matrix'])->firstWhere('pegawai_id', $guru->id);
+        $this->assertSame('1 hari JP kurang', $row['temuan']);
     }
 
     public function test_halaman_preview_pdf_dan_excel_bisa_diakses(): void
@@ -177,15 +202,15 @@ class LaporanPengawasanTest extends TestCase
         return $pegawai;
     }
 
-    private function jadwal(Pegawai $guru, string $kelas): Jadwal
+    private function jadwal(Pegawai $guru, string $kelas, string $mulai = '07:00:00', string $selesai = '07:45:00'): Jadwal
     {
         return Jadwal::create([
             'pegawai_id' => $guru->id,
             'unit_sekolah_id' => $this->unit->id,
             'kelas_label' => $kelas,
             'hari' => Carbon::parse($this->date)->locale('id')->translatedFormat('l'),
-            'jam_mulai' => '07:00:00',
-            'jam_selesai' => '07:45:00',
+            'jam_mulai' => $mulai,
+            'jam_selesai' => $selesai,
             'jenis_jadwal' => 'mengajar',
             'tahun_ajaran' => '2026/2027',
             'semester' => 1,
