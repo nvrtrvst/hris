@@ -121,6 +121,37 @@ class PimpinanRoleTest extends TestCase
                 ->has('kontrakBerakhir', 3));
     }
 
+    public function test_pimpinan_view_mode_self_hanya_melihat_presensi_sendiri(): void
+    {
+        $pimpinan = $this->makePegawai('Pimpinan SD');
+        $bawahan = $this->makePegawai('Guru Bawahan', $pimpinan);
+        $user = $this->makePimpinan($pimpinan);
+
+        $presensiPimpinan = Presensi::create([
+            'pegawai_id' => $pimpinan->id,
+            'unit_sekolah_id' => $this->sd->id,
+            'tanggal' => now()->toDateString(),
+            'jam_masuk' => '07:00:00',
+        ]);
+        $presensiPimpinan->forceFill(['status' => 'hadir'])->save();
+        $presensiBawahan = Presensi::create([
+            'pegawai_id' => $bawahan->id,
+            'unit_sekolah_id' => $this->sd->id,
+            'tanggal' => now()->toDateString(),
+            'jam_masuk' => '07:00:00',
+        ]);
+        $presensiBawahan->forceFill(['status' => 'hadir'])->save();
+
+        $this->actingAs($user)
+            ->get(route('presensi.index', ['view_mode' => 'self']))
+            ->assertInertia(fn ($page) => $page
+                ->component('Presensi/Index')
+                ->where('is_personal', true)
+                ->where('stats.hadir', 1)
+                ->has('presensis.data', 1)
+                ->where('presensis.data.0.pegawai_id', $pimpinan->id));
+    }
+
     public function test_pimpinan_presensi_index_scoped_to_bawahan(): void
     {
         $kepsek = $this->makePegawai('Kepsek SD');
