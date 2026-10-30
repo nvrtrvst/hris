@@ -655,9 +655,12 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'entry_index' => 'required|integer|min:0',
             'aksi' => 'required|in:setujui,tolak',
+            'kode' => 'nullable|in:kelas_kosong,cek_absen',
         ]);
 
-        DB::transaction(function () use ($laporan, $validated, $user) {
+        $kode = $validated['kode'] ?? LaporanPiket::ITEM_KELAS_KOSONG;
+
+        DB::transaction(function () use ($laporan, $validated, $user, $kode) {
             $laporan = LaporanPiket::with('pegawai')->lockForUpdate()->findOrFail($laporan->id);
 
             if ($user->unit_sekolah_id && ! $user->can('view_all_units')
@@ -666,7 +669,7 @@ class DashboardController extends Controller
             }
 
             $items = $laporan->items ?? [];
-            $entries = $items[LaporanPiket::ITEM_KELAS_KOSONG]['entries'] ?? [];
+            $entries = $items[$kode]['entries'] ?? [];
             if (! isset($entries[$validated['entry_index']])) {
                 throw ValidationException::withMessages(['entry_index' => 'Entry tidak ditemukan.']);
             }
@@ -675,12 +678,15 @@ class DashboardController extends Controller
             $entry['verified'] = $validated['aksi'];
             $entry['verified_by'] = $user->id;
             $entry['verified_at'] = Carbon::now()->format('Y-m-d H:i:s');
+            if ($kode === LaporanPiket::ITEM_CEK_ABSEN) {
+                $entry['validasi'] = $validated['aksi'] === 'tolak' ? 'diabaikan' : 'cocok';
+            }
             $entries[$validated['entry_index']] = $entry;
-            $items[LaporanPiket::ITEM_KELAS_KOSONG]['entries'] = $entries;
+            $items[$kode]['entries'] = $entries;
             $laporan->items = $items;
             $laporan->save();
 
-            if ($validated['aksi'] === 'setujui') {
+            if ($kode === LaporanPiket::ITEM_KELAS_KOSONG && $validated['aksi'] === 'setujui') {
                 TugasVerifikasiService::dariPiket($laporan, $entry, $user);
             }
         });

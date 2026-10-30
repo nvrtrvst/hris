@@ -21,6 +21,15 @@ const IZIN_LABEL = {
     ditolak: 'Izin ditolak',
 };
 
+const ABSEN_STATUS_LABEL = {
+    sakit: 'Sakit',
+    izin: 'Izin',
+    cuti: 'Cuti',
+    alpa: 'Alpa',
+    hadir: 'Hadir',
+    lainnya: 'Lainnya',
+};
+
 const EMPTY_IZIN = {
     jenis_izin: 'izin',
     tanggal_mulai: '',
@@ -160,7 +169,18 @@ function LegacyDetail({ lap, label }) {
                     <p className="font-bold">{label.cek_absen}{cek.done_at ? ` (${cek.done_at.substring(0, 5)})` : ''}:</p>
                     {(cek.entries ?? []).length > 0 ? (
                         <ul className="mt-1 list-disc space-y-0.5 pl-5 text-text-secondary">
-                            {cek.entries.map((e, i) => <li key={i}>{e.nama_guru} ({e.created_at?.substring(0, 5)}): {e.keterangan}</li>)}
+                            {cek.entries.map((e, i) => {
+                                const konflik = !e.verified_at && (e.konflik_presensi?.perlu_cek || e.validasi === 'perlu_cek');
+                                const catatan = e.konflik_presensi?.catatan || e.validasi_catatan;
+
+                                return (
+                                    <li key={i}>
+                                        {e.nama_guru} ({e.created_at?.substring(0, 5)}): {e.status_absen ? `${ABSEN_STATUS_LABEL[e.status_absen] || e.status_absen} - ` : ''}{e.keterangan}
+                                        {konflik && <span className="ml-1 font-bold text-amber-700">Perlu dicek</span>}
+                                        {konflik && catatan && <span className="block text-xs text-amber-700">{catatan}</span>}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     ) : <p className="text-text-secondary">Cek awal tercatat.</p>}
                 </div>
@@ -273,26 +293,47 @@ function LaporanDetail({ lap, label, canConvert = false, onConvert = () => {} })
                             <p className="font-semibold text-text-primary">{label.cek_absen}{cek.done_at ? ` (${cek.done_at.substring(0, 5)})` : ''}</p>
                             {(cek.entries ?? []).length > 0 ? (
                                 <ul className="mt-1 space-y-2 text-text-secondary">
-                                    {cek.entries.map((e, i) => (
-                                        <li key={i} className="break-words">
-                                            <p>{e.nama_guru} ({e.created_at?.substring(0, 5)}): {e.keterangan}</p>
-                                            <div className="mt-1 flex flex-wrap items-center gap-2">
-                                                {e.pengajuan_izin ? (
-                                                    <IzinBadge izin={e.pengajuan_izin} />
-                                                ) : canConvert && lap.status === 'submitted' && e.guru_pegawai_id ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onConvert(lap, i, e)}
-                                                        className="btn-secondary min-h-11 w-full px-3 text-xs sm:w-auto"
-                                                    >
-                                                        Buat pengajuan izin
-                                                    </button>
-                                                ) : ! e.guru_pegawai_id ? (
-                                                    <span className="text-xs text-text-secondary">Guru manual, belum terhubung ke data pegawai.</span>
-                                                ) : null}
-                                            </div>
-                                        </li>
-                                    ))}
+                                    {cek.entries.map((e, i) => {
+                                        const konflik = !e.verified_at && (e.konflik_presensi?.perlu_cek || e.validasi === 'perlu_cek');
+                                        const catatan = e.konflik_presensi?.catatan || e.validasi_catatan;
+
+                                        return (
+                                            <li key={i} className="break-words">
+                                                <p>
+                                                    {e.nama_guru} ({e.created_at?.substring(0, 5)}): {e.status_absen ? `${ABSEN_STATUS_LABEL[e.status_absen] || e.status_absen} - ` : ''}{e.keterangan}
+                                                    {konflik && (
+                                                        <span className="ml-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">
+                                                            Perlu dicek
+                                                        </span>
+                                                    )}
+                                                </p>
+                                                {konflik && catatan && <p className="mt-0.5 text-xs text-amber-700">{catatan}</p>}
+                                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                                    {e.pengajuan_izin ? (
+                                                        <IzinBadge izin={e.pengajuan_izin} />
+                                                    ) : konflik && e.guru_pegawai_id ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => router.post(route('laporan-piket.validasi', lap.id), { kode: 'cek_absen', entry_index: i, aksi: 'tolak' }, { preserveScroll: true })}
+                                                            className="btn-secondary min-h-11 px-3 text-xs"
+                                                        >
+                                                            Tandai salah catat
+                                                        </button>
+                                                    ) : canConvert && lap.status === 'submitted' && e.guru_pegawai_id ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onConvert(lap, i, e)}
+                                                            className="btn-secondary min-h-11 w-full px-3 text-xs sm:w-auto"
+                                                        >
+                                                            Buat pengajuan izin
+                                                        </button>
+                                                    ) : ! e.guru_pegawai_id ? (
+                                                        <span className="text-xs text-text-secondary">Guru manual, belum terhubung ke data pegawai.</span>
+                                                    ) : null}
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             ) : <p className="text-xs text-text-secondary">Cek awal tercatat.</p>}
                         </div>

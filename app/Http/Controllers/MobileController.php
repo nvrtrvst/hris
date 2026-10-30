@@ -26,6 +26,7 @@ use App\Services\AbsenSiswaService;
 use App\Services\AttestationService;
 use App\Services\GeocodingService;
 use App\Services\KeuanganClient;
+use App\Services\PiketPresensiService;
 use App\Services\PiketService;
 use App\Services\PiketSiswaTerlambatService;
 use App\Services\SpoofDetector;
@@ -2077,6 +2078,7 @@ class MobileController extends Controller
             'terlambat_count' => 'nullable|integer|min:0|max:1000',
             'nama_guru' => 'nullable|string|max:100',
             'keterangan_absen' => 'nullable|string|max:255',
+            'status_absen' => 'nullable|in:sakit,izin,cuti,alpa,hadir,lainnya',
             'guru_pegawai_id' => 'nullable|integer|min:1|exists:pegawai,id',
             'kelas' => 'nullable|string|max:100',
             'slot_jadwal_id' => 'nullable|integer|min:1|exists:jadwal,id',
@@ -2191,7 +2193,7 @@ class MobileController extends Controller
                     'terlambat_count' => (int) $request->input('terlambat_count', 0),
                 ],
                 LaporanPiket::ITEM_BUKU => $items[$kode] = $stamp,
-                LaporanPiket::ITEM_CEK_ABSEN => $items[$kode] = $this->applyCekAbsen($items[$kode] ?? null, $mode, $request, $stamp, $slot->unit_sekolah_id),
+                LaporanPiket::ITEM_CEK_ABSEN => $items[$kode] = $this->applyCekAbsen($items[$kode] ?? null, $mode, $request, $stamp, $slot->unit_sekolah_id, $today),
                 LaporanPiket::ITEM_KELAS_KOSONG => $items[$kode] = $this->applyKelasKosong($items[$kode] ?? null, $mode, $request, $stamp, $today, $slot->unit_sekolah_id),
                 LaporanPiket::ITEM_INSIDEN => $items[$kode] = $this->applyInsiden($items[$kode] ?? null, $mode, $request, $stamp),
                 LaporanPiket::ITEM_ABSEN_SISWA => $items[$kode] = $this->applyAbsenSiswa($slot, $mode, $stamp, $today),
@@ -3035,7 +3037,7 @@ class MobileController extends Controller
         }
     }
 
-    private function applyCekAbsen(?array $item, string $mode, Request $request, array $stamp, ?int $unitId): array
+    private function applyCekAbsen(?array $item, string $mode, Request $request, array $stamp, ?int $unitId, string $today): array
     {
         $item ??= ['entries' => []];
         if ($mode === 'tambah') {
@@ -3055,15 +3057,23 @@ class MobileController extends Controller
                 $sumber = 'daftar';
             }
 
+            $statusAbsen = $request->input('status_absen');
+            $konflik = $guruId
+                ? PiketPresensiService::conflict($guruId, $today, $statusAbsen, $stamp['done_at'] ?? null)
+                : ['perlu_cek' => false, 'catatan' => null];
+
             $item['entries'][] = [
                 'guru_pegawai_id' => $guruId,
                 'nama_guru' => $nama,
                 'sumber' => $sumber,
+                'status_absen' => $statusAbsen,
                 'keterangan' => trim((string) $request->keterangan_absen),
                 'created_at' => $stamp['done_at'],
                 'lat' => $stamp['lat'],
                 'lng' => $stamp['lng'],
                 'jarak' => $stamp['jarak'],
+                'validasi' => $konflik['perlu_cek'] ? 'perlu_cek' : null,
+                'validasi_catatan' => $konflik['catatan'],
             ];
 
             return $item;

@@ -150,13 +150,15 @@ class LaporanPiket extends Model
         ));
     }
 
-    /** Entry kelas_kosong yang butuh verifikasi admin. */
+    /** Entry kelas_kosong/cek_absen yang butuh verifikasi admin. */
     public function perluCekCount(): int
     {
         $count = 0;
-        foreach (($this->item(self::ITEM_KELAS_KOSONG)['entries'] ?? []) as $entry) {
-            if (($entry['validasi'] ?? null) === 'perlu_cek' && empty($entry['verified_at'])) {
-                $count++;
+        foreach ([self::ITEM_KELAS_KOSONG, self::ITEM_CEK_ABSEN] as $kode) {
+            foreach (($this->item($kode)['entries'] ?? []) as $entry) {
+                if (($entry['validasi'] ?? null) === 'perlu_cek' && empty($entry['verified_at'])) {
+                    $count++;
+                }
             }
         }
 
