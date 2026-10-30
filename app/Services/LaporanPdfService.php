@@ -11,6 +11,7 @@ use App\Exports\LaporanPresensiExport;
 use App\Exports\LaporanRekapKehadiranExport;
 use App\Exports\LaporanRekapKehadiranHarianExport;
 use App\Exports\LaporanRekapMengajarExport;
+use App\Helpers\DownloadFilename;
 use App\Models\Pegawai;
 use App\Models\UnitSekolah;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -124,6 +125,7 @@ class LaporanPdfService
             'Laporan_Presensi_Pribadi',
             'presensi_pribadi',
             $summary,
+            $pegawai,
         );
     }
 
@@ -165,7 +167,7 @@ class LaporanPdfService
         );
     }
 
-    private function renderDocument(array $validated, ?int $unitId, array $headings, array $rows, string $title, string $filename, string $type, ?array $summary = null): array
+    private function renderDocument(array $validated, ?int $unitId, array $headings, array $rows, string $title, string $filename, string $type, ?array $summary = null, ?Pegawai $subject = null): array
     {
         // Kop surat: unit terpilih (atau auto-resolved dari scope user) -> data unit itu;
         // semua unit (superadmin) -> unit induk "Yayasan"; fallback terakhir -> config env.
@@ -196,13 +198,16 @@ class LaporanPdfService
             'website' => $kopUnit?->web ?: config('yayasan.website'),
         ];
 
-        $unitSlug = $this->resolveUnitSlug($unitId);
-
         $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop', 'type', 'summary'))
             ->setPaper('A4', 'landscape');
 
+        $periode = $validated['start_date'].'_to_'.$validated['end_date'];
+        $downloadName = $subject
+            ? DownloadFilename::person($filename, $subject, $periode, 'pdf')
+            : DownloadFilename::collection($filename, $kopUnit, $periode, 'pdf');
+
         return [
-            'filename' => $filename.'_'.$unitSlug.'_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf',
+            'filename' => $downloadName,
             'content' => $pdf->output(),
         ];
     }

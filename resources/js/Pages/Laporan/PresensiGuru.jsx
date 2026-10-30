@@ -18,6 +18,12 @@ const Cell = ({ children, className = '' }) => (
     <td className={`px-2 py-1.5 text-center text-xs text-text-secondary ${className}`}>{children}</td>
 );
 
+const tugasLabel = (row) => {
+    if (!row.tugas) return '-';
+
+    return `TUGAS${row.tugas_tersampaikan ? '' : '!'}`;
+};
+
 export default function PresensiGuru({ auth, units = [], gurus = [], years = [], defaults = {} }) {
     const [unitId, setUnitId] = useState(String(defaults.unit_sekolah_id || ''));
     const [pegawaiId, setPegawaiId] = useState(String(defaults.pegawai_id || ''));
@@ -201,6 +207,12 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                 </div>
                             </div>
 
+                            {preview.rows.some((row) => row.tugas) && preview.aturan && !preview.aturan.sakit_wajib_tugas && (
+                                <div role="status" className="rounded-xl border border-warning/30 bg-warning-light px-4 py-3 text-sm text-warning">
+                                    Aturan unit OFF — TUGAS tidak menaikkan PH. Aktifkan “Sakit wajib tugas untuk 100%” di Unit Sekolah.
+                                </div>
+                            )}
+
                             {preview.weeks.map((week) => (
                                 <div key={week.label} className="card overflow-hidden">
                                     <div className="border-b border-border bg-surface px-4 py-3">
@@ -224,7 +236,7 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                                     <th className="px-1.5 py-2 text-center font-bold text-text-muted">S</th>
                                                     <th className="px-1.5 py-2 text-center font-bold text-text-muted">I</th>
                                                     <th className="px-1.5 py-2 text-center font-bold text-text-muted">TK</th>
-                                                    <th className="px-1.5 py-2 text-center font-bold text-text-muted">Tugas</th>
+                                                    <th className="px-1.5 py-2 text-center font-bold text-text-muted">Tugas Piket</th>
                                                     <th className="px-1.5 py-2 text-center font-bold text-text-muted">TL</th>
                                                     <th className="px-2 py-2 text-center font-bold text-text-muted">Pulang</th>
                                                     <th className="px-2 py-2 text-center font-bold text-text-muted">PH</th>
@@ -246,7 +258,9 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                                         <Cell>{row.tk ? '✓' : ''}</Cell>
                                                         <Cell>
                                                             <div className="flex flex-col items-center gap-1">
-                                                                <span>{row.tugas ? `TUGAS${row.tugas_tersampaikan ? '' : '!'}` : '-'}</span>
+                                                                <span title={`Sumber: ${row.tugas_sumber === 'operator' ? 'Override operator' : 'Piket'}`}>
+                                                                    {tugasLabel(row)}
+                                                                </span>
                                                                 {canManageTugas && (
                                                                     <button
                                                                         type="button"
@@ -271,6 +285,7 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
 
                             <p className="text-xs text-text-muted">
                                 PH = persentase kehadiran harian berbobot unit. M = persentase kehadiran mingguan. B = persentase kehadiran bulanan. JP tetap dihitung dari presensi per jadwal.
+                                TUGAS = amanat dari Piket Kelas Kosong; TUGAS! = belum tersampaikan. Sumber TUGAS terlihat saat kursor diarahkan ke sel. TL = tugas luar resmi.
                             </p>
                         </div>
                     )}

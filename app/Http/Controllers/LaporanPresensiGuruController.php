@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\DownloadFilename;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Http\Requests\PresensiGuruReportRequest;
 use App\Models\AuditLog;
@@ -91,7 +92,7 @@ class LaporanPresensiGuruController extends Controller
 
         return Pdf::loadView('exports.pdf-presensi-guru', $data)
             ->setPaper('A4', 'landscape')
-            ->download('Presensi_Pegawai_'.$pegawai->id.'_'.$request->validated('periode').'.pdf');
+            ->download(DownloadFilename::person('Presensi_Pegawai', $pegawai, $request->validated('periode'), 'pdf'));
     }
 
     public function updateTugas(Request $request)

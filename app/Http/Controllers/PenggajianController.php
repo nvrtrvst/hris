@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Constants\BobotKehadiran;
 use App\Exports\TransferBankExport;
+use App\Helpers\DownloadFilename;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Models\HariLibur;
 use App\Models\Jadwal;
@@ -643,7 +644,7 @@ class PenggajianController extends Controller
             'penggajian' => $penggajian,
         ])->setPaper('A4', 'portrait');
 
-        $filename = 'slip-gaji-'.$penggajian->pegawai->nama_lengkap.'-'.$penggajian->periode_bulan.'.pdf';
+        $filename = DownloadFilename::person('Slip_Gaji', $penggajian->pegawai, $penggajian->periode_bulan, 'pdf');
 
         return $pdf->download($filename);
     }

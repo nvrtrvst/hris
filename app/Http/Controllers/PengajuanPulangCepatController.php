@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ApprovalHelper;
+use App\Helpers\DownloadFilename;
 use App\Helpers\NotificationHelper;
 use App\Models\PengajuanPulangCepat;
 use App\Models\Presensi;
@@ -208,7 +209,7 @@ class PengajuanPulangCepatController extends Controller
             'logoWidth' => $logoWidth,
         ])->setPaper('A4', 'portrait');
 
-        $nama = 'Izin_Pulang_Cepat_'.str_replace('/', '-', $pengajuan->nomor).'.pdf';
+        $nama = DownloadFilename::person('Izin_Pulang_Cepat', $pengajuan->pegawai, $pengajuan->nomor, 'pdf');
 
         // unduh=1 -> attachment (mobile: file masuk Downloads). Tanpa itu tetap inline untuk cetak.
         return $request->boolean('unduh') ? $pdf->download($nama) : $pdf->stream($nama);

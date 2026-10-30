@@ -172,6 +172,11 @@ class PresensiGuruReportService
             'slot_count' => $slotCount,
             'rows' => $rows,
             'weeks' => $weeks,
+            'aturan' => [
+                'sakit_wajib_tugas' => $sakitWajibTugas,
+                'bobot_sakit_surat' => (float) $bobot['sakit_surat'],
+                'bobot_sakit_tanpa_surat' => (float) $bobot['sakit_tanpa_surat'],
+            ],
             'summary' => [
                 'actual_jp' => $actualTotal,
                 'scheduled_jp' => $scheduledTotal,

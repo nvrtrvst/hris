@@ -96,7 +96,7 @@
                 <th class="status">S</th>
                 <th class="status">I</th>
                 <th class="status">TK</th>
-                <th class="status">TUGAS</th>
+                <th class="status">TUGAS PIKET</th>
                 <th class="status">TL</th>
                 <th class="percent">PH</th>
                 <th class="percent">M</th>
@@ -122,7 +122,11 @@
                         <td>@if($row['s'])&#10003;@endif</td>
                         <td>@if($row['i'])&#10003;@endif</td>
                         <td>@if($row['tk'])&#10003;@endif</td>
-                        <td>{{ $row['tugas'] ? 'TUGAS'.($row['tugas_tersampaikan'] ? '' : '!') : '' }}</td>
+                        <td>
+                            @if($row['tugas'])
+                                TUGAS{{ $row['tugas_sumber'] === 'operator' ? '*' : '' }}{{ $row['tugas_tersampaikan'] ? '' : '!' }}
+                            @endif
+                        </td>
                         <td>{{ $row['tugas_luar'] ? 'TL' : '' }}</td>
                         <td>{{ $row['jam_pulang'] ?? '-' }}</td>
                         <td>{{ $row['ph'] !== null ? $row['ph'].'%' : '-' }}</td>
@@ -154,7 +158,7 @@
     <div class="note">
         PH = persentase kehadiran harian berbobot unit. M = persentase kehadiran mingguan.
         B = persentase kehadiran bulanan. JP tetap dihitung dari presensi per jadwal. TK = tidak ada keterangan.
-        TUGAS = amanat/tugas dari piket; tanda ! berarti belum tersampaikan. TL = tugas luar resmi.
+        TUGAS = amanat/tugas dari piket; tanda ! berarti belum tersampaikan; tanda * berarti override operator. TL = tugas luar resmi.
     </div>
 
     <table class="signature-table">
