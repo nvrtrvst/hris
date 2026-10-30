@@ -232,6 +232,60 @@ class PresensiGuruReportTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['aksi' => 'ubah_tugas_piket']);
     }
 
+    public function test_sakit_wajib_tugas_dengan_tugas_piket_menjadi_100(): void
+    {
+        Carbon::setTestNow('2026-11-03 12:00:00');
+        $this->unit->update(['sakit_wajib_tugas' => true]);
+
+        $presensi = Presensi::create([
+            'pegawai_id' => $this->guru->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tipe_presensi' => 'kantor',
+            'tanggal' => '2026-11-03',
+            'jam_masuk' => '06:50:00',
+        ]);
+        $presensi->forceFill(['status' => 'sakit'])->save();
+
+        $izin = PengajuanIzin::create([
+            'pegawai_id' => $this->guru->id,
+            'jenis_izin' => 'sakit',
+            'tanggal_mulai' => '2026-11-03',
+            'tanggal_selesai' => '2026-11-03',
+            'alasan' => 'Demam',
+            'dengan_surat_dokter' => true,
+        ]);
+        $izin->forceFill(['status' => 'disetujui'])->save();
+
+        LaporanPiket::create([
+            'pegawai_id' => $this->guru->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-11-03',
+            'status' => LaporanPiket::STATUS_SUBMITTED,
+            'items' => [
+                LaporanPiket::ITEM_KELAS_KOSONG => [
+                    'entries' => [[
+                        'guru_pegawai_id' => $this->guru->id,
+                        'ada_amanat' => true,
+                        'tersampaikan' => true,
+                    ]],
+                ],
+            ],
+        ]);
+
+        $data = app(PresensiGuruReportService::class)->build(
+            $this->guru,
+            $this->unit,
+            '2026-11',
+            '2025/2026',
+            1,
+        );
+
+        $row = collect($data['rows'])->firstWhere('tanggal_iso', '2026-11-03');
+        $this->assertSame(100, $row['ph']);
+
+        Carbon::setTestNow();
+    }
+
     public function test_non_guru_masuk_dalam_daftar_pegawai(): void
     {
         $staf = $this->pegawai('Staf Administrasi', false);
