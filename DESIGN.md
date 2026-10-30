@@ -92,9 +92,25 @@ UI mobile HRIS untuk pegawai yayasan yang melakukan presensi dari ponsel, sering
 - Pencarian tabel pakai pola Enter-only: input bebas di state lokal, filter baru diterapkan saat Enter (tanpa debounce/`onChange` filtering), Escape mereset, tombol clear berikon `X` tanpa label visual.
 - Pencarian jadwal menyaring di level grup (guru cocok melihat semua JP-nya; selain itu per baris) agar kolom `rowSpan` tetap utuh.
 
+# Laporan Pengawasan (desktop & print)
+
+- Konteks: laporan konsolidasi untuk kepala sekolah, kepala yayasan, dan atasan. Keputusan utama: menemukan pengecualian dan menindaklanjutinya, bukan membaca semua baris.
+- Warna: primary `#0F3D3E`; teks `#0F172A`; muted `#64748B`; garis `#D7DEE8`; permukaan lembut `#F7F9FC`; canvas layar `#E8EDF2`.
+- Warna semantik: danger `#BE123C`, warning `#B45309`, success `#047857`, info `#0369A1`. Warna tidak boleh menjadi satu-satunya penanda; selalu ada teks.
+- Aksen emas aplikasi tidak dipakai di laporan. Merah hanya untuk alpa, penolakan, atau temuan yang butuh tindakan.
+- Tipografi: Arial/Helvetica untuk laporan cetak agar metrik PDF stabil; Figtree tetap untuk UI aplikasi. Judul laporan `16px/800`; isi tabel `10px`; label kecil `9px/800`.
+- Layout: sheet `1280px`, print A4 landscape. Tabel memakai `overflow-x: auto` di layar kecil; print mengembalikan `overflow: visible`.
+- Spacing: kelipatan 4/8px; padding sheet `20px`; jarak section `15px`; padding sel `5px 6px`.
+- Radius: badge pill, chip `5px`, kartu `8px`, panel detail `10px`. Tidak ada radius pill untuk tombol biasa.
+- Elevation: hanya sheet yang punya shadow. Card pengecualian memakai border, bukan shadow.
+- State: card membuka detail inline (`aria-expanded` + `aria-controls`), `Esc` menutup, fokus kembali ke card. Empty state menyebut sebab dan aksi reset.
+- Data contoh wajib berlabel `Data contoh — bukan data produksi`; export/filter yang belum aktif wajib berlabel `Preview only`.
+- Motion: tanpa animasi berulang; hanya scroll/focus feedback.
+
 # Decisions
 
 - 2026-10-20 — Cari jadwal (`resources/js/Pages/Dashboard.jsx`): input search di header kartu "Jadwal Hari Ini", Enter-only, tanpa tombol filled primary (accent dijaga satu tempat), token `border-border`/`rounded-button`/`primary`. Empty state membedakan "belum ada jadwal" vs "tidak cocok dengan kata kunci" + aksi Reset.
+- 2026-10-30 — Mockup Laporan Pengawasan (`mockups/laporan-pengawasan-kehadiran.html`): data contoh berlabel, card pengecualian membuka detail inline, filter/export ditandai `Preview only`, tabel punya scroll horizontal, dan empty state detail tersedia. Angka `Alpa` dihitung dari hari kerja tanpa presensi dan tanpa izin; bukan dari jumlah baris presensi.
 - 2026-10-20 — Layout PWA PR #28: fixed nav diberi inner `mx-auto max-w-md` (bukan nav-nya yang dibatasi) agar tetap full-viewport; form control mobile dipaksa 16px via rule CSS `.mobile-root :is(input, select, textarea)` (iOS auto-zoom), jadi JS/JSX input baru tak perlu ingat ini lagi; carousel pakai snap CSS dengan degrade aman; mask scroll wajib sertakan `-webkit-mask-image` + `mask-image` (pola `app.css` `.overflow-x-auto`). Audit item yang ternyata sudah benar: ikon header 44px, tab hari Jadwal 2-baris ≥ 44px, `min-[420px]` Piket memang tepat untuk kolom `max-w-md` (breakpoint `sm:` 640px tak akan aktif di HP).
 
 # Do's and Don'ts

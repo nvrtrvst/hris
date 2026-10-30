@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup - Laporan Pengawasan Kehadiran & Mengajar</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #d7dee8;
+    --soft: #f7f9fc;
+    --primary: #0f3d3e;
+    --danger: #be123c;
+    --warning: #b45309;
+    --success: #047857;
+    --info: #0369a1;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 22px;
+    background: #e8edf2;
+    color: var(--ink);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+  }
+
+  .toolbar {
+    width: 1280px;
+    max-width: 100%;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .period-tabs {
+    display: inline-flex;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .period-tabs button {
+    min-height: 38px;
+    padding: 0 14px;
+    border: 0;
+    border-right: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .period-tabs button:last-child { border-right: 0; }
+  .period-tabs button.active { background: var(--primary); color: #fff; }
+
+  .filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .filters input,
+  .filters select,
+  .toolbar button {
+    min-height: 38px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: #fff;
+    padding: 0 10px;
+    color: var(--ink);
+    font: inherit;
+  }
+
+  .toolbar button {
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .toolbar button.primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+
+  .filters :disabled,
+  .toolbar button:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+    background: #f1f5f9;
+    color: var(--muted);
+  }
+
+  .preview-note {
+    flex-basis: 100%;
+    margin-top: -4px;
+    color: var(--muted);
+    font-size: 9px;
+  }
+
+  .period-control { display: none; }
+  .period-control.active { display: block; }
+
+  .sheet {
+    width: 1280px;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 3px 14px rgba(15, 23, 42, .12);
+  }
+
+  .kop {
+    display: table;
+    width: 100%;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 8px;
+  }
+
+  .kop-logo,
+  .kop-text {
+    display: table-cell;
+    vertical-align: middle;
+  }
+
+  .kop-logo { width: 58px; }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .kop-text { padding-left: 12px; }
+  .kop-name { font-size: 16px; font-weight: 800; }
+  .kop-unit { font-size: 14px; font-weight: 800; }
+  .kop-meta { margin-top: 2px; color: var(--muted); font-size: 10px; }
+
+  .title {
+    margin: 14px 0 2px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .subtitle {
+    margin-bottom: 8px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .mock-badge {
+    display: table;
+    margin: 0 auto 12px;
+    padding: 3px 8px;
+    border: 1px solid #fde68a;
+    border-radius: 5px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .stat {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    background: var(--soft);
+  }
+
+  .stat-label { color: var(--muted); font-size: 9px; font-weight: 700; text-transform: uppercase; }
+  .stat-value { margin-top: 4px; font-size: 20px; font-weight: 800; }
+  .stat-note { margin-top: 2px; color: var(--muted); font-size: 9px; }
+  .stat-danger .stat-value { color: var(--danger); }
+  .stat-warning .stat-value { color: var(--warning); }
+  .stat-success .stat-value { color: var(--success); }
+
+  .section { margin-top: 15px; }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .section-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .section-meta {
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .alert {
+    border-left: 4px solid var(--warning);
+    background: #fffbeb;
+    padding: 8px 10px;
+    font-size: 10px;
+    color: #78350f;
+    margin-bottom: 8px;
+  }
+
+  .exception-list {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .exception {
+    display: block;
+    width: 100%;
+    border: 1px solid #fecdd3;
+    border-radius: 8px;
+    background: #fff1f2;
+    padding: 9px;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    appearance: none;
+  }
+
+  .exception:hover,
+  .exception:focus-visible {
+    border-color: var(--danger);
+    outline: 2px solid rgba(190, 18, 60, .18);
+    outline-offset: 1px;
+  }
+
+  .exception.active {
+    border-color: var(--danger);
+    box-shadow: inset 0 0 0 1px var(--danger);
+    background: #ffe4e6;
+  }
+
+  .exception strong { display: block; color: var(--danger); font-size: 12px; }
+  .exception span { display: block; margin-top: 2px; color: #881337; font-size: 9px; }
+  .exception::after {
+    content: "Buka detail";
+    display: block;
+    margin-top: 6px;
+    color: var(--danger);
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .detail-panel {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    background: #fff;
+  }
+
+  .detail-panel[hidden] { display: none; }
+
+  .detail-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .detail-chip {
+    display: inline-block;
+    padding: 3px 7px;
+    border: 1px solid #bae6fd;
+    border-radius: 999px;
+    background: #e0f2fe;
+    color: #075985;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .detail-close {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    padding: 5px 9px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .detail-close:hover { background: var(--soft); }
+  .detail-table-wrap { overflow-x: auto; }
+  .detail-table-wrap:focus-visible {
+    outline: 2px solid var(--info);
+    outline-offset: 2px;
+  }
+
+  .table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-scroll table { min-width: 760px; }
+
+  .table-scroll:focus-visible {
+    outline: 2px solid var(--info);
+    outline-offset: 2px;
+  }
+
+  .empty-state {
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    padding: 14px;
+    background: var(--soft);
+    text-align: center;
+  }
+
+  .empty-state[hidden] { display: none; }
+  .empty-state strong { display: block; font-size: 12px; }
+  .empty-state span { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  th, td {
+    border: 1px solid var(--line);
+    padding: 5px 6px;
+    text-align: left;
+    vertical-align: top;
+    font-size: 10px;
+  }
+
+  th {
+    background: #eef2f6;
+    color: #334155;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .center { text-align: center; }
+  .mono { font-family: Consolas, monospace; }
+  .muted { color: var(--muted); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 5px;
+    border-radius: 999px;
+    font-size: 8px;
+    font-weight: 800;
+    border: 1px solid transparent;
+  }
+
+  .badge-danger { color: #9f1239; background: #ffe4e6; border-color: #fecdd3; }
+  .badge-warning { color: #92400e; background: #fef3c7; border-color: #fde68a; }
+  .badge-success { color: #065f46; background: #d1fae5; border-color: #a7f3d0; }
+  .badge-neutral { color: #334155; background: #f1f5f9; border-color: #cbd5e1; }
+  .badge-info { color: #075985; background: #e0f2fe; border-color: #bae6fd; }
+
+  .unit-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .unit-card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px;
+  }
+
+  .unit-card strong { font-size: 11px; }
+  .unit-card p { margin: 3px 0 0; color: var(--muted); font-size: 9px; }
+
+  .audit { margin-top: 15px; }
+
+  .note {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.5;
+  }
+
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 9px;
+  }
+
+  .signature {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+    margin-top: 24px;
+    padding: 0 24px;
+    text-align: center;
+    font-size: 10px;
+  }
+
+  .signature .space { height: 32px; }
+
+  .period-view { display: none; }
+  .period-view.active { display: block; }
+
+  @media (max-width: 1000px) {
+    .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .exception-list { grid-template-columns: 1fr; }
+    .unit-grid { grid-template-columns: 1fr; }
+    .toolbar { align-items: stretch; }
+    .period-tabs { width: 100%; }
+    .period-tabs button { flex: 1; padding: 0 8px; }
+  }
+
+  @media (max-width: 700px) {
+    body { padding: 10px; }
+    .sheet { padding: 14px; }
+    .signature { grid-template-columns: 1fr; gap: 12px; padding: 0; }
+    .footer { flex-direction: column; gap: 4px; }
+  }
+
+  @media print {
+    @page { size: A4 landscape; margin: 8mm; }
+    body { padding: 0; background: #fff; }
+    .toolbar { display: none; }
+    .sheet { width: 100%; max-width: none; padding: 0; box-shadow: none; }
+    .period-view { display: none; }
+    .period-view.active { display: block; }
+    .exception::after { display: none; }
+    .table-scroll { overflow: visible; }
+    .table-scroll table { min-width: 0; }
+    thead { display: table-header-group; }
+    tr { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="period-tabs" role="tablist" aria-label="Rentang laporan">
+    <button type="button" class="active" data-period-tab="day" aria-selected="true">Harian</button>
+    <button type="button" data-period-tab="week" aria-selected="false">Mingguan</button>
+    <button type="button" data-period-tab="month" aria-selected="false">Bulanan</button>
+  </div>
+
+  <div class="filters">
+    <select disabled title="Belum aktif di mockup">
+      <option>Semua Unit</option>
+      <option>SMK Nuurul Muttaqin</option>
+      <option>SMP Plus Nuurul Muttaqin</option>
+      <option>SD Nuurul Muttaqin</option>
+    </select>
+
+    <div class="period-control active" data-period-control="day">
+      <input type="date" value="2026-10-30" aria-label="Tanggal laporan" disabled title="Belum aktif di mockup">
+    </div>
+    <div class="period-control" data-period-control="week">
+      <input type="week" value="2026-W44" aria-label="Minggu laporan" disabled title="Belum aktif di mockup">
+    </div>
+    <div class="period-control" data-period-control="month">
+      <input type="month" value="2026-10" aria-label="Bulan laporan" disabled title="Belum aktif di mockup">
+    </div>
+
+    <select disabled title="Belum aktif di mockup">
+      <option>Semua Pegawai</option>
+      <option>Pendidik</option>
+      <option>Tenaga Kependidikan</option>
+    </select>
+  </div>
+
+  <div class="filters">
+    <button class="primary" type="button" disabled title="Belum aktif di mockup">Tampilkan</button>
+    <button type="button" disabled title="Belum aktif di mockup">Export Excel</button>
+    <button type="button" id="print-report">Cetak PDF</button>
+  </div>
+
+  <div class="preview-note">Preview only: filter dan export belum aktif.</div>
+</div>
+
+<div class="sheet">
+  <div class="kop">
+    <div class="kop-logo"><div class="logo">NM</div></div>
+    <div class="kop-text">
+      <div class="kop-name">YAYASAN NUURUL MUTTAQIN</div>
+      <div class="kop-unit">LAPORAN KONSOLIDASI SEMUA UNIT</div>
+      <div class="kop-meta">Alamat yayasan &nbsp;|&nbsp; Telepon &nbsp;|&nbsp; Email &nbsp;|&nbsp; Website</div>
+    </div>
+  </div>
+
+  <div class="title">Laporan Pengawasan Kehadiran &amp; Mengajar</div>
+  <div class="subtitle" id="period-label">Jumat, 30 Oktober 2026 &nbsp;|&nbsp; Semua Unit &nbsp;|&nbsp; Data per pukul 16.30</div>
+  <div class="mock-badge">Data contoh — bukan data produksi</div>
+
+  <div class="period-view active" data-period-view="day">
+    <div class="summary">
+      <div class="stat">
+        <div class="stat-label">Pegawai Aktif</div>
+        <div class="stat-value">63</div>
+        <div class="stat-note">seluruh unit</div>
+      </div>
+      <div class="stat stat-success">
+        <div class="stat-label">Hadir</div>
+        <div class="stat-value">54</div>
+        <div class="stat-note">85,7%</div>
+      </div>
+      <div class="stat stat-warning">
+        <div class="stat-label">Telat</div>
+        <div class="stat-value">4</div>
+        <div class="stat-note">perlu dicek</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Izin / Sakit / Cuti</div>
+        <div class="stat-value">3</div>
+        <div class="stat-note">disetujui</div>
+      </div>
+      <div class="stat stat-danger">
+        <div class="stat-label">Alpa</div>
+        <div class="stat-value">2</div>
+        <div class="stat-note">tanpa izin</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">JP Mengajar</div>
+        <div class="stat-value">182<span style="font-size:12px"> / 210</span></div>
+        <div class="stat-note">86,7% aktual</div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Perlu Tindakan</h2>
+        <span class="section-meta">9 kejadian hari ini</span>
+      </div>
+      <div class="alert">
+        Fokus pada pengecualian. Klik card untuk melihat daftar pegawai dan tanggalnya.
+      </div>
+      <div class="exception-list">
+        <button type="button" class="exception" data-metric="alpa" aria-controls="metric-detail" aria-expanded="false">
+          <strong>2 alpa</strong>
+          <span>Tanpa presensi dan tanpa izin disetujui.</span>
+        </button>
+        <button type="button" class="exception" data-metric="hadir_tanpa_jp" aria-controls="metric-detail" aria-expanded="false">
+          <strong>3 hadir tanpa JP</strong>
+          <span>Guru hadir, realisasi mengajar kosong.</span>
+        </button>
+        <button type="button" class="exception" data-metric="jp_kurang" aria-controls="metric-detail" aria-expanded="false">
+          <strong>1 JP kurang dari jadwal</strong>
+          <span>JP aktual lebih kecil dari JP terjadwal.</span>
+        </button>
+        <button type="button" class="exception" data-metric="izin_mengajar" aria-controls="metric-detail" aria-expanded="false">
+          <strong>1 izin tetapi mengajar</strong>
+          <span>Perlu verifikasi approval dan realisasi.</span>
+        </button>
+        <button type="button" class="exception" data-metric="kelas_belum" aria-controls="metric-detail" aria-expanded="false">
+          <strong>2 kelas belum terpantau</strong>
+          <span>Jadwal ada, presensi dan piket kosong.</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Matriks Pengawasan Pegawai</h2>
+        <span class="section-meta">Seluruh pegawai · JP hanya untuk guru</span>
+      </div>
+      <div class="table-scroll"><table>
+        <thead>
+          <tr>
+            <th style="width:18%">Pegawai / Unit</th>
+            <th style="width:14%">Presensi Harian</th>
+            <th style="width:10%" class="center">JP</th>
+            <th style="width:20%">Aktivitas</th>
+            <th style="width:22%">Temuan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Reza Maulana</strong><br><span class="muted">SMK · Guru</span></td>
+            <td><span class="mono">06.45 — 16.10</span><br><span class="badge badge-success">Hadir</span></td>
+            <td class="center"><strong>6 / 6</strong></td>
+            <td>7 KH. Ahmad Hassan<br><span class="muted">IPS · 3 JP</span></td>
+            <td><span class="badge badge-success">Sesuai</span></td>
+          </tr>
+          <tr>
+            <td><strong>Ahmad Fauzi</strong><br><span class="muted">SMK · Guru</span></td>
+            <td><span class="mono">07.12 — 13.50</span><br><span class="badge badge-warning">Telat</span></td>
+            <td class="center"><strong>4 / 6</strong></td>
+            <td>X DKV 1<br><span class="muted">Produktif · 4 JP</span></td>
+            <td><span class="badge badge-warning">2 JP belum tercatat</span></td>
+          </tr>
+          <tr>
+            <td><strong>Siti Nurhayati</strong><br><span class="muted">SMP · Guru</span></td>
+            <td><span class="mono">—</span><br><span class="badge badge-danger">Alpa</span></td>
+            <td class="center"><strong>0 / 6</strong></td>
+            <td>—</td>
+            <td><span class="badge badge-danger">Tidak ada record</span></td>
+          </tr>
+          <tr>
+            <td><strong>Arisda Rahmawati</strong><br><span class="muted">SMP · Guru</span></td>
+            <td><span class="mono">06.50 — 14.02</span><br><span class="badge badge-success">Hadir</span></td>
+            <td class="center"><strong>0 / 4</strong></td>
+            <td>8 KH. Ahmad Hassan<br><span class="muted">Mapel · 0 JP</span></td>
+            <td><span class="badge badge-danger">Hadir tanpa JP</span></td>
+          </tr>
+          <tr>
+            <td><strong>Heri Herdiyanto</strong><br><span class="muted">SMK · Guru</span></td>
+            <td><span class="mono">06.40 — 14.00</span><br><span class="badge badge-success">Hadir</span></td>
+            <td class="center"><strong>8 / 8</strong></td>
+            <td>X TKJ 2<br><span class="muted">Informatika · 8 JP</span></td>
+            <td><span class="badge badge-success">Sesuai</span></td>
+          </tr>
+          <tr>
+            <td><strong>Neni Budiarti</strong><br><span class="muted">SMP · Guru</span></td>
+            <td><span class="mono">06.48 — 14.00</span><br><span class="badge badge-success">Hadir</span></td>
+            <td class="center"><strong>0 / 4</strong></td>
+            <td>Kelas kosong · IPS<br><span class="muted">Dicatat piket</span></td>
+            <td><span class="badge badge-warning">Kelas tanpa guru</span></td>
+          </tr>
+          <tr>
+            <td><strong>Rina Kusuma</strong><br><span class="muted">SMK · Tenaga Kependidikan</span></td>
+            <td><span class="mono">06.55 — 15.02</span><br><span class="badge badge-success">Hadir</span></td>
+            <td class="center muted">—</td>
+            <td>Tata Usaha<br><span class="muted">Tidak mengajar</span></td>
+            <td><span class="badge badge-neutral">Tidak dicek JP</span></td>
+          </tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Kelas &amp; Mengajar</h2>
+        <span class="section-meta">Jadwal + Presensi per JP + catatan piket</span>
+      </div>
+      <div class="table-scroll"><table>
+        <thead>
+          <tr>
+            <th style="width:13%">Jam</th>
+            <th style="width:16%">Kelas</th>
+            <th style="width:15%">Mapel</th>
+            <th style="width:17%">Guru Terjadwal</th>
+            <th style="width:16%">Presensi Guru</th>
+            <th style="width:17%">Catatan Piket</th>
+            <th style="width:6%" class="center">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">07.00-07.45</td>
+            <td>7 KH. Ahmad Hassan</td>
+            <td>IPS</td>
+            <td>Neni Budiarti</td>
+            <td><span class="badge badge-success">Hadir 06.48</span></td>
+            <td>—</td>
+            <td class="center"><span class="badge badge-success">Terisi</span></td>
+          </tr>
+          <tr>
+            <td class="mono">08.00-08.45</td>
+            <td>X DKV 1</td>
+            <td>Produktif</td>
+            <td>Ahmad Fauzi</td>
+            <td><span class="badge badge-warning">Telat 07.12</span></td>
+            <td>—</td>
+            <td class="center"><span class="badge badge-success">Terisi</span></td>
+          </tr>
+          <tr>
+            <td class="mono">10.00-10.45</td>
+            <td>8 KH. Ahmad Hassan</td>
+            <td>IPS</td>
+            <td>Neni Budiarti</td>
+            <td><span class="badge badge-danger">Tidak ada</span></td>
+            <td>Kelas kosong, amanat tersampaikan</td>
+            <td class="center"><span class="badge badge-warning">Kelas kosong</span></td>
+          </tr>
+          <tr>
+            <td class="mono">11.00-11.35</td>
+            <td>X TKJ 2</td>
+            <td>Informatika</td>
+            <td>Heri Herdiyanto</td>
+            <td><span class="badge badge-danger">Tidak ada</span></td>
+            <td>—</td>
+            <td class="center"><span class="badge badge-danger">Belum terpantau</span></td>
+          </tr>
+          <tr>
+            <td class="mono">12.00-12.35</td>
+            <td>9 KH. Ahmad Hassan</td>
+            <td>Bahasa Indonesia</td>
+            <td>Siti Nurhayati</td>
+            <td><span class="badge badge-danger">Tidak ada</span></td>
+            <td>—</td>
+            <td class="center"><span class="badge badge-danger">Belum terpantau</span></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <div class="note">
+        Status kelas dibaca dari tiga sumber: jadwal sebagai acuan, presensi per JP sebagai realisasi, dan catatan piket sebagai bukti operasional. Jadwal tanpa presensi dan tanpa catatan piket tidak langsung dianggap kosong; statusnya “Belum terpantau”.
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Rekap Unit</h2>
+        <span class="section-meta">Perbandingan kehadiran dan JP</span>
+      </div>
+      <div class="unit-grid">
+        <div class="unit-card">
+          <strong>SMK Nuurul Muttaqin</strong>
+          <p>24 pegawai · 22 hadir · 2 telat · 0 izin · 0 alpa</p>
+          <p>JP 84 / 96 · 87,5%</p>
+        </div>
+        <div class="unit-card">
+          <strong>SMP Plus Nuurul Muttaqin</strong>
+          <p>23 pegawai · 19 hadir · 1 telat · 2 izin · 1 alpa</p>
+          <p>JP 62 / 72 · 86,1%</p>
+        </div>
+        <div class="unit-card">
+          <strong>SD Nuurul Muttaqin</strong>
+          <p>16 pegawai · 13 hadir · 1 telat · 1 izin · 1 alpa</p>
+          <p>JP 36 / 42 · 85,7%</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section audit">
+      <div class="section-head">
+        <h2 class="section-title">Audit Perubahan</h2>
+        <span class="section-meta">3 perubahan hari ini</span>
+      </div>
+      <div class="table-scroll"><table>
+        <thead>
+          <tr>
+            <th style="width:18%">Waktu</th>
+            <th style="width:22%">Pegawai</th>
+            <th style="width:18%">Perubahan</th>
+            <th style="width:20%">Oleh</th>
+            <th>Alasan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">10.20</td>
+            <td>Ahmad Fauzi</td>
+            <td>Hadir → Telat</td>
+            <td>Admin SMK</td>
+            <td>Koreksi jam masuk</td>
+          </tr>
+          <tr>
+            <td class="mono">10.43</td>
+            <td>Siti Nurhayati</td>
+            <td>Alpa → Izin</td>
+            <td>Admin SMP</td>
+            <td>Surat izin diterima</td>
+          </tr>
+          <tr>
+            <td class="mono">11.05</td>
+            <td>Neni Budiarti</td>
+            <td>JP dikoreksi</td>
+            <td>Admin SMP</td>
+            <td>Kelas digantikan piket</td>
+          </tr>
+        </tbody>
+      </table></div>
+    </section>
+  </div>
+
+  <div class="period-view" data-period-view="week">
+    <div class="summary">
+      <div class="stat">
+        <div class="stat-label">Hari Pegawai</div>
+        <div class="stat-value">315</div>
+        <div class="stat-note">63 pegawai × 5 hari</div>
+      </div>
+      <div class="stat stat-success">
+        <div class="stat-label">Hadir</div>
+        <div class="stat-value">270</div>
+        <div class="stat-note">85,7%</div>
+      </div>
+      <div class="stat stat-warning">
+        <div class="stat-label">Telat</div>
+        <div class="stat-value">18</div>
+        <div class="stat-note">kejadian</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Izin / Sakit / Cuti</div>
+        <div class="stat-value">21</div>
+        <div class="stat-note">hari pegawai</div>
+      </div>
+      <div class="stat stat-danger">
+        <div class="stat-label">Alpa</div>
+        <div class="stat-value">6</div>
+        <div class="stat-note">hari pegawai</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">JP Mengajar</div>
+        <div class="stat-value">912<span style="font-size:12px"> / 1.050</span></div>
+        <div class="stat-note">86,9% aktual</div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Perlu Tindakan</h2>
+        <span class="section-meta">29 kejadian · 26–30 Oktober 2026</span>
+      </div>
+      <div class="alert">
+        Angka adalah jumlah kejadian dalam seminggu, bukan jumlah pegawai. Klik card untuk melihat detail per pegawai.
+      </div>
+      <div class="exception-list">
+        <button type="button" class="exception" data-metric="alpa" aria-controls="metric-detail" aria-expanded="false">
+          <strong>6 alpa</strong>
+          <span>Hari pegawai tanpa presensi dan tanpa izin.</span>
+        </button>
+        <button type="button" class="exception" data-metric="hadir_tanpa_jp" aria-controls="metric-detail" aria-expanded="false">
+          <strong>9 hadir tanpa JP</strong>
+          <span>Guru hadir, realisasi mengajar kosong.</span>
+        </button>
+        <button type="button" class="exception" data-metric="jp_kurang" aria-controls="metric-detail" aria-expanded="false">
+          <strong>4 JP kurang dari jadwal</strong>
+          <span>JP aktual lebih kecil dari JP terjadwal.</span>
+        </button>
+        <button type="button" class="exception" data-metric="izin_mengajar" aria-controls="metric-detail" aria-expanded="false">
+          <strong>2 izin tetapi mengajar</strong>
+          <span>Perlu verifikasi approval dan realisasi.</span>
+        </button>
+        <button type="button" class="exception" data-metric="kelas_belum" aria-controls="metric-detail" aria-expanded="false">
+          <strong>8 kelas belum terpantau</strong>
+          <span>Jadwal ada, presensi dan piket kosong.</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Matriks Rekap Pegawai</h2>
+        <span class="section-meta">5 hari · JP hanya untuk guru</span>
+      </div>
+      <div class="table-scroll"><table>
+        <thead>
+          <tr>
+            <th style="width:20%">Pegawai / Unit</th>
+            <th style="width:10%" class="center">Hadir</th>
+            <th style="width:7%" class="center">%</th>
+            <th style="width:8%" class="center">Telat</th>
+            <th style="width:12%" class="center">Izin / Sakit / Cuti</th>
+            <th style="width:8%" class="center">Alpa</th>
+            <th style="width:11%" class="center">JP</th>
+            <th style="width:24%">Temuan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Reza Maulana</strong><br><span class="muted">SMK · Guru</span></td>
+            <td class="center"><strong>5 / 5</strong></td>
+            <td class="center">100</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center"><strong>30 / 30</strong></td>
+            <td><span class="badge badge-success">Sesuai</span></td>
+          </tr>
+          <tr>
+            <td><strong>Ahmad Fauzi</strong><br><span class="muted">SMK · Guru</span></td>
+            <td class="center"><strong>4 / 5</strong></td>
+            <td class="center">80</td>
+            <td class="center">1</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center"><strong>24 / 30</strong></td>
+            <td><span class="badge badge-warning">6 JP belum tercatat</span></td>
+          </tr>
+          <tr>
+            <td><strong>Siti Nurhayati</strong><br><span class="muted">SMP · Guru</span></td>
+            <td class="center"><strong>0 / 5</strong></td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">5</td>
+            <td class="center"><strong>0 / 30</strong></td>
+            <td><span class="badge badge-danger">5 hari alpa</span></td>
+          </tr>
+          <tr>
+            <td><strong>Arisda Rahmawati</strong><br><span class="muted">SMP · Guru</span></td>
+            <td class="center"><strong>5 / 5</strong></td>
+            <td class="center">100</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center"><strong>0 / 20</strong></td>
+            <td><span class="badge badge-danger">Hadir tanpa JP</span></td>
+          </tr>
+          <tr>
+            <td><strong>Heri Herdiyanto</strong><br><span class="muted">SMK · Guru</span></td>
+            <td class="center"><strong>5 / 5</strong></td>
+            <td class="center">100</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center"><strong>40 / 40</strong></td>
+            <td><span class="badge badge-success">Sesuai</span></td>
+          </tr>
+          <tr>
+            <td><strong>Neni Budiarti</strong><br><span class="muted">SMP · Guru</span></td>
+            <td class="center"><strong>5 / 5</strong></td>
+            <td class="center">100</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center"><strong>8 / 20</strong></td>
+            <td><span class="badge badge-warning">Kelas tanpa guru</span></td>
+          </tr>
+          <tr>
+            <td><strong>Rina Kusuma</strong><br><span class="muted">SMK · Tenaga Kependidikan</span></td>
+            <td class="center"><strong>5 / 5</strong></td>
+            <td class="center">100</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center muted">—</td>
+            <td><span class="badge badge-neutral">Tidak dicek JP</span></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <div class="note">
+        Mode mingguan dipakai untuk melihat pola. Klik nama pegawai untuk membuka rincian harian dan per JP.
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Tren Harian</h2>
+        <span class="section-meta">26–30 Oktober 2026</span>
+      </div>
+      <div class="table-scroll"><table>
+        <thead>
+          <tr>
+            <th style="width:16%">Hari</th>
+            <th style="width:12%" class="center">Hadir</th>
+            <th style="width:10%" class="center">Telat</th>
+            <th style="width:12%" class="center">Izin / Sakit / Cuti</th>
+            <th style="width:12%" class="center">Alpa</th>
+            <th style="width:16%" class="center">JP</th>
+            <th>Catatan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Senin, 26/10</td>
+            <td class="center">58</td>
+            <td class="center">1</td>
+            <td class="center">4</td>
+            <td class="center">0</td>
+            <td class="center">180 / 210</td>
+            <td class="muted">Hari pertama minggu</td>
+          </tr>
+          <tr>
+            <td>Selasa, 27/10</td>
+            <td class="center">57</td>
+            <td class="center">2</td>
+            <td class="center">4</td>
+            <td class="center">0</td>
+            <td class="center">178 / 210</td>
+            <td class="muted">—</td>
+          </tr>
+          <tr>
+            <td>Rabu, 28/10</td>
+            <td class="center">54</td>
+            <td class="center">4</td>
+            <td class="center">4</td>
+            <td class="center">1</td>
+            <td class="center">182 / 210</td>
+            <td class="muted">1 kelas kosong</td>
+          </tr>
+          <tr>
+            <td>Kamis, 29/10</td>
+            <td class="center">52</td>
+            <td class="center">5</td>
+            <td class="center">4</td>
+            <td class="center">2</td>
+            <td class="center">176 / 210</td>
+            <td class="muted">2 kelas belum terpantau</td>
+          </tr>
+          <tr>
+            <td>Jumat, 30/10</td>
+            <td class="center">49</td>
+            <td class="center">6</td>
+            <td class="center">5</td>
+            <td class="center">3</td>
+            <td class="center">196 / 210</td>
+            <td class="muted">Perlu perhatian</td>
+          </tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Kelas Bermasalah Minggu Ini</h2>
+        <span class="section-meta">Jadwal + Presensi + Piket</span>
+      </div>
+      <div class="table-scroll"><table>
+        <thead>
+          <tr>
+            <th style="width:10%">Tanggal</th>
+            <th style="width:9%">Jam</th>
+            <th style="width:15%">Kelas</th>
+            <th style="width:17%">Guru</th>
+            <th style="width:24%">Kejadian</th>
+            <th style="width:15%">Sumber</th>
+            <th style="width:10%" class="center">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">26/10</td>
+            <td class="mono">11.00</td>
+            <td>X TKJ 2</td>
+            <td>Heri Herdiyanto</td>
+            <td>Tidak ada presensi, tidak ada catatan piket</td>
+            <td>Jadwal + Presensi</td>
+            <td class="center"><span class="badge badge-danger">Belum terpantau</span></td>
+          </tr>
+          <tr>
+            <td class="mono">28/10</td>
+            <td class="mono">10.00</td>
+            <td>8 KH. Ahmad Hassan</td>
+            <td>Neni Budiarti</td>
+            <td>Kelas kosong, amanat tersampaikan</td>
+            <td>Piket + Presensi</td>
+            <td class="center"><span class="badge badge-warning">Kelas kosong</span></td>
+          </tr>
+          <tr>
+            <td class="mono">29/10</td>
+            <td class="mono">13.00</td>
+            <td>X DKV 1</td>
+            <td>Ahmad Fauzi</td>
+            <td>Hadir, JP belum tercatat</td>
+            <td>Presensi + Jadwal</td>
+            <td class="center"><span class="badge badge-warning">Hadir tanpa JP</span></td>
+          </tr>
+          <tr>
+            <td class="mono">30/10</td>
+            <td class="mono">12.00</td>
+            <td>9 KH. Ahmad Hassan</td>
+            <td>Siti Nurhayati</td>
+            <td>Izin disetujui, jadwal masih aktif</td>
+            <td>Izin + Jadwal</td>
+            <td class="center"><span class="badge badge-info">Perlu cek</span></td>
+          </tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Rekap Unit</h2>
+        <span class="section-meta">Akumulasi 5 hari</span>
+      </div>
+      <div class="unit-grid">
+        <div class="unit-card">
+          <strong>SMK Nuurul Muttaqin</strong>
+          <p>120 hari pegawai · 103 hadir · 8 telat · 7 izin · 2 alpa</p>
+          <p>JP 422 / 480 · 87,9%</p>
+        </div>
+        <div class="unit-card">
+          <strong>SMP Plus Nuurul Muttaqin</strong>
+          <p>115 hari pegawai · 98 hadir · 7 telat · 8 izin · 2 alpa</p>
+          <p>JP 310 / 360 · 86,1%</p>
+        </div>
+        <div class="unit-card">
+          <strong>SD Nuurul Muttaqin</strong>
+          <p>80 hari pegawai · 69 hadir · 3 telat · 6 izin · 2 alpa</p>
+          <p>JP 180 / 210 · 85,7%</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section audit">
+      <div class="section-head">
+        <h2 class="section-title">Audit Perubahan</h2>
+        <span class="section-meta">3 perubahan minggu ini</span>
+      </div>
+      <div class="table-scroll"><table>
+        <thead>
+          <tr>
+            <th style="width:18%">Waktu</th>
+            <th style="width:22%">Pegawai</th>
+            <th style="width:18%">Perubahan</th>
+            <th style="width:20%">Oleh</th>
+            <th>Alasan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">26/10 08.10</td>
+            <td>Ahmad Fauzi</td>
+            <td>Hadir → Telat</td>
+            <td>Admin SMK</td>
+            <td>Koreksi jam masuk</td>
+          </tr>
+          <tr>
+            <td class="mono">28/10 10.43</td>
+            <td>Siti Nurhayati</td>
+            <td>Alpa → Izin</td>
+            <td>Admin SMP</td>
+            <td>Surat izin diterima</td>
+          </tr>
+          <tr>
+            <td class="mono">30/10 11.05</td>
+            <td>Neni Budiarti</td>
+            <td>JP dikoreksi</td>
+            <td>Admin SMP</td>
+            <td>Kelas digantikan piket</td>
+          </tr>
+        </tbody>
+      </table></div>
+    </section>
+  </div>
+
+  <div class="period-view" data-period-view="month">
+    <div class="summary">
+      <div class="stat">
+        <div class="stat-label">Hari Pegawai</div>
+        <div class="stat-value">1.323</div>
+        <div class="stat-note">63 pegawai × 21 hari efektif</div>
+      </div>
+      <div class="stat stat-success">
+        <div class="stat-label">Hadir</div>
+        <div class="stat-value">1.113</div>
+        <div class="stat-note">84,1%</div>
+      </div>
+      <div class="stat stat-warning">
+        <div class="stat-label">Telat</div>
+        <div class="stat-value">74</div>
+        <div class="stat-note">kejadian</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Izin / Sakit / Cuti</div>
+        <div class="stat-value">115</div>
+        <div class="stat-note">hari pegawai</div>
+      </div>
+      <div class="stat stat-danger">
+        <div class="stat-label">Alpa</div>
+        <div class="stat-value">21</div>
+        <div class="stat-note">tanpa izin</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">JP Mengajar</div>
+        <div class="stat-value">3.822<span style="font-size:12px"> / 4.410</span></div>
+        <div class="stat-note">86,7% aktual</div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Perlu Tindakan</h2>
+        <span class="section-meta">96 kejadian · Oktober 2026</span>
+      </div>
+      <div class="alert">
+        Mode bulanan dipakai untuk evaluasi. Klik card untuk melihat detail; daftar lengkap tersedia lewat export.
+      </div>
+      <div class="exception-list">
+        <button type="button" class="exception" data-metric="alpa" aria-controls="metric-detail" aria-expanded="false">
+          <strong>21 alpa</strong>
+          <span>Tanpa presensi dan tanpa izin disetujui.</span>
+        </button>
+        <button type="button" class="exception" data-metric="hadir_tanpa_jp" aria-controls="metric-detail" aria-expanded="false">
+          <strong>31 hadir tanpa JP</strong>
+          <span>Guru hadir, realisasi mengajar kosong.</span>
+        </button>
+        <button type="button" class="exception" data-metric="jp_kurang" aria-controls="metric-detail" aria-expanded="false">
+          <strong>12 JP kurang dari jadwal</strong>
+          <span>JP aktual lebih kecil dari JP terjadwal.</span>
+        </button>
+        <button type="button" class="exception" data-metric="izin_mengajar" aria-controls="metric-detail" aria-expanded="false">
+          <strong>5 izin tetapi mengajar</strong>
+          <span>Perlu verifikasi approval dan realisasi.</span>
+        </button>
+        <button type="button" class="exception" data-metric="kelas_belum" aria-controls="metric-detail" aria-expanded="false">
+          <strong>27 kelas belum terpantau</strong>
+          <span>Jadwal ada, presensi dan piket kosong.</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Matriks Rekap Pegawai</h2>
+        <span class="section-meta">21 hari efektif · JP hanya untuk guru</span>
+      </div>
+      <div class="table-scroll"><table>
+        <thead>
+          <tr>
+            <th style="width:20%">Pegawai / Unit</th>
+            <th style="width:10%" class="center">Hadir</th>
+            <th style="width:7%" class="center">%</th>
+            <th style="width:8%" class="center">Telat</th>
+            <th style="width:12%" class="center">Izin / Sakit / Cuti</th>
+            <th style="width:8%" class="center">Alpa</th>
+            <th style="width:11%" class="center">JP</th>
+            <th style="width:24%">Temuan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Reza Maulana</strong><br><span class="muted">SMK · Guru</span></td>
+            <td class="center"><strong>21 / 21</strong></td>
+            <td class="center">100</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center"><strong>126 / 126</strong></td>
+            <td><span class="badge badge-success">Sesuai</span></td>
+          </tr>
+          <tr>
+            <td><strong>Ahmad Fauzi</strong><br><span class="muted">SMK · Guru</span></td>
+            <td class="center"><strong>18 / 21</strong></td>
+            <td class="center">85,7</td>
+            <td class="center">3</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center"><strong>108 / 126</strong></td>
+            <td><span class="badge badge-warning">18 JP belum tercatat</span></td>
+          </tr>
+          <tr>
+            <td><strong>Siti Nurhayati</strong><br><span class="muted">SMP · Guru</span></td>
+            <td class="center"><strong>0 / 21</strong></td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">21</td>
+            <td class="center"><strong>0 / 126</strong></td>
+            <td><span class="badge badge-danger">21 hari alpa</span></td>
+          </tr>
+          <tr>
+            <td><strong>Arisda Rahmawati</strong><br><span class="muted">SMP · Guru</span></td>
+            <td class="center"><strong>20 / 21</strong></td>
+            <td class="center">95,2</td>
+            <td class="center">0</td>
+            <td class="center">1</td>
+            <td class="center">0</td>
+            <td class="center"><strong>0 / 84</strong></td>
+            <td><span class="badge badge-danger">Hadir tanpa JP</span></td>
+          </tr>
+          <tr>
+            <td><strong>Heri Herdiyanto</strong><br><span class="muted">SMK · Guru</span></td>
+            <td class="center"><strong>21 / 21</strong></td>
+            <td class="center">100</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center"><strong>168 / 168</strong></td>
+            <td><span class="badge badge-success">Sesuai</span></td>
+          </tr>
+          <tr>
+            <td><strong>Neni Budiarti</strong><br><span class="muted">SMP · Guru</span></td>
+            <td class="center"><strong>20 / 21</strong></td>
+            <td class="center">95,2</td>
+            <td class="center">1</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center"><strong>70 / 84</strong></td>
+            <td><span class="badge badge-warning">Kelas tanpa guru</span></td>
+          </tr>
+          <tr>
+            <td><strong>Rina Kusuma</strong><br><span class="muted">SMK · Tenaga Kependidikan</span></td>
+            <td class="center"><strong>21 / 21</strong></td>
+            <td class="center">100</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center">0</td>
+            <td class="center muted">—</td>
+            <td><span class="badge badge-neutral">Tidak dicek JP</span></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <div class="note">
+        Urutkan berdasarkan temuan terbanyak atau persentase kehadiran terendah. Detail harian tetap tersedia lewat drill-down/export.
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Kelas Bermasalah Terbanyak</h2>
+        <span class="section-meta">Top 5 · Oktober 2026</span>
+      </div>
+      <div class="table-scroll"><table>
+        <thead>
+          <tr>
+            <th style="width:22%">Kelas / Mapel</th>
+            <th style="width:19%">Guru</th>
+            <th style="width:10%" class="center">Frekuensi</th>
+            <th style="width:20%">Tanggal</th>
+            <th style="width:16%">Sumber</th>
+            <th style="width:13%" class="center">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>X TKJ 2 / Informatika</td>
+            <td>Heri Herdiyanto</td>
+            <td class="center">4×</td>
+            <td class="mono">3, 10, 17, 24</td>
+            <td>Jadwal + Presensi</td>
+            <td class="center"><span class="badge badge-danger">Belum terpantau</span></td>
+          </tr>
+          <tr>
+            <td>8 KH. Ahmad Hassan / IPS</td>
+            <td>Neni Budiarti</td>
+            <td class="center">3×</td>
+            <td class="mono">7, 14, 21</td>
+            <td>Piket + Presensi</td>
+            <td class="center"><span class="badge badge-warning">Kelas kosong</span></td>
+          </tr>
+          <tr>
+            <td>X DKV 1 / Produktif</td>
+            <td>Ahmad Fauzi</td>
+            <td class="center">3×</td>
+            <td class="mono">8, 15, 29</td>
+            <td>Presensi + Jadwal</td>
+            <td class="center"><span class="badge badge-warning">Hadir tanpa JP</span></td>
+          </tr>
+          <tr>
+            <td>9 KH. Ahmad Hassan / Bahasa Indonesia</td>
+            <td>Siti Nurhayati</td>
+            <td class="center">2×</td>
+            <td class="mono">12, 30</td>
+            <td>Izin + Jadwal</td>
+            <td class="center"><span class="badge badge-info">Perlu cek</span></td>
+          </tr>
+          <tr>
+            <td>7 KH. Ahmad Hassan / IPS</td>
+            <td>Neni Budiarti</td>
+            <td class="center">2×</td>
+            <td class="mono">9, 23</td>
+            <td>Piket + Presensi</td>
+            <td class="center"><span class="badge badge-warning">Kelas kosong</span></td>
+          </tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Rekap Unit</h2>
+        <span class="section-meta">Akumulasi 21 hari efektif</span>
+      </div>
+      <div class="unit-grid">
+        <div class="unit-card">
+          <strong>SMK Nuurul Muttaqin</strong>
+          <p>504 hari pegawai · 432 hadir · 31 telat · 41 izin · 0 alpa</p>
+          <p>JP 1.764 / 2.016 · 87,5%</p>
+        </div>
+        <div class="unit-card">
+          <strong>SMP Plus Nuurul Muttaqin</strong>
+          <p>483 hari pegawai · 406 hadir · 27 telat · 29 izin · 21 alpa</p>
+          <p>JP 1.302 / 1.512 · 86,1%</p>
+        </div>
+        <div class="unit-card">
+          <strong>SD Nuurul Muttaqin</strong>
+          <p>336 hari pegawai · 275 hadir · 16 telat · 45 izin · 0 alpa</p>
+          <p>JP 756 / 882 · 85,7%</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section audit">
+      <div class="section-head">
+        <h2 class="section-title">Audit Perubahan</h2>
+        <span class="section-meta">3 perubahan bulan ini</span>
+      </div>
+      <div class="table-scroll"><table>
+        <thead>
+          <tr>
+            <th style="width:18%">Waktu</th>
+            <th style="width:22%">Pegawai</th>
+            <th style="width:18%">Perubahan</th>
+            <th style="width:20%">Oleh</th>
+            <th>Alasan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">03/10 08.10</td>
+            <td>Ahmad Fauzi</td>
+            <td>Hadir → Telat</td>
+            <td>Admin SMK</td>
+            <td>Koreksi jam masuk</td>
+          </tr>
+          <tr>
+            <td class="mono">17/10 10.43</td>
+            <td>Siti Nurhayati</td>
+            <td>Alpa → Izin</td>
+            <td>Admin SMP</td>
+            <td>Surat izin diterima</td>
+          </tr>
+          <tr>
+            <td class="mono">29/10 11.05</td>
+            <td>Neni Budiarti</td>
+            <td>JP dikoreksi</td>
+            <td>Admin SMP</td>
+            <td>Kelas digantikan piket</td>
+          </tr>
+        </tbody>
+      </table></div>
+    </section>
+  </div>
+
+  <section class="section detail-panel" id="metric-detail" role="region" aria-labelledby="detail-title" aria-live="polite" tabindex="-1" hidden>
+    <div class="section-head">
+      <h2 class="section-title" id="detail-title" tabindex="-1">Detail Temuan</h2>
+      <span class="section-meta" id="detail-meta"></span>
+    </div>
+    <div class="detail-bar">
+      <span class="detail-chip" id="detail-chip">Filter</span>
+      <button type="button" class="detail-close" id="detail-close">Tutup</button>
+    </div>
+    <div class="detail-table-wrap" id="detail-table-wrap">
+      <table>
+        <thead id="detail-head"></thead>
+        <tbody id="detail-body"></tbody>
+      </table>
+    </div>
+    <div class="empty-state" id="detail-empty" hidden>
+      <strong>Tidak ada temuan untuk filter ini</strong>
+      <span>Ubah periode atau unit, lalu tampilkan ulang. Filter saat ini tidak menghasilkan baris.</span>
+    </div>
+    <div class="note" id="detail-note"></div>
+  </section>
+
+  <div class="footer">
+    <span>Dicetak pada: 30/10/2026 16.35</span>
+    <span>Mockup UI · seluruh angka dan nama adalah data contoh</span>
+  </div>
+
+  <div class="signature">
+    <div>
+      <div>KEPALA SEKOLAH</div>
+      <div class="space"></div>
+      <div>(________________________)</div>
+    </div>
+    <div>
+      <div>KEPALA YAYASAN</div>
+      <div class="space"></div>
+      <div>(________________________)</div>
+    </div>
+    <div>
+      <div>ATASAN LANGSUNG</div>
+      <div class="space"></div>
+      <div>(________________________)</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const periodLabels = {
+    day: 'Jumat, 30 Oktober 2026 | Semua Unit | Data per pukul 16.30',
+    week: 'Minggu, 26–30 Oktober 2026 | Semua Unit | Rekap 5 hari',
+    month: 'Oktober 2026 | Semua Unit | Rekap 21 hari efektif'
+  };
+
+  const periodShort = {
+    day: 'Harian · 30/10/2026',
+    week: 'Mingguan · 26–30/10/2026',
+    month: 'Bulanan · Oktober 2026'
+  };
+
+  const detailData = {
+    day: {
+      alpa: {
+        title: 'Alpa',
+        meta: '2 hari · 2 pegawai',
+        columns: ['Pegawai / Unit', 'Tanggal', 'Sumber', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Siti Nurhayati</strong><br><span class="muted">SMP · Guru</span>', '30/10/2026', 'Tidak ada presensi; tidak ada izin', '<span class="badge badge-danger">Belum</span>'],
+          ['<strong>Wulan Sari</strong><br><span class="muted">SD · Guru</span>', '30/10/2026', 'Tidak ada presensi; tidak ada izin', '<span class="badge badge-warning">Diingatkan</span>']
+        ],
+        note: 'Alpa = hari kerja tanpa presensi dan tanpa izin disetujui. Izin yang sudah disetujui tidak dihitung alpa.'
+      },
+      hadir_tanpa_jp: {
+        title: 'Hadir tanpa JP',
+        meta: '3 guru · JP aktual 0',
+        columns: ['Pegawai / Unit', 'Tanggal', 'JP Terjadwal', 'JP Aktual', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Arisda Rahmawati</strong><br><span class="muted">SMP · Guru</span>', '30/10/2026', '4', '0', '<span class="badge badge-danger">Belum</span>'],
+          ['<strong>Neni Budiarti</strong><br><span class="muted">SMP · Guru</span>', '30/10/2026', '4', '0', '<span class="badge badge-warning">Cek jadwal</span>'],
+          ['<strong>Fajar Ramadhan</strong><br><span class="muted">SMK · Guru</span>', '30/10/2026', '2', '0', '<span class="badge badge-warning">Cek jadwal</span>']
+        ],
+        note: 'Guru hadir secara harian, tetapi tidak ada realisasi JP yang tercatat pada jadwal mengajar.'
+      },
+      jp_kurang: {
+        title: 'JP kurang dari jadwal',
+        meta: '1 kejadian',
+        columns: ['Pegawai / Unit', 'Tanggal', 'JP Terjadwal', 'JP Aktual', 'JP Kurang', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Ahmad Fauzi</strong><br><span class="muted">SMK · Guru</span>', '30/10/2026', '6', '4', '2', '<span class="badge badge-warning">Cek JP</span>']
+        ],
+        note: 'JP aktual = unique jadwal_id dengan presensi status hadir/telat.'
+      },
+      izin_mengajar: {
+        title: 'Izin tetapi mengajar',
+        meta: '1 kejadian',
+        columns: ['Pegawai / Unit', 'Tanggal', 'Izin', 'Realisasi', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Neni Budiarti</strong><br><span class="muted">SMP · Guru</span>', '30/10/2026', 'Izin setengah hari', 'Hadir, 2 JP', '<span class="badge badge-warning">Verifikasi</span>']
+        ],
+        note: 'Cek apakah izin setengah hari atau ada kekeliruan approval.'
+      },
+      kelas_belum: {
+        title: 'Kelas belum terpantau',
+        meta: '2 slot · 2 kelas',
+        columns: ['Tanggal', 'Jam', 'Kelas', 'Guru', 'Sumber', 'Status'],
+        rows: [
+          ['30/10/2026', '11.00-11.35', 'X TKJ 2', 'Heri Herdiyanto', 'Jadwal + Presensi', '<span class="badge badge-danger">Belum terpantau</span>'],
+          ['30/10/2026', '12.00-12.35', '9 KH. Ahmad Hassan', 'Siti Nurhayati', 'Jadwal + Presensi', '<span class="badge badge-danger">Belum terpantau</span>']
+        ],
+        note: 'Jadwal ada, tetapi tidak ada JP aktual dan tidak ada catatan piket kelas kosong.'
+      }
+    },
+    week: {
+      alpa: {
+        title: 'Alpa',
+        meta: '6 hari pegawai · 2 pegawai',
+        columns: ['Pegawai / Unit', 'Tanggal', 'Jumlah', 'Sumber', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Siti Nurhayati</strong><br><span class="muted">SMP · Guru</span>', '26–30/10/2026', '5 hari', 'Tidak ada presensi; tidak ada izin', '<span class="badge badge-danger">Belum</span>'],
+          ['<strong>Wulan Sari</strong><br><span class="muted">SD · Guru</span>', '28/10/2026', '1 hari', 'Tidak ada presensi; tidak ada izin', '<span class="badge badge-warning">Diingatkan</span>']
+        ],
+        note: 'Angka adalah hari pegawai, bukan jumlah baris presensi.'
+      },
+      hadir_tanpa_jp: {
+        title: 'Hadir tanpa JP',
+        meta: '9 hari pegawai · 3 guru',
+        columns: ['Pegawai / Unit', 'Tanggal', 'JP Terjadwal', 'JP Aktual', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Arisda Rahmawati</strong><br><span class="muted">SMP · Guru</span>', '26–30/10/2026', '20', '0', '<span class="badge badge-danger">Belum</span>'],
+          ['<strong>Neni Budiarti</strong><br><span class="muted">SMP · Guru</span>', '27, 29, 30/10/2026', '4', '0', '<span class="badge badge-warning">Cek jadwal</span>'],
+          ['<strong>Fajar Ramadhan</strong><br><span class="muted">SMK · Guru</span>', '26, 28, 30/10/2026', '4', '0', '<span class="badge badge-warning">Cek jadwal</span>']
+        ],
+        note: 'Contoh hari dengan JP aktual 0. Totalnya 9 kejadian; daftar lengkap mengikuti filter periode.'
+      },
+      jp_kurang: {
+        title: 'JP kurang dari jadwal',
+        meta: '4 kejadian · 3 guru',
+        columns: ['Pegawai / Unit', 'Periode', 'JP Terjadwal', 'JP Aktual', 'JP Kurang', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Ahmad Fauzi</strong><br><span class="muted">SMK · Guru</span>', '26–30/10/2026', '30', '24', '6', '<span class="badge badge-warning">Cek JP</span>'],
+          ['<strong>Neni Budiarti</strong><br><span class="muted">SMP · Guru</span>', '26–30/10/2026', '20', '8', '12', '<span class="badge badge-warning">Cek JP</span>'],
+          ['<strong>Fajar Ramadhan</strong><br><span class="muted">SMK · Guru</span>', '26–30/10/2026', '12', '8', '4', '<span class="badge badge-warning">Cek JP</span>']
+        ],
+        note: 'Hanya guru dengan JP terjadwal. Non-guru tidak dihitung.'
+      },
+      izin_mengajar: {
+        title: 'Izin tetapi mengajar',
+        meta: '2 kejadian · 2 pegawai',
+        columns: ['Pegawai / Unit', 'Tanggal', 'Izin', 'Realisasi', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Neni Budiarti</strong><br><span class="muted">SMP · Guru</span>', '28/10/2026', 'Izin setengah hari', 'Hadir, 2 JP', '<span class="badge badge-warning">Verifikasi</span>'],
+          ['<strong>Wulan Sari</strong><br><span class="muted">SD · Guru</span>', '30/10/2026', 'Izin', 'Hadir, 1 JP', '<span class="badge badge-warning">Verifikasi</span>']
+        ],
+        note: 'Cek apakah ada izin yang belum dicabut atau presensi pengganti yang salah taut.'
+      },
+      kelas_belum: {
+        title: 'Kelas belum terpantau',
+        meta: '8 slot · 4 kelas',
+        columns: ['Tanggal', 'Jam', 'Kelas', 'Guru', 'Sumber', 'Status'],
+        rows: [
+          ['26/10/2026', '11.00', 'X TKJ 2', 'Heri Herdiyanto', 'Jadwal + Presensi', '<span class="badge badge-danger">Belum terpantau</span>'],
+          ['28/10/2026', '10.00', '8 KH. Ahmad Hassan', 'Neni Budiarti', 'Jadwal + Piket', '<span class="badge badge-warning">Kelas kosong</span>'],
+          ['29/10/2026', '13.00', 'X DKV 1', 'Ahmad Fauzi', 'Jadwal + Presensi', '<span class="badge badge-warning">Hadir tanpa JP</span>'],
+          ['30/10/2026', '12.00', '9 KH. Ahmad Hassan', 'Siti Nurhayati', 'Jadwal + Izin', '<span class="badge badge-info">Perlu cek</span>']
+        ],
+        note: 'Kelas kosong dan belum terpantau adalah dua status berbeda. Lihat sumber buktinya.'
+      }
+    },
+    month: {
+      alpa: {
+        title: 'Alpa',
+        meta: '21 hari pegawai · 1 pegawai',
+        columns: ['Pegawai / Unit', 'Tanggal', 'Jumlah', 'Sumber', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Siti Nurhayati</strong><br><span class="muted">SMP · Guru</span>', '01–30/10/2026', '21 hari', 'Tidak ada presensi; tidak ada izin', '<span class="badge badge-danger">Belum</span>']
+        ],
+        note: '21 = 21 hari kerja efektif. Angka ini konsisten dengan matriks Siti 0/21. Izin yang disetujui tidak dihitung alpa.'
+      },
+      hadir_tanpa_jp: {
+        title: 'Hadir tanpa JP',
+        meta: '31 hari pegawai · 5 guru',
+        columns: ['Pegawai / Unit', 'Tanggal', 'JP Terjadwal', 'JP Aktual', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Arisda Rahmawati</strong><br><span class="muted">SMP · Guru</span>', '04, 11, 18/10/2026', '4', '0', '<span class="badge badge-danger">Belum</span>'],
+          ['<strong>Neni Budiarti</strong><br><span class="muted">SMP · Guru</span>', '07, 14/10/2026', '4', '0', '<span class="badge badge-warning">Cek jadwal</span>'],
+          ['<strong>Fajar Ramadhan</strong><br><span class="muted">SMK · Guru</span>', '03, 10, 17/10/2026', '2', '0', '<span class="badge badge-warning">Cek jadwal</span>']
+        ],
+        note: '31 kejadian = hari guru hadir tetapi JP aktual 0. Contoh 3 guru; daftar lengkap 5 guru ada di export.'
+      },
+      jp_kurang: {
+        title: 'JP kurang dari jadwal',
+        meta: '12 kejadian · 5 guru',
+        columns: ['Pegawai / Unit', 'Periode', 'JP Terjadwal', 'JP Aktual', 'JP Kurang', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Ahmad Fauzi</strong><br><span class="muted">SMK · Guru</span>', 'Oktober 2026', '126', '108', '18', '<span class="badge badge-warning">Cek JP</span>'],
+          ['<strong>Neni Budiarti</strong><br><span class="muted">SMP · Guru</span>', 'Oktober 2026', '84', '70', '14', '<span class="badge badge-warning">Cek JP</span>'],
+          ['<strong>Fajar Ramadhan</strong><br><span class="muted">SMK · Guru</span>', 'Oktober 2026', '48', '36', '12', '<span class="badge badge-warning">Cek JP</span>']
+        ],
+        note: 'Hanya untuk guru. JP aktual dihitung dari presensi per jadwal, bukan dari jam masuk harian.'
+      },
+      izin_mengajar: {
+        title: 'Izin tetapi mengajar',
+        meta: '5 kejadian · 5 pegawai',
+        columns: ['Pegawai / Unit', 'Tanggal', 'Izin', 'Realisasi', 'Tindak Lanjut'],
+        rows: [
+          ['<strong>Neni Budiarti</strong><br><span class="muted">SMP · Guru</span>', '07/10/2026', 'Izin setengah hari', 'Hadir, 2 JP', '<span class="badge badge-warning">Verifikasi</span>'],
+          ['<strong>Wulan Sari</strong><br><span class="muted">SD · Guru</span>', '12/10/2026', 'Izin', 'Hadir, 1 JP', '<span class="badge badge-warning">Verifikasi</span>'],
+          ['<strong>Arisda Rahmawati</strong><br><span class="muted">SMP · Guru</span>', '14/10/2026', 'Sakit', 'Hadir, 2 JP', '<span class="badge badge-warning">Verifikasi</span>']
+        ],
+        note: 'Daftar lengkap 5 kejadian tersedia di export. Fokus pada approval yang bertentangan dengan realisasi.'
+      },
+      kelas_belum: {
+        title: 'Kelas belum terpantau',
+        meta: '27 slot · 7 kelas',
+        columns: ['Tanggal', 'Jam', 'Kelas', 'Guru', 'Sumber', 'Status'],
+        rows: [
+          ['3, 10, 17, 24/10/2026', '11.00', 'X TKJ 2', 'Heri Herdiyanto', 'Jadwal + Presensi', '<span class="badge badge-danger">Belum terpantau</span>'],
+          ['7, 14, 21/10/2026', '10.00', '8 KH. Ahmad Hassan', 'Neni Budiarti', 'Jadwal + Piket', '<span class="badge badge-warning">Kelas kosong</span>'],
+          ['8, 15, 29/10/2026', '13.00', 'X DKV 1', 'Ahmad Fauzi', 'Jadwal + Presensi', '<span class="badge badge-warning">Hadir tanpa JP</span>'],
+          ['12, 30/10/2026', '12.00', '9 KH. Ahmad Hassan', 'Siti Nurhayati', 'Jadwal + Izin', '<span class="badge badge-info">Perlu cek</span>']
+        ],
+        note: 'Card menghitung slot, bukan kelas unik. Satu kelas bisa muncul beberapa kali dalam sebulan.'
+      }
+    }
+  };
+
+  const tabs = document.querySelectorAll('[data-period-tab]');
+  const views = document.querySelectorAll('[data-period-view]');
+  const controls = document.querySelectorAll('[data-period-control]');
+  const label = document.getElementById('period-label');
+  const detailPanel = document.getElementById('metric-detail');
+  const detailTitle = document.getElementById('detail-title');
+  const detailMeta = document.getElementById('detail-meta');
+  const detailChip = document.getElementById('detail-chip');
+  const detailHead = document.getElementById('detail-head');
+  const detailBody = document.getElementById('detail-body');
+  const detailNote = document.getElementById('detail-note');
+  const detailTableWrap = document.getElementById('detail-table-wrap');
+  const detailEmpty = document.getElementById('detail-empty');
+  let lastFocusedCard = null;
+
+  function closeDetail(returnFocus) {
+    if (!detailPanel) return;
+    const shouldFocus = returnFocus !== false && lastFocusedCard;
+
+    detailPanel.hidden = true;
+    document.querySelectorAll('.exception.active').forEach(function (card) {
+      card.classList.remove('active');
+      card.setAttribute('aria-expanded', 'false');
+    });
+
+    if (shouldFocus) {
+      lastFocusedCard.focus();
+    }
+
+    lastFocusedCard = null;
+  }
+
+  function openDetail(card) {
+    const view = card.closest('[data-period-view]');
+    if (!view) return;
+
+    const period = view.dataset.periodView;
+    const data = detailData[period]?.[card.dataset.metric];
+    if (!data) return;
+
+    document.querySelectorAll('.exception.active').forEach(function (item) {
+      item.classList.remove('active');
+      item.setAttribute('aria-expanded', 'false');
+    });
+
+    lastFocusedCard = card;
+    card.classList.add('active');
+    card.setAttribute('aria-expanded', 'true');
+
+    detailTitle.textContent = data.title;
+    detailMeta.textContent = data.meta;
+    detailChip.textContent = 'Filter: ' + periodShort[period] + ' · ' + data.title;
+    detailHead.innerHTML = '<tr>' + data.columns.map(function (column) {
+      return '<th scope="col">' + column + '</th>';
+    }).join('') + '</tr>';
+    detailBody.innerHTML = data.rows.map(function (row) {
+      return '<tr>' + row.map(function (cell) {
+        return '<td>' + cell + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+    detailNote.textContent = data.note || '';
+    const hasRows = Array.isArray(data.rows) && data.rows.length > 0;
+    detailTableWrap.hidden = !hasRows;
+    detailEmpty.hidden = hasRows;
+    detailPanel.hidden = false;
+    detailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    detailTitle.focus({ preventScroll: true });
+  }
+
+  function setPeriod(period) {
+    tabs.forEach(function (tab) {
+      const active = tab.dataset.periodTab === period;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    views.forEach(function (view) {
+      view.classList.toggle('active', view.dataset.periodView === period);
+    });
+
+    controls.forEach(function (control) {
+      control.classList.toggle('active', control.dataset.periodControl === period);
+    });
+
+    label.textContent = periodLabels[period];
+    closeDetail(false);
+  }
+
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      setPeriod(tab.dataset.periodTab);
+    });
+  });
+
+  document.querySelectorAll('.exception[data-metric]').forEach(function (card) {
+    card.setAttribute('aria-expanded', 'false');
+
+    card.addEventListener('click', function () {
+      if (card.classList.contains('active')) {
+        closeDetail();
+      } else {
+        openDetail(card);
+      }
+    });
+
+    card.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        if (card.classList.contains('active')) {
+          closeDetail();
+        } else {
+          openDetail(card);
+        }
+      }
+    });
+  });
+
+  document.getElementById('detail-close').addEventListener('click', closeDetail);
+
+  document.getElementById('print-report').addEventListener('click', function () {
+    window.print();
+  });
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && !detailPanel.hidden) {
+      closeDetail();
+    }
+  });
+
+  document.querySelectorAll('th').forEach(function (header) {
+    header.setAttribute('scope', 'col');
+  });
+
+  document.querySelectorAll('.table-scroll').forEach(function (wrap) {
+    const title = wrap.closest('.section')?.querySelector('.section-title')?.textContent?.trim() || 'Tabel';
+    wrap.tabIndex = 0;
+    wrap.setAttribute('role', 'region');
+    wrap.setAttribute('aria-label', title + ' dapat digeser');
+  });
+
+  if (detailTableWrap) {
+    detailTableWrap.tabIndex = 0;
+    detailTableWrap.setAttribute('role', 'region');
+    detailTableWrap.setAttribute('aria-label', 'Tabel detail temuan dapat digeser');
+  }
+</script>
+
+</body>
+</html>
