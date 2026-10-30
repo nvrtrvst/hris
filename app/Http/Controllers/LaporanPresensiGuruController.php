@@ -89,7 +89,7 @@ class LaporanPresensiGuruController extends Controller
 
         return Pdf::loadView('exports.pdf-presensi-guru', $data)
             ->setPaper('A4', 'landscape')
-            ->download('Presensi_Guru_'.$pegawai->id.'_'.$request->validated('periode').'.pdf');
+            ->download('Presensi_Pegawai_'.$pegawai->id.'_'.$request->validated('periode').'.pdf');
     }
 
     private function units($user)
@@ -110,7 +110,6 @@ class LaporanPresensiGuruController extends Controller
         $query = Pegawai::query()
             ->where('status_aktif', 'aktif')
             ->whereHas('units', fn ($q) => $q->whereIn('unit_sekolah.id', $unitIds))
-            ->whereHas('jabatans', fn ($q) => $q->where('is_guru', true))
             ->with(['units:id,nama', 'jabatans:id,nama'])
             ->orderBy('nama_lengkap');
 
@@ -128,7 +127,7 @@ class LaporanPresensiGuruController extends Controller
         $pegawai = Pegawai::with('units')->findOrFail($request->validated('pegawai_id'));
 
         if (! $pegawai->units->contains('id', $unitId)) {
-            abort(403, 'Guru tidak berada di unit yang dipilih.');
+            abort(403, 'Pegawai tidak berada di unit yang dipilih.');
         }
 
         if ($user->can('view_all_units')) {
@@ -141,7 +140,7 @@ class LaporanPresensiGuruController extends Controller
 
         if ($this->isPimpinanReadOnly($user) && ! $this->isKepsek($user)
             && (int) $pegawai->atasan_langsung_id !== (int) $user->pegawai?->id) {
-            abort(403, 'Guru bukan bawahan langsung Anda.');
+            abort(403, 'Pegawai bukan bawahan langsung Anda.');
         }
 
         return $pegawai;
