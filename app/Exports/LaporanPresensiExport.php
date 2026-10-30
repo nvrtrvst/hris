@@ -35,7 +35,9 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
     protected $jadwalJenis;
 
-    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $tipe = null, $search = null, $status = null, $jadwalJenis = null)
+    protected $pegawai_id;
+
+    public function __construct($start_date, $end_date, $unit_id = null, $jenis = null, $tipe = null, $search = null, $status = null, $jadwalJenis = null, $pegawai_id = null)
     {
         $this->start_date = $start_date;
         $this->end_date = $end_date;
@@ -45,6 +47,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
         $this->search = $search;
         $this->status = $status;
         $this->jadwalJenis = $jadwalJenis;
+        $this->pegawai_id = $pegawai_id;
     }
 
     public function collection()
@@ -52,6 +55,10 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
         // Eager-load jabatans + jadwal.mapel untuk kolom Jenis & Tipe (hindari N+1 di map()).
         $query = Presensi::with(['pegawai.jabatans', 'unitSekolah', 'jadwal.pegawaiMapel.mataPelajaran'])
             ->whereBetween('tanggal', [$this->start_date, $this->end_date]);
+
+        if ($this->pegawai_id) {
+            $query->where('pegawai_id', $this->pegawai_id);
+        }
 
         if ($this->unit_id) {
             $query->where('unit_sekolah_id', $this->unit_id);

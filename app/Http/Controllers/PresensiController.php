@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Constants\PresensiMessages;
+use App\Exceptions\PdfTooLargeException;
+use App\Exports\LaporanPresensiExport;
 use App\Helpers\NotificationHelper;
 use App\Helpers\PayrollLockHelper;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
+use App\Http\Requests\PresensiPersonalReportRequest;
 use App\Jobs\ProcessPresensiFoto;
 use App\Models\AbsenSiswaSesi;
 use App\Models\AuditPresensi;
@@ -21,6 +24,8 @@ use App\Services\AbsenSiswaService;
 use App\Services\GeocodingService;
 use App\Services\ImageUploadService;
 use App\Services\KeuanganClient;
+use App\Services\LaporanPdfService;
+use App\Services\PresensiPersonalReportService;
 use App\Traits\CalculatesDistance;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -33,6 +38,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PresensiController extends Controller
 {
@@ -1204,6 +1210,79 @@ class PresensiController extends Controller
 
             return response()->json(['message' => 'PDF gagal dibuat: '.substr($e->getMessage(), 0, 300)], 500);
         }
+    }
+
+    public function exportPersonalPresensiExcel(PresensiPersonalReportRequest $request)
+    {
+        $pegawai = $this->personalPegawai();
+        $validated = $request->validated();
+        [$start, $end] = $this->personalReportRange($validated);
+
+        $filename = 'Laporan_Presensi_Pribadi_'.Str::slug($pegawai->nama_lengkap)
+            .'_'.$start->toDateString().'_to_'.$end->toDateString().'.xlsx';
+
+        return Excel::download(
+            new LaporanPresensiExport(
+                $start->toDateString(),
+                $end->toDateString(),
+                null,
+                null,
+                null,
+                null,
+                $validated['status'] ?? null,
+                null,
+                $pegawai->id,
+            ),
+            $filename,
+        );
+    }
+
+    public function exportPersonalPresensiPdf(
+        PresensiPersonalReportRequest $request,
+        PresensiPersonalReportService $reportService,
+    ) {
+        $pegawai = $this->personalPegawai();
+        $validated = $request->validated();
+        [$start, $end] = $this->personalReportRange($validated);
+        $status = $validated['status'] ?? null;
+
+        $summary = $reportService->summary($pegawai, $start, $end, $status);
+
+        try {
+            $result = app(LaporanPdfService::class)->generatePresensiPribadi(
+                [
+                    'start_date' => $start->toDateString(),
+                    'end_date' => $end->toDateString(),
+                    'status' => $status,
+                ],
+                $pegawai,
+                $summary,
+            );
+
+            return response($result['content'], 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$result['filename'].'"',
+                'Content-Length' => strlen($result['content']),
+            ]);
+        } catch (PdfTooLargeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    private function personalPegawai(): Pegawai
+    {
+        $pegawai = Pegawai::where('user_id', auth()->id())->first();
+        abort_unless($pegawai, 403, 'Akun ini tidak terhubung dengan data pegawai.');
+
+        return $pegawai;
+    }
+
+    private function personalReportRange(array $validated): array
+    {
+        $start = Carbon::parse($validated['start_date'] ?? Carbon::today())->startOfDay();
+        $end = Carbon::parse($validated['end_date'] ?? $start->toDateString())->startOfDay();
+
+        return [$start, $end];
     }
 
     /**

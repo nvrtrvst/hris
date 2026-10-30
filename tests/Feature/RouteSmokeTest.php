@@ -68,6 +68,8 @@ class RouteSmokeTest extends TestCase
         'backup.download',     // side-effect: dump DB sungguhan
         'jadwal.export-pdf',   // side-effect: generate PDF download
         'laporan.absen-siswa.detail', // butuh nis + rentang tanggal
+        'presensi.laporan-saya.excel', // butuh data pegawai milik user
+        'presensi.laporan-saya.pdf',   // butuh data pegawai milik user
     ];
 
     /** Route yang bergantung pada API eksternal (keuangan) — bukan bug 500. */
