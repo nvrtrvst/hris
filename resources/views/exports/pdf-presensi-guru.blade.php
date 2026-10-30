@@ -122,7 +122,7 @@
                         <td>@if($row['tk'])&#10003;@endif</td>
                         <td>{{ $row['tugas'] ? 'TUGAS' : '' }}</td>
                         <td>{{ $row['jam_pulang'] ?? '-' }}</td>
-                        <td>{{ $row['ph'] ?? '-' }}</td>
+                        <td>{{ $row['ph'] !== null ? $row['ph'].'%' : '-' }}</td>
                         <td></td>
                         <td class="b-col"></td>
                     </tr>
