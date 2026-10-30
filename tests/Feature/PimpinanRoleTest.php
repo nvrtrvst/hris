@@ -184,6 +184,31 @@ class PimpinanRoleTest extends TestCase
                 ->has('presensis.data', 2));
     }
 
+    public function test_pimpinan_hanya_bisa_memilih_guru_bawahan_di_laporan_presensi_guru(): void
+    {
+        $atasan = $this->makePegawai('Atasan Laporan');
+        $bawahan = $this->makePegawai('Guru Bawahan Laporan', $atasan);
+        $lain = $this->makePegawai('Guru Lain Laporan');
+        $user = $this->makePimpinan($atasan);
+
+        $this->actingAs($user)
+            ->get(route('laporan.presensi-guru'))
+            ->assertInertia(fn ($page) => $page
+                ->component('Laporan/PresensiGuru')
+                ->has('gurus', 1)
+                ->where('gurus.0.id', $bawahan->id));
+
+        $this->actingAs($user)
+            ->get(route('laporan.presensi-guru.preview', [
+                'unit_sekolah_id' => $this->sd->id,
+                'pegawai_id' => $lain->id,
+                'periode' => now()->format('Y-m'),
+                'tahun_ajaran' => '2025/2026',
+                'semester' => 1,
+            ]))
+            ->assertForbidden();
+    }
+
     public function test_pimpinan_jadwal_index_scoped_to_bawahan(): void
     {
         $kepsek = $this->makePegawai('Kepsek SD');

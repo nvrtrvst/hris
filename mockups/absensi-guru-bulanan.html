@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup - Presensi Guru Bulanan</title>
+<style>
+  :root {
+    --ink: #111827;
+    --line: #374151;
+    --muted: #6b7280;
+    --soft: #f3f4f6;
+    --head: #e5e7eb;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 24px;
+    background: #e5e7eb;
+    color: var(--ink);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  .toolbar {
+    width: 1280px;
+    max-width: 100%;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .toolbar-note {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .toolbar button {
+    min-height: 40px;
+    padding: 0 18px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .sheet {
+    width: 1280px;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 18px 20px 16px;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, .12);
+  }
+
+  .kop {
+    padding-bottom: 8px;
+    text-align: center;
+    border-bottom: 3px double var(--line);
+  }
+
+  .kop-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    text-align: left;
+  }
+
+  .kop-logo {
+    width: 64px;
+    height: 64px;
+    flex: 0 0 64px;
+    object-fit: contain;
+  }
+
+  .kop-text {
+    line-height: 1.25;
+  }
+
+  .kop-text h1 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: .02em;
+  }
+
+  .kop-text h2 {
+    margin: 2px 0 0;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .kop-contact {
+    margin: 5px 0 0;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .report-title {
+    margin: 12px 0 2px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .report-period {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .person {
+    display: flex;
+    gap: 8px;
+    margin: 16px 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .person span:first-child {
+    width: 52px;
+    flex: 0 0 52px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 10px;
+  }
+
+  th, td {
+    border: 1px solid var(--line);
+    padding: 4px 3px;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  th {
+    background: var(--head);
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  thead th { height: 26px; }
+  tbody td { height: 30px; }
+
+  .no { width: 32px; }
+  .date { width: 78px; }
+  .day { width: 68px; }
+  .time { width: 65px; }
+  .sign { width: 48px; }
+  .jp { width: 28px; }
+  .total { width: 52px; }
+  .status { width: 34px; }
+  .percent { width: 48px; }
+
+  .mark {
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .tk {
+    color: #b91c1c;
+    font-weight: 800;
+    letter-spacing: .06em;
+  }
+
+  .tugas {
+    color: #1d4ed8;
+    font-weight: 800;
+    font-size: 9px;
+    letter-spacing: .03em;
+  }
+
+  .muted {
+    color: var(--muted);
+  }
+
+  .period-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border: 1px solid var(--line);
+    border-top: 0;
+    background: #f9fafb;
+  }
+
+  .period-summary div {
+    padding: 7px 9px;
+    border-right: 1px solid var(--line);
+    font-size: 10px;
+  }
+
+  .period-summary div:last-child { border-right: 0; }
+  .period-summary span { display: block; color: var(--muted); font-size: 9px; font-weight: 700; }
+  .period-summary strong { display: block; margin-top: 2px; font-size: 12px; }
+
+  .monthly-b {
+    border: 0;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    font-weight: 800;
+    vertical-align: middle;
+  }
+
+  .b-head {
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+
+  .legend {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.5;
+  }
+
+  .signature {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+    margin-top: 22px;
+    padding: 0 4px;
+    font-size: 10px;
+  }
+
+  .signature .box {
+    min-height: 78px;
+    text-align: center;
+  }
+
+  .signature .role {
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .signature .name {
+    margin-top: 42px;
+    border-top: 1px solid var(--line);
+    padding-top: 3px;
+    font-weight: 700;
+  }
+
+  .signature .blank {
+    height: 42px;
+  }
+
+  @media print {
+    @page { size: A4 landscape; margin: 8mm; }
+
+    body {
+      padding: 0;
+      background: #fff;
+    }
+
+    .toolbar { display: none; }
+
+    .sheet {
+      width: 100%;
+      max-width: none;
+      padding: 0;
+      box-shadow: none;
+    }
+
+    thead { display: table-header-group; }
+    tr { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <p class="toolbar-note">
+    Mockup laporan bulanan. PH = persentase harian, M = mingguan, B = bulanan.
+    Jam ke menampilkan JP aktual. TK = tidak ada keterangan.
+  </p>
+  <button type="button" onclick="window.print()">Cetak / PDF</button>
+</div>
+
+<div class="sheet">
+  <div class="kop">
+    <div class="kop-brand">
+      <img class="kop-logo" src="../public/logo.png" alt="Logo Yayasan">
+      <div class="kop-text">
+        <h1>YAYASAN NUURUL MUTTAQIN</h1>
+        <h2>SMK NUURUL MUTTAQIN CISURUPAN</h2>
+      </div>
+    </div>
+    <p class="kop-contact">Alamat unit | Telepon | Email | Website</p>
+  </div>
+
+  <div class="report-title">Presensi Guru</div>
+  <div class="report-period">Tahun Pelajaran 2025-2026 &nbsp;|&nbsp; Periode Bulan November</div>
+
+  <div class="person">
+    <span>NAMA</span>
+    <span>: HERI HERDIYANTO, S.Pd., S.Kom.</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="no" rowspan="2">NO</th>
+          <th class="date" rowspan="2">TANGGAL</th>
+          <th class="day" rowspan="2">HARI</th>
+          <th class="time" rowspan="2">JAM<br>DATANG</th>
+          <th colspan="11">MENGAJAR JAM KE (AKTUAL)</th>
+          <th class="total" rowspan="2">JUMLAH<br>JAM<br>PERHARI</th>
+          <th colspan="4">KETERANGAN</th>
+          <th class="time" rowspan="2">JAM<br>PULANG</th>
+          <th colspan="3">PERSENTASE</th>
+        </tr>
+        <tr>
+          <th class="jp">1</th><th class="jp">2</th><th class="jp">3</th>
+          <th class="jp">4</th><th class="jp">5</th><th class="jp">6</th>
+          <th class="jp">7</th><th class="jp">8</th><th class="jp">9</th>
+          <th class="jp">10</th><th class="jp">11</th>
+          <th class="status">S</th>
+          <th class="status">I</th>
+          <th class="status">TK</th>
+          <th class="status">TUGAS</th>
+          <th class="percent">PH</th>
+          <th class="percent">M</th>
+          <th class="percent b-head">B</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>03/11/2026</td>
+          <td>SENIN</td>
+          <td>06.45</td>
+          <td></td><td></td><td class="mark">✓</td><td class="mark">✓</td><td class="mark">✓</td><td class="mark">✓</td>
+          <td class="mark">✓</td><td class="mark">✓</td><td></td><td></td><td></td>
+          <td>6</td>
+          <td></td><td></td><td></td><td></td>
+          <td>14.00</td>
+          <td>100</td><td></td><td class="monthly-b" rowspan="5">88</td>
+        </tr>
+
+        <tr>
+          <td>2</td>
+          <td>04/11/2026</td>
+          <td>SELASA</td>
+          <td>06.50</td>
+          <td></td><td class="mark">✓</td><td class="mark">✓</td><td class="mark">✓</td><td class="mark">✓</td><td class="mark">✓</td>
+          <td class="mark">✓</td><td class="mark">✓</td><td class="mark">✓</td><td></td><td></td>
+          <td>8</td>
+          <td></td><td></td><td></td><td></td>
+          <td>14.00</td>
+          <td>100</td><td></td>
+        </tr>
+
+        <tr>
+          <td>3</td>
+          <td>05/11/2026</td>
+          <td>RABU</td>
+          <td></td>
+          <td></td><td></td><td></td><td></td><td></td><td></td>
+          <td></td><td></td><td></td><td></td><td></td>
+          <td>-</td>
+          <td></td><td></td><td class="mark">✓</td><td></td>
+          <td></td>
+          <td>-</td><td></td>
+        </tr>
+
+        <tr>
+          <td>4</td>
+          <td>06/11/2026</td>
+          <td>KAMIS</td>
+          <td></td>
+          <td></td><td></td><td></td><td></td><td></td><td></td>
+          <td></td><td></td><td></td><td></td><td></td>
+          <td>-</td>
+          <td></td><td></td><td class="mark">✓</td><td></td>
+          <td></td>
+          <td>-</td><td></td>
+        </tr>
+
+        <tr>
+          <td>5</td>
+          <td>07/11/2026</td>
+          <td>JUMAT</td>
+          <td>06.40</td>
+          <td></td><td></td><td></td><td></td><td></td><td></td>
+          <td></td><td></td><td></td><td></td><td></td>
+          <td>-</td>
+          <td></td><td></td><td></td><td class="mark">✓</td>
+          <td>11.30</td>
+          <td>50</td><td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="period-summary">
+      <div>
+        <span>KEHADIRAN / MINGGU</span>
+        <strong>4 dari 5 hari</strong>
+      </div>
+      <div>
+        <span>JUMLAH JAM / MINGGU</span>
+        <strong>14 JP</strong>
+      </div>
+      <div>
+        <span>M — MINGGUAN</span>
+        <strong>88%</strong>
+      </div>
+      <div>
+        <span>MINGGU KE</span>
+        <strong>1</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    PH = JP aktual / JP terjadwal per hari. M = agregat JP aktual / JP terjadwal per minggu.
+    B = agregat JP aktual / JP terjadwal per bulan. Tanda “-” berarti belum ada data yang dihitung.
+  </div>
+
+  <div class="signature">
+    <div class="box">
+      <div class="role">KEPALA SEKOLAH</div>
+      <div class="blank"></div>
+      <div class="name">DASEP GUNAWAN, S.Pd</div>
+    </div>
+
+    <div class="box">
+      <div class="role">KEPALA TU</div>
+      <div class="blank"></div>
+      <div class="name">ENGKUS KUSNADI, SE</div>
+    </div>
+
+    <div class="box">
+      <div class="role">KEPEGAWAIAN</div>
+      <div class="blank"></div>
+      <div class="name">ASEP HABIBI, SST</div>
+    </div>
+
+    <div class="box">
+      <div class="role">GURU YANG BERSANGKUTAN</div>
+      <div class="blank"></div>
+      <div class="name">&nbsp;</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
