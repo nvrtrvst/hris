@@ -2,7 +2,7 @@ import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import FilterSheet from '@/Components/FilterSheet';
 import { Head, Link } from '@inertiajs/react';
-import { Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users, X, ClipboardList, Clock3, UserCheck } from 'lucide-react';
+import { Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users, X, ClipboardList, Clock3, UserCheck, ShieldCheck } from 'lucide-react';
 import axios from 'axios';
 import ComboSelect from '@/Components/ComboSelect';
 import HarianDetail from '@/Pages/Laporan/Partials/Preview/HarianDetail';
@@ -147,6 +147,13 @@ export default function LaporanIndex({ auth, units }) {
 
     const permissions = auth.permissions || [];
     const reportLinks = [
+        {
+            name: 'Pengawasan',
+            description: 'Kehadiran, JP guru, dan kelas belum terpantau dalam satu laporan.',
+            href: route('laporan.pengawasan'),
+            visible: permissions.includes('view_presensi'),
+            Icon: ShieldCheck,
+        },
         {
             name: 'Presensi Guru',
             description: 'Presensi bulanan per guru: JP aktual, PH, M, dan B.',

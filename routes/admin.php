@@ -12,6 +12,7 @@ use App\Http\Controllers\KpiController;
 use App\Http\Controllers\LaporanAbsenSiswaController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\LaporanKeterlambatanSiswaController;
+use App\Http\Controllers\LaporanPengawasanController;
 use App\Http\Controllers\LaporanPresensiGuruController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\NotificationController;
@@ -343,6 +344,15 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::get('laporan/presensi-guru/pdf', [LaporanPresensiGuruController::class, 'pdf'])
             ->middleware('throttle:30,1')
             ->name('laporan.presensi-guru.pdf');
+
+        Route::get('laporan/pengawasan', [LaporanPengawasanController::class, 'index'])->name('laporan.pengawasan');
+        Route::get('laporan/pengawasan/preview', [LaporanPengawasanController::class, 'preview'])->name('laporan.pengawasan.preview');
+        Route::get('laporan/pengawasan/pdf', [LaporanPengawasanController::class, 'pdf'])
+            ->middleware('throttle:30,1')
+            ->name('laporan.pengawasan.pdf');
+        Route::get('laporan/pengawasan/excel', [LaporanPengawasanController::class, 'excel'])
+            ->middleware('throttle:30,1')
+            ->name('laporan.pengawasan.excel');
     });
     Route::get('laporan/keterlambatan-siswa', [LaporanKeterlambatanSiswaController::class, 'index'])->name('laporan.keterlambatan-siswa');
     Route::get('laporan/keterlambatan-siswa/export', [LaporanKeterlambatanSiswaController::class, 'exportExcel'])->name('laporan.keterlambatan-siswa.export');
