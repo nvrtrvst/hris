@@ -59,9 +59,19 @@ class PresensiMessages
     public const LABEL_KELUAR = 'keluar';
 
     // Anti-spoof
-    public const ATTESTATION_EXPIRED = 'Token presensi kedaluwarsa. Silakan refresh halaman dan coba lagi.';
+    public const ATTESTATION_MISSING = 'Sesi absen tidak ditemukan. Muat ulang halaman, lalu ambil foto baru.';
 
-    public const ATTESTATION_INVALID = 'Verifikasi keamanan gagal. Silakan refresh halaman.';
+    public const ATTESTATION_EXPIRED = 'Foto sudah lebih dari 10 menit. Ambil foto baru agar waktu presensi akurat.';
+
+    public const ATTESTATION_USED = 'Presensi ini sudah terkirim. Buka Riwayat untuk memastikan, jangan kirim ulang.';
+
+    public const ATTESTATION_INVALID = 'Sesi absen tidak valid. Muat ulang halaman, lalu ambil foto baru.';
+
+    public const ATTESTATION_CAPTURED_BEFORE = 'Waktu foto tidak sesuai sesi. Muat ulang halaman dan ambil foto baru.';
+
+    public const ATTESTATION_CLOCK_AHEAD = 'Jam HP sekitar %s lebih cepat dari server. Aktifkan tanggal dan waktu otomatis, lalu coba lagi.';
+
+    public const ATTESTATION_CLOCK_BEHIND = 'Jam HP sekitar %s lebih lambat dari server. Aktifkan tanggal dan waktu otomatis, lalu coba lagi.';
 
     // Unit Types
     public const UNIT_LEMBUR = 'lembur';

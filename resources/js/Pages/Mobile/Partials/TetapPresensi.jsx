@@ -82,6 +82,7 @@ const pad = (n) => String(n).padStart(2, '0');
 export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null, jamIzinPulangCepat = null, libur = false, alasanLibur = null, piketGate = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [errorAction, setErrorAction] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
     const [currentTime, setCurrentTime] = useState('');
     const [posA, setPosA] = useState(null);
@@ -104,6 +105,26 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const [tujuanKosong, setTujuanKosong] = useState(false);
 
     const errorRef = useRef(null);
+
+    const errorActionLabel = {
+        retake_photo: 'Ambil Foto Ulang',
+        go_to_history: 'Buka Riwayat',
+        set_clock: 'Mengerti',
+        login: 'Login Ulang',
+    }[errorAction];
+
+    const handleErrorAction = () => {
+        if (errorAction === 'retake_photo') {
+            window.location.reload();
+        } else if (errorAction === 'go_to_history') {
+            window.location.assign(route('presensi.riwayat'));
+        } else if (errorAction === 'login') {
+            window.location.assign(route('presensi.login'));
+        } else {
+            setError(null);
+            setErrorAction(null);
+        }
+    };
 
     const {
         loadingLocation,
@@ -307,6 +328,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
 
     const handleSubmitFoto = useCallback(async (tipe) => {
         setError(null);
+        setErrorAction(null);
         setSuccessMessage(null);
 
         if (!capturedPhoto) { setError('Silakan ambil foto terlebih dahulu.'); return; }
@@ -370,6 +392,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                     const first = Object.values(data.errors)[0];
                     if (Array.isArray(first) && first.length) message = first[0];
                 }
+                setErrorAction(data.action || null);
                 setError(message);
                 return;
             }
@@ -393,7 +416,10 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 setError(data.message || 'Gagal.');
             }
         } catch (err) {
-            if (err.type === 'session_expired') setError('Sesi habis. Refresh dan login ulang.');
+            if (err.type === 'session_expired') {
+                setErrorAction('login');
+                setError('Sesi habis. Refresh dan login ulang.');
+            }
             else if (err.name === 'AbortError') setError('Permintaan dibatalkan.');
             else if (err instanceof TypeError && err.message === 'Failed to fetch') setError('Koneksi terputus.');
             else { console.error('[TetapPresensi]', err); setError('Tidak dapat terhubung ke server.'); }
@@ -407,6 +433,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
     const handleSlideGroup = useCallback(async (group, tipe = 'masuk') => {
         setSlideLoading(group.id);
         setError(null);
+        setErrorAction(null);
         setSuccessMessage(null);
 
         if (!currentPosition) {
@@ -525,8 +552,16 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 </div>
             )}
             {error && (
-                <div ref={errorRef} role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
-                    <AlertCircle className="h-5 w-5" /> {error}
+                <div ref={errorRef} role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                    <div className="min-w-0">
+                        <p className="break-words">{error}</p>
+                        {errorActionLabel && (
+                            <button type="button" onClick={handleErrorAction} className="mt-2 min-h-11 rounded-lg bg-white px-3 text-xs font-bold text-rose-700 ring-1 ring-rose-200">
+                                {errorActionLabel}
+                            </button>
+                        )}
+                    </div>
                 </div>
             )}
 
