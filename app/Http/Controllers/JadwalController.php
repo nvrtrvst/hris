@@ -35,13 +35,31 @@ class JadwalController extends Controller
 
         $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan,durasi_jp', 'pegawaiMapel.mataPelajaran:id,nama']);
 
+        // Unit efektif user — pimpinan bisa saja unit_sekolah_id NULL.
+        $unitId = $user && ! $user->can('view_all_units')
+            ? ($user->unit_sekolah_id ?? $user->pegawai?->units->first()?->id)
+            : null;
+        $isKepsek = $this->isKepsek($user);
+
+        // Filter jenis pegawai (Dapodik-style). Kepsek memantau seluruh unit
+        // (guru + tendik) → default 'semua'; selain itu papan guru.
+        $jenis = $request->input('jenis_filter');
+        if ($jenis === '' || $jenis === null) {
+            $jenis = $isKepsek ? 'semua' : 'pendidik';
+        }
+
         // Superadmin tanpa filter unit: skip load jadwal (bisa ribuan row di
         // semua unit → lambat). Halaman menampilkan prompt pilih unit;
         // admin_unit/pimpinan/pegawai tetap load langsung (scope-nya kecil).
         $needsUnitFilter = false;
         if ($this->isPimpinanReadOnly($user)) {
-            // Pimpinan (kepsek/kepala TU/ketua yayasan): HANYA jadwal bawahan langsung.
-            $this->scopePimpinanBawahan($query, $user);
+            if ($isKepsek) {
+                // Kepsek: SELURUH jadwal unit (guru + tendik), bukan bawahan saja.
+                $unitId ? $query->where('unit_sekolah_id', $unitId) : $query->whereRaw('1 = 0');
+            } else {
+                // Pimpinan lain (kepala TU/ketua yayasan): HANYA bawahan langsung.
+                $this->scopePimpinanBawahan($query, $user);
+            }
         } elseif (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
             if ($pegawai) {
@@ -49,8 +67,8 @@ class JadwalController extends Controller
             } else {
                 $query->where('id', -1);
             }
-        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $query->where('unit_sekolah_id', $user->unit_sekolah_id);
+        } elseif ($unitId) {
+            $query->where('unit_sekolah_id', $unitId);
         } elseif ($request->filled('unit_sekolah_id')) {
             $query->where('unit_sekolah_id', $request->unit_sekolah_id);
         } elseif ($search === '') {
@@ -66,12 +84,7 @@ class JadwalController extends Controller
             $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', "%{$search}%"));
         }
 
-        // Filter jenis pegawai (Dapodik-style). Default KOSONG = pendidik
-        // (jadwal mengajar = papan guru; TU tak punya jadwal). 'semua' = tampilkan semua.
-        $jenis = $request->input('jenis_filter');
-        if ($jenis === '' || $jenis === null) {
-            $jenis = 'pendidik';
-        }
+        // Filter jenis pegawai (Dapodik-style). 'semua' = tampilkan semua.
         if ($jenis === 'pendidik') {
             $query->whereHas('pegawai.jabatans', fn ($q) => $q->where('is_guru', true));
         } elseif ($jenis === 'kependidikan') {
@@ -89,10 +102,10 @@ class JadwalController extends Controller
             ->groupBy('pegawai_id')
             ->map(fn ($rows) => round($rows->sum(fn ($j) => JpCalculator::weightFromJadwal($j)), 2));
 
-        // Scope unit dropdown — admin_unit/pimpinan hanya lihat unit sendiri
+        // Scope unit dropdown — user ber-unit hanya lihat unit sendiri
         $unitsQuery = UnitSekolah::query()->select(['id', 'nama', 'singkatan']);
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $unitsQuery->where('id', $user->unit_sekolah_id);
+        if ($unitId) {
+            $unitsQuery->where('id', $unitId);
         }
         $units = $unitsQuery->get();
         $mapel = MataPelajaran::all(['id', 'nama']);
@@ -109,10 +122,8 @@ class JadwalController extends Controller
             } else {
                 $pegawaiQuery->where('id', -1);
             }
-        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $pegawaiQuery->whereHas('units', function ($q) use ($user) {
-                $q->where('unit_sekolah.id', $user->unit_sekolah_id);
-            });
+        } elseif ($unitId) {
+            $pegawaiQuery->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitId));
         } elseif ($request->filled('unit_sekolah_id')) {
             $pegawaiQuery->whereHas('units', function ($q) use ($request) {
                 $q->where('unit_sekolah.id', $request->unit_sekolah_id);
@@ -125,14 +136,10 @@ class JadwalController extends Controller
             $pegawaiQuery->where('nama_lengkap', 'like', "%{$search}%");
         }
 
-        // Filter jenis pegawai (Dapodik-style) untuk matrix rows. Default = pendidik.
-        $jenisPeg = $request->input('jenis_filter');
-        if ($jenisPeg === '' || $jenisPeg === null) {
-            $jenisPeg = 'pendidik';
-        }
-        if ($jenisPeg === 'pendidik') {
+        // Filter jenis pegawai (Dapodik-style) untuk matrix rows.
+        if ($jenis === 'pendidik') {
             $pegawaiQuery->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
-        } elseif ($jenisPeg === 'kependidikan') {
+        } elseif ($jenis === 'kependidikan') {
             $pegawaiQuery->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
         }
 
@@ -167,8 +174,8 @@ class JadwalController extends Controller
             ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status']);
         if ($needsUnitFilter) {
             $presensiHariIni->where('id', -1);
-        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $presensiHariIni->where('unit_sekolah_id', $user->unit_sekolah_id);
+        } elseif ($unitId) {
+            $presensiHariIni->where('unit_sekolah_id', $unitId);
         } elseif ($request->filled('unit_sekolah_id')) {
             $presensiHariIni->where('unit_sekolah_id', $request->unit_sekolah_id);
         }
@@ -183,7 +190,10 @@ class JadwalController extends Controller
             'jpMinggu' => $jpMinggu,
             'targetJpMinggu' => JpCalculator::TARGET_JP_MINGGU,
             'presensiHariIni' => $presensiHariIni->get()->toArray(),
-            'filters' => $request->only(['unit_sekolah_id', 'kelas_label', 'search', 'jenis_filter']),
+            'filters' => array_merge(
+                $request->only(['unit_sekolah_id', 'kelas_label', 'search']),
+                ['jenis_filter' => $jenis]
+            ),
             'canMutateJadwal' => (bool) $user?->can('manage_jadwal'),
             'needsUnitFilter' => $needsUnitFilter,
         ]);

@@ -218,6 +218,20 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         return m;
     }, [jadwals]);
 
+    // Chip penanda pegawai tanpa jadwal sama sekali (mis. tendik non-piket).
+    const chipTanpaJadwal = (pegawaiId) => {
+        if ((jadwalByPegawai.get(pegawaiId) || []).length > 0) return null;
+
+        return (
+            <span
+                className="inline-flex shrink-0 rounded bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-text-secondary"
+                title="Belum ada jadwal di unit ini"
+            >
+                Tanpa jadwal
+            </span>
+        );
+    };
+
     // Index kandidat swap — dari endpoint unfiltered, bukan prop matriks.
     const candJadwalByPegawai = useMemo(() => {
         const m = new Map();
@@ -655,6 +669,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                             <span className="truncate text-sm font-bold text-primary">{pegawai.nama_lengkap}</span>
                                                             <span className="text-xs text-text-muted shrink-0">{unitSingkatan(pegawai)}</span>
                                                             {jpBadge(pegawai.id)}
+                                                            {chipTanpaJadwal(pegawai.id)}
                                                         </div>
                                                         <div className="mt-1 flex items-center gap-2 text-xs text-text-secondary">
                                                             <span>{kelasCount} kelas</span>
@@ -721,7 +736,6 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                         <div className={`md:hidden space-y-3 transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
                             {pegawais.length > 0 ? pegawais.map((pegawai) => {
                                 const pJadwals = jadwalByPegawai.get(pegawai.id) || [];
-                                if (pJadwals.length === 0) return null;
 
                                 return (
                                     <div key={pegawai.id} className="card p-4">
@@ -729,7 +743,11 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                             <div className="min-w-0 truncate text-sm font-bold text-gray-900">{pegawai.nama_lengkap}</div>
                                             <span className="text-[11px] text-gray-500">{unitSingkatan(pegawai)}</span>
                                             {jpBadge(pegawai.id)}
+                                            {chipTanpaJadwal(pegawai.id)}
                                         </div>
+                                        {pJadwals.length === 0 && (
+                                            <p className="text-xs text-text-secondary">Belum ada jadwal di unit ini.</p>
+                                        )}
                                         <div className="space-y-2">
                                             {DAYS.map((day) => {
                                                 const dayJadwals = pJadwals.filter((j) => j.hari === day);
@@ -826,7 +844,8 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                             <ShieldCheck className="h-3 w-3 text-accent print:hidden" />
                                                             {unitSingkatan(pegawai)}
                                                         </span>
-                                                        {jpBadge(pegawai.id)}
+                                                         {jpBadge(pegawai.id)}
+                                                        {chipTanpaJadwal(pegawai.id)}
                                                     </div>
                                                 </td>
                                                 {DAYS.map((day) => {
