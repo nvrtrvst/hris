@@ -12,6 +12,7 @@ use App\Models\PegawaiMapel;
 use App\Models\Presensi;
 use App\Models\UnitLokasi;
 use App\Models\UnitSekolah;
+use App\Models\User;
 use App\Services\JpCalculator;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Client\ConnectionException;
@@ -35,13 +36,29 @@ class JadwalController extends Controller
 
         $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan,durasi_jp', 'pegawaiMapel.mataPelajaran:id,nama']);
 
+        // Unit efektif user — pimpinan bisa saja unit_sekolah_id NULL.
+        $unitId = $this->resolveUnitId($user);
+        $isKepsek = $this->isKepsek($user);
+
+        // Filter jenis pegawai (Dapodik-style). Kepsek memantau seluruh unit
+        // (guru + tendik) → default 'semua'; selain itu papan guru.
+        $jenis = $request->input('jenis_filter');
+        if ($jenis === '' || $jenis === null) {
+            $jenis = $isKepsek ? 'semua' : 'pendidik';
+        }
+
         // Superadmin tanpa filter unit: skip load jadwal (bisa ribuan row di
         // semua unit → lambat). Halaman menampilkan prompt pilih unit;
         // admin_unit/pimpinan/pegawai tetap load langsung (scope-nya kecil).
         $needsUnitFilter = false;
         if ($this->isPimpinanReadOnly($user)) {
-            // Pimpinan (kepsek/kepala TU/ketua yayasan): HANYA jadwal bawahan langsung.
-            $this->scopePimpinanBawahan($query, $user);
+            if ($isKepsek) {
+                // Kepsek: SELURUH jadwal unit (guru + tendik), bukan bawahan saja.
+                $unitId ? $query->where('unit_sekolah_id', $unitId) : $query->whereRaw('1 = 0');
+            } else {
+                // Pimpinan lain (kepala TU/ketua yayasan): HANYA bawahan langsung.
+                $this->scopePimpinanBawahan($query, $user);
+            }
         } elseif (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
             if ($pegawai) {
@@ -49,8 +66,8 @@ class JadwalController extends Controller
             } else {
                 $query->where('id', -1);
             }
-        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $query->where('unit_sekolah_id', $user->unit_sekolah_id);
+        } elseif ($unitId) {
+            $query->where('unit_sekolah_id', $unitId);
         } elseif ($request->filled('unit_sekolah_id')) {
             $query->where('unit_sekolah_id', $request->unit_sekolah_id);
         } elseif ($search === '') {
@@ -66,12 +83,7 @@ class JadwalController extends Controller
             $query->whereHas('pegawai', fn ($q) => $q->where('nama_lengkap', 'like', "%{$search}%"));
         }
 
-        // Filter jenis pegawai (Dapodik-style). Default KOSONG = pendidik
-        // (jadwal mengajar = papan guru; TU tak punya jadwal). 'semua' = tampilkan semua.
-        $jenis = $request->input('jenis_filter');
-        if ($jenis === '' || $jenis === null) {
-            $jenis = 'pendidik';
-        }
+        // Filter jenis pegawai (Dapodik-style). 'semua' = tampilkan semua.
         if ($jenis === 'pendidik') {
             $query->whereHas('pegawai.jabatans', fn ($q) => $q->where('is_guru', true));
         } elseif ($jenis === 'kependidikan') {
@@ -89,10 +101,10 @@ class JadwalController extends Controller
             ->groupBy('pegawai_id')
             ->map(fn ($rows) => round($rows->sum(fn ($j) => JpCalculator::weightFromJadwal($j)), 2));
 
-        // Scope unit dropdown — admin_unit/pimpinan hanya lihat unit sendiri
+        // Scope unit dropdown — user ber-unit hanya lihat unit sendiri
         $unitsQuery = UnitSekolah::query()->select(['id', 'nama', 'singkatan']);
-        if ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $unitsQuery->where('id', $user->unit_sekolah_id);
+        if ($unitId) {
+            $unitsQuery->where('id', $unitId);
         }
         $units = $unitsQuery->get();
         $mapel = MataPelajaran::all(['id', 'nama']);
@@ -109,10 +121,8 @@ class JadwalController extends Controller
             } else {
                 $pegawaiQuery->where('id', -1);
             }
-        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $pegawaiQuery->whereHas('units', function ($q) use ($user) {
-                $q->where('unit_sekolah.id', $user->unit_sekolah_id);
-            });
+        } elseif ($unitId) {
+            $pegawaiQuery->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitId));
         } elseif ($request->filled('unit_sekolah_id')) {
             $pegawaiQuery->whereHas('units', function ($q) use ($request) {
                 $q->where('unit_sekolah.id', $request->unit_sekolah_id);
@@ -125,14 +135,10 @@ class JadwalController extends Controller
             $pegawaiQuery->where('nama_lengkap', 'like', "%{$search}%");
         }
 
-        // Filter jenis pegawai (Dapodik-style) untuk matrix rows. Default = pendidik.
-        $jenisPeg = $request->input('jenis_filter');
-        if ($jenisPeg === '' || $jenisPeg === null) {
-            $jenisPeg = 'pendidik';
-        }
-        if ($jenisPeg === 'pendidik') {
+        // Filter jenis pegawai (Dapodik-style) untuk matrix rows.
+        if ($jenis === 'pendidik') {
             $pegawaiQuery->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
-        } elseif ($jenisPeg === 'kependidikan') {
+        } elseif ($jenis === 'kependidikan') {
             $pegawaiQuery->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
         }
 
@@ -167,8 +173,8 @@ class JadwalController extends Controller
             ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status']);
         if ($needsUnitFilter) {
             $presensiHariIni->where('id', -1);
-        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $presensiHariIni->where('unit_sekolah_id', $user->unit_sekolah_id);
+        } elseif ($unitId) {
+            $presensiHariIni->where('unit_sekolah_id', $unitId);
         } elseif ($request->filled('unit_sekolah_id')) {
             $presensiHariIni->where('unit_sekolah_id', $request->unit_sekolah_id);
         }
@@ -183,7 +189,10 @@ class JadwalController extends Controller
             'jpMinggu' => $jpMinggu,
             'targetJpMinggu' => JpCalculator::TARGET_JP_MINGGU,
             'presensiHariIni' => $presensiHariIni->get()->toArray(),
-            'filters' => $request->only(['unit_sekolah_id', 'kelas_label', 'search', 'jenis_filter']),
+            'filters' => array_merge(
+                $request->only(['unit_sekolah_id', 'kelas_label', 'search']),
+                ['jenis_filter' => $jenis]
+            ),
             'canMutateJadwal' => (bool) $user?->can('manage_jadwal'),
             'needsUnitFilter' => $needsUnitFilter,
         ]);
@@ -1178,15 +1187,24 @@ class JadwalController extends Controller
 
         $query = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama,singkatan', 'pegawaiMapel.mataPelajaran:id,nama']);
 
+        // Unit cetak = unit efektif user (kepsek: seluruh unitnya).
+        $unitId = $this->resolveUnitId($user);
+        if ($unitId === null && $request->filled('unit_sekolah_id')) {
+            $unitId = (int) $request->unit_sekolah_id;
+        }
+        $isKepsek = $this->isKepsek($user);
+
         if ($this->isPimpinanReadOnly($user)) {
-            $this->scopePimpinanBawahan($query, $user);
+            if ($isKepsek) {
+                $unitId ? $query->where('unit_sekolah_id', $unitId) : $query->whereRaw('1 = 0');
+            } else {
+                $this->scopePimpinanBawahan($query, $user);
+            }
         } elseif (! $isAdmin) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
             $query->where('pegawai_id', $pegawai?->id ?? -1);
-        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $query->where('unit_sekolah_id', $user->unit_sekolah_id);
-        } elseif ($request->filled('unit_sekolah_id')) {
-            $query->where('unit_sekolah_id', $request->unit_sekolah_id);
+        } elseif ($unitId) {
+            $query->where('unit_sekolah_id', $unitId);
         }
 
         if ($request->filled('kelas_label')) {
@@ -1200,7 +1218,7 @@ class JadwalController extends Controller
 
         $jenis = $request->input('jenis_filter');
         if ($jenis === '' || $jenis === null) {
-            $jenis = 'pendidik';
+            $jenis = $isKepsek ? 'semua' : 'pendidik';
         }
         if ($jenis === 'pendidik') {
             $query->whereHas('pegawai.jabatans', fn ($q) => $q->where('is_guru', true));
@@ -1212,26 +1230,27 @@ class JadwalController extends Controller
             ->orderBy('jam_mulai')
             ->get();
 
-        $DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
-        $matrix = [];
+        $unitObj = $unitId ? UnitSekolah::find($unitId) : null;
+        $unitName = $unitObj?->nama ?? 'Semua Unit';
+
+        // Hari mengikuti setelan unit (Sabtu/Minggu bila aktif), fallback Senin-Jumat.
+        $DAYS = Pegawai::hariKerjaUnit($unitObj);
+        $matrix = [];           // [kelas][hari][jam_mulai] => daftar slot
         $perGuru = [];
+        $tugasNonMengajar = []; // piket/shift/ekskul tanpa kelas
+        $slotTimes = [];        // jam mulai unik yang benar-benar dipakai
 
         foreach ($jadwals as $j) {
-            $kelas = $j->kelas_label;
             $hari = $j->hari;
-            if (! $kelas || ! in_array($hari, $DAYS)) {
-                continue;
-            }
-
-            $slotNum = $this->getJamSlot($j->jam_mulai);
-            if (! $slotNum) {
+            if (! in_array($hari, $DAYS, true)) {
                 continue;
             }
 
             $guru = $j->pegawai->nama_lengkap ?? '-';
-            $mapel = $j->pegawaiMapel->mataPelajaran->nama ?? ($j->jenis_jadwal === 'mengajar' ? '-' : ucfirst($j->jenis_jadwal));
-
-            $matrix[$kelas][$hari][$slotNum] = ['guru' => $guru, 'mapel' => $mapel];
+            $mapel = $j->pegawaiMapel->mataPelajaran->nama
+                ?? ($j->jenis_jadwal === 'mengajar' ? '-' : ucfirst(str_replace('_', ' ', (string) $j->jenis_jadwal)));
+            $jamMulai = substr((string) $j->jam_mulai, 0, 5);
+            $jamSelesai = substr((string) $j->jam_selesai, 0, 5);
 
             $pid = $j->pegawai_id;
             if (! isset($perGuru[$pid])) {
@@ -1239,26 +1258,40 @@ class JadwalController extends Controller
             }
             $perGuru[$pid]['jadwals'][] = [
                 'hari' => $hari,
-                'jam_mulai' => substr($j->jam_mulai, 0, 5),
-                'jam_selesai' => substr($j->jam_selesai, 0, 5),
-                'kelas' => $kelas,
+                'jam_mulai' => $jamMulai,
+                'jam_selesai' => $jamSelesai,
+                'kelas' => $j->kelas_label,
                 'mapel' => $mapel,
                 'jenis' => $j->jenis_jadwal,
             ];
+
+            if (! $j->kelas_label) {
+                $tugasNonMengajar[] = [
+                    'nama' => $guru,
+                    'tugas' => $mapel,
+                    'hari' => $hari,
+                    'jam' => "{$jamMulai}-{$jamSelesai}",
+                ];
+
+                continue;
+            }
+
+            $matrix[$j->kelas_label][$hari][$jamMulai][] = [
+                'guru' => $guru,
+                'mapel' => $mapel,
+                'jam' => "{$jamMulai}-{$jamSelesai}",
+            ];
+            $slotTimes[$jamMulai] = true;
         }
 
         ksort($matrix);
         foreach ($matrix as &$hariArr) {
             ksort($hariArr);
         }
+        unset($hariArr);
 
         $kelasList = collect(array_keys($matrix))->sort()->values()->all();
-
-        $jamSlotLabels = [
-            1 => '07:00', 2 => '08:10', 3 => '08:50', 4 => '09:30',
-            5 => '10:30', 6 => '11:10', 7 => '11:50', 8 => '13:00',
-            9 => '13:40', 10 => '14:20', 11 => '15:00',
-        ];
+        $slotTimes = collect(array_keys($slotTimes))->sort()->values()->all();
 
         $logoPath = $this->resolveYayasanLogoPath();
         $logoWidth = null;
@@ -1267,16 +1300,6 @@ class JadwalController extends Controller
             if ($sz) {
                 $logoWidth = (int) round(64 * $sz[0] / $sz[1]);
             }
-        }
-
-        $unitName = 'Semua Unit';
-        $unitObj = null;
-        if (! empty($request->unit_sekolah_id)) {
-            $unitObj = UnitSekolah::find($request->unit_sekolah_id);
-            $unitName = $unitObj?->nama ?? $unitName;
-        } elseif ($user && $user->unit_sekolah_id && ! $user->can('view_all_units')) {
-            $unitObj = UnitSekolah::find($user->unit_sekolah_id);
-            $unitName = $unitObj?->nama ?? $unitName;
         }
 
         // Kepala sekolah unit (untuk blok tanda tangan): pegawai berjabatan
@@ -1293,7 +1316,7 @@ class JadwalController extends Controller
         $semester = $jadwals->first()?->semester ?? 1;
 
         $pdf = Pdf::loadView('exports.pdf-jadwal', compact(
-            'matrix', 'perGuru', 'kelasList', 'DAYS', 'jamSlotLabels',
+            'matrix', 'perGuru', 'tugasNonMengajar', 'kelasList', 'DAYS', 'slotTimes',
             'logoPath', 'logoWidth', 'unitName', 'tahunAjaran', 'semester', 'kepalaSekolah'
         ))->setPaper('a4', 'landscape');
 
@@ -1547,26 +1570,17 @@ class JadwalController extends Controller
             ->each(fn ($pid) => $this->clearJadwalCache($pid));
     }
 
-    private function getJamSlot(string $jamMulai): ?int
+    /**
+     * Unit efektif user: unit_sekolah_id, fallback unit primer pegawai.
+     * NULL = user lintas unit (view_all_units).
+     */
+    private function resolveUnitId(?User $user): ?int
     {
-        $h = (int) substr($jamMulai, 0, 2);
-        $m = (int) substr($jamMulai, 3, 2);
-        $minutes = $h * 60 + $m;
+        if (! $user || $user->can('view_all_units')) {
+            return null;
+        }
 
-        return match (true) {
-            $minutes >= 420 && $minutes < 490 => 1,
-            $minutes >= 490 && $minutes < 530 => 2,
-            $minutes >= 530 && $minutes < 570 => 3,
-            $minutes >= 570 && $minutes < 630 => 4,
-            $minutes >= 630 && $minutes < 670 => 5,
-            $minutes >= 670 && $minutes < 710 => 6,
-            $minutes >= 710 && $minutes < 750 => 7,
-            $minutes >= 780 && $minutes < 820 => 8,
-            $minutes >= 820 && $minutes < 860 => 9,
-            $minutes >= 860 && $minutes < 900 => 10,
-            $minutes >= 900 && $minutes < 940 => 11,
-            default => null,
-        };
+        return $user->unit_sekolah_id ?? $user->pegawai?->units->first()?->id;
     }
 
     private function normalizeTime(string $time): string

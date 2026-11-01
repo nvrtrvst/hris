@@ -29,6 +29,7 @@
     table.matrix td.kelas-name { text-align: left; font-weight: 700; background: #f9fafb; padding-left: 4px; font-size: 7px; }
     table.matrix td .guru-name { font-weight: 600; color: #0f3d3e; font-size: 6px; line-height: 1.2; }
     table.matrix td .mapel-name { color: #374151; font-size: 5.5px; line-height: 1.1; }
+    table.matrix td .slot-jam { color: #6b7280; font-size: 5.5px; line-height: 1.1; }
     table.matrix tbody tr:nth-child(even) { background: #f9fafb; }
     table.matrix tbody tr:nth-child(odd) { background: #fff; }
 
@@ -79,8 +80,8 @@
         <thead>
             <tr>
                 <th class="kelas-col">Kelas</th>
-                @foreach($jamSlotLabels as $num => $time)
-                    <th>{{ $num }}<br><span style="font-weight:normal;font-size:5.5px;">{{ $time }}</span></th>
+                @foreach($slotTimes as $time)
+                    <th>{{ $time }}</th>
                 @endforeach
             </tr>
         </thead>
@@ -88,18 +89,21 @@
             @forelse($kelasList as $kelas)
                 <tr>
                     <td class="kelas-name">{{ $kelas }}</td>
-                    @foreach($jamSlotLabels as $num => $time)
+                    @foreach($slotTimes as $time)
                         <td>
-                            @if(isset($matrix[$kelas][$day][$num]))
-                                <div class="guru-name">{{ $matrix[$kelas][$day][$num]['guru'] }}</div>
-                                <div class="mapel-name">{{ $matrix[$kelas][$day][$num]['mapel'] }}</div>
+                            @if(isset($matrix[$kelas][$day][$time]))
+                                @foreach($matrix[$kelas][$day][$time] as $slot)
+                                    <div class="guru-name">{{ $slot['guru'] }}</div>
+                                    <div class="mapel-name">{{ $slot['mapel'] }}</div>
+                                    <div class="slot-jam">{{ $slot['jam'] }}</div>
+                                @endforeach
                             @endif
                         </td>
                     @endforeach
                 </tr>
             @empty
                 <tr>
-                    <td colspan="12" class="empty-msg">Tidak ada data jadwal untuk hari {{ $day }}</td>
+                    <td colspan="{{ count($slotTimes) + 1 }}" class="empty-msg">Tidak ada data jadwal untuk hari {{ $day }}</td>
                 </tr>
             @endforelse
         </tbody>
@@ -165,6 +169,38 @@
 
         <div class="footer">{{ config('yayasan.name') }} &mdash; Dicetak: {{ now()->format('d/m/Y H:i') }}</div>
     @endforeach
+@endif
+
+{{-- TUGAS NON-MENGAJAR (piket / shift / ekskul tanpa kelas) --}}
+@if(! empty($tugasNonMengajar))
+    <div class="page-break"></div>
+    <div class="section-title">Tugas Non-Mengajar</div>
+    <div class="day-sub">Unit: {{ $unitName }} &mdash; T.A. {{ $tahunAjaran }} Semester {{ $semester }}</div>
+
+    <table class="guru">
+        <thead>
+            <tr>
+                <th style="width:5%;">No</th>
+                <th style="width:35%;">Nama</th>
+                <th style="width:30%;">Tugas</th>
+                <th style="width:15%;">Hari</th>
+                <th style="width:15%;">Jam</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($tugasNonMengajar as $idx => $tugas)
+                <tr>
+                    <td>{{ $idx + 1 }}</td>
+                    <td style="font-weight:700;">{{ $tugas['nama'] }}</td>
+                    <td>{{ $tugas['tugas'] }}</td>
+                    <td>{{ $tugas['hari'] }}</td>
+                    <td>{{ $tugas['jam'] }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
+    <div class="footer">{{ config('yayasan.name') }} &mdash; Dicetak: {{ now()->format('d/m/Y H:i') }}</div>
 @endif
 
 {{-- Tanda tangan kepala sekolah unit --}}

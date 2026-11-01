@@ -311,4 +311,73 @@ class PimpinanRoleTest extends TestCase
         $this->assertTrue($user->hasRole('admin_unit'), 'Role admin_unit pilihan admin harus dipertahankan.');
         $this->assertFalse($user->hasRole('pimpinan'), 'Role pimpinan tidak boleh di-override dari admin_unit.');
     }
+
+    public function test_kepsek_jadwal_index_scoped_to_whole_unit_including_tendik(): void
+    {
+        $kepsek = $this->makePegawai('Kepala Sekolah SD');
+        $jabatanKepsek = Jabatan::firstOrCreate(['nama' => 'Kepala Sekolah'], ['is_guru' => false]);
+        $kepsek->units()->updateExistingPivot($this->sd->id, ['jabatan_id' => $jabatanKepsek->id]);
+
+        $guru = $this->makePegawai('Guru Satu');
+        $tendik = $this->makePegawai('Staf TU');
+        $jabatanTu = Jabatan::firstOrCreate(['nama' => 'Staf Tata Usaha'], ['is_guru' => false]);
+        $tendik->units()->updateExistingPivot($this->sd->id, ['jabatan_id' => $jabatanTu->id]);
+
+        $unitLain = UnitSekolah::create(['nama' => 'SMP Uji', 'singkatan' => 'SMP']);
+
+        Jadwal::create([
+            'pegawai_id' => $guru->id,
+            'unit_sekolah_id' => $this->sd->id,
+            'kelas_label' => '7 - A',
+            'hari' => 'Senin',
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '08:00:00',
+            'jenis_jadwal' => 'mengajar',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+        Jadwal::create([
+            'pegawai_id' => $tendik->id,
+            'unit_sekolah_id' => $this->sd->id,
+            'hari' => 'Senin',
+            'jam_mulai' => '08:00:00',
+            'jam_selesai' => '09:00:00',
+            'jenis_jadwal' => 'piket',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+        // Jadwal unit lain tidak boleh ikut tampil.
+        Jadwal::create([
+            'pegawai_id' => $guru->id,
+            'unit_sekolah_id' => $unitLain->id,
+            'hari' => 'Selasa',
+            'jam_mulai' => '10:00:00',
+            'jam_selesai' => '11:00:00',
+            'jenis_jadwal' => 'mengajar',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+
+        $user = $this->makePimpinan($kepsek);
+
+        $this->actingAs($user)
+            ->get(route('jadwal.index'))
+            ->assertInertia(fn ($page) => $page->component('Jadwal/Index')
+                ->has('jadwals', 2)
+                ->has('pegawais', 3)
+                ->where('filters.jenis_filter', 'semua')
+                ->where('canMutateJadwal', false));
+    }
+
+    public function test_pimpinan_bukan_kepsek_default_jenis_filter_pendidik(): void
+    {
+        $kepalaTu = $this->makePegawai('Kepala TU SD');
+        $user = $this->makePimpinan($kepalaTu);
+
+        $this->actingAs($user)
+            ->get(route('jadwal.index'))
+            ->assertInertia(fn ($page) => $page->component('Jadwal/Index')
+                ->where('filters.jenis_filter', 'pendidik')
+                ->where('canMutateJadwal', false));
+    }
 }
