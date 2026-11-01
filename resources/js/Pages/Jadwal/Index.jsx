@@ -37,12 +37,12 @@ import {
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
 const JENIS_META = {
-    mengajar: { badge: 'bg-blue-50 text-blue-700 border-blue-200', label: 'Mengajar' },
-    piket: { badge: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Piket' },
-    ekskul: { badge: 'bg-purple-50 text-purple-700 border-purple-200', label: 'Ekskul' },
-    shift_satpam: { badge: 'bg-slate-100 text-slate-700 border-slate-200', label: 'Shift Satpam' },
-    shift_kebersihan: { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Shift Kebersihan' },
-    lainnya: { badge: 'bg-gray-100 text-gray-600 border-gray-200', label: 'Lainnya' },
+    mengajar: { badge: 'bg-blue-50 text-blue-700', label: 'Mengajar' },
+    piket: { badge: 'bg-amber-50 text-amber-700', label: 'Piket' },
+    ekskul: { badge: 'bg-purple-50 text-purple-700', label: 'Ekskul' },
+    shift_satpam: { badge: 'bg-slate-100 text-slate-700', label: 'Shift Satpam' },
+    shift_kebersihan: { badge: 'bg-emerald-50 text-emerald-700', label: 'Shift Kebersihan' },
+    lainnya: { badge: 'bg-gray-100 text-gray-600', label: 'Lainnya' },
 };
 
 const jenisBadge = (jenis) => JENIS_META[jenis] || JENIS_META.lainnya;
@@ -82,15 +82,15 @@ const JadwalLiveBadge = ({ jadwal, presensi, now }) => {
 
     if (selesai) {
         return (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-emerald-700 print:hidden">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold text-emerald-700 print:hidden">
                 Selesai
             </span>
         );
     }
 
     return (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-700 print:hidden">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden="true" />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700 print:hidden">
+            <span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-amber-500" aria-hidden="true" />
             Mengajar
         </span>
     );
@@ -514,7 +514,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
 
                     {/* Stats */}
                     {isAdmin && (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                             {statCards.map((card) => <StatCard key={card.label} {...card} />)}
                         </div>
                     )}
@@ -537,19 +537,20 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                         value={searchName}
                                         onChange={(e) => setSearchName(e.target.value)}
                                         placeholder="Cari nama pegawai…"
+                                        aria-label="Cari nama pegawai"
                                         className="input-field h-9 pl-9 text-xs w-full"
                                     />
                                 </div>
-                                <select className={filterSelect} value={unitFilter} onChange={handleUnitFilterChange}>
+                                <select aria-label="Filter unit" className={filterSelect} value={unitFilter} onChange={handleUnitFilterChange}>
                                     <option value="">Semua Unit</option>
                                     {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
                                 </select>
-                                <select className={filterSelect} value={jenisFilter} onChange={handleJenisFilterChange}>
+                                <select aria-label="Filter jenis pegawai" className={filterSelect} value={jenisFilter} onChange={handleJenisFilterChange}>
                                     <option value="semua">Semua Jenis</option>
                                     <option value="pendidik">Pendidik (Guru)</option>
                                     <option value="kependidikan">Tenaga Kependidikan</option>
                                 </select>
-                                <select className={filterSelect} value={kelasFilter} onChange={handleKelasFilterChange}>
+                                <select aria-label="Filter kelas" className={filterSelect} value={kelasFilter} onChange={handleKelasFilterChange}>
                                     <option value="">Semua Kelas</option>
                                     {kelasLabels.map((kl) => <option key={kl} value={kl}>{kl}</option>)}
                                 </select>
@@ -771,7 +772,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                         {jadwal.kelas_label && (
                                                                             <span className="text-[11px] text-muted leading-tight">Kls {jadwal.kelas_label}</span>
                                                                         )}
-                                                                        <span className={`mt-1 text-[11px] font-bold px-1.5 py-0.5 rounded uppercase border ${meta.badge}`}>
+                                                                        <span className={`mt-1 text-[11px] font-bold px-1.5 py-0.5 rounded ${meta.badge}`}>
                                                                             {meta.label}
                                                                         </span>
                                                                         <JadwalLiveBadge
@@ -868,7 +869,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                             {jadwal.kelas_label && (
                                                                                 <span className="text-[11px] text-muted leading-tight">Kls {jadwal.kelas_label}</span>
                                                                             )}
-                                                                            <span className={`mt-1 text-[11px] font-bold px-1.5 py-0.5 rounded uppercase border ${meta.badge}`}>
+                                                                            <span className={`mt-1 text-[11px] font-bold px-1.5 py-0.5 rounded ${meta.badge}`}>
                                                                                 {meta.label}
                                                                             </span>
                                                                             <JadwalLiveBadge
@@ -1243,7 +1244,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                         <div className="flex items-center justify-between">
                                                             <div>
                                                                 <span className="font-bold text-text-primary">{j.hari}, {j.jam_mulai?.substring(0, 5)}-{j.jam_selesai?.substring(0, 5)}</span>
-                                                                <span className={`ml-2 text-[11px] font-bold px-1.5 py-0.5 rounded uppercase border ${jenisBadge(j.jenis_jadwal).badge}`}>{j.jenis_jadwal}</span>
+                                                                <span className={`ml-2 text-[11px] font-bold px-1.5 py-0.5 rounded ${jenisBadge(j.jenis_jadwal).badge}`}>{j.jenis_jadwal}</span>
                                                             </div>
                                                             <div className="text-xs text-text-secondary text-right">
                                                                 {j.mapel_nama && <div>{j.mapel_nama}</div>}
