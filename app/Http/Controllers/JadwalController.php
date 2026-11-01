@@ -1232,13 +1232,15 @@ class JadwalController extends Controller
 
         $unitObj = $unitId ? UnitSekolah::find($unitId) : null;
         $unitName = $unitObj?->nama ?? 'Semua Unit';
+        $durasiJp = (int) ($unitObj?->durasi_jp ?? 45) ?: 45;
 
         // Hari mengikuti setelan unit (Sabtu/Minggu bila aktif), fallback Senin-Jumat.
         $DAYS = Pegawai::hariKerjaUnit($unitObj);
-        $matrix = [];           // [kelas][hari][jam_mulai] => daftar slot
-        $perGuru = [];
-        $tugasNonMengajar = []; // piket/shift/ekskul tanpa kelas
-        $slotTimes = [];        // jam mulai unik yang benar-benar dipakai
+        $matrix = [];        // [hari][kelas][jam_mulai] => daftar sel (mapel + guru)
+        $kelasSet = [];      // kelas_label yang benar-benar punya jadwal
+        $slotMap = [];       // jam_mulai => ['mulai' => .., 'selesai' => ..]
+        $piketPerHari = [];
+        $guruMapel = [];     // pegawai_id => ['nama' => .., 'mapel' => [nama => true]]
 
         foreach ($jadwals as $j) {
             $hari = $j->hari;
@@ -1247,51 +1249,115 @@ class JadwalController extends Controller
             }
 
             $guru = $j->pegawai->nama_lengkap ?? '-';
-            $mapel = $j->pegawaiMapel->mataPelajaran->nama
-                ?? ($j->jenis_jadwal === 'mengajar' ? '-' : ucfirst(str_replace('_', ' ', (string) $j->jenis_jadwal)));
+            $mapel = $j->pegawaiMapel->mataPelajaran->nama ?? null;
             $jamMulai = substr((string) $j->jam_mulai, 0, 5);
             $jamSelesai = substr((string) $j->jam_selesai, 0, 5);
 
-            $pid = $j->pegawai_id;
-            if (! isset($perGuru[$pid])) {
-                $perGuru[$pid] = ['nama' => $guru, 'jadwals' => []];
-            }
-            $perGuru[$pid]['jadwals'][] = [
-                'hari' => $hari,
-                'jam_mulai' => $jamMulai,
-                'jam_selesai' => $jamSelesai,
-                'kelas' => $j->kelas_label,
-                'mapel' => $mapel,
-                'jenis' => $j->jenis_jadwal,
-            ];
-
-            if (! $j->kelas_label) {
-                $tugasNonMengajar[] = [
+            if ($j->jenis_jadwal === 'piket') {
+                $piketPerHari[$hari][] = [
                     'nama' => $guru,
-                    'tugas' => $mapel,
-                    'hari' => $hari,
+                    'tugas' => $j->kelas_label ?: 'Piket',
                     'jam' => "{$jamMulai}-{$jamSelesai}",
                 ];
 
                 continue;
             }
 
-            $matrix[$j->kelas_label][$hari][$jamMulai][] = [
+            if ($j->jenis_jadwal === 'mengajar' && $mapel) {
+                $guruMapel[$j->pegawai_id]['nama'] = $guru;
+                $guruMapel[$j->pegawai_id]['mapel'][$mapel] = true;
+            }
+
+            // Kegiatan tanpa kelas (upacara/ekskul) tidak dirender, sesuai kontrak cetak.
+            if (! $j->kelas_label) {
+                continue;
+            }
+
+            $matrix[$hari][$j->kelas_label][$jamMulai][] = [
+                'mapel' => $mapel ?? ucfirst(str_replace('_', ' ', (string) $j->jenis_jadwal)),
                 'guru' => $guru,
-                'mapel' => $mapel,
-                'jam' => "{$jamMulai}-{$jamSelesai}",
             ];
-            $slotTimes[$jamMulai] = true;
+            $kelasSet[$j->kelas_label] = true;
+            $slotMap[$jamMulai] = [
+                'mulai' => $jamMulai,
+                'selesai' => max($slotMap[$jamMulai]['selesai'] ?? '', $jamSelesai),
+            ];
         }
 
-        ksort($matrix);
-        foreach ($matrix as &$hariArr) {
-            ksort($hariArr);
-        }
-        unset($hariArr);
+        // Kelas dikelompokkan per token jurusan bila label memuatnya (mis. "X RPL 1").
+        $kelasList = collect(array_keys($kelasSet))->sort()->values()->all();
+        $gradeTokens = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+        $kelasGroups = [];
+        foreach ($kelasList as $kelas) {
+            $program = null;
+            foreach (preg_split('/[\s\-–]+/u', trim((string) $kelas)) as $token) {
+                if (preg_match('/^[A-Z]{2,5}$/', $token) && ! in_array($token, $gradeTokens, true)) {
+                    $program = $token;
 
-        $kelasList = collect(array_keys($matrix))->sort()->values()->all();
-        $slotTimes = collect(array_keys($slotTimes))->sort()->values()->all();
+                    break;
+                }
+            }
+            $kelasGroups[$program ?? 'KELAS'][] = $kelas;
+        }
+        ksort($kelasGroups);
+        $kelasList = collect($kelasGroups)->flatten()->all();
+
+        // Baris JP dari jam mulai nyata + baris istirahat dari celah >= durasi JP unit.
+        ksort($slotMap);
+        $rowsTimeline = [];
+        $jpNo = 0;
+        $prevSelesai = null;
+        foreach ($slotMap as $slot) {
+            if ($prevSelesai !== null) {
+                $gap = $this->timeToMinutes($slot['mulai']) - $this->timeToMinutes($prevSelesai);
+                if ($gap >= $durasiJp) {
+                    $rowsTimeline[] = [
+                        'type' => 'istirahat',
+                        'mulai' => $prevSelesai,
+                        'selesai' => $slot['mulai'],
+                    ];
+                }
+            }
+
+            $jpNo++;
+            $rowsTimeline[] = [
+                'type' => 'jp',
+                'jp' => $jpNo,
+                'mulai' => $slot['mulai'],
+                'selesai' => $slot['selesai'],
+            ];
+            $prevSelesai = $slot['selesai'];
+        }
+
+        // Daftar guru + mapel: dari jadwal unit, fallback pivot pegawai_mapel.
+        $daftarGuru = [];
+        foreach ($guruMapel as $row) {
+            $daftarGuru[] = ['nama' => $row['nama'], 'mapel' => implode(', ', array_keys($row['mapel']))];
+        }
+
+        if ($unitId) {
+            $pegawaiUnit = Pegawai::with(['mapels' => fn ($q) => $q->wherePivot('unit_sekolah_id', $unitId)])
+                ->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitId))
+                ->where('status_aktif', 'aktif')
+                ->whereNotIn('id', array_keys($guruMapel));
+
+            if ($jenis === 'pendidik') {
+                $pegawaiUnit->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
+            } elseif ($jenis === 'kependidikan') {
+                $pegawaiUnit->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
+            }
+
+            foreach ($pegawaiUnit->get(['id', 'nama_lengkap']) as $pegawai) {
+                $namaMapel = $pegawai->mapels->pluck('nama')->unique()->values()->all();
+                if ($namaMapel === []) {
+                    continue;
+                }
+
+                $daftarGuru[] = ['nama' => $pegawai->nama_lengkap, 'mapel' => implode(', ', $namaMapel)];
+            }
+        }
+
+        usort($daftarGuru, fn ($a, $b) => strcasecmp($a['nama'], $b['nama']));
 
         $logoPath = $this->resolveYayasanLogoPath();
         $logoWidth = null;
@@ -1316,7 +1382,7 @@ class JadwalController extends Controller
         $semester = $jadwals->first()?->semester ?? 1;
 
         $pdf = Pdf::loadView('exports.pdf-jadwal', compact(
-            'matrix', 'perGuru', 'tugasNonMengajar', 'kelasList', 'DAYS', 'slotTimes',
+            'matrix', 'kelasList', 'kelasGroups', 'DAYS', 'rowsTimeline', 'piketPerHari', 'daftarGuru',
             'logoPath', 'logoWidth', 'unitName', 'tahunAjaran', 'semester', 'kepalaSekolah'
         ))->setPaper('a4', 'landscape');
 
@@ -1581,6 +1647,11 @@ class JadwalController extends Controller
         }
 
         return $user->unit_sekolah_id ?? $user->pegawai?->units->first()?->id;
+    }
+
+    private function timeToMinutes(string $time): int
+    {
+        return (int) substr($time, 0, 2) * 60 + (int) substr($time, 3, 2);
     }
 
     private function normalizeTime(string $time): string

@@ -83,51 +83,59 @@ class JadwalPdfExportTest extends TestCase
             ->assertHeader('content-type', 'application/pdf');
     }
 
-    public function test_view_menampilkan_kolom_jam_dinamis_dan_tugas_non_mengajar(): void
+    public function test_view_menampilkan_grup_kelas_mapel_guru_istirahat_dan_halaman_tambahan(): void
     {
         $html = view('exports.pdf-jadwal', [
             'matrix' => [
-                '7 - A' => [
-                    'Senin' => [
+                'Senin' => [
+                    'X RPL 1' => [
                         '07:00' => [
-                            ['guru' => 'Budi Santoso', 'mapel' => 'Matematika', 'jam' => '07:00-08:00'],
+                            ['mapel' => 'Matematika', 'guru' => 'Budi Santoso'],
                         ],
                     ],
                 ],
             ],
-            'perGuru' => [
-                1 => [
-                    'nama' => 'Budi Santoso',
-                    'jadwals' => [[
-                        'hari' => 'Senin',
-                        'jam_mulai' => '07:00',
-                        'jam_selesai' => '08:00',
-                        'kelas' => '7 - A',
-                        'mapel' => 'Matematika',
-                        'jenis' => 'mengajar',
-                    ]],
+            'kelasList' => ['X RPL 1', 'X RPL 2'],
+            'kelasGroups' => ['RPL' => ['X RPL 1', 'X RPL 2']],
+            'DAYS' => ['Senin'],
+            'rowsTimeline' => [
+                ['type' => 'jp', 'jp' => 1, 'mulai' => '07:00', 'selesai' => '07:45'],
+                ['type' => 'istirahat', 'mulai' => '07:45', 'selesai' => '08:15'],
+                ['type' => 'jp', 'jp' => 2, 'mulai' => '08:15', 'selesai' => '09:00'],
+            ],
+            'piketPerHari' => [
+                'Senin' => [
+                    ['nama' => 'Siti Aminah', 'tugas' => 'Gerbang', 'jam' => '07:00-08:00'],
                 ],
             ],
-            'tugasNonMengajar' => [
-                ['nama' => 'Siti Aminah', 'tugas' => 'Piket', 'hari' => 'Senin', 'jam' => '08:00-09:00'],
+            'daftarGuru' => [
+                ['nama' => 'Budi Santoso', 'mapel' => 'Matematika'],
             ],
-            'kelasList' => ['7 - A'],
-            'DAYS' => ['Senin'],
-            'slotTimes' => ['07:00'],
             'logoPath' => null,
             'logoWidth' => null,
-            'unitName' => 'SD Uji',
+            'unitName' => 'SMK Uji',
             'tahunAjaran' => '2026/2027',
             'semester' => 1,
             'kepalaSekolah' => null,
         ])->render();
 
-        $this->assertStringContainsString('Budi Santoso', $html);
+        // Header kelompok jurusan + nama kelas.
+        $this->assertStringContainsString('RPL', $html);
+        $this->assertStringContainsString('X RPL 2', $html);
+
+        // Sel berisi mapel + nama guru, bukan kode angka.
         $this->assertStringContainsString('Matematika', $html);
-        $this->assertStringContainsString('7 - A', $html);
-        $this->assertStringContainsString('07:00-08:00', $html);
-        $this->assertStringContainsString('Tugas Non-Mengajar', $html);
+        $this->assertStringContainsString('Budi Santoso', $html);
+
+        // Baris JP + istirahat turunan celah jam.
+        $this->assertStringContainsString('07:00-07:45', $html);
+        $this->assertStringContainsString('ISTIRAHAT', $html);
+        $this->assertStringContainsString('07:45-08:15', $html);
+
+        // Halaman piket & daftar guru.
+        $this->assertStringContainsString('JADWAL PIKET', $html);
         $this->assertStringContainsString('Siti Aminah', $html);
-        $this->assertStringContainsString('Piket', $html);
+        $this->assertStringContainsString('Gerbang', $html);
+        $this->assertStringContainsString('DAFTAR GURU', $html);
     }
 }
