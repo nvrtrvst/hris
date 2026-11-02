@@ -90,14 +90,13 @@ const URUT_STATUS = ['hadir', 'telat', 'izin', 'sakit', 'alpa'];
 const STATUS_FULL = { hadir: 'Hadir', telat: 'Telat', izin: 'Izin', sakit: 'Sakit', alpa: 'Alpa' };
 
 
-// Ringkas status tersimpan.
 const ringkasStatus = (details = []) => {
     const hitung = details.reduce((acc, d) => ({ ...acc, [d.status]: (acc[d.status] ?? 0) + 1 }), {});
 
     return URUT_STATUS.filter((s) => hitung[s]).map((s) => `${STATUS_SISWA[s].label} ${hitung[s]}`).join(' · ');
 };
 
-function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitted, coverage = null, banner = false, onReload }) {
+function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitted, coverage = null, banner = false, onReload, tersedia = true }) {
     const [daftarKelas, setDaftarKelas] = useState([]);
     const [loadingKelas, setLoadingKelas] = useState(false);
     const [selected, setSelected] = useState(null);
@@ -112,6 +111,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
     const [alasan, setAlasan] = useState('');
 
     const muatKelas = (force = false) => {
+        if (! tersedia) return;
         if (loadingKelas) return;
         if (! force && daftarKelas.length > 0) return;
         setLoadingKelas(true);
@@ -317,7 +317,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                         </div>
                     )}
 
-            {!submitted && boleh && !selected && coverage?.assigned_count !== 0 && (
+            {!submitted && boleh && !selected && tersedia && coverage?.assigned_count !== 0 && (
                 <div className="mt-2 space-y-2">
                     <button type="button" onClick={muatKelas} className="min-h-12 w-full rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95">
                         {loadingKelas ? 'Memuat kelas...' : sesiTersimpan.length > 0 ? 'Absen kelas lain' : 'Pilih kelas'}
@@ -345,6 +345,17 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                             Tidak ada kelas hari ini (Nihil)
                         </button>
                     )}
+                </div>
+            )}
+
+            {!submitted && boleh && !selected && !tersedia && !doneItem && (
+                <div className="mt-2 space-y-2">
+                    <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                        Absen siswa tidak tersedia — data siswa belum terhubung ke sim-keuangan. Tandai Nihil atau hubungi admin.
+                    </p>
+                    <button type="button" disabled={saving} onClick={nihil} className="min-h-11 w-full rounded-xl bg-white px-4 text-xs font-bold text-slate-600 ring-1 ring-slate-200 active:scale-95 disabled:opacity-50">
+                        Tandai tidak ada absen siswa (Nihil)
+                    </button>
                 </div>
             )}
 
@@ -458,7 +469,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
     );
 }
 
-function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, doneAt = null }) {
+function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, doneAt = null, tersedia = true }) {
     const [open, setOpen] = useState(false);
     const [classes, setClasses] = useState([]);
     const [loadingKelas, setLoadingKelas] = useState(false);
@@ -520,6 +531,7 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
     };
 
     const buka = () => {
+        if (! tersedia) return;
         setErr('');
         setSearch('');
         setKeterangan('');
@@ -666,14 +678,29 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
             )}
 
             {!submitted && (
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                    <button type="button" onClick={buka} className="btn-primary min-h-11 flex-1">
-                        Tambah siswa terlambat
-                    </button>
-                    {lateStudents.length === 0 && !doneAt && (
-                        <button type="button" onClick={nihil} className="btn-secondary min-h-11 flex-1">
-                            Tandai tidak ada siswa terlambat
-                        </button>
+                <div className="mt-2 space-y-2">
+                    {tersedia ? (
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                            <button type="button" onClick={buka} className="btn-primary min-h-11 flex-1">
+                                Tambah siswa terlambat
+                            </button>
+                            {lateStudents.length === 0 && !doneAt && (
+                                <button type="button" onClick={nihil} className="btn-secondary min-h-11 flex-1">
+                                    Tandai tidak ada siswa terlambat
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                                Pencatatan siswa terlambat butuh data siswa. Tandai &quot;tidak ada siswa terlambat&quot; bila tidak ada temuan.
+                            </p>
+                            {lateStudents.length === 0 && !doneAt && (
+                                <button type="button" onClick={nihil} className="btn-secondary min-h-11 w-full">
+                                    Tandai tidak ada siswa terlambat
+                                </button>
+                            )}
+                        </>
                     )}
                 </div>
             )}
@@ -893,7 +920,7 @@ function PosItem({ pos, log, sending, onSave }) {
     );
 }
 
-export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruUnit = [], guruUnitAll = [], slotKosong = [], mapelUnit = [], absensiSiswa = [] }) {
+export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruUnit = [], guruUnitAll = [], slotKosong = [], mapelUnit = [], absensiSiswa = [], siswaTersedia = true }) {
     const { auth, flash = {}, errors = {} } = usePage().props;
     const now = useNowEveryMinute();
     const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -1226,7 +1253,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                     <p className="text-sm font-bold text-slate-800">Pos & gerbang</p>
                     {posList.map((pos) => {
                         if (gatePos && pos.id === gatePos.id) {
-                            return <SiswaTerlambatCard key={pos.id} slotId={slot.id} lateStudents={lateStudents} submitted={submitted} doneAt={posLogs[pos.id]?.done_at || null} />;
+                            return <SiswaTerlambatCard key={pos.id} slotId={slot.id} lateStudents={lateStudents} submitted={submitted} doneAt={posLogs[pos.id]?.done_at || null} tersedia={siswaTersedia} />;
                         }
 
                         return <PosItem key={pos.id} pos={pos} log={posLogs[pos.id]} sending={sending} onSave={kirimPos} />;
@@ -1257,7 +1284,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                         )}
                         <Card className="space-y-4">
                             {!v2 && (
-                                <SiswaTerlambatCard slotId={slot.id} lateStudents={lateStudents} submitted={submitted} doneAt={items.gerbang?.done_at ? items.gerbang.done_at.substring(0, 5) : null} />
+                                <SiswaTerlambatCard slotId={slot.id} lateStudents={lateStudents} submitted={submitted} doneAt={items.gerbang?.done_at ? items.gerbang.done_at.substring(0, 5) : null} tersedia={siswaTersedia} />
                             )}
 
                             {tplAktif('cek_absen') && (
@@ -1371,6 +1398,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                 coverage={piket.v2 ? (piket.absen_coverage || null) : null}
                                 banner={assignmentBanner}
                                 onReload={reloadTugas}
+                                tersedia={siswaTersedia}
                             />
                             )}
                         </Card>

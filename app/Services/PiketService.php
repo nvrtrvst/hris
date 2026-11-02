@@ -513,6 +513,11 @@ class PiketService
             }
         }
 
+        // Tanpa sumber data siswa, absen_siswa tidak bisa diwajibkan.
+        if (! KeuanganClient::isConfigured()) {
+            $codes = $codes->reject(fn ($kode) => $kode === 'absen_siswa');
+        }
+
         return $codes->values()->all();
     }
 
