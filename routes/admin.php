@@ -338,6 +338,12 @@ Route::middleware('auth:web_admin')->group(function () {
 
     Route::get('laporan/pdf', [LaporanController::class, 'exportPdf'])->name('laporan.pdf');
     Route::get('laporan/piket', [LaporanController::class, 'laporanPiket'])->name('laporan.piket');
+    Route::get('laporan/piket/alpa/excel', [LaporanController::class, 'exportKetidakhadiranPiketExcel'])
+        ->middleware('throttle:30,1')
+        ->name('laporan.piket.alpa.excel');
+    Route::get('laporan/piket/alpa/pdf', [LaporanController::class, 'exportKetidakhadiranPiketPdf'])
+        ->middleware('throttle:30,1')
+        ->name('laporan.piket.alpa.pdf');
     Route::middleware('can:view_presensi')->group(function () {
         Route::get('laporan/presensi-guru', [LaporanPresensiGuruController::class, 'index'])->name('laporan.presensi-guru');
         Route::get('laporan/presensi-guru/preview', [LaporanPresensiGuruController::class, 'preview'])->name('laporan.presensi-guru.preview');

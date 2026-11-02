@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
-import { CheckCircle2, ChevronDown, X } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Download, Printer, X } from 'lucide-react';
 
 const STATUS_BADGE = {
     submitted: 'bg-emerald-50 text-emerald-700',
@@ -28,6 +28,16 @@ const ABSEN_STATUS_LABEL = {
     alpa: 'Alpa',
     hadir: 'Hadir',
     lainnya: 'Lainnya',
+};
+
+const KET_BADGE = {
+    alpa_piket: 'bg-rose-50 text-rose-700',
+    terlambat_lapor: 'bg-slate-100 text-slate-700',
+};
+
+const KET_LABEL = {
+    alpa_piket: 'Alpa piket',
+    terlambat_lapor: 'Terlambat lapor',
 };
 
 const EMPTY_IZIN = {
@@ -404,7 +414,7 @@ function LaporanDetail({ lap, label, canConvert = false, onConvert = () => {} })
     );
 }
 
-export default function Piket({ auth, filters, units = [], areas = [], laporan = [], belum = [], label = {} }) {
+export default function Piket({ auth, filters, units = [], areas = [], laporan = [], belum = [], ketidakhadiran = { rows: [], alpa: 0, terlambat: 0 }, label = {} }) {
     const { flash = {} } = usePage().props;
     const [form, setForm] = useState({
         start_date: filters.start_date,
@@ -511,6 +521,18 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
         router.get(route('laporan.piket'), params);
     };
 
+    const paramsExport = () => {
+        const params = { start_date: form.start_date, end_date: form.end_date };
+        if (form.unit_sekolah_id) params.unit_sekolah_id = form.unit_sekolah_id;
+        if (form.area_id) params.area_id = form.area_id;
+        if (['alpa_piket', 'terlambat_lapor'].includes(form.status)) params.status = form.status;
+
+        return params;
+    };
+
+    const ket = ketidakhadiran ?? { rows: [], alpa: 0, terlambat: 0 };
+    const tampilKetidakhadiran = ket.rows.length > 0 || ['alpa_piket', 'terlambat_lapor'].includes(form.status);
+
     return (
         <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Laporan Piket</h2>}>
             <Head title="Laporan Piket" />
@@ -546,6 +568,8 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                                     <option value="submitted">Terkirim</option>
                                     <option value="perlu_cek">Perlu cek</option>
                                     <option value="belum">Belum melapor</option>
+                                    <option value="alpa_piket">Hadir tapi tidak piket</option>
+                                    <option value="terlambat_lapor">Terlambat lapor</option>
                                 </select>
                             </div>
                             {areas.length > 0 && (
@@ -591,6 +615,14 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                             </div>
                         </div>
                         <p className="form-hint mt-2">Maksimal 31 hari per tampil.</p>
+                        <div className="mt-2 flex flex-wrap justify-end gap-2">
+                            <a href={route('laporan.piket.alpa.excel', paramsExport())} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+                                <Download className="h-3.5 w-3.5" /> Export Excel
+                            </a>
+                            <a href={route('laporan.piket.alpa.pdf', paramsExport())} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+                                <Printer className="h-3.5 w-3.5" /> Export PDF
+                            </a>
+                        </div>
                     </form>
 
                     {(() => {
@@ -819,6 +851,86 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    )}
+
+                    {tampilKetidakhadiran && (
+                        <div className="page-card card-table">
+                            <div className="px-5 py-4 border-b border-border">
+                                <h3 className="section-title">Ketidakhadiran piket ({ket.rows.length})</h3>
+                                <p className="mt-1 text-xs text-text-secondary">
+                                    Alpa piket {ket.alpa} &middot; Terlambat lapor {ket.terlambat}. Alpa = presensi hadir/telat tanpa laporan terkirim setelah jam piket selesai.
+                                    Terlambat lapor = laporan terkirim setelah jam piket selesai (informasi).
+                                </p>
+                            </div>
+                            {ket.rows.length === 0 ? (
+                                <p className="px-5 py-6 text-sm text-text-secondary">
+                                    Tidak ada catatan ketidakhadiran piket pada periode dan unit ini. Ubah periode/unit, atau cek{' '}
+                                    <Link href={route('piket.index')} className="font-bold text-primary underline-offset-2 hover:underline">Monitor Piket</Link>{' '}
+                                    untuk sesi hari ini.
+                                </p>
+                            ) : (
+                                <>
+                                    <div className="divide-y divide-border lg:hidden">
+                                        {ket.rows.map((row, i) => (
+                                            <div key={`${row.tanggal}-${row.pegawai?.id}-${row.jam}-${i}`} className="p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <p className="font-mono text-sm font-bold text-text-primary">{row.tanggal}</p>
+                                                        <p className="truncate text-sm font-semibold text-text-primary">{row.pegawai?.nama_lengkap || '-'}</p>
+                                                        <p className="truncate text-xs text-text-secondary">{row.unit || '-'} &middot; {row.area || row.peran || '-'}</p>
+                                                    </div>
+                                                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${KET_BADGE[row.kategori] || KET_BADGE.alpa_piket}`}>
+                                                        {KET_LABEL[row.kategori] || row.kategori}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-1 text-xs text-text-secondary">
+                                                    Piket {row.jam} &middot; Presensi {row.presensi_status} {row.presensi_jam}
+                                                    {row.kategori === 'terlambat_lapor' ? ` \u00b7 kirim ${row.submitted_at || '-'}` : row.status_laporan === 'draft' ? ' \u00b7 laporan belum dikirim' : ' \u00b7 tidak ada laporan'}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="hidden table-wrap lg:block">
+                                        <table className="table-base">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">Tanggal</th>
+                                                    <th scope="col">Pegawai</th>
+                                                    <th scope="col">Unit</th>
+                                                    <th scope="col">Jam Piket</th>
+                                                    <th scope="col">Area</th>
+                                                    <th scope="col">Presensi</th>
+                                                    <th scope="col">Status</th>
+                                                    <th scope="col">Keterangan</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {ket.rows.map((row, i) => (
+                                                    <tr key={`${row.tanggal}-${row.pegawai?.id}-${row.jam}-${i}`}>
+                                                        <td className="whitespace-nowrap font-mono">{row.tanggal}</td>
+                                                        <td className="font-semibold">{row.pegawai?.nama_lengkap || '-'}</td>
+                                                        <td>{row.unit || '-'}</td>
+                                                        <td className="whitespace-nowrap font-mono">{row.jam}</td>
+                                                        <td>{row.area || row.peran || '-'}</td>
+                                                        <td className="whitespace-nowrap">{row.presensi_status} {row.presensi_jam}</td>
+                                                        <td>
+                                                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${KET_BADGE[row.kategori] || KET_BADGE.alpa_piket}`}>
+                                                                {KET_LABEL[row.kategori] || row.kategori}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            {row.kategori === 'terlambat_lapor'
+                                                                ? `Kirim ${row.submitted_at || '-'}`
+                                                                : row.status_laporan === 'draft' ? 'Laporan belum dikirim' : 'Tidak ada laporan'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
 
