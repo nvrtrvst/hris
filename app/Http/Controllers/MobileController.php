@@ -1798,20 +1798,26 @@ class MobileController extends Controller
     {
         $pegawai = $this->getPegawai();
 
-        $riwayat = LaporanPiket::where('pegawai_id', $pegawai->id)
+        $riwayat = LaporanPiket::with(['unitSekolah', 'sesi.petugas'])
+            ->where('pegawai_id', $pegawai->id)
             ->orderBy('tanggal', 'desc')
             ->limit(30)
             ->get()
-            ->map(fn (LaporanPiket $lap) => [
-                'id' => $lap->id,
-                'tanggal' => $lap->tanggal->format('Y-m-d'),
-                'status' => $lap->status,
-                'done' => $lap->doneCount(),
-                'total' => count(LaporanPiket::ITEM_WAJIB),
-                'perlu_cek' => $lap->perluCekCount(),
-                'submitted_at' => $lap->submitted_at?->format('Y-m-d H:i'),
-                'items' => $lap->items ?? [],
-            ]);
+            ->map(function (LaporanPiket $lap) use ($pegawai) {
+                $petugas = $lap->sesi?->petugas->firstWhere('pegawai_id', $pegawai->id);
+                $wajib = PiketService::wajibCodes($lap->unitSekolah, $petugas);
+
+                return [
+                    'id' => $lap->id,
+                    'tanggal' => $lap->tanggal->format('Y-m-d'),
+                    'status' => $lap->status,
+                    'done' => count(array_filter($wajib, fn ($kode) => $lap->isItemDone($kode))),
+                    'total' => count($wajib),
+                    'perlu_cek' => $lap->perluCekCount(),
+                    'submitted_at' => $lap->submitted_at?->format('Y-m-d H:i'),
+                    'items' => $lap->items ?? [],
+                ];
+            });
 
         return inertia('Mobile/PiketRiwayat', [
             'riwayat' => $riwayat,
@@ -1869,7 +1875,6 @@ class MobileController extends Controller
         $posLogs = [];
         $team = [];
         $templates = [];
-        $requiredCodes = [];
         $mappedClasses = [];
         $blockReason = null;
         $assignmentVersion = (int) $sesi->assignment_version;
@@ -1886,7 +1891,6 @@ class MobileController extends Controller
             $posLogs = PiketService::posLogs($sesi);
             $team = PiketService::teamProgress($sesi);
             $templates = PiketService::activeTemplates($unit, $petugas);
-            $requiredCodes = PiketService::requiredCodes($unit, $petugas);
             $mappedClasses = $petugas && PiketService::hasAssignments($sesi)
                 ? PiketService::assignedClasses($sesi, $petugas)
                 : PiketService::kelasArea($unit, $petugas?->area_id);
@@ -1990,10 +1994,7 @@ class MobileController extends Controller
             ->get(['id', 'nama']);
 
         $siswaTersedia = KeuanganClient::isConfigured();
-        $wajibAktif = $v2 ? $requiredCodes : LaporanPiket::ITEM_WAJIB;
-        if (! $siswaTersedia) {
-            $wajibAktif = array_values(array_diff($wajibAktif, [LaporanPiket::ITEM_ABSEN_SISWA]));
-        }
+        $wajibAktif = PiketService::wajibCodes($unit, $petugas);
         $missingItems = collect($wajibAktif)
             ->filter(fn ($kode) => ! $laporan || ! $laporan->isItemDone($kode))
             ->map(fn ($kode) => ['kode' => $kode, 'label' => LaporanPiket::ITEM_LABEL[$kode] ?? $kode])
@@ -2782,12 +2783,7 @@ class MobileController extends Controller
         }
 
         $unit = $slot->unitSekolah;
-        $wajib = PiketService::isAreaMode($unit)
-            ? PiketService::requiredCodes($unit, $petugas)
-            : LaporanPiket::ITEM_WAJIB;
-        if (! KeuanganClient::isConfigured()) {
-            $wajib = array_values(array_diff($wajib, [LaporanPiket::ITEM_ABSEN_SISWA]));
-        }
+        $wajib = PiketService::wajibCodes($unit, $petugas);
 
         $kurang = array_values(array_filter($wajib, fn ($kode) => ! $laporan->isItemDone($kode)));
 
@@ -2874,7 +2870,8 @@ class MobileController extends Controller
             return ['blokir' => false, 'progress' => null, 'pesan' => null];
         }
 
-        $laporan = LaporanPiket::where('pegawai_id', $pegawai->id)
+        $laporan = LaporanPiket::with(['unitSekolah', 'sesi.petugas'])
+            ->where('pegawai_id', $pegawai->id)
             ->where('tanggal', Carbon::today()->toDateString())
             ->where('status', '!=', LaporanPiket::STATUS_SUBMITTED)
             ->orderBy('sesi_id')
@@ -2886,9 +2883,12 @@ class MobileController extends Controller
             return ['blokir' => false, 'progress' => null, 'pesan' => null];
         }
 
-        $progres = $laporan
-            ? $laporan->doneCount().'/'.count(LaporanPiket::ITEM_WAJIB)
-            : '0/'.count(LaporanPiket::ITEM_WAJIB);
+        $petugas = $laporan?->sesi?->petugas->firstWhere('pegawai_id', $pegawai->id);
+        $wajib = PiketService::wajibCodes($laporan?->unitSekolah, $petugas);
+        $done = $laporan
+            ? count(array_filter($wajib, fn ($kode) => $laporan->isItemDone($kode)))
+            : 0;
+        $progres = $done.'/'.count($wajib);
 
         return [
             'blokir' => true,

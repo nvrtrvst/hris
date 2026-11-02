@@ -17,6 +17,7 @@ use App\Models\StatusKepegawaian;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Services\JpCalculator;
+use App\Services\PiketService;
 use App\Services\TugasVerifikasiService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -585,17 +586,21 @@ class DashboardController extends Controller
             ->orderBy('jam_mulai')->get()->toArray();
 
         // Laporan piket hari ini per petugas (badge kelengkapan + flag perlu_cek).
-        $laporanMap = LaporanPiket::where('tanggal', $today->toDateString())
+        $laporanMap = LaporanPiket::with(['unitSekolah:id,nama,piket_mode', 'sesi.petugas'])
+            ->where('tanggal', $today->toDateString())
             ->whereIn('pegawai_id', collect($piketHariIni)->pluck('pegawai.id')->filter()->unique()->all())
             ->get()
             ->keyBy('pegawai_id');
         foreach ($piketHariIni as &$jp) {
             $lap = $laporanMap->get($jp['pegawai']['id'] ?? 0);
+            $petugas = $lap?->sesi?->petugas->firstWhere('pegawai_id', $lap->pegawai_id);
+            $wajib = $lap ? PiketService::wajibCodes($lap->unitSekolah, $petugas) : [];
+
             $jp['laporan'] = $lap ? [
                 'id' => $lap->id,
                 'status' => $lap->status,
-                'done' => $lap->doneCount(),
-                'total' => count(LaporanPiket::ITEM_WAJIB),
+                'done' => count(array_filter($wajib, fn ($kode) => $lap->isItemDone($kode))),
+                'total' => count($wajib),
                 'perlu_cek' => $lap->perluCekCount(),
                 'items' => $lap->items ?? [],
             ] : null;
@@ -655,7 +660,7 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'entry_index' => 'required|integer|min:0',
             'aksi' => 'required|in:setujui,tolak',
-            'kode' => 'nullable|in:kelas_kosong,cek_absen',
+            'kode' => 'nullable|in:kelas_kosong,cek_absen,insiden',
         ]);
 
         $kode = $validated['kode'] ?? LaporanPiket::ITEM_KELAS_KOSONG;

@@ -521,6 +521,25 @@ class PiketService
         return $codes->values()->all();
     }
 
+    /**
+     * Item wajib untuk laporan piket satu petugas: template untuk mode area,
+     * daftar bawaan untuk mode simple.
+     *
+     * @return list<string>
+     */
+    public static function wajibCodes(?UnitSekolah $unit, ?PiketPetugas $petugas): array
+    {
+        $codes = self::isAreaMode($unit)
+            ? self::requiredCodes($unit, $petugas)
+            : LaporanPiket::ITEM_WAJIB;
+
+        if (! KeuanganClient::isConfigured()) {
+            $codes = array_values(array_diff($codes, [LaporanPiket::ITEM_ABSEN_SISWA]));
+        }
+
+        return array_values($codes);
+    }
+
     public static function posFor(?UnitSekolah $unit, ?PiketPetugas $petugas): array
     {
         if (! $unit || ! $petugas) {
@@ -846,19 +865,26 @@ class PiketService
 
     public static function teamProgress(PiketSesi $sesi): array
     {
+        $unit = $sesi->unitSekolah;
+
         return PiketPetugas::with(['pegawai:id,nama_lengkap', 'laporan', 'area:id,nama'])
             ->where('sesi_id', $sesi->id)
             ->get()
-            ->map(fn (PiketPetugas $p) => [
-                'pegawai_id' => $p->pegawai_id,
-                'nama' => $p->pegawai?->nama_lengkap,
-                'area' => $p->area?->nama,
-                'peran' => $p->peran,
-                'status' => $p->status,
-                'status_alasan' => $p->status_alasan,
-                'selesai' => $p->laporan ? $p->laporan->doneCount() : 0,
-                'submitted' => $p->laporan?->status === LaporanPiket::STATUS_SUBMITTED,
-            ])
+            ->map(function (PiketPetugas $p) use ($unit) {
+                $wajib = self::wajibCodes($unit, $p);
+
+                return [
+                    'pegawai_id' => $p->pegawai_id,
+                    'nama' => $p->pegawai?->nama_lengkap,
+                    'area' => $p->area?->nama,
+                    'peran' => $p->peran,
+                    'status' => $p->status,
+                    'status_alasan' => $p->status_alasan,
+                    'selesai' => count(array_filter($wajib, fn ($kode) => $p->laporan?->isItemDone($kode))),
+                    'wajib' => count($wajib),
+                    'submitted' => $p->laporan?->status === LaporanPiket::STATUS_SUBMITTED,
+                ];
+            })
             ->values()
             ->all();
     }

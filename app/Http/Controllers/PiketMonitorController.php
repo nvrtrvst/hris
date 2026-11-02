@@ -40,7 +40,7 @@ class PiketMonitorController extends Controller
                 && ($isPast || ($sesi->tanggal->isToday() && $now > $r['jendela_selesai'])))->count();
 
             $petugas = $sesi->petugas->map(function ($p) use ($sesi) {
-                $required = PiketService::requiredCodes($sesi->unitSekolah, $p);
+                $required = PiketService::wajibCodes($sesi->unitSekolah, $p);
                 $done = count(array_filter($required, fn ($kode) => $p->laporan?->isItemDone($kode)));
                 $items = $p->laporan?->items ?? [];
                 $batas = Carbon::parse($sesi->tanggal->format('Y-m-d').' '.substr((string) $sesi->jam_selesai, 0, 5));

@@ -128,7 +128,7 @@ function LaporanMobileCard({ lap, label, openId, setOpenId, canConvert, canUnloc
     );
 }
 
-function EntryValidasi({ lapId, entry, idx }) {
+function EntryValidasi({ lapId, entry, idx, kode = 'kelas_kosong' }) {
     if (entry.verified_at) {
         return (
             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${entry.verified === 'setujui' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
@@ -145,14 +145,14 @@ function EntryValidasi({ lapId, entry, idx }) {
             )}
             <button
                 type="button"
-                onClick={() => router.post(route('laporan-piket.validasi', lapId), { entry_index: idx, aksi: 'setujui' }, { preserveScroll: true })}
+                onClick={() => router.post(route('laporan-piket.validasi', lapId), { kode, entry_index: idx, aksi: 'setujui' }, { preserveScroll: true })}
                 className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             >
                 Setujui
             </button>
             <button
                 type="button"
-                onClick={() => router.post(route('laporan-piket.validasi', lapId), { entry_index: idx, aksi: 'tolak' }, { preserveScroll: true })}
+                onClick={() => router.post(route('laporan-piket.validasi', lapId), { kode, entry_index: idx, aksi: 'tolak' }, { preserveScroll: true })}
                 className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-rose-700 ring-1 ring-rose-200 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40"
             >
                 Tolak
@@ -217,7 +217,12 @@ function LegacyDetail({ lap, label }) {
                     <p className="font-bold">{label.insiden}:</p>
                     {insiden.nihil ? <p className="text-text-secondary">Nihil.</p> : (
                         <ul className="mt-1 list-disc space-y-0.5 pl-5 text-text-secondary">
-                            {(insiden.entries ?? []).map((e, i) => <li key={i}>{e.jenis} ({e.created_at?.substring(0, 5)}): {e.tindakan}</li>)}
+                            {(insiden.entries ?? []).map((e, i) => (
+                                <li key={i}>
+                                    <p>{e.jenis} ({e.created_at?.substring(0, 5)}): {e.tindakan}</p>
+                                    <div className="mt-1.5"><EntryValidasi lapId={lap.id} entry={e} idx={i} kode="insiden" /></div>
+                                </li>
+                            ))}
                         </ul>
                     )}
                 </div>
@@ -370,7 +375,12 @@ function LaporanDetail({ lap, label, canConvert = false, onConvert = () => {} })
                             <p className="font-semibold text-text-primary">{label.insiden}</p>
                             {insiden.nihil ? <p className="text-xs text-text-secondary">Nihil.</p> : (
                                 <ul className="mt-0.5 list-disc pl-5 text-text-secondary">
-                                    {(insiden.entries ?? []).map((e, i) => <li key={i}>{e.jenis} ({e.created_at?.substring(0, 5)}): {e.tindakan}</li>)}
+                                    {(insiden.entries ?? []).map((e, i) => (
+                                        <li key={i}>
+                                            <p>{e.jenis} ({e.created_at?.substring(0, 5)}): {e.tindakan}</p>
+                                            <div className="mt-1.5"><EntryValidasi lapId={lap.id} entry={e} idx={i} kode="insiden" /></div>
+                                        </li>
+                                    ))}
                                 </ul>
                             )}
                         </div>

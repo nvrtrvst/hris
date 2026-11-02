@@ -106,7 +106,7 @@ class PiketMonitorTest extends TestCase
             $items[$kode] = ['done_at' => '16:00:00', 'entries' => []];
         }
         $items['insiden']['entries'] = $insidenEntries;
-        // Item di luar template tidak boleh ikut dihitung pada 6/5.
+        // Item wajib mode simple selalu 6, terlepas dari jumlah template.
         $items['absen_siswa'] = ['done_at' => '16:00:00', 'entries' => []];
 
         return $items;
@@ -125,8 +125,8 @@ class PiketMonitorTest extends TestCase
                 ->component('Piket/Index')
                 ->where('sessions.0.perlu_tindakan', false)
                 ->where('sessions.0.insiden', 0)
-                ->where('sessions.0.petugas.0.selesai', 5)
-                ->where('sessions.0.petugas.0.wajib', 5)
+                ->where('sessions.0.petugas.0.selesai', 6)
+                ->where('sessions.0.petugas.0.wajib', 6)
                 ->where('sessions.0.petugas.0.submitted', true)
                 ->where('sessions.0.petugas.0.terlambat_lapor', true));
     }
@@ -159,5 +159,41 @@ class PiketMonitorTest extends TestCase
                 ->where('sessions.0.petugas.0.status', 'tidak_hadir')
                 ->where('sessions.0.perlu_tindakan', true)
                 ->where('sessions.0.perlu_alasan', fn ($alasan) => $alasan->contains('Petugas tidak hadir: 1')));
+    }
+
+    public function test_mode_simple_memakai_enam_item_wajib_saat_data_siswa_tersedia(): void
+    {
+        config(['keuangan.url' => 'http://keuangan.test', 'keuangan.key' => 'test-key']);
+        $this->sesiDenganPetugas($this->itemsLengkap());
+
+        $this->actingAs($this->admin)
+            ->get(route('piket.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('sessions.0.petugas.0.selesai', 6)
+                ->where('sessions.0.petugas.0.wajib', 6));
+    }
+
+    public function test_insiden_dapat_divalidasi_dan_menghapus_perlu_tindakan(): void
+    {
+        $sesi = $this->sesiDenganPetugas($this->itemsLengkap([
+            ['nama_guru' => 'Guru X', 'verified' => null, 'verified_at' => null],
+        ]));
+        $laporan = LaporanPiket::where('sesi_id', $sesi->id)->firstOrFail();
+
+        $this->actingAs($this->admin)
+            ->post(route('laporan-piket.validasi', $laporan->id), [
+                'kode' => 'insiden',
+                'entry_index' => 0,
+                'aksi' => 'setujui',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->admin)
+            ->get(route('piket.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('sessions.0.insiden', 0)
+                ->where('sessions.0.perlu_tindakan', false));
     }
 }

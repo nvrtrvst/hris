@@ -1288,7 +1288,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                     <span className={`font-semibold ${t.pegawai_id === pegawai?.id ? 'text-primary' : 'text-slate-800'}`}>{t.nama}</span>
                                     {t.area ? ` · ${t.area}` : ''}{t.peran === 'gerbang' ? ' · pos gerbang' : ''}
                                 </span>
-                                <span className="shrink-0 tabular-nums">{t.submitted ? 'terkirim' : `${t.selesai} item`}</span>
+                                <span className="shrink-0 tabular-nums">{t.submitted ? 'terkirim' : `${t.selesai}/${t.wajib} item`}</span>
                             </li>
                         ))}
                     </ul>
