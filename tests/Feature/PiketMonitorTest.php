@@ -30,6 +30,7 @@ class PiketMonitorTest extends TestCase
 
         $this->seed(RolePermissionSeeder::class);
         Carbon::setTestNow('2026-10-26 16:00:00');
+        config(['keuangan.url' => 'http://keuangan.test', 'keuangan.key' => 'test-key']);
 
         $this->unit = UnitSekolah::create([
             'nama' => 'SMK Uji',
