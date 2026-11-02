@@ -109,17 +109,22 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
     const [lastSaved, setLastSaved] = useState(null);
     const [konfirmasi, setKonfirmasi] = useState(null);
     const [alasan, setAlasan] = useState('');
+    const [sumberTersedia, setSumberTersedia] = useState(tersedia);
 
     const muatKelas = (force = false) => {
-        if (! tersedia) return;
+        if (! tersedia || ! sumberTersedia) return;
         if (loadingKelas) return;
         if (! force && daftarKelas.length > 0) return;
         setLoadingKelas(true);
         setErr('');
         fetch(`${route('presensi.jadwal.kelas')}?jadwal_id=${encodeURIComponent(jadwalId)}`)
             .then((r) => bacaJson(r, 'Gagal memuat daftar kelas. Coba lagi.'))
-            .then((d) => setDaftarKelas(d.kelas || []))
-            .catch((e) => setErr(e.message))
+            .then((d) => {
+                const rows = d.kelas || [];
+                setDaftarKelas(rows);
+                if (rows.length === 0) setSumberTersedia(false);
+            })
+            .catch(() => setSumberTersedia(false))
             .finally(() => setLoadingKelas(false));
     };
 
@@ -144,13 +149,24 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
 
         fetch(`${route('presensi.jadwal.siswa')}?${params.toString()}`)
             .then((r) => bacaJson(r, 'Gagal memuat data siswa. Coba lagi.'))
-            .then((d) => setSiswa((d.siswa || []).map((s) => ({
-                nis: s.nis,
-                nama: s.nama,
-                status: sebelumnya.get(s.nis)?.status ?? 'hadir',
-                keterangan: sebelumnya.get(s.nis)?.keterangan ?? '',
-            }))))
-            .catch((e) => setErr(e.message))
+            .then((d) => {
+                const rows = d.siswa || [];
+                if (rows.length === 0) {
+                    setSelected(null);
+                    setSumberTersedia(false);
+                    return;
+                }
+                setSiswa(rows.map((s) => ({
+                    nis: s.nis,
+                    nama: s.nama,
+                    status: sebelumnya.get(s.nis)?.status ?? 'hadir',
+                    keterangan: sebelumnya.get(s.nis)?.keterangan ?? '',
+                })));
+            })
+            .catch(() => {
+                setSelected(null);
+                setSumberTersedia(false);
+            })
             .finally(() => setLoadingSiswa(false));
     };
 
@@ -255,7 +271,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                 </p>
             )}
 
-            {coverage?.assigned_count === 0 && !doneItem && tersedia && (
+            {coverage?.assigned_count === 0 && !doneItem && sumberTersedia && (
                 <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
                     Belum ada kelas yang ditugaskan untuk Anda. Hubungi admin jika ini tidak sesuai.
                 </p>
@@ -317,7 +333,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                         </div>
                     )}
 
-            {!submitted && boleh && !selected && tersedia && coverage?.assigned_count !== 0 && (
+            {!submitted && boleh && !selected && sumberTersedia && coverage?.assigned_count !== 0 && (
                 <div className="mt-2 space-y-2">
                     <button type="button" onClick={muatKelas} className="min-h-12 w-full rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95">
                         {loadingKelas ? 'Memuat kelas...' : sesiTersimpan.length > 0 ? 'Absen kelas lain' : 'Pilih kelas'}
@@ -348,7 +364,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                 </div>
             )}
 
-            {!submitted && boleh && !selected && !tersedia && !doneItem && (
+            {!submitted && boleh && !selected && !sumberTersedia && !doneItem && (
                 <div className="mt-2 space-y-2">
                     <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
                         Absen siswa tidak tersedia — data siswa belum terhubung ke sim-keuangan. Tandai Nihil atau hubungi admin.
@@ -484,6 +500,7 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
     const [savingBatch, setSavingBatch] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     const [err, setErr] = useState('');
+    const [sumberTersedia, setSumberTersedia] = useState(tersedia);
 
     const grades = [...new Set(classes.map((c) => String(c.grade ?? '')).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
@@ -513,6 +530,7 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
     });
 
     const muatKelas = () => {
+        if (! sumberTersedia) return;
         if (loadingKelas) return;
         setLoadingKelas(true);
         setErr('');
@@ -521,17 +539,26 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
             .then((d) => {
                 const rows = d.kelas || [];
                 setClasses(rows);
+                if (rows.length === 0) {
+                    setSumberTersedia(false);
+                    setOpen(false);
+
+                    return;
+                }
                 if (rows.length === 1) {
                     setTingkat(String(rows[0].grade ?? ''));
                     setJurusan(String(rows[0].major_name ?? ''));
                 }
             })
-            .catch((e) => setErr(e.message))
+            .catch(() => {
+                setSumberTersedia(false);
+                setOpen(false);
+            })
             .finally(() => setLoadingKelas(false));
     };
 
     const buka = () => {
-        if (! tersedia) return;
+        if (! sumberTersedia) return;
         setErr('');
         setSearch('');
         setKeterangan('');
@@ -560,8 +587,20 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
 
         fetch(`${route('presensi.jadwal.siswa')}?${params.toString()}`)
             .then((r) => bacaJson(r, 'Gagal memuat siswa. Coba lagi.'))
-            .then((d) => setStudents(d.siswa || []))
-            .catch((e) => setErr(e.message))
+            .then((d) => {
+                const rows = d.siswa || [];
+                if (rows.length === 0) {
+                    setSumberTersedia(false);
+                    setOpen(false);
+
+                    return;
+                }
+                setStudents(rows);
+            })
+            .catch(() => {
+                setSumberTersedia(false);
+                setOpen(false);
+            })
             .finally(() => setLoadingSiswa(false));
     };
 
@@ -679,7 +718,7 @@ function SiswaTerlambatCard({ slotId, lateStudents = [], submitted = false, done
 
             {!submitted && (
                 <div className="mt-2 space-y-2">
-                    {tersedia ? (
+                    {sumberTersedia ? (
                         <div className="flex flex-col gap-2 sm:flex-row">
                             <button type="button" onClick={buka} className="btn-primary min-h-11 flex-1">
                                 Tambah siswa terlambat
