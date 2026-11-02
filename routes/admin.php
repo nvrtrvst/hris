@@ -284,6 +284,9 @@ Route::middleware('auth:web_admin')->group(function () {
 
     // Koreksi Presensi — otorisasi di controller/UI
     Route::get('koreksi-presensi', [PengajuanKoreksiController::class, 'index'])->name('koreksi-presensi.index');
+    Route::post('koreksi-presensi/jp', [PengajuanKoreksiController::class, 'koreksiJp'])
+        ->middleware(['can:koreksi_presensi', 'throttle:30,1'])
+        ->name('koreksi-presensi.koreksi-jp');
     Route::post('/koreksi-presensi/{id}/approve', [PengajuanKoreksiController::class, 'approve'])
         ->middleware('throttle:60,1')
         ->name('koreksi-presensi.approve');
