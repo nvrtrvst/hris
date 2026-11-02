@@ -26,6 +26,12 @@ class PresensiMessages
 
     public const LEMBUR_KELUAR_SUCCESS = 'Lembur keluar berhasil dicatat! Jarak: %sm';
 
+    public const LEMBUR_BELUM_WAKTUNYA = 'Mode lembur tersedia setelah jam kerja semua unit. Batas hari ini: %s.';
+
+    public const LEMBUR_JAM_TIDAK_LENGKAP = 'Jam kerja unit belum lengkap. Hubungi admin.';
+
+    public const LEMBUR_UNIT_TUTUP = 'Hari ini semua unit tutup. Lembur tetap bisa dicatat.';
+
     // Validation Messages
     public const PEMILIH_JADWAL_DULU = 'Pilih jadwal terlebih dahulu.';
 

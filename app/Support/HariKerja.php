@@ -101,4 +101,117 @@ class HariKerja
 
         return null;
     }
+
+    /**
+     * Window lembur berdasarkan semua unit pegawai. Lembur hanya boleh mulai
+     * setelah unit terakhir selesai; unit tutup dilewati dan jam tidak lengkap
+     * memblokir karena batasnya tidak bisa ditentukan.
+     *
+     * @return array{tersedia: bool, batas_akhir: ?string, unit_terakhir: ?string, alasan: ?string}
+     */
+    public static function lemburWindow(Pegawai $pegawai, ?Carbon $tanggal = null): array
+    {
+        $tanggal ??= Carbon::now();
+        $hari = self::hariIndo($tanggal);
+        $units = $pegawai->relationLoaded('units') ? $pegawai->units : null;
+
+        if ($units === null || $units->isEmpty()) {
+            $units = $pegawai->units()->get();
+        }
+
+        if ($units->isEmpty()) {
+            return [
+                'tersedia' => false,
+                'batas_akhir' => null,
+                'unit_terakhir' => null,
+                'alasan' => PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT,
+            ];
+        }
+
+        $latestEnd = null;
+        $latestUnit = null;
+
+        foreach ($units as $unit) {
+            if (self::liburUnit($unit, $tanggal) || ! self::unitBukaHari($unit, $hari)) {
+                continue;
+            }
+
+            $window = self::jamKerjaUnit($unit, $hari);
+            if ($window === null) {
+                return [
+                    'tersedia' => false,
+                    'batas_akhir' => null,
+                    'unit_terakhir' => $unit->singkatan ?: $unit->nama,
+                    'alasan' => PresensiMessages::LEMBUR_JAM_TIDAK_LENGKAP,
+                ];
+            }
+
+            [$mulai, $selesai] = $window;
+            if ($mulai === null || $selesai === null) {
+                return [
+                    'tersedia' => false,
+                    'batas_akhir' => null,
+                    'unit_terakhir' => $unit->singkatan ?: $unit->nama,
+                    'alasan' => PresensiMessages::LEMBUR_JAM_TIDAK_LENGKAP,
+                ];
+            }
+
+            if ($latestEnd === null || $selesai > $latestEnd) {
+                $latestEnd = $selesai;
+                $latestUnit = $unit->singkatan ?: $unit->nama;
+            }
+        }
+
+        if ($latestEnd === null) {
+            return [
+                'tersedia' => true,
+                'batas_akhir' => null,
+                'unit_terakhir' => null,
+                'alasan' => PresensiMessages::LEMBUR_UNIT_TUTUP,
+            ];
+        }
+
+        $batas = substr($latestEnd, 0, 5);
+        $tersedia = $tanggal->format('H:i:s') >= $latestEnd;
+
+        return [
+            'tersedia' => $tersedia,
+            'batas_akhir' => $batas,
+            'unit_terakhir' => $latestUnit,
+            'alasan' => $tersedia
+                ? 'Di luar jam kerja semua unit.'
+                : sprintf(PresensiMessages::LEMBUR_BELUM_WAKTUNYA, $batas.' ('.$latestUnit.')'),
+        ];
+    }
+
+    private static function jamKerjaUnit(UnitSekolah $unit, string $hari): ?array
+    {
+        $mulai = match ($hari) {
+            'Sabtu' => $unit->jam_kerja_sabtu_mulai,
+            'Minggu' => $unit->jam_kerja_minggu_mulai,
+            default => $unit->jam_masuk_kantor,
+        };
+        $selesai = match ($hari) {
+            'Sabtu' => $unit->jam_kerja_sabtu_selesai,
+            'Minggu' => $unit->jam_kerja_minggu_selesai,
+            default => $unit->jam_pulang_kantor,
+        };
+
+        if (! $mulai || ! $selesai || $selesai <= $mulai) {
+            return null;
+        }
+
+        return [substr((string) $mulai, 0, 8), substr((string) $selesai, 0, 8)];
+    }
+
+    private static function liburUnit(UnitSekolah $unit, Carbon $tanggal): bool
+    {
+        return HariLibur::query()
+            ->whereDate('tanggal', $tanggal->toDateString())
+            ->where(function ($query) use ($unit) {
+                $query->whereNull('unit_sekolah_id')
+                    ->orWhere('unit_sekolah_id', $unit->id);
+            })
+            ->exists();
+    }
 }

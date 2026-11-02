@@ -527,6 +527,7 @@ class MobileController extends Controller
             ],
             'officeAttendance' => $kantorAktif,
             'alasanLibur' => $alasanLibur,
+            'lemburWindow' => HariKerja::lemburWindow($pegawai),
             // Jam izin pulang cepat yang disetujui (batas bawah pulang), null bila tidak ada.
             'jamIzinPulangCepat' => PengajuanPulangCepat::disetujuiPada($pegawai->id, Carbon::today())?->jam_diminta,
             'attestation_token' => $this->attestationService->issue(),
@@ -597,6 +598,16 @@ class MobileController extends Controller
         $this->assertTidakSedangIzin($pegawai);
         $isLembur = (bool) $request->input('is_lembur', false);
         $isTugasLuar = (bool) $request->input('is_tugas_luar', false);
+        if ($isLembur && $request->tipe === 'masuk' && ! $this->adaLemburTerbuka($pegawai)) {
+            $window = HariKerja::lemburWindow($pegawai);
+            if (! $window['tersedia']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $window['alasan'],
+                    'errors' => ['lembur' => [$window['alasan']]],
+                ], 422);
+            }
+        }
         if ($request->tipe === 'keluar' && ! $isLembur && ! $isTugasLuar) {
             $tahanPiket = $this->pesanPiketBelumBeres($pegawai);
             if ($tahanPiket !== null) {
@@ -1271,6 +1282,16 @@ class MobileController extends Controller
 
         $isLembur = (bool) $request->input('is_lembur', false);
         $isTugasLuar = (bool) $request->input('is_tugas_luar', false) && ! $isLembur;
+        if ($isLembur && $request->tipe === 'masuk' && ! $this->adaLemburTerbuka($pegawai)) {
+            $window = HariKerja::lemburWindow($pegawai);
+            if (! $window['tersedia']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $window['alasan'],
+                    'errors' => ['lembur' => [$window['alasan']]],
+                ], 422);
+            }
+        }
         if ($isTugasLuar && ! $request->filled('tujuan')) {
             return response()->json(['success' => false, 'message' => 'Tujuan tugas luar wajib diisi.', 'errors' => ['tujuan' => 'Tujuan tugas luar wajib diisi.']], 422);
         }
@@ -2852,6 +2873,16 @@ class MobileController extends Controller
                 'presensi' => 'Lakukan presensi masuk terlebih dahulu.',
             ]);
         }
+    }
+
+    private function adaLemburTerbuka(Pegawai $pegawai): bool
+    {
+        return Presensi::where('pegawai_id', $pegawai->id)
+            ->whereDate('tanggal', Carbon::today()->toDateString())
+            ->where('is_lembur', true)
+            ->whereNotNull('jam_masuk')
+            ->whereNull('jam_keluar')
+            ->exists();
     }
 
     /**
