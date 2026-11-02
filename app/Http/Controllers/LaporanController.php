@@ -6,6 +6,7 @@ use App\Constants\BobotKehadiran;
 use App\Constants\PresensiMessages;
 use App\Exceptions\PdfTooLargeException;
 use App\Exports\LaporanDetailHarianExport;
+use App\Exports\LaporanKetidakhadiranPiketExport;
 use App\Exports\LaporanLemburanExport;
 use App\Exports\LaporanMengajarHarianExport;
 use App\Exports\LaporanPenggajianExport;
@@ -23,6 +24,7 @@ use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\PiketArea;
 use App\Models\PiketPos;
+use App\Models\PiketSesi;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Services\KcdReportService;
@@ -653,7 +655,7 @@ class LaporanController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
             'area_id' => 'nullable|exists:piket_area,id',
-            'status' => 'nullable|in:semua,draft,submitted,perlu_cek,belum',
+            'status' => 'nullable|in:semua,draft,submitted,perlu_cek,belum,alpa_piket,terlambat_lapor',
             'kualitas' => 'nullable|in:semua,pos_belum,fase_terlewat,perlu_cek',
         ]);
 
@@ -876,8 +878,13 @@ class LaporanController extends Controller
             }
         }
 
-        if ($status === 'belum') {
+        if (in_array($status, ['belum', 'alpa_piket', 'terlambat_lapor'], true)) {
             $laporan = collect();
+        }
+
+        $ketidakhadiran = ['rows' => [], 'alpa' => 0, 'terlambat' => 0];
+        if (in_array($status, ['semua', 'alpa_piket', 'terlambat_lapor'], true)) {
+            $ketidakhadiran = $this->buildKetidakhadiranPiket($start, $end, $unitId, $areaId, $status);
         }
 
         $areas = PiketArea::query()
@@ -898,7 +905,202 @@ class LaporanController extends Controller
             'areas' => $areas,
             'laporan' => $laporan->values(),
             'belum' => $belum->values(),
+            'ketidakhadiran' => $ketidakhadiran,
             'label' => LaporanPiket::ITEM_LABEL,
         ]);
+    }
+
+    /**
+     * Baris "Hadir tapi tidak piket" (alpa) dan "Terlambat lapor" per slot.
+     * Sumber: jadwal piket mingguan × presensi hadir/telat × laporan submitted.
+     *
+     * @return array{rows: list<array<string, mixed>>, alpa: int, terlambat: int}
+     */
+    private function buildKetidakhadiranPiket(Carbon $start, Carbon $end, ?int $unitId, ?int $areaId, string $status = 'semua'): array
+    {
+        $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
+        $from = $start->toDateString();
+        $to = $end->toDateString();
+
+        $presensi = Presensi::query()
+            ->whereBetween('tanggal', [$from, $to])
+            ->whereNotNull('jam_masuk')
+            ->whereIn('status', ['hadir', 'telat'])
+            ->where('is_lembur', false)
+            ->where('is_tugas_luar', false)
+            ->get(['pegawai_id', 'tanggal', 'status', 'jam_masuk'])
+            ->groupBy(fn ($p) => $p->pegawai_id.'|'.$p->tanggal->format('Y-m-d'))
+            ->map(fn ($rows) => $rows->sortBy('jam_masuk')->first());
+
+        $sesi = PiketSesi::with(['petugas.pegawai:id,nama_lengkap', 'petugas.area:id,nama', 'petugas.laporan'])
+            ->whereBetween('tanggal', [$from, $to])
+            ->when($unitId, fn ($q) => $q->where('unit_sekolah_id', $unitId))
+            ->get()
+            ->keyBy(fn (PiketSesi $s) => $s->unit_sekolah_id.'|'.$s->tanggal->format('Y-m-d').'|'.substr((string) $s->jam_mulai, 0, 5));
+
+        $rows = [];
+        $cursor = $start->copy();
+        while ($cursor->lte($end)) {
+            $tanggal = $cursor->toDateString();
+            $jadwals = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama'])
+                ->where('hari', $hariMap[$cursor->format('l')])
+                ->where('jenis_jadwal', 'piket')
+                ->when($unitId, fn ($q) => $q->where('unit_sekolah_id', $unitId))
+                ->orderBy('jam_mulai')
+                ->get();
+
+            foreach ($jadwals as $jadwal) {
+                $hadir = $presensi->get($jadwal->pegawai_id.'|'.$tanggal);
+                if (! $hadir) {
+                    continue;
+                }
+
+                $jamMulai = substr((string) $jadwal->jam_mulai, 0, 5);
+                $sesiSlot = $sesi->get($jadwal->unit_sekolah_id.'|'.$tanggal.'|'.$jamMulai);
+                $petugas = $sesiSlot?->petugas->firstWhere('pegawai_id', $jadwal->pegawai_id);
+                $laporan = $petugas?->laporan;
+                $areaIdRow = $petugas?->area_id ?? $laporan?->area_id;
+
+                if ($areaId && (int) $areaIdRow !== (int) $areaId) {
+                    continue;
+                }
+
+                $jamSelesai = substr((string) ($sesiSlot?->jam_selesai ?? $jadwal->jam_selesai), 0, 5);
+                $batas = Carbon::parse($tanggal.' '.$jamSelesai);
+                if ($batas->isFuture()) {
+                    continue;
+                }
+
+                $submittedAt = $laporan?->status === LaporanPiket::STATUS_SUBMITTED
+                    ? $laporan->submitted_at
+                    : null;
+
+                if ($submittedAt) {
+                    if (! $submittedAt->gt($batas)) {
+                        continue;
+                    }
+                    $kategori = 'terlambat_lapor';
+                    $statusLaporan = 'terkirim';
+                } else {
+                    $kategori = 'alpa_piket';
+                    $statusLaporan = $laporan ? 'draft' : 'tidak ada';
+                }
+
+                if ($status !== 'semua' && $status !== $kategori) {
+                    continue;
+                }
+
+                $rows[] = [
+                    'tanggal' => $tanggal,
+                    'pegawai' => $jadwal->pegawai?->only(['id', 'nama_lengkap']),
+                    'unit' => $jadwal->unitSekolah?->nama,
+                    'jam' => $jamMulai.'-'.$jamSelesai,
+                    'area' => $petugas?->area?->nama,
+                    'peran' => $petugas?->peran,
+                    'presensi_status' => $hadir->status,
+                    'presensi_jam' => substr((string) $hadir->jam_masuk, 0, 5),
+                    'status_laporan' => $statusLaporan,
+                    'submitted_at' => $submittedAt?->format('H:i'),
+                    'kategori' => $kategori,
+                ];
+            }
+
+            $cursor->addDay();
+        }
+
+        usort($rows, fn ($a, $b) => strcmp($b['tanggal'], $a['tanggal'])
+            ?: strcmp($a['jam'], $b['jam'])
+            ?: strcmp($a['pegawai']['nama_lengkap'] ?? '', $b['pegawai']['nama_lengkap'] ?? ''));
+
+        return [
+            'rows' => $rows,
+            'alpa' => count(array_filter($rows, fn ($r) => $r['kategori'] === 'alpa_piket')),
+            'terlambat' => count(array_filter($rows, fn ($r) => $r['kategori'] === 'terlambat_lapor')),
+        ];
+    }
+
+    public function exportKetidakhadiranPiketExcel(Request $request)
+    {
+        [$rows, $filename] = $this->ketidakhadiranPiketForExport($request);
+
+        return Excel::download(new LaporanKetidakhadiranPiketExport($rows), $filename.'.xlsx');
+    }
+
+    public function exportKetidakhadiranPiketPdf(Request $request)
+    {
+        [$rows, $filename, $meta] = $this->ketidakhadiranPiketForExport($request);
+
+        $pdfService = app(LaporanPdfService::class);
+        $unit = $meta['unit_id'] ? UnitSekolah::find($meta['unit_id']) : UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
+        $logoPath = $pdfService->resolveUnitLogoPath($unit) ?? $pdfService->resolveYayasanLogoPath();
+        $logoWidth = null;
+        if ($logoPath && file_exists($logoPath)) {
+            $sz = @getimagesize($logoPath);
+            $logoWidth = $sz ? (int) round(64 * $sz[0] / $sz[1]) : null;
+        }
+        $kop = [
+            'name' => $unit?->nama ? strtoupper($unit->nama) : config('yayasan.name'),
+            'tagline' => config('yayasan.tagline'),
+            'address' => $unit?->alamat ?: config('yayasan.address'),
+            'phone' => $unit?->telepon ?: config('yayasan.phone'),
+            'email' => config('yayasan.email'),
+        ];
+        $kepalaSekolah = $meta['unit_id']
+            ? Pegawai::whereHas('jabatans', fn ($q) => $q->where('jabatan.nama', 'Kepala Sekolah'))
+                ->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $meta['unit_id']))
+                ->where('status_aktif', 'aktif')
+                ->first(['id', 'nama_lengkap', 'nuptk'])
+            : null;
+
+        return Pdf::loadView('exports.pdf-ketidakhadiran-piket', compact('rows', 'meta', 'logoPath', 'logoWidth', 'kop', 'kepalaSekolah'))
+            ->setPaper('a4', 'landscape')
+            ->download($filename.'.pdf');
+    }
+
+    /** @return array{0: list<array<string, mixed>>, 1: string, 2: array<string, mixed>} */
+    private function ketidakhadiranPiketForExport(Request $request): array
+    {
+        $user = $request->user();
+        if (! $user || (! $user->can('view_presensi') && ! $user->can('view_piket'))) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'unit_sekolah_id' => 'nullable|exists:unit_sekolah,id',
+            'area_id' => 'nullable|exists:piket_area,id',
+            'status' => 'nullable|in:semua,alpa_piket,terlambat_lapor',
+        ]);
+
+        $end = isset($validated['end_date']) ? Carbon::parse($validated['end_date']) : Carbon::today();
+        $start = isset($validated['start_date']) ? Carbon::parse($validated['start_date']) : $end->copy()->subDays(6);
+        if ($start->diffInDays($end) > 31) {
+            $start = $end->copy()->subDays(31);
+        }
+
+        $unitId = $validated['unit_sekolah_id'] ?? null;
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')) {
+            $unitId = $user->unit_sekolah_id;
+        }
+        $areaId = $validated['area_id'] ?? null;
+        $status = $validated['status'] ?? 'semua';
+
+        $data = $this->buildKetidakhadiranPiket($start, $end, $unitId, $areaId, $status);
+        $unitSlug = $unitId ? (UnitSekolah::whereKey($unitId)->value('singkatan') ?: 'unit') : 'semua-unit';
+
+        return [
+            $data['rows'],
+            'Ketidakhadiran_Piket_'.$unitSlug.'_'.$start->toDateString().'_to_'.$end->toDateString(),
+            [
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'unit_id' => $unitId,
+                'unit' => $unitId ? UnitSekolah::whereKey($unitId)->value('nama') : 'Semua Unit',
+                'status' => $status,
+                'alpa' => $data['alpa'],
+                'terlambat' => $data['terlambat'],
+            ],
+        ];
     }
 }

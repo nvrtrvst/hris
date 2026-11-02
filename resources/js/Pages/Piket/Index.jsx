@@ -71,23 +71,49 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
         return (
             <div className="card p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-sm font-bold text-text-primary">Sesi {sesi.jam}</p>
-                        <p className="text-xs text-text-secondary">
-                            Status: {sesi.status} · {sesi.petugas.map((p) => `${p.nama} (${p.area || p.peran}, ${p.selesai}/${p.wajib})`).join(' · ')}
-                        </p>
+                        <p className="text-xs text-text-secondary">Status: {sesi.status}</p>
+                        <ul className="mt-1 space-y-0.5 text-xs text-text-secondary">
+                            {sesi.petugas.map((p) => (
+                                <li key={`${p.nama}-${p.area}-${p.peran}`} className="flex flex-wrap items-center gap-x-1.5">
+                                    <span className="font-semibold text-text-primary">{p.nama}</span>
+                                    <span>({p.area || p.peran}, {p.selesai}/{p.wajib})</span>
+                                    <span className={p.submitted ? 'font-semibold text-emerald-700' : 'font-semibold text-amber-700'}>
+                                        {p.submitted ? `Terkirim${p.submitted_at ? ` ${p.submitted_at}` : ''}` : 'Belum kirim'}
+                                    </span>
+                                    {p.terlambat_lapor && (
+                                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold text-slate-700">
+                                            Terlambat lapor
+                                        </span>
+                                    )}
+                                    {p.status === 'tidak_hadir' && (
+                                        <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[11px] font-bold text-rose-700">
+                                            Tidak hadir{p.status_alasan ? `: ${p.status_alasan}` : ''}
+                                        </span>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                     <span className={`rounded-full px-2 py-1 text-xs font-bold ${statusSesiCls}`}>
                         {statusSesi}
                     </span>
                 </div>
 
-                <dl className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                <dl className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
                     <div><dt className="text-text-secondary">Pos belum</dt><dd className="font-semibold">{sesi.pos_belum.length ? sesi.pos_belum.join(', ') : '-'}</dd></div>
                     <div><dt className="text-text-secondary">Fase</dt><dd className="font-semibold">{sesi.round_terlewat} terlewat</dd></div>
                     <div><dt className="text-text-secondary">Temuan</dt><dd className="font-semibold">{sesi.temuan}</dd></div>
-                    <div><dt className="text-text-secondary">Insiden</dt><dd className="font-semibold">{sesi.insiden}</dd></div>
+                    <div><dt className="text-text-secondary">Insiden belum verif</dt><dd className="font-semibold">{sesi.insiden}</dd></div>
+                    <div><dt className="text-text-secondary">Perlu cek</dt><dd className="font-semibold">{sesi.perlu_cek}</dd></div>
                 </dl>
+
+                {sesi.perlu_alasan?.length > 0 && (
+                    <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-amber-800">
+                        {sesi.perlu_alasan.map((alasan) => <li key={alasan}>{alasan}</li>)}
+                    </ul>
+                )}
 
                 {sesi.rounds.length > 0 && (
                     <div className="mt-3 space-y-2">
