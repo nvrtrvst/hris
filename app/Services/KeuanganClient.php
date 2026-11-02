@@ -13,15 +13,25 @@ use Illuminate\Support\Facades\Log;
  */
 class KeuanganClient
 {
-    public static function request(string $endpoint, array $payload, bool $post = false): ?Response
+    /** True bila URL dan kunci integrasi terisi (bukan placeholder). */
+    public static function isConfigured(): bool
     {
         $base = rtrim((string) config('keuangan.url'), '/');
         $key = (string) config('keuangan.key');
-        if ($base === '' || $key === '' || $key === 'change-me-in-production') {
+
+        return $base !== '' && $key !== '' && $key !== 'change-me-in-production';
+    }
+
+    public static function request(string $endpoint, array $payload, bool $post = false): ?Response
+    {
+        if (! self::isConfigured()) {
             Log::error('Integrasi keuangan belum dikonfigurasi.');
 
             return null;
         }
+
+        $base = rtrim((string) config('keuangan.url'), '/');
+        $key = (string) config('keuangan.key');
 
         $request = Http::acceptJson()
             ->withHeaders(['x-internal-key' => $key])

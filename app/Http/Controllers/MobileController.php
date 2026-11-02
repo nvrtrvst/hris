@@ -405,7 +405,7 @@ class MobileController extends Controller
         ]);
 
         if (! $response?->successful()) {
-            return response()->json(['success' => false, 'siswa' => [], 'message' => 'Data siswa belum tersedia.'], 502)->header('Cache-Control', 'no-store');
+            return response()->json(['success' => false, 'siswa' => [], 'message' => 'Data siswa belum terhubung. Tandai Nihil atau hubungi admin.'], 502)->header('Cache-Control', 'no-store');
         }
 
         $data = $response->json('data') ?? [];
@@ -1789,7 +1789,7 @@ class MobileController extends Controller
         return $chain;
     }
 
-    // ── Laporan Piket Harian ──────────────────────────────────────────
+    // Laporan piket harian.
 
     /**
      * Riwayat laporan piket milik sendiri (read-only, 30 hari terakhir).
@@ -1989,7 +1989,11 @@ class MobileController extends Controller
             ->orderBy('nama')
             ->get(['id', 'nama']);
 
+        $siswaTersedia = KeuanganClient::isConfigured();
         $wajibAktif = $v2 ? $requiredCodes : LaporanPiket::ITEM_WAJIB;
+        if (! $siswaTersedia) {
+            $wajibAktif = array_values(array_diff($wajibAktif, [LaporanPiket::ITEM_ABSEN_SISWA]));
+        }
         $missingItems = collect($wajibAktif)
             ->filter(fn ($kode) => ! $laporan || ! $laporan->isItemDone($kode))
             ->map(fn ($kode) => ['kode' => $kode, 'label' => LaporanPiket::ITEM_LABEL[$kode] ?? $kode])
@@ -2055,6 +2059,7 @@ class MobileController extends Controller
             'slotKosong' => $slotKosong,
             'mapelUnit' => $mapelUnit,
             'absensiSiswa' => $absensiSiswa,
+            'siswaTersedia' => $siswaTersedia,
         ]);
     }
 
@@ -2319,6 +2324,7 @@ class MobileController extends Controller
         $pegawai = $this->getPegawai();
         $this->assertTidakSedangIzin($pegawai);
         $this->assertSudahMasuk($pegawai->id);
+        $this->assertSiswaTersedia();
 
         $validated = $request->validate([
             'tingkat' => 'required|string|max:20',
@@ -2394,6 +2400,7 @@ class MobileController extends Controller
         $pegawai = $this->getPegawai();
         $this->assertTidakSedangIzin($pegawai);
         $this->assertSudahMasuk($pegawai->id);
+        $this->assertSiswaTersedia();
 
         $validated = $request->validate([
             'tingkat' => 'required|string|max:20',
@@ -2775,17 +2782,18 @@ class MobileController extends Controller
         }
 
         $unit = $slot->unitSekolah;
-        if (PiketService::isAreaMode($unit)) {
-            $wajib = PiketService::requiredCodes($unit, $petugas);
-            $kurang = array_values(array_filter($wajib, fn ($kode) => ! $laporan->isItemDone($kode)));
+        $wajib = PiketService::isAreaMode($unit)
+            ? PiketService::requiredCodes($unit, $petugas)
+            : LaporanPiket::ITEM_WAJIB;
+        if (! KeuanganClient::isConfigured()) {
+            $wajib = array_values(array_diff($wajib, [LaporanPiket::ITEM_ABSEN_SISWA]));
+        }
 
-            if ($kurang !== []) {
-                $labels = array_map(fn ($k) => LaporanPiket::ITEM_LABEL[$k] ?? $k, $kurang);
-                throw ValidationException::withMessages(['laporan' => 'Laporan belum bisa dikirim. Lengkapi: '.implode(', ', $labels).'.']);
-            }
-        } elseif (! $laporan->isLengkap()) {
-            $kurang = array_map(fn ($k) => LaporanPiket::ITEM_LABEL[$k], $laporan->kurangItems());
-            throw ValidationException::withMessages(['laporan' => 'Laporan belum bisa dikirim. Lengkapi: '.implode(', ', $kurang).'.']);
+        $kurang = array_values(array_filter($wajib, fn ($kode) => ! $laporan->isItemDone($kode)));
+
+        if ($kurang !== []) {
+            $labels = array_map(fn ($k) => LaporanPiket::ITEM_LABEL[$k] ?? $k, $kurang);
+            throw ValidationException::withMessages(['laporan' => 'Laporan belum bisa dikirim. Lengkapi: '.implode(', ', $labels).'.']);
         }
 
         $laporan->status = LaporanPiket::STATUS_SUBMITTED;
@@ -2818,6 +2826,15 @@ class MobileController extends Controller
         }
 
         return back()->with('message', $pesan);
+    }
+
+    private function assertSiswaTersedia(): void
+    {
+        if (! KeuanganClient::isConfigured()) {
+            throw ValidationException::withMessages([
+                'terlambat' => 'Data siswa belum terhubung. Tandai "tidak ada siswa terlambat" atau hubungi admin.',
+            ]);
+        }
     }
 
     /**
