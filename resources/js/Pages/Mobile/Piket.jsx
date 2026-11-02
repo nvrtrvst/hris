@@ -255,7 +255,7 @@ function AbsenSiswaCard({ jadwalId, sesiTersimpan = [], doneItem, boleh, submitt
                 </p>
             )}
 
-            {coverage?.assigned_count === 0 && !doneItem && (
+            {coverage?.assigned_count === 0 && !doneItem && tersedia && (
                 <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
                     Belum ada kelas yang ditugaskan untuk Anda. Hubungi admin jika ini tidak sesuai.
                 </p>
