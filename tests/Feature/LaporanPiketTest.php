@@ -449,6 +449,8 @@ class LaporanPiketTest extends TestCase
 
     public function test_keluar_reguler_ditahan_sebelum_laporan_piket_terkirim(): void
     {
+        config(['keuangan.url' => 'http://keuangan.test', 'keuangan.key' => 'test-key']);
+
         $pegawai = $this->makePegawai();
         $this->makePiketJadwal($pegawai);
         $this->masukkan($pegawai);

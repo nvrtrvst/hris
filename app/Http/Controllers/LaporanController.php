@@ -697,9 +697,7 @@ class LaporanController extends Controller
             ->get()
             ->map(function (LaporanPiket $lap) {
                 $petugas = $lap->sesi?->petugas->firstWhere('pegawai_id', $lap->pegawai_id);
-                $required = $lap->sesi_id && $lap->unitSekolah
-                    ? PiketService::requiredCodes($lap->unitSekolah, $petugas)
-                    : LaporanPiket::ITEM_WAJIB;
+                $required = PiketService::wajibCodes($lap->unitSekolah, $petugas);
 
                 $itemDone = count(array_filter($required, fn ($kode) => $lap->isItemDone($kode)));
                 $areaMode = $lap->unitSekolah && PiketService::isAreaMode($lap->unitSekolah);
