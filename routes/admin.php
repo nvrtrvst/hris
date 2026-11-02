@@ -184,6 +184,12 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::put('presensi/{presensi}', [PresensiController::class, 'update'])
         ->middleware('throttle:60,1')
         ->name('presensi.update');
+    Route::get('presensi/{presensi}/koreksi-mode/opsi', [PresensiController::class, 'koreksiModeOpsi'])
+        ->middleware('throttle:60,1')
+        ->name('presensi.koreksi-mode.opsi');
+    Route::post('presensi/{presensi}/koreksi-mode', [PresensiController::class, 'koreksiMode'])
+        ->middleware('throttle:30,1')
+        ->name('presensi.koreksi-mode');
     Route::post('presensi/{presensi}/approve-lembur', [PresensiController::class, 'approveLembur'])
         ->middleware('throttle:60,1')
         ->name('presensi.approveLembur');
