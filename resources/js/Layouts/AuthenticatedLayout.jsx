@@ -15,14 +15,15 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
     const [drawerGroups, setDrawerGroups] = useState({});
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [menuQuery, setMenuQuery] = useState('');
     const { url } = usePage();
     const [expandedGroups, setExpandedGroups] = useState({
         'Layanan Pribadi': true,
-        'Ringkasan': true,
+        'Beranda': true,
         'Kepegawaian': true,
         'Piket': true,
         'Siswa': true,
-        'Payroll': true,
+        'Penggajian': true,
         'Laporan': true,
         'Pengaturan': false
     });
@@ -96,6 +97,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
 
     useEffect(() => {
         setShowingNavigationDropdown(false);
+        setMenuQuery('');
     }, [url]);
 
     useEffect(() => {
@@ -127,23 +129,20 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     if (permissions.includes('view_dashboard') || permissions.includes('manage_master_data') || permissions.includes('manage_reminders')) ringkasan.push({ name: 'Pengumuman', href: route('pengumuman.index'), icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z' });
 
     const kepegawaian = [];
-    if (permissions.includes('view_pegawai')) kepegawaian.push({ name: 'Pegawai', href: route('pegawai.index'), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' });
-    if (permissions.includes('view_jadwal')) kepegawaian.push({ name: 'Jadwal', href: route('jadwal.index'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' });
-    if (permissions.includes('view_presensi')) kepegawaian.push({ name: 'Presensi', href: route('presensi.index'), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
-    if (permissions.includes('view_presensi')) kepegawaian.push({ name: 'Lembur', href: route('lembur.index'), icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
+    if (permissions.includes('view_pegawai')) kepegawaian.push({ name: 'Data Pegawai', href: route('pegawai.index'), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' });
+    if (permissions.includes('view_jadwal')) kepegawaian.push({ name: 'Jadwal Mengajar', href: route('jadwal.index'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' });
+    if (permissions.includes('view_presensi')) kepegawaian.push({ name: 'Presensi Harian', href: route('presensi.index'), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
+    if (permissions.includes('view_presensi')) kepegawaian.push({ name: 'Data Lembur', href: route('lembur.index'), icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
     if (permissions.includes('view_kpi') || permissions.includes('view_kpi_self')) kepegawaian.push({ name: 'KPI Pegawai', href: route('kpi.index'), icon: 'M4 19V5m0 14h16M8 15V9m4 6V5m4 10v-4' });
-    if (permissions.includes('view_izin') || auth.is_approver) kepegawaian.push({ name: 'Pengajuan Izin', href: route('pengajuan-izin.index'), icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.293.707l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
+    if (permissions.includes('view_izin') || auth.is_approver) kepegawaian.push({ name: 'Izin & Cuti', href: route('pengajuan-izin.index'), icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.293.707l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
     if (permissions.includes('view_izin') || auth.is_approver) kepegawaian.push({ name: 'Koreksi Presensi', href: route('koreksi-presensi.index'), icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' });
-    if (permissions.includes('view_izin') || auth.is_approver) kepegawaian.push({ name: 'Pulang Cepat', href: route('pulang-cepat.index'), icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
+    if (permissions.includes('view_izin') || auth.is_approver) kepegawaian.push({ name: 'Izin Pulang Cepat', href: route('pulang-cepat.index'), icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
 
     const piket = [];
     if (permissions.includes('view_presensi')) piket.push({ name: 'Monitoring Piket', href: route('piket.index'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3' });
-    if (permissions.includes('view_presensi') || permissions.includes('view_piket')) piket.push({ name: 'Laporan Piket', href: route('laporan.piket'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
-    if (permissions.includes('view_piket') || permissions.includes('view_presensi') || permissions.includes('view_absen_siswa')) piket.push({ name: 'Keterlambatan Gerbang', href: route('laporan.keterlambatan-siswa'), icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
 
     const siswa = [];
-    if (permissions.includes('view_presensi')) siswa.push({ name: 'Absen Siswa', href: route('absen-siswa.index'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
-    if (permissions.includes('view_absen_siswa')) siswa.push({ name: 'Laporan Absen Siswa', href: route('laporan.absen-siswa'), icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
+    if (permissions.includes('view_presensi')) siswa.push({ name: 'Rekap Absen Siswa', href: route('absen-siswa.index'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
 
     const payroll = [];
     if (permissions.includes('manage_master_data')) payroll.push({ name: 'Komponen Gaji', href: route('komponen-gaji.index'), icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' });
@@ -152,9 +151,12 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     if (permissions.includes('view_payroll') || auth.is_payroll_operator) payroll.push({ name: 'Riwayat Payroll', href: route('penggajian.index'), icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' });
 
     const laporan = [];
-    if (permissions.includes('view_payroll') || auth.is_payroll_operator || permissions.includes('view_dashboard')) laporan.push({ name: 'Laporan Payroll', href: route('laporan.index'), exact: true, icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
-    if (permissions.includes('view_presensi')) laporan.push({ name: 'Pengawasan', href: route('laporan.pengawasan'), icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' });
-    if (permissions.includes('view_presensi')) laporan.push({ name: 'Presensi Pegawai', href: route('laporan.presensi-guru'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
+    if (permissions.includes('view_payroll') || auth.is_payroll_operator || permissions.includes('view_dashboard')) laporan.push({ name: 'Pusat Laporan', href: route('laporan.index'), exact: true, icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
+    if (permissions.includes('view_presensi')) laporan.push({ name: 'Laporan Presensi Pegawai', href: route('laporan.presensi-guru'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
+    if (permissions.includes('view_presensi')) laporan.push({ name: 'Laporan Pengawasan', href: route('laporan.pengawasan'), icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' });
+    if (permissions.includes('view_presensi') || permissions.includes('view_piket')) laporan.push({ name: 'Laporan Piket', href: route('laporan.piket'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' });
+    if (permissions.includes('view_absen_siswa')) laporan.push({ name: 'Laporan Absen Siswa', href: route('laporan.absen-siswa'), icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' });
+    if (permissions.includes('view_piket') || permissions.includes('view_presensi') || permissions.includes('view_absen_siswa')) laporan.push({ name: 'Laporan Keterlambatan Siswa', href: route('laporan.keterlambatan-siswa'), icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
     if (permissions.includes('view_laporan_kcd')) laporan.push({ name: 'Laporan KCD', href: route('laporan.kcd'), icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' });
 
     const pengaturan = [];
@@ -166,15 +168,16 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
     if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Hari Libur', href: route('hari-libur.index'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' });
     if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Wali Kelas', href: route('wali-kelas.index'), icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' });
     if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Aturan Persetujuan', href: route('approval-policies.index'), icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' });
+    if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Pengaturan Piket', href: route('piket.settings.index'), icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' });
     if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Reminder', href: route('reminders.index'), icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' });
     if (permissions.includes('manage_master_data')) pengaturan.push({ name: 'Backup DB', href: route('backup.index'), icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' });
 
     for (const [title, items] of [
-        ['Ringkasan', ringkasan],
+        ['Beranda', ringkasan],
         ['Kepegawaian', kepegawaian],
         ['Piket', piket],
         ['Siswa', siswa],
-        ['Payroll', payroll],
+        ['Penggajian', payroll],
         ['Laporan', laporan],
         ['Pengaturan', pengaturan],
     ]) {
@@ -186,6 +189,16 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
         title: 'Data Diri',
         items: [{ name: 'Lengkapi Data', href: route('lengkapi-data'), icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.293.707l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }]
     }];
+
+    const query = menuQuery.trim().toLowerCase();
+    const visibleGroups = query === ''
+        ? displayGroups
+        : displayGroups
+            .map((group) => ({
+                ...group,
+                items: group.items.filter((menu) => menu.name.toLowerCase().includes(query)),
+            }))
+            .filter((group) => group.items.length > 0);
 
     return (
         <div className="min-h-screen bg-surface flex flex-col md:flex-row font-sans print:bg-white">
@@ -204,14 +217,31 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
 
                 {/* Menu Groups */}
                 <div className="flex-1 overflow-y-auto py-3 px-2 space-y-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                    {displayGroups.map((group, index) => {
-                        const isExpanded = expandedGroups[group.title];
+                    {isSidebarOpen && (
+                        <div className="relative px-1">
+                            <svg className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                            </svg>
+                            <input
+                                type="search"
+                                value={menuQuery}
+                                onChange={(e) => setMenuQuery(e.target.value)}
+                                placeholder="Cari menu…"
+                                aria-label="Cari menu"
+                                className="w-full rounded-md bg-white/5 py-2 pl-8 pr-3 text-xs text-white placeholder:text-gray-500 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                            />
+                        </div>
+                    )}
+                    {visibleGroups.map((group, index) => {
+                        const isExpanded = query !== '' ? true : expandedGroups[group.title];
                         const isActive = group.items.some(isMenuActive);
                         return (
                             <div key={index} className="space-y-0.5">
                                 {isSidebarOpen && (
                                     <button
                                         onClick={() => toggleGroup(group.title)}
+                                        aria-expanded={isExpanded}
+                                        aria-controls={`sidebar-group-${index}`}
                                         className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md transition-colors ${isActive ? 'text-accent' : 'text-gray-400 hover:text-gray-200'
                                             }`}
                                     >
@@ -221,7 +251,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                                         </svg>
                                     </button>
                                 )}
-                                <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${isExpanded || !isSidebarOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div id={`sidebar-group-${index}`} className={`space-y-0.5 overflow-hidden transition-all duration-300 ${isExpanded || !isSidebarOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}>
                                     {group.items.map((menu, i) => {
                                         const isLinkActive = isMenuActive(menu);
                                         return (
@@ -244,6 +274,9 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                             </div>
                         )
                     })}
+                    {isSidebarOpen && query !== '' && visibleGroups.length === 0 && (
+                        <p className="px-3 py-2 text-xs text-gray-400">Menu tidak ditemukan.</p>
+                    )}
                 </div>
 
                 {/* User Profile Footer */}
@@ -338,14 +371,28 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                 className={`md:hidden fixed inset-y-0 left-0 z-30 w-[min(18rem,calc(100vw-3rem))] overflow-y-auto overscroll-contain bg-primary pb-[env(safe-area-inset-bottom)] pt-[calc(3.5rem+env(safe-area-inset-top))] transform transition-transform duration-300 ease-in-out print:hidden ${showingNavigationDropdown ? 'translate-x-0' : '-translate-x-full'}`}
             >
                 <div className="p-3 space-y-1">
-                    {displayGroups.map((group, groupIndex) => {
-                        const isExpanded = drawerGroups[group.title] ?? false;
+                    <div className="relative px-1 pb-2">
+                        <svg className="pointer-events-none absolute left-3 top-[18px] h-4 w-4 -translate-y-1/2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                        </svg>
+                        <input
+                            type="search"
+                            value={menuQuery}
+                            onChange={(e) => setMenuQuery(e.target.value)}
+                            placeholder="Cari menu…"
+                            aria-label="Cari menu"
+                            className="w-full rounded-lg bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-gray-500 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-accent/60"
+                        />
+                    </div>
+                    {visibleGroups.map((group, groupIndex) => {
+                        const isExpanded = query !== '' ? true : (drawerGroups[group.title] ?? false);
                         return (
                             <div key={groupIndex} className="mb-3">
                                 <button
                                     type="button"
                                     onClick={() => setDrawerGroups((prev) => ({ ...prev, [group.title]: !isExpanded }))}
                                     aria-expanded={isExpanded}
+                                    aria-controls={`drawer-group-${groupIndex}`}
                                     className="flex min-h-11 w-full items-center justify-between rounded-lg px-3 hover:bg-white/5 transition-colors"
                                 >
                                     <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400">{group.title}</span>
@@ -353,7 +400,7 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
-                                <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div id={`drawer-group-${groupIndex}`} className={`space-y-0.5 overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                                     {group.items.map((menu, i) => {
                                         const isActive = isMenuActive(menu);
                                         return (
@@ -371,6 +418,9 @@ export default function AuthenticatedLayout({ user: userProp, header, children }
                             </div>
                         )
                     })}
+                    {query !== '' && visibleGroups.length === 0 && (
+                        <p className="px-3 py-2 text-sm text-gray-400">Menu tidak ditemukan.</p>
+                    )}
                     <div className="pt-3 mt-4 border-t border-primary-800 space-y-1">
                         <div className="px-3 text-gray-400 text-sm font-medium">{user.name}</div>
                         <ResponsiveNavLink href={route('profile.edit')} className="text-white hover:text-accent rounded-lg">Profile</ResponsiveNavLink>

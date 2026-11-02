@@ -11,6 +11,7 @@ use App\Http\Controllers\Concerns\ScopesPimpinan;
 use App\Http\Requests\PresensiPersonalReportRequest;
 use App\Jobs\ProcessPresensiFoto;
 use App\Models\AbsenSiswaSesi;
+use App\Models\AuditLog;
 use App\Models\AuditPresensi;
 use App\Models\HariLibur;
 use App\Models\Jadwal;
@@ -1373,7 +1374,6 @@ class PresensiController extends Controller
         // Admin boleh input/ralat presensi di hari apa pun (termasuk Minggu /
         // Sabtu / hari libur) — blokir hanya berlaku di portal mobile pegawai.
 
-        // Validasi Geofencing
         $distance = $this->calculateDistance($request->latitude, $request->longitude, $unit->latitude, $unit->longitude);
 
         if ($distance > $unit->radius_meter) {
@@ -1502,6 +1502,260 @@ class PresensiController extends Controller
         AuditPresensi::log($presensi->id, 'ubah_status', 'status', $statusLama, $request->status);
 
         return redirect()->back()->with('message', 'Status presensi berhasil diubah menjadi '.strtoupper($request->status));
+    }
+
+    public function koreksiModeOpsi(Presensi $presensi)
+    {
+        $this->authorizeKoreksiMode($presensi);
+
+        $presensi->loadMissing('pegawai:id,nama_lengkap');
+        $hari = Carbon::parse($presensi->tanggal)->locale('id')->translatedFormat('l');
+
+        $jadwals = Jadwal::with(['unitSekolah:id,nama,singkatan,toleransi_menit,wajib_pulang_mengajar', 'pegawaiMapel.mataPelajaran:id,nama'])
+            ->where('pegawai_id', $presensi->pegawai_id)
+            ->where('hari', $hari)
+            ->where('jenis_jadwal', 'mengajar')
+            ->orderBy('jam_mulai')
+            ->get();
+
+        $presensiJadwal = Presensi::where('pegawai_id', $presensi->pegawai_id)
+            ->whereDate('tanggal', $presensi->tanggal->toDateString())
+            ->whereNotNull('jadwal_id')
+            ->get(['id', 'jadwal_id', 'jam_masuk'])
+            ->keyBy('jadwal_id');
+
+        $kantorAda = Presensi::where('pegawai_id', $presensi->pegawai_id)
+            ->whereDate('tanggal', $presensi->tanggal->toDateString())
+            ->where('tipe_presensi', 'kantor')
+            ->where('is_lembur', false)
+            ->whereNull('jadwal_id')
+            ->whereKeyNot($presensi->id)
+            ->whereNotNull('jam_masuk')
+            ->exists();
+
+        $blocked = $this->koreksiModeBlockReason($presensi);
+
+        return response()->json([
+            'presensi' => [
+                'id' => $presensi->id,
+                'tanggal' => $presensi->tanggal->format('Y-m-d'),
+                'jam_masuk' => substr((string) $presensi->jam_masuk, 0, 5),
+                'pegawai' => $presensi->pegawai?->only(['id', 'nama_lengkap']),
+                'status' => $presensi->status,
+                'lembur_status' => $presensi->lembur_status,
+            ],
+            'jadwals' => $jadwals->map(fn (Jadwal $j) => [
+                'id' => $j->id,
+                'mapel' => $j->pegawaiMapel?->mataPelajaran?->nama,
+                'kelas' => $j->kelas_label,
+                'jam' => substr((string) $j->jam_mulai, 0, 5).'-'.substr((string) $j->jam_selesai, 0, 5),
+                'unit' => $j->unitSekolah?->singkatan ?? $j->unitSekolah?->nama,
+                'sudah_presensi' => $presensiJadwal->has($j->id),
+            ])->values(),
+            'kantor_ada' => $kantorAda,
+            'blocked' => $blocked,
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    public function koreksiMode(Request $request, Presensi $presensi)
+    {
+        $this->authorizeKoreksiMode($presensi);
+
+        if ($blocked = $this->koreksiModeBlockReason($presensi)) {
+            throw ValidationException::withMessages(['presensi' => $blocked]);
+        }
+
+        $validated = $request->validate([
+            'mode' => 'required|in:mengajar,kantor,batalkan',
+            'jadwal_ids' => 'nullable|array',
+            'jadwal_ids.*' => 'required|integer|distinct|exists:jadwal,id',
+            'alasan' => 'required|string|min:5|max:500',
+        ]);
+
+        $presensi->loadMissing('pegawai:id,nama_lengkap,status_kepegawaian');
+        $dataLama = $presensi->toArray();
+        $mode = $validated['mode'];
+
+        DB::transaction(function () use ($presensi, $validated, $mode, $dataLama) {
+            if ($mode === 'batalkan') {
+                $presensi->delete();
+            } elseif ($mode === 'kantor') {
+                $this->ubahLemburKeKantor($presensi);
+            } else {
+                $this->ubahLemburKeMengajar($presensi, $validated['jadwal_ids'] ?? []);
+            }
+
+            AuditLog::log($presensi, 'koreksi_mode_lembur', $dataLama, [
+                'mode' => $mode,
+                'jadwal_ids' => $validated['jadwal_ids'] ?? [],
+                'alasan' => $validated['alasan'],
+            ]);
+        });
+
+        $pesan = match ($mode) {
+            'mengajar' => 'Lembur diubah menjadi presensi mengajar.',
+            'kantor' => 'Lembur diubah menjadi presensi kantor.',
+            default => 'Lembur dibatalkan.',
+        };
+
+        return back()->with('message', $pesan);
+    }
+
+    private function authorizeKoreksiMode(Presensi $presensi): void
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('view_presensi') || $user->hasRole('pimpinan')) {
+            abort(403);
+        }
+
+        $presensi->loadMissing('pegawai');
+        if ($user->unit_sekolah_id && ! $user->can('view_all_units')
+            && ! $presensi->pegawai?->belongsToUnit($user->unit_sekolah_id)) {
+            abort(403, 'Akses ditolak.');
+        }
+    }
+
+    private function koreksiModeBlockReason(Presensi $presensi): ?string
+    {
+        if (! $presensi->is_lembur) {
+            return 'Baris ini bukan presensi lembur.';
+        }
+
+        if ($presensi->lembur_status === 'disetujui') {
+            return 'Lembur sudah disetujui dan tidak bisa dikoreksi.';
+        }
+
+        if (! in_array($presensi->lembur_status, ['pending', 'ditolak'], true)) {
+            return 'Status lembur tidak bisa dikoreksi.';
+        }
+
+        if (! $presensi->jam_masuk) {
+            return 'Lembur belum memiliki jam masuk.';
+        }
+
+        if (PayrollLockHelper::isPeriodLocked($presensi->pegawai_id, $presensi->tanggal)) {
+            return 'Periode payroll sudah dikunci.';
+        }
+
+        return null;
+    }
+
+    private function ubahLemburKeKantor(Presensi $presensi): void
+    {
+        $kantorAda = Presensi::where('pegawai_id', $presensi->pegawai_id)
+            ->whereDate('tanggal', $presensi->tanggal->toDateString())
+            ->where('tipe_presensi', 'kantor')
+            ->where('is_lembur', false)
+            ->whereNull('jadwal_id')
+            ->whereKeyNot($presensi->id)
+            ->whereNotNull('jam_masuk')
+            ->exists();
+
+        if ($kantorAda) {
+            throw ValidationException::withMessages([
+                'mode' => 'Sudah ada presensi kantor pada tanggal ini.',
+            ]);
+        }
+
+        $unit = UnitSekolah::find($presensi->unit_sekolah_id);
+        $tanggal = Carbon::parse($presensi->tanggal);
+        $jamMulai = $tanggal->isSaturday()
+            ? $unit?->jam_kerja_sabtu_mulai
+            : ($tanggal->isSunday() ? $unit?->jam_kerja_minggu_mulai : null);
+        $jamMulai = $jamMulai ?: ($unit?->jam_masuk_kantor ?: '07:00');
+
+        $presensi->forceFill([
+            'is_lembur' => false,
+            'lembur_status' => null,
+            'tipe_presensi' => 'kantor',
+            'jadwal_id' => null,
+            'status' => Presensi::statusAt(
+                (string) $presensi->jam_masuk,
+                (string) $jamMulai,
+                (int) ($unit?->toleransi_menit ?? 0)
+            ),
+            'keterangan' => trim(($presensi->keterangan ? $presensi->keterangan.' ' : '').'Koreksi dari presensi lembur.'),
+        ])->save();
+    }
+
+    private function ubahLemburKeMengajar(Presensi $presensi, array $jadwalIds): void
+    {
+        if ($jadwalIds === []) {
+            throw ValidationException::withMessages([
+                'jadwal_ids' => 'Pilih minimal satu jadwal mengajar.',
+            ]);
+        }
+
+        $hari = Carbon::parse($presensi->tanggal)->locale('id')->translatedFormat('l');
+        $jadwals = Jadwal::with('unitSekolah:id,toleransi_menit,wajib_pulang_mengajar')
+            ->whereIn('id', $jadwalIds)
+            ->where('pegawai_id', $presensi->pegawai_id)
+            ->where('hari', $hari)
+            ->where('jenis_jadwal', 'mengajar')
+            ->get();
+
+        if ($jadwals->count() !== count($jadwalIds)) {
+            throw ValidationException::withMessages([
+                'jadwal_ids' => 'Ada jadwal yang tidak valid untuk pegawai dan tanggal ini.',
+            ]);
+        }
+
+        foreach ($jadwals as $jadwal) {
+            $existing = Presensi::where('pegawai_id', $presensi->pegawai_id)
+                ->where('jadwal_id', $jadwal->id)
+                ->whereDate('tanggal', $presensi->tanggal->toDateString())
+                ->first();
+
+            if ($existing?->jam_masuk) {
+                throw ValidationException::withMessages([
+                    'jadwal_ids' => 'Jadwal '.substr((string) $jadwal->jam_mulai, 0, 5).' sudah memiliki presensi.',
+                ]);
+            }
+
+            $unit = $jadwal->unitSekolah;
+            $baru = $existing ?? new Presensi([
+                'pegawai_id' => $presensi->pegawai_id,
+                'jadwal_id' => $jadwal->id,
+                'tanggal' => $presensi->tanggal,
+            ]);
+
+            $baru->forceFill([
+                'unit_sekolah_id' => $jadwal->unit_sekolah_id,
+                'tipe_presensi' => 'mengajar',
+                'is_lembur' => false,
+                'is_tugas_luar' => false,
+                'lembur_status' => null,
+                'jam_masuk' => $presensi->jam_masuk,
+                'jam_keluar' => ($unit?->wajib_pulang_mengajar && $presensi->pegawai?->is_tetap)
+                    ? null
+                    : $jadwal->jam_selesai,
+                'status' => Presensi::statusAt(
+                    (string) $presensi->jam_masuk,
+                    (string) $jadwal->jam_mulai,
+                    (int) ($unit?->toleransi_menit ?? 0)
+                ),
+                'latitude_masuk' => $presensi->latitude_masuk,
+                'longitude_masuk' => $presensi->longitude_masuk,
+                'foto_masuk' => $presensi->foto_masuk,
+                'foto_masuk_status' => $presensi->foto_masuk_status,
+                'jarak_masuk_meter' => $presensi->jarak_masuk_meter,
+                'akurasi_masuk' => $presensi->akurasi_masuk,
+                'kecepatan_masuk' => $presensi->kecepatan_masuk,
+                'captured_at' => $presensi->captured_at,
+                'lokasi_perlu_review' => $presensi->lokasi_perlu_review,
+                'posisi_mencurigakan' => $presensi->posisi_mencurigakan,
+                'motion_suspect' => $presensi->motion_suspect,
+                'unit_lokasi_masuk_id' => $presensi->unit_lokasi_masuk_id,
+                'keterangan' => 'Koreksi dari presensi lembur.',
+            ])->save();
+
+            AuditLog::log($baru, 'koreksi_mode_lembur_mengajar', null, [
+                'dari_presensi_id' => $presensi->id,
+                'jadwal_id' => $jadwal->id,
+            ]);
+        }
+
+        $presensi->delete();
     }
 
     public function approveLembur($id)

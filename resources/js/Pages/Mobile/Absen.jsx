@@ -782,6 +782,20 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </div>
             </Card>
 
+            {isLembur && jadwalsPresensi.length > 0
+                && !(presensiHariIni || []).some((p) => p.tipe_presensi === 'mengajar' && p.jam_masuk) && (
+                <div role="note" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                    <p className="font-semibold">Mode lembur tidak mencatat kehadiran mengajar.</p>
+                    <button
+                        type="button"
+                        onClick={() => setIsLembur(false)}
+                        className="mt-2 min-h-11 rounded-lg bg-white px-3 py-2 text-xs font-bold text-amber-900 ring-1 ring-amber-200 active:scale-95"
+                    >
+                        Gunakan presensi mengajar
+                    </button>
+                </div>
+            )}
+
             <Card press={false} className="mt-3 flex items-center justify-between py-3.5">
                 <div>
                     <p className="text-sm font-bold text-slate-900">Mode tugas luar</p>

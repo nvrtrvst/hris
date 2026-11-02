@@ -96,25 +96,238 @@ const LemburBadge = ({ status }) => {
 const bolehApproveLembur = (auth) =>
     Boolean(auth?.permissions?.includes('view_presensi')) && !(auth?.roles || []).includes('pimpinan');
 
-const LemburActions = ({ p, auth }) => {
-    if (!p || p.lembur_status !== 'pending' || !bolehApproveLembur(auth)) return null;
+const KoreksiLemburButton = ({ p, auth }) => {
+    const [open, setOpen] = React.useState(false);
+    const [loading, setLoading] = React.useState(false);
+    const [data, setData] = React.useState(null);
+    const [mode, setMode] = React.useState('mengajar');
+    const [jadwalIds, setJadwalIds] = React.useState([]);
+    const [alasan, setAlasan] = React.useState('');
+    const [error, setError] = React.useState('');
+    const [saving, setSaving] = React.useState(false);
+
+    if (!p || !p.is_lembur || !['pending', 'ditolak'].includes(p.lembur_status) || !bolehApproveLembur(auth)) return null;
+
+    const buka = async () => {
+        setOpen(true);
+        setLoading(true);
+        setError('');
+        setData(null);
+        setAlasan('');
+        setJadwalIds([]);
+
+        try {
+            const res = await fetch(route('presensi.koreksi-mode.opsi', p.id), { headers: { Accept: 'application/json' } });
+            const body = await res.json();
+            if (!res.ok) throw new Error(body.message || 'Gagal memuat opsi koreksi.');
+            setData(body);
+            setMode((body.jadwals || []).length > 0 ? 'mengajar' : 'kantor');
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const simpan = () => {
+        if (alasan.trim().length < 5) {
+            setError('Alasan koreksi minimal 5 karakter.');
+            return;
+        }
+
+        setSaving(true);
+        setError('');
+        router.post(route('presensi.koreksi-mode', p.id), {
+            mode,
+            jadwal_ids: mode === 'mengajar' ? jadwalIds : [],
+            alasan,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => setOpen(false),
+            onError: (errs) => setError(Object.values(errs || {}).flat()[0] || 'Gagal menyimpan koreksi.'),
+            onFinish: () => setSaving(false),
+        });
+    };
+
+    const blocked = data?.blocked;
+    const jadwals = data?.jadwals || [];
 
     return (
-        <div className="mt-1.5 flex gap-1">
+        <>
             <button
                 type="button"
-                onClick={() => router.post(route('presensi.approveLembur', p.id), {}, { preserveState: true })}
-                className="rounded-md bg-emerald-500 px-2 py-1 text-[11px] font-bold text-white transition-colors hover:bg-emerald-600"
+                onClick={buka}
+                className="rounded-md bg-white px-2 py-1 text-[11px] font-bold text-primary ring-1 ring-border transition-colors hover:bg-surface"
             >
-                Setuju
+                Koreksi
             </button>
-            <button
-                type="button"
-                onClick={() => router.post(route('presensi.rejectLembur', p.id), {}, { preserveState: true })}
-                className="rounded-md bg-rose-500 px-2 py-1 text-[11px] font-bold text-white transition-colors hover:bg-rose-600"
-            >
-                Tolak
-            </button>
+
+            <Modal show={open} onClose={() => setOpen(false)} maxWidth="lg" closeable={!saving}>
+                <div className="max-h-[85vh] overflow-y-auto px-5 py-4">
+                    <h3 className="text-base font-bold text-primary">Koreksi presensi lembur</h3>
+                    <p className="mt-0.5 text-sm text-text-secondary">
+                        {p.pegawai?.nama_lengkap || '-'} · {p.tanggal} · masuk {String(p.jam_masuk || '').substring(0, 5)}
+                    </p>
+
+                    {loading ? (
+                        <p className="py-6 text-center text-sm text-text-secondary">Memuat jadwal…</p>
+                    ) : (
+                        <div className="mt-4 space-y-4">
+                            {blocked && (
+                                <div role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+                                    {blocked}
+                                </div>
+                            )}
+
+                            {!blocked && (
+                                <>
+                                    <fieldset>
+                                        <legend className="form-label">Jenis koreksi</legend>
+                                        <div className="mt-1 space-y-2">
+                                            {[
+                                                { value: 'mengajar', label: 'Jadikan presensi mengajar', desc: 'Buat presensi per JP yang benar-benar dijalani.' },
+                                                { value: 'kantor', label: 'Jadikan presensi kantor', desc: 'Ubah lembur menjadi presensi kantor.' },
+                                                { value: 'batalkan', label: 'Batalkan lembur', desc: 'Hapus lembur tanpa membuat presensi.' },
+                                            ].map((opt) => (
+                                                <label
+                                                    key={opt.value}
+                                                    className={`flex cursor-pointer gap-2 rounded-lg border px-3 py-2 text-sm ${mode === opt.value ? 'border-primary bg-primary/5' : 'border-border bg-white'}`}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name={`koreksi-mode-${p.id}`}
+                                                        value={opt.value}
+                                                        checked={mode === opt.value}
+                                                        onChange={() => setMode(opt.value)}
+                                                        className="mt-0.5 h-4 w-4 text-primary focus:ring-primary"
+                                                    />
+                                                    <span>
+                                                        <span className="block font-semibold text-text-primary">{opt.label}</span>
+                                                        <span className="block text-xs text-text-secondary">{opt.desc}</span>
+                                                    </span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </fieldset>
+
+                                    {mode === 'mengajar' && (
+                                        <fieldset>
+                                            <legend className="form-label">Pilih JP yang dijalani</legend>
+                                            {jadwals.length === 0 ? (
+                                                <p className="mt-1 rounded-lg bg-surface px-3 py-2 text-sm text-text-secondary">
+                                                    Tidak ada jadwal mengajar pada tanggal ini. Pilih &ldquo;Jadikan presensi kantor&rdquo; atau &ldquo;Batalkan lembur&rdquo;.
+                                                </p>
+                                            ) : (
+                                                <div className="mt-1 space-y-1.5">
+                                                    {jadwals.map((j) => (
+                                                        <label
+                                                            key={j.id}
+                                                            className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${j.sudah_presensi ? 'cursor-default border-border bg-surface' : 'cursor-pointer border-border bg-white'}`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                disabled={j.sudah_presensi}
+                                                                checked={jadwalIds.includes(j.id)}
+                                                                onChange={(e) => setJadwalIds((prev) => e.target.checked ? [...prev, j.id] : prev.filter((id) => id !== j.id))}
+                                                                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                                                            />
+                                                            <span className="min-w-0">
+                                                                <span className="block font-semibold text-text-primary">
+                                                                    {j.mapel || 'Mengajar'} · {j.kelas || 'Tanpa kelas'}
+                                                                </span>
+                                                                <span className="block text-xs text-text-secondary">
+                                                                    {j.jam} · {j.unit || '-'}
+                                                                    {j.sudah_presensi && <span className="ml-1 font-semibold text-text-secondary">Sudah tercatat</span>}
+                                                                </span>
+                                                            </span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </fieldset>
+                                    )}
+
+                                    {mode === 'kantor' && data?.kantor_ada && (
+                                        <div role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+                                            Sudah ada presensi kantor pada tanggal ini.
+                                        </div>
+                                    )}
+
+                                    {mode === 'batalkan' && (
+                                        <p className="rounded-lg bg-surface px-3 py-2 text-sm text-text-secondary">
+                                            Baris lembur akan dihapus dan tidak bisa dikembalikan.
+                                        </p>
+                                    )}
+
+                                    <div>
+                                        <label htmlFor={`alasan-koreksi-${p.id}`} className="form-label">Alasan koreksi</label>
+                                        <textarea
+                                            id={`alasan-koreksi-${p.id}`}
+                                            value={alasan}
+                                            onChange={(e) => setAlasan(e.target.value)}
+                                            rows={3}
+                                            maxLength={500}
+                                            className="input-field"
+                                            placeholder="Contoh: salah menekan Mode Lembur saat akan presensi mengajar"
+                                        />
+                                        <p className="form-hint">Minimal 5 karakter.</p>
+                                    </div>
+
+                                    {error && <div role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{error}</div>}
+                                </>
+                            )}
+
+                            <div className="flex justify-end gap-2 border-t border-border pt-3">
+                                <button type="button" onClick={() => setOpen(false)} disabled={saving} className="btn-secondary">
+                                    Batal
+                                </button>
+                                {!blocked && (
+                                    <button
+                                        type="button"
+                                        onClick={simpan}
+                                        disabled={saving || loading || alasan.trim().length < 5 || (mode === 'mengajar' && jadwalIds.length === 0) || (mode === 'kantor' && data?.kantor_ada)}
+                                        className={mode === 'batalkan' ? 'btn-danger' : 'btn-primary'}
+                                    >
+                                        {saving ? 'Menyimpan…' : mode === 'batalkan' ? 'Batalkan lembur' : 'Simpan koreksi'}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </Modal>
+        </>
+    );
+};
+
+const LemburActions = ({ p, auth }) => {
+    if (!p || !bolehApproveLembur(auth)) return null;
+
+    const pending = p.lembur_status === 'pending';
+    const bolehKoreksi = ['pending', 'ditolak'].includes(p.lembur_status);
+    if (!pending && !bolehKoreksi) return null;
+
+    return (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+            {pending && (
+                <>
+                    <button
+                        type="button"
+                        onClick={() => router.post(route('presensi.approveLembur', p.id), {}, { preserveState: true })}
+                        className="rounded-md bg-emerald-500 px-2 py-1 text-[11px] font-bold text-white transition-colors hover:bg-emerald-600"
+                    >
+                        Setuju
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => router.post(route('presensi.rejectLembur', p.id), {}, { preserveState: true })}
+                        className="rounded-md bg-rose-500 px-2 py-1 text-[11px] font-bold text-white transition-colors hover:bg-rose-600"
+                    >
+                        Tolak
+                    </button>
+                </>
+            )}
+            <KoreksiLemburButton p={p} auth={auth} />
         </div>
     );
 };
@@ -679,6 +892,7 @@ const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setCon
                                 </a>
                             )) : <span className="text-[11px] text-text-muted">Tanpa foto</span>}
                             {lembur && <LemburBadge status={lembur.lembur_status} />}
+                            {lembur && <LemburActions p={lembur} auth={auth} />}
                             {tugasLuar && <TugasLuarBadge status={tugasLuar.tugas_luar_status} onClick={() => openTugasLuar(tugasLuar)} />}
                         </div>
 
@@ -1721,6 +1935,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         <div className="flex items-center gap-2">
                                             <StatusBadge status={p.status} />
                                             {p.is_lembur && <LemburBadge status={p.lembur_status} />}
+                                            {p.is_lembur && <LemburActions p={p} auth={auth} />}
                                         </div>
                                     </div>
                                     {(p.foto_masuk_url || p.foto_keluar_url) && (
