@@ -1076,7 +1076,15 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                         ? 'Selesaikan penghalang dulu'
                         : 'Kirim laporan piket';
     const submitErrMsg = submitErr || errors.laporan || errors.round;
-    const errMsg = locErr || errors.kode || errors.guru_pegawai_id || errors.keterangan_absen;
+    const errMsg = locErr
+        || errors.geofence
+        || errors.presensi
+        || errors.conflict
+        || errors.kode
+        || errors.guru_pegawai_id
+        || errors.keterangan_absen
+        || errors.terlambat
+        || Object.values(errors || {})[0];
 
     useEffect(() => {
         if (submitErrMsg && submitErrRef.current) {
@@ -1296,10 +1304,22 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                     )}
                                 </div>
                                 <p className="mt-1 text-xs text-slate-600">Cek pagi memulai sesi. Catatan guru yang berhalangan ditambahkan di bawah.</p>
+                                {!pagiOpen && !done('cek_absen') && (
+                                    <p className="mt-1 text-xs text-slate-600">
+                                        {hhmm > windows.pagi[1]
+                                            ? `Bagian pagi sudah lewat (${windows.pagi[1]}). Minta admin membuka jalur telat.`
+                                            : `Dibuka pukul ${windows.pagi[0]}.`}
+                                    </p>
+                                )}
                                 {!done('cek_absen') && (
                                     <button type="button" disabled={!pagiOpen || sending} onClick={() => kirim({ kode: 'cek_absen', mode: 'centang' })} className="mt-2 min-h-12 w-full rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 active:scale-95 disabled:opacity-50">
                                         {sending ? '...' : 'Mulai cek pagi'}
                                     </button>
+                                )}
+                                {errMsg && (
+                                    <p role="alert" className="mt-2 break-words rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                                        {errMsg}
+                                    </p>
                                 )}
 
                                 {(items.cek_absen?.entries ?? []).length > 0 && (
