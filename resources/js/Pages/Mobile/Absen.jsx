@@ -6,15 +6,16 @@ import { fmtDetik, batasHadir } from '@/Utils/waktuPresensi';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '@/Constants/AppConstants';
 import { Head, Link, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Card, Toggle, LemburStatusBadge } from '@/Components/MobileUI';
+import { Card, Toggle } from '@/Components/MobileUI';
 import TetapPresensi from '@/Pages/Mobile/Partials/TetapPresensi';
+import LemburModeSlot from '@/Pages/Mobile/Partials/LemburModeSlot';
 import BuktiKegiatan from '@/Pages/Mobile/Partials/BuktiKegiatan';
 import { useCamera } from '@/Hooks/useCamera';
 import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, ClipboardCheck, Lock, Clock } from 'lucide-react';
 
-export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false, izinHariIni = null, jamIzinPulangCepat = null, alasanLibur = null, piketGate = null }) {
+export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false, izinHariIni = null, jamIzinPulangCepat = null, alasanLibur = null, piketGate = null, lemburWindow = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [errorAction, setErrorAction] = useState(null);
@@ -97,7 +98,11 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         return locs;
     }, [pegawai]);
 
-    const isTeaching = !isLembur && !officeAttendance && Boolean(jadwalId);
+    const lemburRecord = (presensiHariIni || []).find((p) => p.is_lembur && p.jam_masuk);
+    const lemburDone = Boolean(lemburRecord?.jam_keluar);
+    const lemburOpen = Boolean(lemburRecord && !lemburDone);
+    const lemburAktif = isLembur || lemburOpen;
+    const isTeaching = !lemburAktif && !officeAttendance && Boolean(jadwalId);
     const kantorRecord = officeAttendance
         ? (presensiHariIni || []).find((p) => !p.jadwal_id && !p.is_lembur)
         : null;
@@ -108,9 +113,6 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
     const teachingOpen = Boolean(teachingRecord?.jam_masuk && !teachingRecord?.jam_keluar);
     const kantorDone = Boolean(kantorRecord?.jam_keluar);
     const kantorOpen = Boolean(kantorRecord?.jam_masuk && !kantorRecord?.jam_keluar);
-    const lemburRecord = (presensiHariIni || []).find((p) => p.is_lembur && p.jam_masuk);
-    const lemburDone = Boolean(lemburRecord?.jam_keluar);
-    const lemburOpen = Boolean(lemburRecord && !lemburDone);
     const tugasLuarRecord = (presensiHariIni || []).find((p) => p.is_tugas_luar && p.jam_masuk);
     const tugasLuarDone = Boolean(tugasLuarRecord?.jam_keluar);
     const tugasLuarOpen = Boolean(tugasLuarRecord && !tugasLuarDone);
@@ -266,11 +268,11 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             setError('Silakan ambil foto presensi terlebih dahulu.');
             return;
         }
-        if (alasanLibur && !isLembur && !isTugasLuar) {
+        if (alasanLibur && !lemburAktif && !isTugasLuar) {
             setError(alasanLibur);
             return;
         }
-        if (!isLembur && !isTugasLuar && !officeAttendance && jadwalsPresensi.length > 0 && !jadwalId) {
+        if (!lemburAktif && !isTugasLuar && !officeAttendance && jadwalsPresensi.length > 0 && !jadwalId) {
             setError('Silakan pilih jadwal presensi Anda.');
             return;
         }
@@ -278,11 +280,11 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             setError('Anda sudah melakukan presensi lengkap untuk jadwal ini.');
             return;
         }
-        if (!isLembur && !isTugasLuar && piketGate?.blokir && ((officeAttendance && kantorOpen) || (isTeaching && teachingOpen))) {
+        if (!lemburAktif && !isTugasLuar && piketGate?.blokir && ((officeAttendance && kantorOpen) || (isTeaching && teachingOpen))) {
             setError(`Laporan piket belum terkirim${piketGate?.progress ? ` (${piketGate.progress})` : ''}. Selesaikan dan kirim di menu Piket dulu sebelum absen pulang.`);
             return;
         }
-        if (!isLembur && officeAttendance && kantorRecord?.jam_keluar) {
+        if (!lemburAktif && officeAttendance && kantorRecord?.jam_keluar) {
             setError('Anda sudah melakukan presensi keluar.');
             return;
         }
@@ -290,7 +292,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             setError('Tujuan tugas luar wajib diisi.');
             return;
         }
-        if (!currentPosition && !isLembur && !isTugasLuar) {
+        if (!currentPosition && !lemburAktif && !isTugasLuar) {
             setError('Lokasi belum tersedia. Pastikan GPS aktif.');
             return;
         }
@@ -307,12 +309,12 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         const payload = {
             _token: token,
             foto: capturedPhoto,
-            is_lembur: isLembur,
+            is_lembur: lemburAktif,
             is_tugas_luar: isTugasLuar,
             tujuan: isTugasLuar ? tujuan : null,
             keterangan: null,
-            jadwal_id: isLembur || isTugasLuar ? null : jadwalId,
-            tipe: isTeaching ? (teachingOpen ? 'keluar' : 'masuk') : isLembur ? (lemburOpen ? 'keluar' : 'masuk') : isTugasLuar ? (tugasLuarOpen ? 'keluar' : 'masuk') : (kantorOpen ? 'keluar' : 'masuk'),
+            jadwal_id: lemburAktif || isTugasLuar ? null : jadwalId,
+            tipe: isTeaching ? (teachingOpen ? 'keluar' : 'masuk') : lemburAktif ? (lemburOpen ? 'keluar' : 'masuk') : isTugasLuar ? (tugasLuarOpen ? 'keluar' : 'masuk') : (kantorOpen ? 'keluar' : 'masuk'),
             latitude: currentPosition?.latitude ?? null,
             longitude: currentPosition?.longitude ?? null,
             accuracy: currentPosition?.accuracy ?? null,
@@ -354,6 +356,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 if (res.status === 422 && data.errors) {
                     const first = Object.values(data.errors)[0];
                     if (Array.isArray(first) && first.length) message = first[0];
+                    if (data.errors.lembur) setIsLembur(false);
                 }
                 setErrorAction(data.action || null);
                 setError(message);
@@ -451,6 +454,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     libur={Boolean(alasanLibur)}
                     alasanLibur={alasanLibur}
                     piketGate={piketGate}
+                    lemburWindow={lemburWindow}
                 />
             </MobileLayout>
         );
@@ -516,7 +520,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </div>
             </div>
 
-            {!isLembur && !isTugasLuar && !alasanLibur && jadwalsPresensi.length > 0 && (
+            {!lemburAktif && !isTugasLuar && !alasanLibur && jadwalsPresensi.length > 0 && (
                 <section className="mb-4" aria-labelledby="jadwal-heading">
                     <div className="mb-2 flex items-center justify-between">
                         <h2 id="jadwal-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Jadwal hari ini</h2>
@@ -546,7 +550,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </section>
             )}
 
-            {!isLembur && !isTugasLuar && (jadwals || []).some((j) => j.jenis_jadwal === 'piket') && (presensiHariIni || []).some((p) => p.jam_masuk) && (
+            {!lemburAktif && !isTugasLuar && (jadwals || []).some((j) => j.jenis_jadwal === 'piket') && (presensiHariIni || []).some((p) => p.jam_masuk) && (
                 <Link href={route('presensi.piket.index')} className="mb-4 flex min-h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
                     <span>
                         <span className="block text-sm font-bold text-slate-900">Laporan Piket</span>
@@ -556,7 +560,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </Link>
             )}
 
-            {!isLembur && !isTugasLuar && (jadwals || []).some((j) => j.jenis_jadwal === 'piket') && !(presensiHariIni || []).some((p) => p.jam_masuk) && (
+            {!lemburAktif && !isTugasLuar && (jadwals || []).some((j) => j.jenis_jadwal === 'piket') && !(presensiHariIni || []).some((p) => p.jam_masuk) && (
                 <div className="mb-4 flex min-h-14 items-center justify-between rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3" role="note" aria-label="Laporan piket terkunci">
                     <span>
                         <span className="block text-sm font-bold text-slate-700">Laporan Piket terkunci</span>
@@ -566,14 +570,14 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 </div>
             )}
 
-            {!isLembur && !isTugasLuar && officeAttendance && (
+            {!lemburAktif && !isTugasLuar && officeAttendance && (
                 <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                     <p className="text-sm font-bold text-emerald-900">Kehadiran kantor</p>
                     <p className="mt-0.5 text-xs leading-relaxed text-emerald-800">Tidak ada jadwal mengajar hari ini. Presensi memakai unit primer dan jam masuk kantor.</p>
                 </div>
             )}
 
-            {piketGate?.blokir && !isLembur && !isTugasLuar && (
+            {piketGate?.blokir && !lemburAktif && !isTugasLuar && (
                 <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-semibold text-sky-800">
                     <Clock className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>Laporan piket belum terkirim{piketGate?.progress ? ` (${piketGate.progress})` : ''}. Selesaikan dan kirim di menu Piket dulu sebelum absen pulang.</span>
@@ -628,7 +632,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                         <span className="absolute left-3 top-3 rounded-lg bg-black/65 px-2.5 py-1.5 font-mono text-xs font-bold tabular-nums text-white">{currentTime}</span>
                     )}
 
-                    {isLembur && !capturedPhoto && (
+                    {lemburAktif && !capturedPhoto && (
                         <span className="absolute right-3 top-3 rounded-lg bg-amber-500 px-2.5 py-1.5 text-xs font-bold text-amber-950">LEMBUR</span>
                     )}
 
@@ -637,7 +641,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     )}
 
                     {currentPosition && !capturedPhoto && (
-                        <span className={`absolute right-3 ${isLembur || isTugasLuar ? 'top-12' : 'top-3'} rounded-lg bg-black/65 px-2.5 py-1.5 text-[10px] font-mono font-semibold text-white`}>
+                        <span className={`absolute right-3 ${lemburAktif || isTugasLuar ? 'top-12' : 'top-3'} rounded-lg bg-black/65 px-2.5 py-1.5 text-[10px] font-mono font-semibold text-white`}>
                             {currentPosition.latitude.toFixed(5)}, {currentPosition.longitude.toFixed(5)}
                         </span>
                     )}
@@ -662,7 +666,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                                     aria-label="Ambil foto presensi"
                                     className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-white bg-transparent transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100"
                                 >
-                                    <span className={`h-14 w-14 rounded-full ${isLembur ? 'bg-amber-500' : isTugasLuar ? 'bg-sky-500' : 'bg-emerald-500'}`} />
+                                    <span className={`h-14 w-14 rounded-full ${lemburAktif ? 'bg-amber-500' : isTugasLuar ? 'bg-sky-500' : 'bg-emerald-500'}`} />
                                 </button>
                             </div>
                             {showLive && !currentPosition && (
@@ -771,18 +775,15 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
 
             {!presensiComplete && (
             <>
-            <Card press={false} className="mt-3 flex items-center justify-between py-3.5">
-                <div>
-                    <p className="text-sm font-bold text-slate-900">Mode lembur</p>
-                    <p className="mt-0.5 text-xs text-slate-500">Tanpa jadwal, perlu persetujuan admin</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    {lemburRecord && <LemburStatusBadge status={lemburRecord.lembur_status} />}
-                    <Toggle checked={isLembur} onChange={toggleLembur} tone="amber" />
-                </div>
-            </Card>
+            <LemburModeSlot
+                lemburWindow={lemburWindow}
+                record={lemburRecord}
+                active={isLembur}
+                onToggle={toggleLembur}
+                className="mt-3"
+            />
 
-            {isLembur && jadwalsPresensi.length > 0
+            {lemburAktif && jadwalsPresensi.length > 0
                 && !(presensiHariIni || []).some((p) => p.tipe_presensi === 'mengajar' && p.jam_masuk) && (
                 <div role="note" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
                     <p className="font-semibold">Mode lembur tidak mencatat kehadiran mengajar.</p>
@@ -834,10 +835,10 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) || (!isLembur && !isTugasLuar && !officeAttendance && !jadwals.length) || presensiComplete || (!isLembur && !isTugasLuar && piketGate?.blokir && ((officeAttendance && kantorOpen) || (isTeaching && teachingOpen)))}
-                className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isTugasLuar ? 'bg-sky-500 text-sky-950' : isLembur ? 'bg-amber-500 text-amber-950' : 'bg-primary text-white'}`}
+                disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) || (!lemburAktif && !isTugasLuar && !officeAttendance && !jadwals.length) || presensiComplete || (!lemburAktif && !isTugasLuar && piketGate?.blokir && ((officeAttendance && kantorOpen) || (isTeaching && teachingOpen)))}
+                className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isTugasLuar ? 'bg-sky-500 text-sky-950' : lemburAktif ? 'bg-amber-500 text-amber-950' : 'bg-primary text-white'}`}
             >
-                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : isLembur ? (lemburOpen ? 'Kirim presensi keluar lembur' : 'Kirim bukti lembur') : isTugasLuar ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : isTeaching ? (teachingOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}
+                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : lemburAktif ? (lemburOpen ? 'Kirim presensi keluar lembur' : 'Kirim bukti lembur') : isTugasLuar ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : isTeaching ? (teachingOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}
             </button>
             )}
 
@@ -845,3 +846,4 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
         </MobileLayout>
     );
 }
+

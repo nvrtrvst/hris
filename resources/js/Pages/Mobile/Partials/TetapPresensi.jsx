@@ -7,6 +7,7 @@ import { Card, Toggle, Empty } from '@/Components/MobileUI';
 import SlideToConfirm from '@/Components/SlideToConfirm';
 import { useCamera } from '@/Hooks/useCamera';
 import BuktiKegiatan from '@/Pages/Mobile/Partials/BuktiKegiatan';
+import LemburModeSlot from '@/Pages/Mobile/Partials/LemburModeSlot';
 import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, Clock, ClipboardCheck, Lock } from 'lucide-react';
@@ -79,7 +80,7 @@ function groupConsecutiveJadwals(jadwals) {
 
 const pad = (n) => String(n).padStart(2, '0');
 
-export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null, jamIzinPulangCepat = null, libur = false, alasanLibur = null, piketGate = null }) {
+export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attestationToken = null, jamIzinPulangCepat = null, libur = false, alasanLibur = null, piketGate = null, lemburWindow = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [errorAction, setErrorAction] = useState(null);
@@ -391,6 +392,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 if (res.status === 422 && data.errors) {
                     const first = Object.values(data.errors)[0];
                     if (Array.isArray(first) && first.length) message = first[0];
+                    if (data.errors.lembur) setIsLembur(false);
                 }
                 setErrorAction(data.action || null);
                 setError(message);
@@ -619,25 +621,16 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             )}
 
             {!tugasLuarRecord && !isTugasLuar && (
-                lemburRecord ? (
-                    <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
-                        <div>
-                            <p className="text-sm font-bold text-slate-900">{lemburOpen ? 'Lembur berlangsung' : 'Lembur selesai'}</p>
-                            <p className="mt-0.5 text-xs text-slate-500">Menunggu approval admin, masuk hitungan payroll</p>
-                        </div>
-                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${lemburOpen ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                            {lemburOpen ? 'PENDING' : 'Selesai'}
-                        </span>
-                    </Card>
-                ) : (
-                    <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
-                        <div>
-                            <p className="text-sm font-bold text-slate-900">Mode lembur</p>
-                            <p className="mt-0.5 text-xs text-slate-500">Di dalam radius unit, saat libur pun bisa</p>
-                        </div>
-                        <Toggle checked={isLembur} onChange={() => { setIsLembur((prev) => !prev); setIsTugasLuar(false); }} tone="amber" />
-                    </Card>
-                )
+                <LemburModeSlot
+                    lemburWindow={lemburWindow}
+                    record={lemburRecord}
+                    active={isLembur}
+                    onToggle={() => {
+                        setIsLembur((prev) => !prev);
+                        setIsTugasLuar(false);
+                    }}
+                    className="mb-4"
+                />
             )}
 
             {isTugasLuar && !tugasLuarRecord && adaGrupAktifBelumSlide && (
