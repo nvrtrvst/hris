@@ -7,6 +7,7 @@ import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
 import { Search, Filter, CheckCircle, XCircle, Clock, Info, FileText, AlertCircle, Inbox, CalendarCheck2, Printer, Download } from 'lucide-react';
+import JpTerlewatTab from './Partials/JpTerlewatTab';
 
 const getStatusBadge = (status) => {
     switch (status) {
@@ -44,10 +45,13 @@ const ALASAN_LABEL = {
 
 const fmtJam = (j) => (j ? String(j).substring(0, 5) : '—');
 
-export default function Index({ auth, pengajuans, filters, stats }) {
+export default function Index({ auth, pengajuans, filters, stats, tab, can_view_pengajuan, can_koreksi_jp, jp_terlewat, jp_filters, jp_stats, units = [] }) {
     const { flash } = usePage().props;
     const [selectedItem, setSelectedItem] = useState(null);
     const [modalType, setModalType] = useState(null);
+    const activeTab = tab || filters?.tab || 'pengajuan';
+    const canViewPengajuan = Boolean(can_view_pengajuan);
+    const canKoreksiJp = Boolean(can_koreksi_jp);
 
     const [search, setSearch] = useState(filters?.search || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || 'semua');
@@ -81,7 +85,26 @@ export default function Index({ auth, pengajuans, filters, stats }) {
     };
 
     const handleFilter = () => {
-        router.get(route('koreksi-presensi.index'), { search, status: statusFilter }, { preserveState: true, replace: true });
+        router.get(route('koreksi-presensi.index'), { tab: 'pengajuan', search, status: statusFilter }, { preserveState: true, replace: true });
+    };
+
+    const switchTab = (nextTab) => {
+        if (nextTab === 'jp') {
+            router.get(route('koreksi-presensi.index'), {
+                tab: 'jp',
+                start_date: jp_filters?.start_date,
+                end_date: jp_filters?.end_date,
+                unit_id: jp_filters?.unit_id || '',
+                search: jp_filters?.search || '',
+            }, { preserveState: true, preserveScroll: true, replace: true });
+            return;
+        }
+
+        router.get(route('koreksi-presensi.index'), {
+            tab: 'pengajuan',
+            search,
+            status: statusFilter,
+        }, { preserveState: true, preserveScroll: true, replace: true });
     };
 
     const isFirstRender = useRef(true);
@@ -90,9 +113,10 @@ export default function Index({ auth, pengajuans, filters, stats }) {
             isFirstRender.current = false;
             return;
         }
+        if (activeTab !== 'pengajuan') return;
         const timer = setTimeout(handleFilter, 300);
         return () => clearTimeout(timer);
-    }, [search, statusFilter]);
+    }, [search, statusFilter, activeTab]);
 
     const cetak = (item) => window.open(route('koreksi-presensi.cetak', item.id), '_blank');
 
@@ -106,10 +130,40 @@ export default function Index({ auth, pengajuans, filters, stats }) {
             <div className="py-8 bg-surface min-h-screen">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
                     <div>
-                        <h3 className="text-xl font-extrabold text-text-primary">Pengajuan Koreksi Presensi</h3>
-                        <p className="text-sm text-text-muted">Tinjau dan proses pengajuan koreksi jam keluar dari pegawai.</p>
+                        <h3 className="text-xl font-extrabold text-text-primary">Koreksi Presensi</h3>
+                        <p className="text-sm text-text-muted">
+                            Tinjau pengajuan pegawai atau koreksi JP mengajar yang terlewat.
+                        </p>
                     </div>
 
+                    {(canViewPengajuan || canKoreksiJp) && (
+                        <div className="flex gap-1 rounded-xl border border-border bg-white p-1" role="tablist" aria-label="Jenis koreksi presensi">
+                            {canViewPengajuan && (
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === 'pengajuan'}
+                                    onClick={() => switchTab('pengajuan')}
+                                    className={`min-h-11 flex-1 rounded-lg px-4 text-sm font-semibold transition-colors ${activeTab === 'pengajuan' ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:bg-surface'}`}
+                                >
+                                    Pengajuan Pegawai
+                                </button>
+                            )}
+                            {canKoreksiJp && (
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === 'jp'}
+                                    onClick={() => switchTab('jp')}
+                                    className={`min-h-11 flex-1 rounded-lg px-4 text-sm font-semibold transition-colors ${activeTab === 'jp' ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:bg-surface'}`}
+                                >
+                                    JP Terlewat
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'pengajuan' && (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div className="card flex items-center gap-4 p-5">
                             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -139,6 +193,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                             </div>
                         </div>
                     </div>
+                    )}
 
                     {flash.message && (
                         <div className="bg-success-light border border-success/30 text-success px-4 py-3 rounded-card mb-6 flex items-center shadow-card">
@@ -153,6 +208,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                         </div>
                     )}
 
+                    {activeTab === 'pengajuan' && (
                     <FilterSheet
                         open={filterSheetOpen}
                         onOpenChange={setFilterSheetOpen}
@@ -189,9 +245,10 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                             </div>
                         </div>
                     </FilterSheet>
+                    )}
 
-
-                    {/* Mobile: kartu pengajuan */}
+                    {activeTab === 'pengajuan' ? (
+                    <>
                     <div className="space-y-3 md:hidden">
                         {pengajuans.data.length === 0 ? (
                             <div className="card p-6 text-center text-sm text-text-muted">Tidak ada pengajuan koreksi.</div>
@@ -323,11 +380,20 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                 </div>
                                 <Pagination
                                     links={pengajuans.links}
-                                    data={{ search, status: statusFilter }}
+                                    data={{ tab: 'pengajuan', search, status: statusFilter }}
                                 />
                             </div>
                         )}
                     </div>
+                    </>
+                    ) : (
+                        <JpTerlewatTab
+                            jpTerlewat={jp_terlewat}
+                            jpFilters={jp_filters}
+                            jpStats={jp_stats}
+                            units={units}
+                        />
+                    )}
                 </div>
             </div>
 
