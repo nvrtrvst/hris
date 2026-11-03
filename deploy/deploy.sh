@@ -3,7 +3,7 @@
 # deploy.sh — Deploy HRIS Yayasan ke server produksi.
 #
 # Sekali jalan: git pull → composer install (hanya jika lock berubah) →
-# migrate → build asset (Node 22) → clear cache → smoke check.
+# migrate → build asset (Node 22) → optimize cache → smoke check.
 # Idempoten: aman dijalankan berulang tanpa efek samping.
 #
 # Pemakaian:
@@ -138,8 +138,16 @@ fi
 info "Build asset selesai + chown www-data."
 
 # ── Clear cache ───────────────────────────────────────────────────────────
-step "Clear cache (routes/views/config)"
+step "Optimize cache (config/views/events/routes)"
 $PHP_BIN artisan optimize:clear 2>&1 | tail -3
+$PHP_BIN artisan config:cache 2>&1 | tail -2
+$PHP_BIN artisan view:cache 2>&1 | tail -2
+$PHP_BIN artisan event:cache 2>&1 | tail -2
+
+# Route cache masih dilewati selama ada closure route (profil mobile, manifest).
+if ! $PHP_BIN artisan route:cache 2>&1 | tail -3; then
+    warn "route:cache dilewati — masih ada closure route. Config/view/event cache tetap aktif."
+fi
 
 # ── Scheduler cron (php artisan schedule:run) ───────────────────────────────
 # Pastikan cron OS terpasang agar command terjadwal (mis. presensi:finalize-alpa)

@@ -405,6 +405,7 @@ class PegawaiController extends Controller
         // Show.jsx menampilkan sisa_cuti — eager-load + append eksplisit (P2).
         // Select kolom yang dipakai accessor saja (bukan seluruh baris izin).
         $pegawai->loadCutiInfo(fn ($q) => $q->select(['id', 'pegawai_id', 'jenis_izin', 'status', 'tanggal_mulai', 'tanggal_selesai']));
+        $pegawai->append(['nik_masked', 'is_tetap']);
 
         // Visibilitas kontrak: superadmin, atasan langsung, atau dirinya sendiri.
         // (aturan: "yang tahu kontrak hanya atasan, superadmin, dan dirinya".)

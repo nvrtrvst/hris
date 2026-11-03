@@ -470,9 +470,10 @@ class MobileController extends Controller
     public function absen()
     {
         $pegawai = $this->getPegawai();
-        $pegawai->load(['units', 'lokasis' => function ($q) {
+        $pegawai->load(['units', 'statusRef', 'lokasis' => function ($q) {
             $q->where('is_active', true);
         }]);
+        $pegawai->append('is_tetap');
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIniIndo = $hariMap[Carbon::now()->format('l')];
 
@@ -3174,6 +3175,21 @@ class MobileController extends Controller
             $guruNama = $guru?->nama_lengkap ?? '';
             $sumber = 'manual';
             $slotId = null;
+        }
+
+        $kelasKey = preg_replace('/[^a-z0-9]+/u', '', Str::lower(Str::squish((string) $kelas))) ?? '';
+        $mapelKey = preg_replace('/[^a-z0-9]+/u', '', Str::lower(Str::squish((string) $mapel))) ?? '';
+        foreach ($item['entries'] ?? [] as $entry) {
+            $sameSlot = $slotId !== null
+                && (int) ($entry['slot_jadwal_id'] ?? 0) === (int) $slotId;
+            $sameClass = $kelasKey !== ''
+                && preg_replace('/[^a-z0-9]+/u', '', Str::lower(Str::squish((string) ($entry['kelas'] ?? '')))) === $kelasKey
+                && preg_replace('/[^a-z0-9]+/u', '', Str::lower(Str::squish((string) ($entry['mapel'] ?? '')))) === $mapelKey
+                && (int) ($entry['guru_pegawai_id'] ?? 0) === (int) $guruId;
+
+            if ($sameSlot || $sameClass) {
+                throw ValidationException::withMessages(['kelas' => 'Kelas kosong ini sudah dicatat.']);
+            }
         }
 
         $cek = $this->validasiKehadiranGuru($guruId, $today, $slotId);
