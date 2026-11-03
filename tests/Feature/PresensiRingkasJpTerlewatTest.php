@@ -206,6 +206,30 @@ class PresensiRingkasJpTerlewatTest extends TestCase
         $this->assertNull($data->first()['is_sintetis'] ?? null);
     }
 
+    public function test_piket_hari_map_memakai_jadwal_piket(): void
+    {
+        $jp1 = $this->buatJadwal('Kamis', '07:00:00', '07:45:00');
+        $this->buatPresensi($jp1, '07:00:00', '07:45:00', 'hadir');
+
+        Jadwal::create([
+            'pegawai_id' => $this->guru->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'hari' => 'Kamis',
+            'jam_mulai' => '12:00:00',
+            'jam_selesai' => '15:00:00',
+            'jenis_jadwal' => 'piket',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+
+        $res = $this->actingAs($this->superadmin)
+            ->get('/presensi?display_mode=ringkas&start_date=2026-08-20&end_date=2026-08-20')
+            ->assertOk();
+
+        $piketHari = $res->viewData('page')['props']['piket_hari'];
+        $this->assertTrue((bool) ($piketHari[$this->guru->id.'|2026-08-20'] ?? false));
+    }
+
     public function test_cron_finalize_alpa_terdaftar_pada_schedule(): void
     {
         $this->artisan('schedule:list')

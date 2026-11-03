@@ -240,7 +240,7 @@ class PresensiController extends Controller
                 ->orderBy('presensi.jam_masuk', 'asc')
                 ->orderBy('presensi.id', 'asc')
                 ->get();
-            $presensis->load('pegawai.jabatans');
+            $presensis->loadMissing('pegawai.jabatans');
 
             // Mode Ringkas hanya merender baris presensi, jadi JP terjadwal yang
             // tidak pernah diabsen perlu disisipkan agar atasan melihatnya.
@@ -278,7 +278,7 @@ class PresensiController extends Controller
                 ->orderBy('presensi.id', 'asc')
                 ->paginate($perPage)
                 ->withQueryString();
-            $presensis->load('pegawai.jabatans');
+            $presensis->loadMissing('pegawai.jabatans');
         }
 
         // Deep link di luar rentang (mis. ?page=99) → kosong tanpa penjelasan.
@@ -292,16 +292,84 @@ class PresensiController extends Controller
             $units = UnitSekolah::orderBy('nama')->get();
         }
 
+        $piketHari = [];
+        if ($request->input('display_mode') !== 'detail') {
+            $piketHari = $this->piketHariMap($presensis, $startDate, $endDate);
+        }
+
         return inertia('Presensi/Index', [
             'presensis' => $presensis,
             'pegawai' => $isPersonal ? $pegawai : null,
             'filters' => $request->only(['start_date', 'end_date', 'unit_id', 'lembur_filter', 'lokasi_filter', 'suspicious_filter', 'status_filter', 'jadwal_filter', 'jenis_filter', 'search', 'view_mode', 'per_page']),
             'units' => $units,
+            'piket_hari' => $piketHari,
             'userRole' => $user->roles->first()?->name ?? 'pegawai',
             'stats' => $stats,
             'is_personal' => $isPersonal,
             'is_pimpinan' => $isPimpinan,
         ]);
+    }
+
+    /**
+     * Piket tidak menyimpan baris presensi sendiri. Map ini hanya menandai
+     * pegawai/tanggal yang punya jadwal piket untuk label Ringkas.
+     *
+     * @return array<string, bool>
+     */
+    private function piketHariMap($presensis, ?string $startDate, ?string $endDate): array
+    {
+        if (! $startDate || ! $endDate) {
+            return [];
+        }
+
+        $rows = $presensis instanceof LengthAwarePaginator ? $presensis->getCollection() : $presensis;
+        $pegawaiIds = $rows->pluck('pegawai_id')->filter()->unique()->values();
+
+        if ($pegawaiIds->isEmpty()) {
+            return [];
+        }
+
+        $tanggalMulai = Carbon::parse($startDate)->startOfDay();
+        $tanggalAkhir = Carbon::parse($endDate)->startOfDay();
+
+        if ($tanggalMulai->diffInDays($tanggalAkhir) > 31) {
+            return [];
+        }
+
+        $hariByDate = [];
+        for ($cursor = $tanggalMulai->copy(); $cursor->lte($tanggalAkhir); $cursor->addDay()) {
+            $hariByDate[$cursor->toDateString()] = $cursor->locale('id')->translatedFormat('l');
+        }
+
+        $jadwals = Jadwal::query()
+            ->where('jenis_jadwal', 'piket')
+            ->whereIn('pegawai_id', $pegawaiIds)
+            ->whereIn('hari', array_values(array_unique($hariByDate)))
+            ->get(['pegawai_id', 'hari', 'tahun_ajaran', 'semester'])
+            ->groupBy('hari');
+
+        if ($jadwals->isEmpty()) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($hariByDate as $tanggal => $hari) {
+            $date = Carbon::parse($tanggal);
+            $tahunAjaran = $date->month >= 7
+                ? $date->year.'/'.($date->year + 1)
+                : ($date->year - 1).'/'.$date->year;
+            $semester = $date->month >= 7 ? 1 : 2;
+
+            foreach ($jadwals->get($hari, collect()) as $jadwal) {
+                if ((string) $jadwal->tahun_ajaran !== $tahunAjaran || (int) $jadwal->semester !== $semester) {
+                    continue;
+                }
+
+                $map[$jadwal->pegawai_id.'|'.$tanggal] = true;
+            }
+        }
+
+        return $map;
     }
 
     /**
@@ -554,8 +622,13 @@ class PresensiController extends Controller
         $stats['izin'] = $statusCounts->get('izin', 0);
         $stats['cuti'] = $statusCounts->get('cuti', 0);
         $stats['alpa'] = $statusCounts->get('alpa', 0);
-        $stats['lembur_pending'] = (clone $query)->where('is_lembur', true)->where('lembur_status', 'pending')->count();
-        $stats['perlu_review'] = (clone $query)->where('lokasi_perlu_review', true)->count();
+
+        $extraStats = (clone $query)->selectRaw(
+            "SUM(CASE WHEN is_lembur = 1 AND lembur_status = 'pending' THEN 1 ELSE 0 END) as lembur_pending, ".
+            'SUM(CASE WHEN lokasi_perlu_review = 1 THEN 1 ELSE 0 END) as perlu_review'
+        )->first();
+        $stats['lembur_pending'] = (int) ($extraStats?->lembur_pending ?? 0);
+        $stats['perlu_review'] = (int) ($extraStats?->perlu_review ?? 0);
 
         if ($isPersonal) {
             // Mode pribadi: jangan pernah membandingkan dengan seluruh pegawai unit.

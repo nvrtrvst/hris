@@ -648,7 +648,25 @@ const presensiLokasiLabel = (presensi, key) => {
     return loc?.nama || null;
 };
 
-const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openAudit, openTugasLuar, setConfirmStatus }) => {
+const buildRingkasLabel = ({ hasKantor, hasMengajar, hasPiket, hasTugasLuar, hasLembur }) => {
+    const parts = [];
+    if (hasKantor) parts.push('Kantor');
+    if (hasMengajar) parts.push('Mengajar');
+    if (hasPiket) parts.push('Piket');
+
+    if (parts.length === 0) {
+        if (hasTugasLuar) return 'Tugas Luar';
+        if (hasLembur) return 'Lembur';
+        return '';
+    }
+
+    if (parts.length === 1) return parts[0];
+    if (parts.length === 2) return `${parts[0]} dan ${parts[1]}`;
+
+    return `${parts[0]}, ${parts[1]}, dan ${parts[2]}`;
+};
+
+const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openAudit, openTugasLuar, setConfirmStatus, piketHari = {} }) => {
     const groups = React.useMemo(() => buildGroups(data), [data]);
 
     return groups.map((group) => {
@@ -657,7 +675,6 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
         // terjadwal tanpa presensi) hanya jadi induk bila memang itu satu-satunya
         // data yang ada untuk hari itu.
         const parent = kantorRow || group.find((g) => !g.is_sintetis) || group[0];
-        const hanyaSintetis = group.every((g) => g.is_sintetis);
         const children = group.filter((g) => g !== parent);
         const key = `${parent.pegawai_id}__${parent.tanggal}`;
         const isOpen = Boolean(expanded[key]);
@@ -665,6 +682,17 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
         const tugasLuar = group.find((g) => g.is_tugas_luar);
         const nama = parent.pegawai?.nama_lengkap || '-';
         const parentTelat = kantorRow ? kantorRow.status === 'telat' : false;
+        const piketKey = `${parent.pegawai_id}|${String(parent.tanggal || '').substring(0, 10)}`;
+        const hasKantor = Boolean(kantorRow)
+            || (parent.tipe_presensi === 'kantor' && !parent.is_lembur && !parent.is_tugas_luar);
+        const hasMengajar = (parent.jadwal?.jenis_jadwal === 'mengajar' && !parent.is_tugas_luar && !parent.is_lembur)
+            || children.some((c) => c.jadwal?.jenis_jadwal === 'mengajar' && !c.is_tugas_luar && !c.is_lembur);
+        const hasPiket = Boolean(piketHari[piketKey])
+            || parent.jadwal?.jenis_jadwal === 'piket'
+            || children.some((c) => c.jadwal?.jenis_jadwal === 'piket');
+        const hasTugasLuar = Boolean(parent.is_tugas_luar || children.some((c) => c.is_tugas_luar));
+        const hasLembur = Boolean(parent.is_lembur || children.some((c) => c.is_lembur));
+        const jenisLabel = buildRingkasLabel({ hasKantor, hasMengajar, hasPiket, hasTugasLuar, hasLembur });
 
         return (
             <React.Fragment key={key}>
@@ -696,14 +724,10 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         <div className="text-sm font-semibold text-primary">{format(parseDate(parent.tanggal), 'd MMM yyyy', { locale: id })}</div>
                         <div className="text-[11px] text-text-secondary">{format(parseDate(parent.tanggal), 'EEEE', { locale: id })}</div>
                     </td>
-                    <td className="hidden sm:table-cell px-4 py-3.5 whitespace-nowrap">
-                        {hanyaSintetis
-                            ? <span className="text-xs font-semibold text-text-secondary">Mengajar</span>
-                            : children.length > 0
-                                ? <span className="text-xs font-semibold text-text-secondary">Kantor dan Mengajar</span>
-                                : parent.is_tugas_luar
-                                    ? <span className="text-xs font-semibold text-text-secondary">Tugas Luar</span>
-                                    : <span className="text-xs text-text-secondary">Kantor</span>}
+                    <td className="hidden sm:table-cell px-4 py-3.5 align-top">
+                        <span className="block max-w-[10rem] break-words text-xs font-semibold leading-snug text-text-secondary">
+                            {jenisLabel}
+                        </span>
                     </td>
                     <td className="px-4 py-3.5 whitespace-nowrap">
                         {parent.jam_masuk ? (
@@ -1060,7 +1084,7 @@ const JadwalStatusBadge = ({ p, now }) => {
 const fmtDateInput = (d) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-export default function Index({ auth, presensis, pegawai, filters = {}, units, stats, is_personal = false, is_pimpinan = false }) {
+export default function Index({ auth, presensis, pegawai, filters = {}, units, stats, is_personal = false, is_pimpinan = false, piket_hari = {} }) {
     const isAdmin = auth.permissions?.includes('view_presensi');
     const canManage = isAdmin && !is_personal;
     const { flash = {} } = usePage().props;
@@ -1738,7 +1762,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     </thead>
                                     <tbody className={`divide-y divide-border/50 ${processing ? 'opacity-60 pointer-events-none transition-opacity' : ''}`}>
                                         {rows.length === 0 ? null : viewMode === 'ringkas' ? (
-                                            <RingkasBody data={rows} auth={auth} now={now} expanded={expanded} setExpanded={setExpanded} openReview={openReview} openAudit={openAudit} openTugasLuar={openTugasLuar} setConfirmStatus={setConfirmStatus} />
+                                            <RingkasBody data={rows} auth={auth} now={now} expanded={expanded} setExpanded={setExpanded} openReview={openReview} openAudit={openAudit} openTugasLuar={openTugasLuar} setConfirmStatus={setConfirmStatus} piketHari={piket_hari} />
                                         ) : rows.map((p) => {
                                             const durasi = kerjaDurasi(p.jam_masuk, p.jam_keluar);
                                             const flagReview = p.lokasi_perlu_review || p.posisi_mencurigakan || p.motion_suspect;
