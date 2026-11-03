@@ -1,12 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { subscribeRouter } from '@/Utils/routerEvents';
 import AdminShell from '@/Layouts/AdminShell';
-import StatCard from '@/Components/StatCard';
 import Modal from '@/Components/Modal';
 import FilterSheet from '@/Components/FilterSheet';
 import Pagination from '@/Components/Pagination';
+import {
+    Avatar,
+    Badge,
+    Button,
+    Card,
+    EmptyState,
+    FormField,
+    Input,
+    PageHeader,
+    Select,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/Components/AdminUI';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { avatarTone, initials } from '@/Utils/avatar';
 import { kepagawaianBadge, STATUS_AKTIF_BADGE } from '@/Utils/statusMeta';
 import {
     Building2,
@@ -28,16 +43,6 @@ import {
     UserX,
     X,
 } from 'lucide-react';
-
-const UserAvatar = ({ pegawai }) => (
-    pegawai.foto_url ? (
-        <img className="h-10 w-10 rounded-full object-cover" src={pegawai.foto_url} alt="" loading="lazy" />
-    ) : (
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${avatarTone(pegawai.nama_lengkap)}`}>
-            {initials(pegawai.nama_lengkap)}
-        </span>
-    )
-);
 
 export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSekolahs, mataPelajarans, jabatans, isPimpinan = false, perluPilihUnit = false }) {
     const isAdminUnit = auth.roles?.includes('admin_unit');
@@ -117,14 +122,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
 
     const s = stats || { total: 0, aktif: 0, nonaktif: 0, kontrak_berakhir: 0 };
 
-    const statCards = [
-        { label: 'Total Pegawai', value: s.total, Icon: Users, iconBg: 'bg-primary/10', iconCls: 'text-primary' },
-        { label: 'Aktif', value: s.aktif, Icon: UserCheck, iconBg: 'bg-emerald-100', iconCls: 'text-emerald-600' },
-        { label: 'Non-Aktif', value: s.nonaktif, Icon: UserX, iconBg: s.nonaktif > 0 ? 'bg-rose-100' : 'bg-surface', iconCls: s.nonaktif > 0 ? 'text-rose-600' : 'text-border' },
-        { label: 'Kontrak Berakhir', value: s.kontrak_berakhir, sub: '30 hari', Icon: CalendarClock, iconBg: s.kontrak_berakhir > 0 ? 'bg-amber-100' : 'bg-surface', iconCls: s.kontrak_berakhir > 0 ? 'text-amber-600' : 'text-border', alert: s.kontrak_berakhir > 0 },
-    ];
-
-    const filterSelect = 'select-field text-xs h-11 w-full';
+    const filterSelect = 'h-11 w-full text-xs';
 
     const lokasiLabel = (p) => {
         if (!p.lokasis?.length) return null;
@@ -141,23 +139,20 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
         >
             <Head title="Manajemen Pegawai" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-                    {/* Flash */}
-                    {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                    {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 whitespace-pre-line">{flash.error}</div>}
+            <div className="mx-auto max-w-7xl space-y-5">
+                {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
+                {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 whitespace-pre-line">{flash.error}</div>}
 
-                    {/* Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-                        <div>
-                            <h3 className="text-xl font-bold text-primary">Daftar Pegawai</h3>
-                            <p className="mt-1 text-sm text-text-secondary">Kelola data seluruh pegawai di lingkungan yayasan.</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <a href={route('pegawai.template')} className="btn-secondary btn-sm flex items-center gap-1.5">
+                <PageHeader
+                    eyebrow="Kepegawaian"
+                    title="Daftar Pegawai"
+                    description="Kelola data seluruh pegawai di lingkungan yayasan."
+                    actions={
+                        <>
+                            <Link href={route('pegawai.template')} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary shadow-card hover:border-primary/30 hover:text-primary">
                                 <Download className="h-3.5 w-3.5" /> Template
-                            </a>
-                            <a
+                            </Link>
+                            <Link
                                 href={route('pegawai.export', {
                                     search,
                                     unit_sekolah_id: unitSekolahId,
@@ -165,23 +160,48 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                     jabatan_id: jabatanId,
                                     jenis_filter: jenisFilter,
                                 })}
-                                className="btn-secondary btn-sm flex items-center gap-1.5"
+                                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary shadow-card hover:border-primary/30 hover:text-primary"
                             >
                                 <FileSpreadsheet className="h-3.5 w-3.5" /> Export
-                            </a>
-                            <button type="button" onClick={() => setShowImportModal(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
+                            </Link>
+                            <Button variant="secondary" size="sm" onClick={() => setShowImportModal(true)}>
                                 <Upload className="h-3.5 w-3.5" /> Import
-                            </button>
-                            <Link href={route('pegawai.create')} className="btn-primary btn-sm flex items-center gap-1.5">
+                            </Button>
+                            <Link href={route('pegawai.create')} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white shadow-card hover:bg-primary-600">
                                 <Plus className="h-3.5 w-3.5" /> Tambah Pegawai
                             </Link>
-                        </div>
-                    </div>
+                        </>
+                    }
+                />
 
-                    {/* Stats */}
-                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                        {statCards.map((card) => <StatCard key={card.label} {...card} />)}
-                    </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                    <Card className="p-4">
+                        <div className="flex items-start justify-between">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-50 text-primary"><Users className="h-4 w-4" /></span>
+                            <span className="text-[10px] font-semibold text-text-muted">Data saat ini</span>
+                        </div>
+                        <p className="mt-3 text-2xl font-extrabold tracking-tight text-primary">{s.total}</p>
+                        <p className="text-[11px] font-medium text-text-secondary">Total Pegawai</p>
+                        {s.nonaktif > 0 && <p className="mt-1 text-[10px] text-text-muted">{s.nonaktif} nonaktif</p>}
+                    </Card>
+                    <Card className="p-4">
+                        <div className="flex items-start justify-between">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><UserCheck className="h-4 w-4" /></span>
+                            <span className="text-[10px] font-semibold text-text-muted">Status aktif</span>
+                        </div>
+                        <p className="mt-3 text-2xl font-extrabold tracking-tight text-primary">{s.aktif}</p>
+                        <p className="text-[11px] font-medium text-text-secondary">Pegawai Aktif</p>
+                    </Card>
+                    <Card className="border-amber-200 bg-amber-50/50 p-4">
+                        <div className="flex items-start justify-between">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-amber-600"><CalendarClock className="h-4 w-4" /></span>
+                            <Badge variant="warning">30 hari</Badge>
+                        </div>
+                        <p className="mt-3 text-2xl font-extrabold tracking-tight text-primary">{s.kontrak_berakhir}</p>
+                        <p className="text-[11px] font-medium text-text-secondary">Kontrak Berakhir</p>
+                        {s.kontrak_berakhir > 0 && <p className="mt-1 text-[10px] text-amber-700">Perlu ditinjau</p>}
+                    </Card>
+                </div>
 
                     {/* Filter bar */}
                     <FilterSheet
@@ -193,15 +213,15 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                             <div className="relative lg:col-span-2">
                                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                <input
+                                <Input
                                     type="text"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Cari nama / NIK…"
-                                    className="input-field h-11 pl-9 text-xs w-full"
+                                    placeholder="Cari nama / NIK..."
+                                    className="h-11 pl-9 text-xs"
                                 />
                             </div>
-                            <select
+                            <Select
                                 className={filterSelect}
                                 value={jenisFilter}
                                 onChange={(e) => {
@@ -212,9 +232,9 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                 <option value="">Semua Jenis</option>
                                 <option value="pendidik">Pendidik (Guru)</option>
                                 <option value="kependidikan">Tenaga Kependidikan</option>
-                            </select>
+                            </Select>
                             {!isAdminUnit && !isPimpinan && (
-                                <select
+                                <Select
                                     className={filterSelect}
                                     value={unitSekolahId}
                                     onChange={(e) => {
@@ -226,9 +246,9 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                     <option value="" disabled>Pilih Unit…</option>
                                     <option value="all">Semua Unit</option>
                                     {unitSekolahs && unitSekolahs.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                                </select>
+                                </Select>
                             )}
-                            <select
+                            <Select
                                 className={filterSelect}
                                 value={jabatanId}
                                 onChange={(e) => {
@@ -239,9 +259,9 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                             >
                                 <option value="">Semua Jabatan</option>
                                 {jabatans && jabatans.map((j) => <option key={j.id} value={j.id}>{j.nama}</option>)}
-                            </select>
+                            </Select>
                             {!isPimpinan && (
-                                <select
+                                <Select
                                     className={filterSelect}
                                     value={mataPelajaranId}
                                     onChange={(e) => {
@@ -252,15 +272,15 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                 >
                                     <option value="">Semua Mapel</option>
                                     {mataPelajarans && mataPelajarans.map((m) => <option key={m.id} value={m.id}>{m.nama}</option>)}
-                                </select>
+                                </Select>
                             )}
                         </div>
 
                         <div className="flex items-center gap-2 border-t border-border/60 pt-4">
                             {hasFilter && (
-                                <button type="button" onClick={resetFilters} className="btn-secondary btn-sm flex items-center gap-1.5">
+                                <Button type="button" variant="secondary" size="sm" onClick={resetFilters}>
                                     <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
-                                </button>
+                                </Button>
                             )}
                             <p className="ml-auto text-[11px] text-text-muted">Filter diterapkan otomatis saat dipilih.</p>
                         </div>
@@ -276,7 +296,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                 return (
                                     <Link key={pegawai.id} href={route('pegawai.show', pegawai.id)} className="card block p-4 active:bg-surface/70 transition-colors">
                                         <div className="flex items-start gap-3">
-                                            <UserAvatar pegawai={pegawai} />
+                                            <Avatar src={pegawai.foto_url} name={pegawai.nama_lengkap} className="h-10 w-10" />
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="min-w-0">
@@ -284,7 +304,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                         <p className="mt-0.5 text-[11px] text-text-secondary truncate">{pegawai.user?.email || pegawai.nuptk || '—'}</p>
                                                     </div>
                                                     <div className="flex shrink-0 items-center gap-1">
-                                                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${kep.badge}`}>{kep.label}</span>
+                                                        <Badge className={kep.badge}>{kep.label}</Badge>
                                                     </div>
                                                 </div>
                                                 <div className="mt-2 flex items-center gap-1.5 text-[11px] text-text-secondary">
@@ -298,10 +318,10 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                     </div>
                                                 )}
                                                 <div className="mt-2 flex items-center justify-between">
-                                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_AKTIF_BADGE(pegawai.status_aktif)}`}>
+                                                    <Badge className={`gap-1 ${STATUS_AKTIF_BADGE(pegawai.status_aktif)}`}>
                                                         <span className={`h-1 w-1 rounded-full ${pegawai.status_aktif === 'aktif' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                                                         {pegawai.status_aktif}
-                                                    </span>
+                                                    </Badge>
                                                     <div className="flex gap-1.5">
                                                         <span className="btn-secondary btn-sm py-1 px-2"><Eye className="h-3 w-3" /> <span className="hidden sm:inline">Detail</span></span>
                                                         <Link href={route('pegawai.edit', pegawai.id)} onClick={(e) => e.stopPropagation()} className="btn-secondary btn-sm py-1 px-2"><Pencil className="h-3 w-3" /> <span className="hidden sm:inline">Edit</span></Link>
@@ -313,37 +333,44 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                 );
                             })
                         ) : (
-                            <div className="card px-6 py-12 text-center">
-                                <Users className="h-8 w-8 text-border mx-auto" />
-                                <p className="mt-3 text-sm font-bold text-primary">{perluPilihUnit ? 'Pilih unit terlebih dahulu' : 'Data pegawai tidak ditemukan'}</p>
-                                <p className="mt-1 text-xs text-text-secondary">{perluPilihUnit ? 'Daftar pegawai tampil setelah unit dipilih. Pilih "Semua Unit" untuk melihat seluruh yayasan.' : hasFilter ? 'Coba ubah filter.' : 'Tambahkan pegawai pertama.'}</p>
-                            </div>
+                            <Card>
+                                <EmptyState
+                                    icon={Users}
+                                    title={perluPilihUnit ? 'Pilih unit terlebih dahulu' : 'Data pegawai tidak ditemukan'}
+                                    description={perluPilihUnit ? 'Daftar pegawai tampil setelah unit dipilih. Pilih "Semua Unit" untuk melihat seluruh yayasan.' : hasFilter ? 'Tidak ada pegawai yang cocok dengan filter aktif.' : 'Tambahkan pegawai pertama untuk memulai.'}
+                                    action={hasFilter ? (
+                                        <Button variant="secondary" size="sm" onClick={resetFilters}><RotateCcw className="h-3.5 w-3.5" /> Reset Filter</Button>
+                                    ) : !perluPilihUnit ? (
+                                        <Link href={route('pegawai.create')} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white"><Plus className="h-3.5 w-3.5" /> Tambah Pegawai</Link>
+                                    ) : null}
+                                />
+                            </Card>
                         )}
                     </div>
 
                     {/* Desktop: Table */}
-                    <div className={`hidden md:block card p-0 overflow-hidden transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
+                    <Card className={`hidden overflow-hidden p-0 transition-opacity md:block ${processing ? 'pointer-events-none opacity-60' : ''}`}>
                         <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-border">
-                                <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">
-                                    <tr>
-                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Pegawai</th>
-                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Unit & Jabatan</th>
-                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status Kepegawaian</th>
-                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status Aktif</th>
-                                        <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border/50">
+                            <Table tableClassName="min-w-full divide-y divide-border">
+                                <TableHeader className="sticky top-0 z-10 bg-surface/80 backdrop-blur-sm">
+                                    <TableRow>
+                                        <TableHead className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Pegawai</TableHead>
+                                        <TableHead className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Unit & Jabatan</TableHead>
+                                        <TableHead className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status Kepegawaian</TableHead>
+                                        <TableHead className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status Aktif</TableHead>
+                                        <TableHead className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Aksi</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody className="divide-y divide-border/50">
                                     {pegawais.data.length > 0 ? (
                                         pegawais.data.map((pegawai) => {
                                             const kep = kepagawaianBadge(pegawai.status_kepegawaian);
 
                                             return (
-                                                <tr key={pegawai.id} className="group hover:bg-surface/70 transition-colors">
-                                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                                <TableRow key={pegawai.id} className="group hover:bg-surface/70 transition-colors">
+                                                    <TableCell className="px-4 py-3.5 whitespace-nowrap">
                                                         <div className="flex items-center gap-3">
-                                                            <UserAvatar pegawai={pegawai} />
+                                                            <Avatar src={pegawai.foto_url} name={pegawai.nama_lengkap} className="h-10 w-10" />
                                                             <div className="min-w-0">
                                                                 <div className="text-sm font-bold text-primary truncate max-w-[200px]">{pegawai.nama_lengkap}</div>
                                                                 <div className="mt-0.5 flex items-center gap-1 text-[11px] text-text-secondary">
@@ -354,8 +381,8 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </td>
-                                                    <td className="px-4 py-3.5">
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3.5">
                                                         {pegawai.units && pegawai.units.length > 0 ? (
                                                             <div className="flex flex-wrap gap-1.5">
                                                                 {pegawai.units.map((unit) => {
@@ -388,19 +415,19 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                         ) : (
                                                             <span className="text-xs text-text-secondary">—</span>
                                                         )}
-                                                    </td>
-                                                    <td className="px-4 py-3.5 whitespace-nowrap">
-                                                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${kep.badge}`}>
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3.5 whitespace-nowrap">
+                                                        <Badge className={kep.badge}>
                                                             {kep.label}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-3.5 whitespace-nowrap">
-                                                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${STATUS_AKTIF_BADGE(pegawai.status_aktif)}`}>
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3.5 whitespace-nowrap">
+                                                        <Badge className={`gap-1.5 ${STATUS_AKTIF_BADGE(pegawai.status_aktif)}`}>
                                                             <span className={`h-1.5 w-1.5 rounded-full ${pegawai.status_aktif === 'aktif' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                                                             {pegawai.status_aktif}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3.5 whitespace-nowrap text-right">
                                                         <div className="flex items-center justify-end gap-1.5">
                                                             <Link href={route('pegawai.show', pegawai.id)} className="btn-secondary btn-sm flex items-center gap-1.5">
                                                                 <Eye className="h-3.5 w-3.5" /> Detail
@@ -409,40 +436,30 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                                                 <Pencil className="h-3.5 w-3.5" /> Edit
                                                             </Link>
                                                         </div>
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             );
                                         })
                                     ) : (
-                                        <tr>
-                                            <td colSpan="5" className="px-6 py-16">
-                                                <div className="flex flex-col items-center text-center">
-                                                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface">
-                                                        <Users className="h-8 w-8 text-border" />
-                                                    </div>
-                                                    <p className="mt-4 text-base font-bold text-primary">{perluPilihUnit ? 'Pilih unit terlebih dahulu' : 'Data pegawai tidak ditemukan'}</p>
-                                                    <p className="mt-1 text-sm text-text-secondary">
-                                                        {perluPilihUnit
-                                                            ? 'Daftar pegawai tampil setelah unit dipilih. Pilih "Semua Unit" untuk melihat seluruh yayasan.'
-                                                            : hasFilter ? 'Coba ubah kata kunci atau bersihkan filter.' : 'Tambahkan pegawai pertama Anda.'}
-                                                    </p>
-                                                    {hasFilter ? (
-                                                        <button onClick={resetFilters} className="btn-secondary btn-sm mt-4 flex items-center gap-1.5">
-                                                            <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
-                                                        </button>
-                                                    ) : (
-                                                        <Link href={route('pegawai.create')} className="btn-primary btn-sm mt-4 flex items-center gap-1.5">
-                                                            <Plus className="h-3.5 w-3.5" /> Tambah Pegawai
-                                                        </Link>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        <TableRow>
+                                            <TableCell colSpan="5" className="px-6 py-16">
+                                                <EmptyState
+                                                    icon={Users}
+                                                    title={perluPilihUnit ? 'Pilih unit terlebih dahulu' : 'Data pegawai tidak ditemukan'}
+                                                    description={perluPilihUnit ? 'Daftar pegawai tampil setelah unit dipilih. Pilih "Semua Unit" untuk melihat seluruh yayasan.' : hasFilter ? 'Tidak ada pegawai yang cocok dengan kata kunci atau filter aktif.' : 'Tambahkan pegawai pertama untuk memulai.'}
+                                                    action={hasFilter ? (
+                                                        <Button variant="secondary" size="sm" onClick={resetFilters}><RotateCcw className="h-3.5 w-3.5" /> Reset Filter</Button>
+                                                    ) : !perluPilihUnit ? (
+                                                        <Link href={route('pegawai.create')} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white"><Plus className="h-3.5 w-3.5" /> Tambah Pegawai</Link>
+                                                    ) : null}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
                                     )}
-                                </tbody>
-                            </table>
+                                </TableBody>
+                            </Table>
                         </div>
-                    </div>
+                    </Card>
 
                     {/* Pagination */}
                     {pegawais.total > 0 && (
@@ -454,7 +471,6 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                         </div>
                     )}
                 </div>
-            </div>
 
             {/* Modal Import Excel */}
             <Modal show={showImportModal} onClose={() => setShowImportModal(false)} maxWidth="lg">
@@ -470,66 +486,67 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                                     <p className="mt-0.5 text-sm text-text-secondary">Upload file Excel untuk menambahkan pegawai massal.</p>
                                 </div>
                             </div>
-                            <button type="button" onClick={() => setShowImportModal(false)} className="flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:h-9 md:w-9">
-                                <X className="h-5 w-5" />
-                            </button>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => setShowImportModal(false)} aria-label="Tutup">
+                                <X className="h-4 w-4" />
+                            </Button>
                         </div>
 
                         <div className="space-y-4">
                             {!isAdminUnit && (
-                                <div>
-                                    <label className="form-label text-xs">Pilih Unit Sekolah <span className="text-danger">*</span></label>
-                                    <select
+                                <FormField label="Pilih Unit Sekolah" htmlFor="import-unit" required error={importErrors.unit_sekolah_id}>
+                                    <Select
+                                        id="import-unit"
                                         value={importData.unit_sekolah_id}
                                         onChange={(e) => setImportData('unit_sekolah_id', e.target.value)}
-                                        className="select-field"
+                                        className="h-10 text-xs"
                                     >
                                         <option value="">-- Pilih Unit --</option>
                                         {unitSekolahs && unitSekolahs.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                                    </select>
-                                    {importErrors.unit_sekolah_id && <p className="form-error">{importErrors.unit_sekolah_id}</p>}
-                                </div>
+                                    </Select>
+                                </FormField>
                             )}
 
-                            <div>
-                                <label className="form-label text-xs">File Excel (.xlsx) <span className="text-danger">*</span></label>
-                                <input
+                            <FormField label="File Excel (.xlsx)" htmlFor="import-file" required error={importErrors.file}>
+                                <Input
+                                    id="import-file"
                                     type="file"
                                     accept=".xlsx,.xls,.csv"
                                     onChange={(e) => setImportData('file', e.target.files[0])}
-                                    className="mt-1 block w-full text-sm text-text-muted file:mr-4 file:rounded-lg file:border-0 file:bg-primary-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary-100"
+                                    className="h-auto py-2 text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary-50 file:px-3 file:py-1.5 file:text-[11px] file:font-bold file:text-primary hover:file:bg-primary-100"
                                 />
-                                {importErrors.file && <p className="form-error">{importErrors.file}</p>}
-                                {importErrors.import && <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 whitespace-pre-line">{importErrors.import}</div>}
-                                {importErrors[0] && <p className="form-error">Error pada baris data: Silakan periksa file Anda. {importErrors[0]}</p>}
-                            </div>
+                                {importErrors.import && <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 whitespace-pre-line">{importErrors.import}</div>}
+                                {importErrors[0] && <p className="mt-1 text-[10px] font-semibold text-rose-600">Error pada baris data: {importErrors[0]}</p>}
+                            </FormField>
 
-                            <div>
-                                <label className="form-label text-xs">Password Default (Opsional)</label>
-                                <input
+                            <FormField
+                                label="Password Default (Opsional)"
+                                htmlFor="import-password"
+                                error={importErrors.default_password}
+                                description="Bila diisi, semua user hasil import memakai password ini dan wajib ganti saat login. Min. 8 karakter."
+                            >
+                                <Input
+                                    id="import-password"
                                     type="text"
                                     value={importData.default_password}
                                     onChange={(e) => setImportData('default_password', e.target.value)}
                                     placeholder="Kosong = pakai NIK masing-masing"
-                                    className="w-full rounded-button border border-border bg-white px-3 py-2 text-sm text-text-primary shadow-sm transition-colors placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    className="text-xs"
                                 />
-                                {importErrors.default_password && <p className="form-error">{importErrors.default_password}</p>}
-                                <p className="mt-1 text-xs text-text-muted">Bila diisi, semua user hasil import mendapat password ini & wajib ganti saat login pertama. Min. 8 karakter.</p>
-                            </div>
+                            </FormField>
 
-                            <div className="flex items-start gap-2 rounded-lg border border-info/30 bg-info-light p-3 text-xs text-info">
+                            <div className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-800">
                                 <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0" />
-                                <span>Pastikan file mengikuti format <strong>Template Excel</strong>. Kolom <strong>Jabatan</strong>, <strong>Status</strong>, <strong>Jenjang (kolom Jenjang/Jurusan)</strong>, dan <strong>Unit Sekolah</strong> sudah berupa dropdown. <strong>Unit Sekolah opsional</strong>: kosongkan jika semua pegawai di file ini masuk ke unit yang dipilih di atas (untuk import multi-unit, isi kolomnya per baris). <strong>Email wajib diisi</strong> &amp; unik — dipakai pegawai untuk login. Sistem menolak seluruh data jika ada satu baris saja yang salah format.</span>
+                                <span>Gunakan template resmi. Kolom Jabatan, Status, Jenjang, dan Unit Sekolah sudah berupa dropdown. Email wajib diisi dan unik. Sistem menolak seluruh data jika ada satu baris saja yang salah format.</span>
                             </div>
                         </div>
 
                         <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
-                            <button type="button" onClick={() => setShowImportModal(false)} className="btn-secondary">
+                            <Button type="button" variant="secondary" onClick={() => setShowImportModal(false)}>
                                 Batal
-                            </button>
-                            <button type="submit" disabled={importProcessing} className="btn-primary flex items-center gap-1.5">
-                                {importProcessing ? <><Loader2 className="h-4 w-4 animate-spin" /> Mengimport…</> : <><Upload className="h-4 w-4" /> Upload & Proses</>}
-                            </button>
+                            </Button>
+                            <Button type="submit" disabled={importProcessing}>
+                                {importProcessing ? <><Loader2 className="h-4 w-4 animate-spin" /> Memproses...</> : <><Upload className="h-4 w-4" /> Upload & Proses</>}
+                            </Button>
                         </div>
                     </div>
                 </form>
