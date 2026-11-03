@@ -60,6 +60,16 @@ const getPos = () =>
 
 const inputCls = 'block w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-base focus:border-emerald-500 focus:ring-emerald-500';
 const labelCls = 'mb-1 block text-sm font-semibold text-slate-700';
+const EMPTY_KK_FORM = {
+    slot_jadwal_id: '',
+    kelas: '',
+    guru_pegawai_id: '',
+    mapel_id: '',
+    ada_amanat: false,
+    jenis_amanat: 'tugas',
+    detail_amanat: '',
+    tersampaikan: false,
+};
 
 function SeksiHead({ icon: Icon, title, win, state }) {
     return (
@@ -970,7 +980,10 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     const [terlambat, setTerlambat] = useState(0);
     const [absenForm, setAbsenForm] = useState({ guru_pegawai_id: '', nama_guru: '', status_absen: '', keterangan_absen: '' });
     const [absenManual, setAbsenManual] = useState(false);
-    const [kkForm, setKkForm] = useState({ slot_jadwal_id: '', kelas: '', guru_pegawai_id: '', mapel_id: '', ada_amanat: false, jenis_amanat: 'tugas', detail_amanat: '', tersampaikan: false });
+    const [kkForm, setKkForm] = useState(() => ({ ...EMPTY_KK_FORM }));
+    const [kkFormOpen, setKkFormOpen] = useState(false);
+    const kkFormRef = useRef(null);
+    const kkAddRef = useRef(null);
     const kkSlot = slotKosong.find((s) => String(s.jadwal_id) === String(kkForm.slot_jadwal_id));
     const kkManual = kkForm.slot_jadwal_id === 'manual' || slotKosong.length === 0;
     const [insidenForm, setInsidenForm] = useState({ jenis_insiden: '', tindakan: '' });
@@ -1072,6 +1085,8 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
     const roundTotal = areaRounds.length;
     const tplAktif = (kode) => !v2 || templates.some((t) => t.kode === kode);
     const items = laporan?.items ?? {};
+    const kkEntries = items.kelas_kosong?.entries ?? [];
+    const kkNihil = Boolean(items.kelas_kosong?.nihil);
     const done = (kode) => Boolean(items[kode]?.done_at);
     const doneCount = wajib.filter(done).length;
     const blockers = piket.blockers ?? {};
@@ -1131,13 +1146,14 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
         }
     }, [submitErrMsg]);
 
-    const kirim = async (payload, { geo = true } = {}) => {
+    const kirim = async (payload, { geo = true, onSuccess } = {}) => {
         setLocErr(null);
         setSending(true);
         try {
             const pos = geo ? await getPos() : {};
             router.post(route('presensi.piket.item'), { ...payload, ...pos }, {
                 preserveScroll: true,
+                onSuccess,
                 onError: (errs) => setLocErr(Object.values(errs || {}).flat()[0] || 'Gagal menyimpan piket.'),
                 onFinish: () => setSending(false),
             });
@@ -1193,6 +1209,25 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
         if (!window.confirm('Hapus entry ini?')) return;
         setSending(true);
         router.post(route('presensi.piket.hapus'), { kode, index }, { preserveScroll: true, onFinish: () => setSending(false) });
+    };
+
+    const openKkForm = () => {
+        setLocErr(null);
+        setKkForm({ ...EMPTY_KK_FORM });
+        setKkFormOpen(true);
+        requestAnimationFrame(() => kkFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+    };
+
+    const closeKkForm = () => {
+        setLocErr(null);
+        setKkForm({ ...EMPTY_KK_FORM });
+        setKkFormOpen(false);
+    };
+
+    const finishKkSave = () => {
+        setKkForm({ ...EMPTY_KK_FORM });
+        setKkFormOpen(false);
+        requestAnimationFrame(() => kkAddRef.current?.focus());
     };
 
     // Tombol ✕ kecil di tiap entry list (cek guru / kelas kosong / insiden);
@@ -1476,8 +1511,26 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                             )}
                             <div>
                                 <p className="text-sm font-bold text-slate-800">Isi kelas kosong</p>
-                                {!done('kelas_kosong') && kbmMulai && (
-                                    <div className="mt-2 space-y-2">
+                                {!submitted && kbmMulai && !kkNihil && kkEntries.length > 0 && !kkFormOpen && (
+                                    <button
+                                        ref={kkAddRef}
+                                        type="button"
+                                        disabled={sending}
+                                        onClick={openKkForm}
+                                        aria-expanded={false}
+                                        aria-controls="kk-form"
+                                        className="mt-2 min-h-11 w-full rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 active:scale-95 disabled:opacity-50"
+                                    >
+                                        + Tambah kelas kosong lain
+                                    </button>
+                                )}
+                                {!submitted && kbmMulai && !kkNihil && (kkEntries.length === 0 || kkFormOpen) && (
+                                    <div id="kk-form" ref={kkFormRef} className="mt-2 space-y-2">
+                                        {locErr && (
+                                            <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                                                {locErr}
+                                            </p>
+                                        )}
                                         <div>
                                             <label htmlFor="kk-slot" className={labelCls}>Kelas kosong</label>
                                             <select id="kk-slot" value={kkForm.slot_jadwal_id} onChange={(e) => setKkForm({ ...kkForm, slot_jadwal_id: e.target.value })} className={inputCls}>
@@ -1545,13 +1598,20 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                                 </label>
                                             </div>
                                         )}
-                                        <div className="flex gap-2">
-                                            <button type="button" disabled={sending || (!kkSlot && !(kkForm.kelas && kkForm.guru_pegawai_id))} onClick={() => { const { slot_jadwal_id: _drop, ...rest } = kkForm; kirim({ kode: 'kelas_kosong', mode: 'tambah', ...rest, ...(kkSlot ? { slot_jadwal_id: kkSlot.jadwal_id } : {}) }); }} className="min-h-12 flex-1 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 active:scale-95 disabled:opacity-50">
-                                                {sending ? '...' : 'Catat kelas'}
+                                        <div className="flex flex-wrap gap-2">
+                                            <button type="button" disabled={sending || (!kkSlot && !(kkForm.kelas && kkForm.guru_pegawai_id))} onClick={() => { const { slot_jadwal_id: _drop, ...rest } = kkForm; kirim({ kode: 'kelas_kosong', mode: 'tambah', ...rest, ...(kkSlot ? { slot_jadwal_id: kkSlot.jadwal_id } : {}) }, { onSuccess: finishKkSave }); }} className="min-h-12 flex-1 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-primary/25 active:scale-95 disabled:opacity-50">
+                                                {sending ? '...' : kkEntries.length > 0 ? 'Catat kelas lain' : 'Catat kelas'}
                                             </button>
-                                            <button type="button" disabled={sending} onClick={() => kirim({ kode: 'kelas_kosong', mode: 'nihil' })} className="min-h-12 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95 disabled:opacity-50">
-                                                Nihil
-                                            </button>
+                                            {kkEntries.length === 0 && (
+                                                <button type="button" disabled={sending} onClick={() => kirim({ kode: 'kelas_kosong', mode: 'nihil' }, { onSuccess: finishKkSave })} className="min-h-12 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-primary ring-1 ring-slate-200 active:scale-95 disabled:opacity-50">
+                                                    Nihil
+                                                </button>
+                                            )}
+                                            {kkFormOpen && kkEntries.length > 0 && (
+                                                <button type="button" disabled={sending} onClick={closeKkForm} className="min-h-12 shrink-0 rounded-xl bg-white px-4 text-sm font-bold text-slate-600 ring-1 ring-slate-200 active:scale-95 disabled:opacity-50">
+                                                    Batal
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -1560,7 +1620,7 @@ export default function Piket({ piket, pegawai = null, butuhMasuk = false, guruU
                                     <ul className="mt-2 space-y-1.5">
                                         {(items.kelas_kosong.entries ?? []).map((e, i) => (
                                             <li key={i} className="flex items-start justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                                                <span className="min-w-0">
+                                                <span className="min-w-0 break-words">
                                                     <span className="font-bold">{e.kelas}</span>{e.mapel ? `, ${e.mapel}` : ''} ({e.guru_nama})
                                                     {e.ada_amanat ? `: amanat ${e.jenis_amanat === 'tugas' ? 'tugas' : e.jenis_amanat === 'pelajari_halaman' ? 'pelajari halaman' : 'lainnya'}${e.tersampaikan ? ', tersampaikan' : ', belum tersampaikan'}` : ': tanpa amanat'}
                                                     {e.validasi === 'perlu_cek' && <Badge tone="amber" className="ml-1.5">Perlu cek</Badge>}

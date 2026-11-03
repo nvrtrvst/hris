@@ -696,6 +696,7 @@ class LaporanPiketTest extends TestCase
         Carbon::setTestNow();
 
         $entries = LaporanPiket::where('pegawai_id', $pegawai->id)->first()->item('kelas_kosong')['entries'];
+        $this->assertCount(2, $entries);
         $this->assertSame('perlu_cek', $entries[0]['validasi']);
         $this->assertSame('cocok', $entries[1]['validasi']);
         $this->assertTrue((bool) $entries[1]['ada_amanat']);
@@ -1018,5 +1019,48 @@ class LaporanPiketTest extends TestCase
         $this->actingAs($adminLain, 'web_admin')
             ->post(route('laporan-piket.validasi', $laporan->id), ['entry_index' => 0, 'aksi' => 'tolak'])
             ->assertForbidden();
+    }
+
+    public function test_kelas_kosong_slot_yang_sama_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
+        $guru = $this->makePegawai('Guru Absen');
+        $slot = $this->makeMengajarSlot($guru);
+
+        Carbon::setTestNow('2026-10-12 10:00:00');
+        $post = fn (array $payload) => $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge($payload, $this->geo()));
+
+        $post(['kode' => 'kelas_kosong', 'mode' => 'tambah', 'slot_jadwal_id' => $slot->id, 'ada_amanat' => false])
+            ->assertRedirect();
+
+        $post(['kode' => 'kelas_kosong', 'mode' => 'tambah', 'slot_jadwal_id' => $slot->id, 'ada_amanat' => false])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('kelas');
+
+        Carbon::setTestNow();
+    }
+
+    public function test_kelas_kosong_manual_duplikat_dinormalisasi_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+        $this->makePiketJadwal($pegawai);
+        $this->masukkan($pegawai);
+        $guru = $this->makePegawai('Guru Absen');
+
+        Carbon::setTestNow('2026-10-12 10:00:00');
+        $post = fn (array $payload) => $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.item'), array_merge($payload, $this->geo()));
+
+        $post(['kode' => 'kelas_kosong', 'mode' => 'tambah', 'kelas' => 'VII-A', 'guru_pegawai_id' => $guru->id, 'ada_amanat' => false])
+            ->assertRedirect();
+
+        $post(['kode' => 'kelas_kosong', 'mode' => 'tambah', 'kelas' => '  vii  a  ', 'guru_pegawai_id' => $guru->id, 'ada_amanat' => false])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('kelas');
+
+        Carbon::setTestNow();
     }
 }

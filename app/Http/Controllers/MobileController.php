@@ -3176,6 +3176,21 @@ class MobileController extends Controller
             $slotId = null;
         }
 
+        $kelasKey = preg_replace('/[^a-z0-9]+/u', '', Str::lower(Str::squish((string) $kelas))) ?? '';
+        $mapelKey = preg_replace('/[^a-z0-9]+/u', '', Str::lower(Str::squish((string) $mapel))) ?? '';
+        foreach ($item['entries'] ?? [] as $entry) {
+            $sameSlot = $slotId !== null
+                && (int) ($entry['slot_jadwal_id'] ?? 0) === (int) $slotId;
+            $sameClass = $kelasKey !== ''
+                && preg_replace('/[^a-z0-9]+/u', '', Str::lower(Str::squish((string) ($entry['kelas'] ?? '')))) === $kelasKey
+                && preg_replace('/[^a-z0-9]+/u', '', Str::lower(Str::squish((string) ($entry['mapel'] ?? '')))) === $mapelKey
+                && (int) ($entry['guru_pegawai_id'] ?? 0) === (int) $guruId;
+
+            if ($sameSlot || $sameClass) {
+                throw ValidationException::withMessages(['kelas' => 'Kelas kosong ini sudah dicatat.']);
+            }
+        }
+
         $cek = $this->validasiKehadiranGuru($guruId, $today, $slotId);
         $item['entries'][] = [
             'kelas' => $kelas,
