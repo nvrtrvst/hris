@@ -22,6 +22,12 @@ set -euo pipefail
 REPO_DIR="${1:-/var/www/hris}"
 PHP_BIN="${PHP_BIN:-sudo -u www-data php}"
 NODE22_BIN="/opt/node22/bin/node"
+NPM_CLI="/opt/node22/lib/node_modules/npm/bin/npm-cli.js"
+if [[ -x "$NODE22_BIN" && -f "$NPM_CLI" ]]; then
+    NPM_RUN=("$NODE22_BIN" "$NPM_CLI")
+else
+    NPM_RUN=("npm")
+fi
 ADMIN_DOMAIN="${ADMIN_DOMAIN:-https://simsdm.nuurulmuttaqiin.or.id}"
 MOBILE_DOMAIN="${MOBILE_DOMAIN:-https://presensi.nuurulmuttaqiin.or.id}"
 LOG_FILE="${LOG_FILE:-$REPO_DIR/storage/logs/hris-deploy.log}"
@@ -117,17 +123,15 @@ step "Seed permissions"
 $PHP_BIN artisan db:seed --class=RolePermissionSeeder --force 2>&1 | tail -4
 
 # ── Build asset (selalu build ulang agar mencerminkan source terbaru) ──────
-step "Build asset (Vite)"
-# npm ci hanya jika package-lock berubah (node_modules sudah ada umumnya)
-if [[ "$BEFORE" != "$AFTER" ]]; then
-    if ! git diff --quiet "$BEFORE" "$AFTER" -- package-lock.json; then
-        npm ci --no-audit --no-fund 2>&1 | tail -2 || true
-    fi
-fi
+# npm ci selalu dijalankan agar node_modules tidak tertinggal dari package-lock.
+# Node/npm dipanggil eksplisit supaya deploy tidak memakai Node 18 sistem.
+step "Install dependencies (npm ci)"
+"${NPM_RUN[@]}" ci --no-audit --no-fund 2>&1 | tail -2
 
 # Bersihkan cache Vite + build lama supaya tidak ada asset kadaluarsa.
+step "Build asset (Vite)"
 rm -rf node_modules/.vite public/build
-npm run build 2>&1 | tail -8
+"${NPM_RUN[@]}" run build 2>&1 | tail -8
 if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
     fail "npm run build GAGAL — asset tidak diperbarui. Cek error di atas."
 fi
