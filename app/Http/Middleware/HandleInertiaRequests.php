@@ -78,7 +78,7 @@ class HandleInertiaRequests extends Middleware
                 'is_approver' => $user ? $user->isApprover() : false,
                 'is_payroll_operator' => $user ? $user->isPayrollOperator() : false,
                 'pegawai_complete' => $pegawai ? $pegawai->isDataComplete() : true,
-                'unread_notifications' => $user ? $user->unreadNotifications()->count() : 0,
+                'unread_notifications' => $user ? $user->unreadNotifications()->whereNull('archived_at')->count() : 0,
                 'announcement_count' => $announcementCount,
             ],
             'flash' => [
