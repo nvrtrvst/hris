@@ -207,6 +207,20 @@ class DashboardController extends Controller
         $live = $this->adminLiveData($user, $today, $unitId, $bawahanIds);
         $bebanJp = $this->bebanMengajarMingguan($unitId);
 
+        // Polling hanya butuh kartu live; lewati unit dan pengumuman.
+        if ($this->wantsDashboardLiveOnly($request)) {
+            return inertia('Dashboard', [
+                'stats' => $this->dashboardStats($cached, $live, $bebanJp),
+                'trends' => $live['attendanceTrend'],
+                'jadwalHariIni' => $live['jadwalHariIni'],
+                'presensiHariIni' => $live['presensiHariIni'],
+                'kelasKosongMengajar' => $live['kelasKosongMengajar'],
+                'kelasKosongSummary' => $live['kelasKosongSummary'],
+                'kelasKosongPiket' => $live['kelasKosongPiket'],
+                'piketHariIni' => $live['piketHariIni'],
+            ]);
+        }
+
         // Daftar unit untuk dropdown filter (superadmin), + unit aktif saat ini.
         $units = $user->can('view_all_units') ? UnitSekolah::orderBy('nama')->get(['id', 'nama', 'singkatan']) : collect();
         $selectedUnit = $unitId ? UnitSekolah::find($unitId) : null;
@@ -232,25 +246,7 @@ class DashboardController extends Controller
             'units' => $units,
             'selectedUnitId' => $unitId,
             'selectedUnitNama' => $selectedUnit?->nama,
-            'stats' => [
-                'total_pegawai' => $cached['totalPegawai'],
-                'total_unit' => $cached['totalUnit'],
-                'hadir_hari_ini_count' => $live['hadirHariIniCount'],
-                'telat_count' => $live['telatCount'],
-                'izin_count' => $live['izinCount'],
-                'sakit_count' => $live['sakitCount'],
-                'alpa_count' => $live['alpaCount'],
-                'pegawai_dijadwalkan' => $live['pegawaiDijadwalkan'],
-                'pegawai_total' => $live['pegawaiTotal'],
-                'hadir_percentage' => $live['hadirPercentage'],
-                'pengeluaran_gaji' => $cached['pengeluaranGaji'],
-                'is_estimasi_payroll' => $cached['isEstimasiPayroll'],
-                'kontrak_berakhir_count' => $cached['kontrakBerakhir_count'],
-                'pengajuan_pending' => $cached['pengajuanPending'],
-                'guru_mengajar' => $bebanJp['total_mengajar'],
-                'guru_over_jp' => $bebanJp['over_target'],
-                'target_jp_minggu' => $bebanJp['target'],
-            ],
+            'stats' => $this->dashboardStats($cached, $live, $bebanJp),
             'trends' => $live['attendanceTrend'],
             'kontrakBerakhir' => $cached['kontrakBerakhir'],
             'jadwalHariIni' => $live['jadwalHariIni'],
@@ -263,24 +259,67 @@ class DashboardController extends Controller
         ]);
     }
 
+    private function wantsDashboardLiveOnly(Request $request): bool
+    {
+        $partial = $request->header('X-Inertia-Partial-Data');
+        if (! $partial || $request->header('X-Inertia-Partial-Component') !== 'Dashboard') {
+            return false;
+        }
+
+        $allowed = [
+            'stats', 'trends', 'jadwalHariIni', 'presensiHariIni',
+            'kelasKosongMengajar', 'kelasKosongSummary', 'kelasKosongPiket', 'piketHariIni',
+        ];
+        $props = array_values(array_filter(array_map('trim', explode(',', $partial))));
+
+        return $props !== [] && array_diff($props, $allowed) === [];
+    }
+
+    private function dashboardStats(array $cached, array $live, array $bebanJp): array
+    {
+        return [
+            'total_pegawai' => $cached['totalPegawai'],
+            'total_unit' => $cached['totalUnit'],
+            'hadir_hari_ini_count' => $live['hadirHariIniCount'],
+            'telat_count' => $live['telatCount'],
+            'izin_count' => $live['izinCount'],
+            'sakit_count' => $live['sakitCount'],
+            'alpa_count' => $live['alpaCount'],
+            'pegawai_dijadwalkan' => $live['pegawaiDijadwalkan'],
+            'pegawai_total' => $live['pegawaiTotal'],
+            'hadir_percentage' => $live['hadirPercentage'],
+            'pengeluaran_gaji' => $cached['pengeluaranGaji'],
+            'is_estimasi_payroll' => $cached['isEstimasiPayroll'],
+            'kontrak_berakhir_count' => $cached['kontrakBerakhir_count'],
+            'pengajuan_pending' => $cached['pengajuanPending'],
+            'guru_mengajar' => $bebanJp['total_mengajar'],
+            'guru_over_jp' => $bebanJp['over_target'],
+            'target_jp_minggu' => $bebanJp['target'],
+        ];
+    }
+
     /**
      * Beban mengajar mingguan (JP) per guru — metrik anti-kelebihan JP (target 24).
-     * Sumber bobot sama dengan rekap mengajar (JpCalculator).
+     * Sumber bobot sama dengan rekap mengajar (JpCalculator). Cache 5 menit.
      */
     private function bebanMengajarMingguan(?int $unitId = null): array
     {
-        $perGuru = Jadwal::with('unitSekolah:id,durasi_jp')
-            ->where('jenis_jadwal', 'mengajar')
-            ->when($unitId, fn ($q) => $q->where('unit_sekolah_id', $unitId))
-            ->get(['id', 'pegawai_id', 'unit_sekolah_id', 'jam_mulai', 'jam_selesai'])
-            ->groupBy('pegawai_id')
-            ->map(fn ($rows) => round($rows->sum(fn ($j) => JpCalculator::weightFromJadwal($j)), 2));
+        $cacheKey = 'dashboard:beban:'.($unitId ?? 'all');
 
-        return [
-            'total_mengajar' => $perGuru->count(),
-            'over_target' => $perGuru->filter(fn ($jp) => $jp > JpCalculator::TARGET_JP_MINGGU)->count(),
-            'target' => JpCalculator::TARGET_JP_MINGGU,
-        ];
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($unitId) {
+            $perGuru = Jadwal::with('unitSekolah:id,durasi_jp')
+                ->where('jenis_jadwal', 'mengajar')
+                ->when($unitId, fn ($q) => $q->where('unit_sekolah_id', $unitId))
+                ->get(['id', 'pegawai_id', 'unit_sekolah_id', 'jam_mulai', 'jam_selesai'])
+                ->groupBy('pegawai_id')
+                ->map(fn ($rows) => round($rows->sum(fn ($j) => JpCalculator::weightFromJadwal($j)), 2));
+
+            return [
+                'total_mengajar' => $perGuru->count(),
+                'over_target' => $perGuru->filter(fn ($jp) => $jp > JpCalculator::TARGET_JP_MINGGU)->count(),
+                'target' => JpCalculator::TARGET_JP_MINGGU,
+            ];
+        });
     }
 
     /**
@@ -579,7 +618,7 @@ class DashboardController extends Controller
         ];
         $kelasKosongMengajar = $kelasKosongMengajar->toArray();
 
-        $piketHariIni = Jadwal::with(['pegawai:id,nama_lengkap', 'unitSekolah:id,nama'])
+        $piketHariIni = Jadwal::with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama', 'unitSekolah:id,nama'])
             ->where('hari', $hariIniIndo)->where('jenis_jadwal', 'piket')
             ->when($bawahanIds !== null, fn ($q) => $q->whereIn('pegawai_id', $bawahanIds))
             ->when($scopedUnit && $bawahanIds === null, fn ($q) => $q->where('unit_sekolah_id', $scopedUnit))

@@ -470,9 +470,10 @@ class MobileController extends Controller
     public function absen()
     {
         $pegawai = $this->getPegawai();
-        $pegawai->load(['units', 'lokasis' => function ($q) {
+        $pegawai->load(['units', 'statusRef', 'lokasis' => function ($q) {
             $q->where('is_active', true);
         }]);
+        $pegawai->append('is_tetap');
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIniIndo = $hariMap[Carbon::now()->format('l')];
 

@@ -63,11 +63,10 @@ class Pegawai extends Model
         'created_by',
     ];
 
-    // P2: sisa_cuti/cuti_terpakai TIDAK di-appends global — accessor-nya query DB
-    // (pengajuanIzins). Kalau auto-append, setiap serialisasi (termasuk auth.user.pegawai
-    // di HandleInertiaRequests) memicu query per request. Append eksplisit di controller
-    // yang butuh, dengan eager-load pengajuanIzins.
-    protected $appends = ['foto_url', 'nik_masked', 'is_tetap'];
+    // P2: sisa_cuti/cuti_terpakai, nik_masked, dan is_tetap TIDAK di-appends global.
+    // nik_masked men-decrypt NIK dan is_tetap memuat statusRef per baris; append
+    // eksplisit hanya di controller yang menampilkan field tersebut.
+    protected $appends = ['foto_url'];
 
     /**
      * Muat data cuti + append accessor sisa_cuti/cuti_terpakai.

@@ -60,6 +60,11 @@ class HandleInertiaRequests extends Middleware
         }
 
         $pegawai = $user?->pegawai;
+        $pegawai?->append('is_tetap');
+
+        if ($pegawai && $request->routeIs('profile.edit', 'presensi.profile.edit')) {
+            $pegawai->append('nik_masked');
+        }
 
         // Jumlah pengumuman BELUM DIBACA untuk pegawai (badge ikon megaphone di mobile).
         // Dihitung hanya saat user punya relasi pegawai — admin (tanpa pegawai) = 0.

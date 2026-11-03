@@ -64,7 +64,7 @@ class PresensiController extends Controller
         $isPimpinan = $this->isPimpinanReadOnly($user);
         $isPersonal = ! $isAdmin || ($isPimpinan && $request->view_mode === 'self');
         $pegawai = null;
-        $query = Presensi::with(['unitSekolah', 'unitLokasiMasuk:id,nama,unit_sekolah_id', 'unitLokasiKeluar:id,nama,unit_sekolah_id', 'pegawai.units:id,nama', 'pegawai.lokasis:id,nama,unit_sekolah_id', 'pegawai.jabatans:id,nama', 'jadwal.pegawaiMapel']);
+        $query = Presensi::with(['unitSekolah', 'unitLokasiMasuk:id,nama,unit_sekolah_id', 'unitLokasiKeluar:id,nama,unit_sekolah_id', 'pegawai.units:id,nama', 'pegawai.lokasis:id,nama,unit_sekolah_id', 'pegawai.jabatans:id,nama', 'jadwal.pegawaiMapel.mataPelajaran']);
 
         if ($isPersonal) {
             $pegawai = Pegawai::where('user_id', auth()->id())->first();
@@ -731,7 +731,7 @@ class PresensiController extends Controller
             $tanggalList[$tanggal->toDateString()] = $hariIndo[$tanggal->format('l')] ?? null;
         }
 
-        $jadwals = Jadwal::with(['pegawai', 'unitSekolah:id,nama', 'pegawaiMapel'])
+        $jadwals = Jadwal::with(['pegawai', 'unitSekolah:id,nama', 'pegawaiMapel.mataPelajaran'])
             ->whereIn('pegawai_id', $pegawaiIds)
             ->whereIn('hari', array_values(array_unique(array_filter($tanggalList))))
             ->where('jenis_jadwal', 'mengajar')

@@ -75,6 +75,13 @@ class JadwalController extends Controller
             $query->where('id', -1);
         }
 
+        // Polling hanya butuh badge presensi; lewati papan jadwal penuh.
+        if ($this->wantsPresensiHariIniOnly($request)) {
+            return inertia('Jadwal/Index', [
+                'presensiHariIni' => $this->presensiHariIniData($request, $unitId, $needsUnitFilter),
+            ]);
+        }
+
         if ($request->filled('kelas_label')) {
             $query->where('kelas_label', $request->kelas_label);
         }
@@ -168,16 +175,7 @@ class JadwalController extends Controller
         // Presensi mengajar HARI INI — dipakai badge status live di matriks jadwal
         // (Mengajar / Selesai), di-polling 60 detik oleh frontend.
         // Frontend hanya membaca jadwal_id + jam_masuk — tanpa eager-load ekstra.
-        $presensiHariIni = Presensi::where('tanggal', now()->toDateString())
-            ->whereNotNull('jadwal_id')
-            ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status']);
-        if ($needsUnitFilter) {
-            $presensiHariIni->where('id', -1);
-        } elseif ($unitId) {
-            $presensiHariIni->where('unit_sekolah_id', $unitId);
-        } elseif ($request->filled('unit_sekolah_id')) {
-            $presensiHariIni->where('unit_sekolah_id', $request->unit_sekolah_id);
-        }
+        $presensiHariIni = $this->presensiHariIniData($request, $unitId, $needsUnitFilter);
 
         return inertia('Jadwal/Index', [
             'jadwals' => $jadwals,
@@ -188,7 +186,7 @@ class JadwalController extends Controller
             'stats' => $stats,
             'jpMinggu' => $jpMinggu,
             'targetJpMinggu' => JpCalculator::TARGET_JP_MINGGU,
-            'presensiHariIni' => $presensiHariIni->get()->toArray(),
+            'presensiHariIni' => $presensiHariIni,
             'filters' => array_merge(
                 $request->only(['unit_sekolah_id', 'kelas_label', 'search']),
                 ['jenis_filter' => $jenis]
@@ -196,6 +194,33 @@ class JadwalController extends Controller
             'canMutateJadwal' => (bool) $user?->can('manage_jadwal'),
             'needsUnitFilter' => $needsUnitFilter,
         ]);
+    }
+
+    private function wantsPresensiHariIniOnly(Request $request): bool
+    {
+        $partial = $request->header('X-Inertia-Partial-Data');
+        if (! $partial || $request->header('X-Inertia-Partial-Component') !== 'Jadwal/Index') {
+            return false;
+        }
+
+        return array_values(array_filter(array_map('trim', explode(',', $partial)))) === ['presensiHariIni'];
+    }
+
+    private function presensiHariIniData(Request $request, ?int $unitId, bool $needsUnitFilter): array
+    {
+        $query = Presensi::where('tanggal', now()->toDateString())
+            ->whereNotNull('jadwal_id')
+            ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status']);
+
+        if ($needsUnitFilter) {
+            $query->where('id', -1);
+        } elseif ($unitId) {
+            $query->where('unit_sekolah_id', $unitId);
+        } elseif ($request->filled('unit_sekolah_id')) {
+            $query->where('unit_sekolah_id', $request->unit_sekolah_id);
+        }
+
+        return $query->get()->toArray();
     }
 
     public function create()
