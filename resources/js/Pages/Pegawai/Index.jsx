@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { subscribeRouter } from '@/Utils/routerEvents';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
 import StatCard from '@/Components/StatCard';
 import Modal from '@/Components/Modal';
 import FilterSheet from '@/Components/FilterSheet';
@@ -135,7 +135,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Manajemen Pegawai</h2>}
         >
@@ -534,6 +534,6 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                     </div>
                 </form>
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
