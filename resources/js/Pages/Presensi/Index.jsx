@@ -56,6 +56,34 @@ const ChipFilter = ({ label, value, onChange, options }) => (
     </div>
 );
 
+const PegawaiAvatar = ({ pegawai, sizeClass = 'h-9 w-9', textClass = 'text-[11px]' }) => {
+    const nama = pegawai?.nama_lengkap || '-';
+    const foto = pegawai?.foto_url;
+    const [failed, setFailed] = React.useState(false);
+
+    React.useEffect(() => {
+        setFailed(false);
+    }, [foto]);
+
+    if (foto && !failed) {
+        return (
+            <img
+                src={foto}
+                alt=""
+                loading="lazy"
+                onError={() => setFailed(true)}
+                className={`${sizeClass} shrink-0 rounded-full object-cover`}
+            />
+        );
+    }
+
+    return (
+        <span className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-full font-extrabold ${textClass} ${avatarTone(nama)}`}>
+            {initials(nama)}
+        </span>
+    );
+};
+
 const STATUS_META = {
     hadir: { label: 'Hadir', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
     telat: { label: 'Terlambat', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
@@ -702,9 +730,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             <button type="button" onClick={() => setExpanded((s) => ({ ...s, [key]: !s[key] }))} className="flex h-11 w-11 items-center justify-center rounded-md text-text-secondary transition-colors hover:text-primary" title={isOpen ? 'Tutup' : 'Buka'}>
                                 {isOpen ? '▾' : '▸'}
                             </button>
-                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold ${avatarTone(nama)}`}>
-                                {initials(nama)}
-                            </span>
+                            <PegawaiAvatar pegawai={parent.pegawai} />
                             <div className="min-w-0">
                                 <div className="text-sm font-bold text-primary truncate max-w-[220px] 2xl:max-w-[280px]">{nama}</div>
                                 <div className="text-[11px] text-text-secondary truncate max-w-[220px] 2xl:max-w-[280px]">
@@ -856,9 +882,7 @@ const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setCon
                 return (
                     <article key={key} className={`px-4 py-3.5 ${kantorRow?.status === 'telat' ? 'bg-amber-50/60' : ''}`}>
                         <div className="flex items-start gap-3">
-                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${avatarTone(nama)}`}>
-                                {initials(nama)}
-                            </span>
+                            <PegawaiAvatar pegawai={parent.pegawai} sizeClass="h-10 w-10" textClass="text-xs" />
                             <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-bold text-primary">{nama}</p>
                                 <p className="truncate text-[11px] text-text-secondary">{jabatan} · {parent.unit_sekolah?.nama || '—'}</p>
@@ -1772,9 +1796,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                 <tr key={p.id} className={`group transition-colors ${p.status === 'telat' && !p.jadwal_id ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-surface/70'}`}>
                                                     <td className="px-4 py-3.5 whitespace-nowrap">
                                                         <div className="flex items-center gap-3">
-                                                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold ${avatarTone(nama)}`}>
-                                                                {initials(nama)}
-                                                            </span>
+                                                            <PegawaiAvatar pegawai={p.pegawai} />
                                                             <div className="min-w-0">
                                                                 <div className="text-sm font-bold text-primary truncate max-w-[220px] 2xl:max-w-[280px]">{nama}</div>
                                                                 <div className="text-[11px] text-text-secondary truncate max-w-[220px] 2xl:max-w-[280px]">

@@ -417,6 +417,7 @@ class RouteSmokeTest extends TestCase
         ],
         'presensi.index' => [
             'presensis.data.*.pegawai' => false,
+            'presensis.data.*.pegawai.foto_url' => false,
             'presensis.data.*.unit_sekolah' => false,
             'presensis.data.*.jadwal.mata_pelajaran' => false,
         ],
