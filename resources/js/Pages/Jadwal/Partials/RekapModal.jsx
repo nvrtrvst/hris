@@ -1,5 +1,6 @@
 import React from 'react';
 import Modal from '@/Components/Modal';
+import { Button } from '@/Components/AdminUI';
 import { CalendarRange } from 'lucide-react';
 import { durasiMenit, fmtDurasi } from '@/Pages/Jadwal/Partials/jadwalMeta';
 
@@ -21,9 +22,9 @@ export default function RekapModal({ show, onClose, jadwals }) {
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="2xl">
-            <div className="max-h-[90vh] overflow-y-auto px-6 py-5">
-                <div className="mb-5 flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <div className="max-h-[90dvh] overflow-y-auto px-5 py-5 sm:px-6">
+                <div className="mb-5 flex items-center gap-3 border-b border-border pb-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
                         <CalendarRange className="h-5 w-5 text-primary" />
                     </div>
                     <div>
@@ -71,9 +72,9 @@ export default function RekapModal({ show, onClose, jadwals }) {
                 )}
 
                 <div className="mt-6 flex justify-end border-t border-border pt-4">
-                    <button type="button" onClick={onClose} className="btn-secondary">
+                    <Button type="button" variant="secondary" onClick={onClose}>
                         Tutup
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Modal>

@@ -1,5 +1,6 @@
 import React from 'react';
 import Modal from '@/Components/Modal';
+import { Button, Select } from '@/Components/AdminUI';
 import { ArrowLeftRight, CheckCircle2 } from 'lucide-react';
 import { jenisBadge } from '@/Pages/Jadwal/Partials/jadwalMeta';
 
@@ -23,9 +24,9 @@ export default function SwapModal({
 }) {
     return (
         <Modal show={show} onClose={onClose} maxWidth="lg">
-            <div className="px-6 py-5">
-                <div className="mb-5 flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-info-light">
+            <div className="max-h-[90dvh] overflow-y-auto px-5 py-5 sm:px-6">
+                <div className="mb-5 flex items-center gap-3 border-b border-border pb-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-info-light">
                         <ArrowLeftRight className="h-5 w-5 text-info" />
                     </div>
                     <div>
@@ -69,13 +70,12 @@ export default function SwapModal({
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-primary-800">2</span>
                         Tukar Dengan Pegawai
                     </label>
-                    <select
+                    <Select
                         value={targetPegawaiId}
                         onChange={(e) => {
                             setTargetPegawaiId(e.target.value);
                             setSwapData({ ...swapData, jadwal_tujuan_id: '' });
                         }}
-                        className="select-field"
                     >
                         <option value="">-- Pilih Pegawai --</option>
                         {(() => {
@@ -91,7 +91,7 @@ export default function SwapModal({
                                 return true;
                             }).map((p) => <option key={p.id} value={p.id}>{p.nama_lengkap}</option>);
                         })()}
-                    </select>
+                    </Select>
                 </div>
 
                 {targetPegawaiId && (
@@ -167,24 +167,24 @@ export default function SwapModal({
 
                 <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
                     <div className="flex gap-3 text-xs">
-                        <button type="button" onClick={onOpenDay} className="font-semibold text-primary hover:underline">
+                        <button type="button" onClick={onOpenDay} className="whitespace-nowrap font-semibold text-primary hover:underline">
                             Tukar seharian →
                         </button>
-                        <button type="button" onClick={onOpenBulk} className="font-semibold text-primary hover:underline">
+                        <button type="button" onClick={onOpenBulk} className="whitespace-nowrap font-semibold text-primary hover:underline">
                             Tukar banyak →
                         </button>
-                        <button type="button" onClick={onOpenSlot} className="font-semibold text-primary hover:underline">
+                        <button type="button" onClick={onOpenSlot} className="whitespace-nowrap font-semibold text-primary hover:underline">
                             Tukar slot →
                         </button>
                     </div>
                     <div className="flex gap-3">
-                        <button type="button" onClick={onClose} className="btn-secondary">
+                        <Button type="button" variant="secondary" onClick={onClose}>
                             Batal
-                        </button>
-                        <button onClick={handleSwap} disabled={!swapData.jadwal_tujuan_id} className="btn-primary">
-                            <ArrowLeftRight className="mr-1.5 h-4 w-4" />
+                        </Button>
+                        <Button type="button" onClick={handleSwap} disabled={!swapData.jadwal_tujuan_id} className="whitespace-nowrap">
+                            <ArrowLeftRight className="h-4 w-4" />
                             Eksekusi Tukar
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>

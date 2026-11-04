@@ -1,5 +1,6 @@
 import React from 'react';
 import Modal from '@/Components/Modal';
+import { Button, Select } from '@/Components/AdminUI';
 import { Download, Info, Loader2, Upload } from 'lucide-react';
 
 export default function ImportModal({
@@ -17,9 +18,9 @@ export default function ImportModal({
     return (
         <Modal show={show} onClose={onClose} maxWidth="md">
             <form onSubmit={handleImportSubmit}>
-                <div className="px-6 py-5">
-                    <div className="mb-4 flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100">
+                <div className="max-h-[90dvh] overflow-y-auto px-5 py-5 sm:px-6">
+                    <div className="mb-4 flex items-center gap-3 border-b border-border pb-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-100">
                             <Upload className="h-5 w-5 text-blue-600" />
                         </div>
                         <div>
@@ -63,15 +64,14 @@ export default function ImportModal({
 
                         <div>
                             <label className="form-label mb-1">Unit Sekolah <span className="text-danger">*</span></label>
-                            <select
+                            <Select
                                 value={importData.unit_sekolah_id}
                                 onChange={(e) => setImportData('unit_sekolah_id', e.target.value)}
-                                className="select-field"
                                 required
                             >
                                 <option value="">-- Pilih Unit --</option>
                                 {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                            </select>
+                            </Select>
                             {importErrors.unit_sekolah_id && <p className="form-error">{importErrors.unit_sekolah_id}</p>}
                         </div>
 
@@ -103,15 +103,14 @@ export default function ImportModal({
                                 </div>
                                 <div>
                                     <label className="form-label mb-1">Semester (opsional)</label>
-                                    <select
+                                    <Select
                                         value={importData.semester}
                                         onChange={(e) => setImportData('semester', e.target.value)}
-                                        className="select-field"
                                     >
                                         <option value="">Default</option>
                                         <option value="1">1</option>
                                         <option value="2">2</option>
-                                    </select>
+                                    </Select>
                                 </div>
                             </div>
                         )}
@@ -144,12 +143,12 @@ export default function ImportModal({
                     </div>
 
                     <div className="mt-4 flex justify-end gap-3 border-t border-border pt-4">
-                        <button type="button" onClick={onClose} disabled={importProcessing} className="btn-secondary">
+                        <Button type="button" variant="secondary" onClick={onClose} disabled={importProcessing}>
                             Batal
-                        </button>
-                        <button type="submit" disabled={importProcessing || !importData.file || !importData.unit_sekolah_id} className="btn-primary flex items-center gap-1.5">
+                        </Button>
+                        <Button type="submit" disabled={importProcessing || !importData.file || !importData.unit_sekolah_id}>
                             {importProcessing ? <><Loader2 className="h-4 w-4 animate-spin" /> Mengimport...</> : <><Upload className="h-4 w-4" /> Upload & Proses</>}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </form>

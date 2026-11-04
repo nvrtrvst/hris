@@ -1,5 +1,6 @@
 import React from 'react';
 import Modal from '@/Components/Modal';
+import { Button } from '@/Components/AdminUI';
 import { ArrowLeftRight, Clock3, Plus } from 'lucide-react';
 import { DAYS } from '@/Pages/Jadwal/Partials/jadwalMeta';
 
@@ -24,8 +25,8 @@ export function SwapDayModal({
 }) {
     return (
         <Modal show={show} onClose={onClose} maxWidth="lg">
-            <div className="px-6 py-5">
-                <div className="mb-4 flex items-start justify-between">
+            <div className="max-h-[90dvh] overflow-y-auto px-5 py-5 sm:px-6">
+                <div className="mb-4 flex items-start justify-between border-b border-border pb-4">
                     <div>
                         <h3 className="text-lg font-bold text-primary">Tukar Seharian</h3>
                         <p className="text-sm text-text-secondary">Semua jadwal dua pegawai pada hari terpilih bertukar sekaligus.</p>
@@ -119,11 +120,11 @@ export function SwapDayModal({
                 )}
 
                 <div className="flex justify-end gap-3 border-t border-border pt-4">
-                    <button type="button" onClick={onClose} className="btn-secondary">Batal</button>
-                    <button type="button" onClick={handleSwapHari} disabled={!dayA || !dayB || !dayHari.length || daySubmitting} className="btn-primary">
-                        <ArrowLeftRight className="mr-1.5 h-4 w-4" />
+                    <Button type="button" variant="secondary" onClick={onClose}>Batal</Button>
+                    <Button type="button" onClick={handleSwapHari} disabled={!dayA || !dayB || !dayHari.length || daySubmitting}>
+                        <ArrowLeftRight className="h-4 w-4" />
                         {daySubmitting ? 'Memproses...' : 'Eksekusi Tukar'}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Modal>
@@ -149,8 +150,8 @@ export function SwapBulkModal({
 }) {
     return (
         <Modal show={show} onClose={onClose} maxWidth="2xl">
-            <div className="px-6 py-5">
-                <div className="mb-4 flex items-start justify-between">
+            <div className="max-h-[90dvh] overflow-y-auto px-5 py-5 sm:px-6">
+                <div className="mb-4 flex items-start justify-between border-b border-border pb-4">
                     <div>
                         <h3 className="text-lg font-bold text-primary">Tukar Banyak Jadwal</h3>
                         <p className="text-sm text-text-secondary">Beberapa pasangan tukar dalam satu transaksi.</p>
@@ -226,19 +227,19 @@ export function SwapBulkModal({
                         </div>
 
                         {bulkPairs.length < 20 && (
-                            <button type="button" onClick={() => setBulkPairs([...bulkPairs, { asal: '', tujuan: '' }])} className="btn-secondary btn-sm mb-4">
-                                <Plus className="mr-1.5 h-3.5 w-3.5" /> Tambah Pasangan
-                            </button>
+                            <Button type="button" variant="secondary" size="sm" onClick={() => setBulkPairs([...bulkPairs, { asal: '', tujuan: '' }])} className="mb-4">
+                                <Plus className="h-3.5 w-3.5" /> Tambah Pasangan
+                            </Button>
                         )}
                     </>
                 )}
 
                 <div className="flex justify-end gap-3 border-t border-border pt-4">
-                    <button type="button" onClick={onClose} className="btn-secondary">Batal</button>
-                    <button type="button" onClick={handleSwapBulk} disabled={!bulkPairs.some((p) => p.asal && p.tujuan)} className="btn-primary">
-                        <ArrowLeftRight className="mr-1.5 h-4 w-4" />
+                    <Button type="button" variant="secondary" onClick={onClose}>Batal</Button>
+                    <Button type="button" onClick={handleSwapBulk} disabled={!bulkPairs.some((p) => p.asal && p.tujuan)}>
+                        <ArrowLeftRight className="h-4 w-4" />
                         Eksekusi Tukar Semua
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Modal>
@@ -267,8 +268,8 @@ export function SwapSlotModal({
 }) {
     return (
         <Modal show={show} onClose={onClose} maxWidth="lg">
-            <div className="px-6 py-5">
-                <div className="mb-4 flex items-start justify-between">
+            <div className="max-h-[90dvh] overflow-y-auto px-5 py-5 sm:px-6">
+                <div className="mb-4 flex items-start justify-between border-b border-border pb-4">
                     <div>
                         <h3 className="text-lg font-bold text-primary">Tukar Slot Waktu</h3>
                         <p className="text-sm text-text-secondary">Guru, mapel, dan kelas tetap. Yang bertukar hanya hari dan jam pelajaran.</p>
@@ -348,11 +349,11 @@ export function SwapSlotModal({
                 )}
 
                 <div className="flex justify-end gap-3 border-t border-border pt-4">
-                    <button type="button" onClick={onClose} className="btn-secondary">Batal</button>
-                    <button type="button" onClick={handleSwapSlot} disabled={!slotA || !slotB || slotSubmitting} className="btn-primary">
-                        <ArrowLeftRight className="mr-1.5 h-4 w-4" />
+                    <Button type="button" variant="secondary" onClick={onClose}>Batal</Button>
+                    <Button type="button" onClick={handleSwapSlot} disabled={!slotA || !slotB || slotSubmitting}>
+                        <ArrowLeftRight className="h-4 w-4" />
                         {slotSubmitting ? 'Memproses...' : 'Eksekusi Tukar Slot'}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Modal>
