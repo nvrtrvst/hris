@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { Image, Loader2, MapPin, Percent, Save, School, Settings2, Timer } from 'lucide-react';
+import { Button, Card } from '@/Components/AdminUI';
 import LeafletPicker from '@/Components/LeafletPicker';
 import { validateUpload } from '@/Utils/file';
 
@@ -17,18 +18,18 @@ const Field = ({ label, required, error, hint, children, className = '' }) => (
 
 function SectionCard({ Icon, title, description, children }) {
     return (
-        <div className="card p-6">
+        <Card className="p-5 sm:p-6">
             <div className="mb-5">
-                <h3 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-primary">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-primary">
                     <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                         <Icon className="h-4 w-4 text-primary" />
                     </span>
                     {title}
                 </h3>
-                {description && <p className="mt-1.5 text-xs text-text-muted">{description}</p>}
+                {description && <p className="mt-1.5 text-xs text-text-secondary">{description}</p>}
             </div>
             {children}
-        </div>
+        </Card>
     );
 }
 
@@ -340,13 +341,13 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
             </SectionCard>
 
             {/* Actions */}
-            <div className="card flex items-center justify-end gap-3 p-5">
-                <Link href={route('unit-sekolah.index')} className="btn-secondary">Batal</Link>
-                <button type="submit" disabled={processing} className="btn-primary flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2 rounded-xl border border-border bg-white p-4">
+                <Link href={route('unit-sekolah.index')} className="inline-flex h-10 items-center rounded-lg border border-border bg-white px-4 text-sm font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">Batal</Link>
+                <Button type="submit" disabled={processing}>
                     {processing
-                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan…</>
+                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan...</>
                         : <><Save className="h-4 w-4" /> {isEdit ? 'Simpan Perubahan' : 'Tambah Unit'}</>}
-                </button>
+                </Button>
             </div>
         </form>
     );

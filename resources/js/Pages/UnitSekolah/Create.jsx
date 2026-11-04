@@ -1,5 +1,6 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { PageHeader } from '@/Components/AdminUI';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import UnitForm from './UnitForm';
@@ -43,23 +44,26 @@ export default function Create({ auth }) {
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Tambah Unit Sekolah</h2>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Tambah Unit Sekolah</h2>}>
             <Head title="Tambah Unit Sekolah" />
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    <Link href={route('unit-sekolah.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
-                        <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Unit
-                    </Link>
-                    <UnitForm
-                        data={data}
-                        setData={setData}
-                        errors={errors}
-                        processing={processing}
-                        onSubmit={handleSubmit}
-                        isEdit={false}
-                    />
-                </div>
+            <div className="mx-auto max-w-5xl space-y-5">
+                <Link href={route('unit-sekolah.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
+                    <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Unit
+                </Link>
+                <PageHeader
+                    eyebrow="Pengaturan"
+                    title="Tambah Unit Sekolah"
+                    description="Lengkapi identitas, lokasi geofence, dan pengaturan presensi unit."
+                />
+                <UnitForm
+                    data={data}
+                    setData={setData}
+                    errors={errors}
+                    processing={processing}
+                    onSubmit={handleSubmit}
+                    isEdit={false}
+                />
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

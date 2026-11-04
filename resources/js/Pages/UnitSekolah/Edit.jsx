@@ -1,7 +1,8 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, FormField, Input, PageHeader, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/AdminUI';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { ArrowLeft, Plus, Trash2, MapPin, Settings2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Plus, Trash2 } from 'lucide-react';
 import UnitForm from './UnitForm';
 import LeafletPicker from '@/Components/LeafletPicker';
 
@@ -78,151 +79,158 @@ export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = []
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Edit Unit: {unit.nama}</h2>}
         >
             <Head title={`Edit Unit - ${unit.nama}`} />
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    <Link href={route('unit-sekolah.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
-                        <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Unit
-                    </Link>
-                    <UnitForm
-                        data={data}
-                        setData={setData}
-                        errors={errors}
-                        processing={processing}
-                        onSubmit={handleSubmit}
-                        isEdit={true}
-                        unitName={unit.nama}
-                        unitLogoUrl={unit.logo_url}
-                    />
+            <div className="mx-auto max-w-5xl space-y-5">
+                <Link href={route('unit-sekolah.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
+                    <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Unit
+                </Link>
+                <PageHeader
+                    eyebrow="Pengaturan"
+                    title={`Edit Unit: ${unit.nama}`}
+                    description="Perbarui identitas, geofence, dan pengaturan presensi unit."
+                />
+                <UnitForm
+                    data={data}
+                    setData={setData}
+                    errors={errors}
+                    processing={processing}
+                    onSubmit={handleSubmit}
+                    isEdit={true}
+                    unitName={unit.nama}
+                    unitLogoUrl={unit.logo_url}
+                />
 
-                    {/* Tembusan Izin Section */}
-                    <div className="page-card">
-                        <div className="p-6">
-                            <h3 className="section-title">Tembusan Pengajuan Izin</h3>
-                            <p className="text-sm text-text-secondary mb-3">Jabatan yang otomatis menerima tembusan (notifikasi + push, tanpa hak approve) setiap ada pengajuan izin di unit ini — saat diajukan dan diputus.</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {jabatans.map((j) => {
-                                    const checked = (data.tembusan_jabatan_ids || []).map(String).includes(String(j.id));
-                                    return (
-                                        <label key={j.id} className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border px-3 py-2.5 text-sm hover:border-primary/50">
-                                            <input
-                                                type="checkbox"
-                                                checked={checked}
-                                                onChange={(e) => {
-                                                    const cur = (data.tembusan_jabatan_ids || []).map(String);
-                                                    setData('tembusan_jabatan_ids', e.target.checked ? [...cur, String(j.id)] : cur.filter((x) => x !== String(j.id)));
-                                                }}
-                                                className="h-5 w-5 rounded border-border text-primary focus:ring-primary/25"
-                                            />
-                                            <span className="font-medium text-text-primary">{j.nama}</span>
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                            {errors.tembusan_jabatan_ids && <p className="form-error mt-2">{errors.tembusan_jabatan_ids}</p>}
-                        </div>
-                    </div>
+                <Card className="p-5 sm:p-6">
+                    <h3 className="text-sm font-bold text-primary">Tembusan Pengajuan Izin</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+                        Jabatan yang otomatis menerima tembusan notifikasi setiap ada pengajuan izin di unit ini.
+                    </p>
+                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {jabatans.map((j) => {
+                            const checked = (data.tembusan_jabatan_ids || []).map(String).includes(String(j.id));
 
-                    {/* Lokasi / Kampus Section */}
-                    <div className="page-card">
-                        <div className="p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="section-title flex items-center gap-2">
-                                    <MapPin className="h-5 w-5 text-primary" />
-                                    Lokasi / Kampus
-                                </h3>
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowLokasiForm(!showLokasiForm); setEditLokasi(null); lokasiForm.reset(); }}
-                                    className="btn-primary text-sm"
-                                >
-                                    <Plus className="h-4 w-4 mr-1 inline" /> Tambah Lokasi
-                                </button>
-                            </div>
-
-                            {showLokasiForm && (
-                                <form onSubmit={handleSubmitLokasi} className="bg-primary-50 p-4 rounded-card border border-primary/10 mb-4 space-y-4">
-                                    <h4 className="text-sm font-semibold text-primary">{editLokasi ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}</h4>
-                                    <div>
-                                        <label className="form-label">Nama Lokasi</label>
-                                        <input type="text" value={lokasiForm.data.nama} onChange={e => lokasiForm.setData('nama', e.target.value)} className="input-field" placeholder="Kampus 2 / Wilayah B" required />
-                                        {lokasiForm.errors.nama && <p className="form-error">{lokasiForm.errors.nama}</p>}
-                                    </div>
-                                    <LeafletPicker
-                                        lat={lokasiForm.data.latitude}
-                                        lng={lokasiForm.data.longitude}
-                                        radius={lokasiForm.data.radius_meter}
-                                        onChange={(la, ln) => {
-                                            lokasiForm.setData('latitude', la);
-                                            lokasiForm.setData('longitude', ln);
+                            return (
+                                <label key={j.id} className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border px-3 py-2.5 text-sm hover:border-primary/50">
+                                    <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={(e) => {
+                                            const cur = (data.tembusan_jabatan_ids || []).map(String);
+                                            setData('tembusan_jabatan_ids', e.target.checked ? [...cur, String(j.id)] : cur.filter((x) => x !== String(j.id)));
                                         }}
+                                        className="h-5 w-5 rounded border-border text-primary focus:ring-primary/25"
                                     />
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="form-label">Latitude</label>
-                                            <input type="number" step="any" value={lokasiForm.data.latitude} onChange={e => lokasiForm.setData('latitude', e.target.value)} className="input-field font-mono" required />
-                                        </div>
-                                        <div>
-                                            <label className="form-label">Longitude</label>
-                                            <input type="number" step="any" value={lokasiForm.data.longitude} onChange={e => lokasiForm.setData('longitude', e.target.value)} className="input-field font-mono" required />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center justify-between">
-                                            <label className="form-label">Radius Toleransi Absen (Meter) <span className="text-danger">*</span></label>
-                                        </div>
-                                        <div className="mt-1 flex items-center gap-3">
-                                            <input type="range" min="10" max="10000" value={lokasiForm.data.radius_meter} onChange={e => lokasiForm.setData('radius_meter', Number(e.target.value))} className="flex-1 accent-[#0F3D3E]" />
-                                            <input type="number" min="10" max="100000" value={lokasiForm.data.radius_meter} onChange={e => lokasiForm.setData('radius_meter', Number(e.target.value))} className="input-field w-28" />
-                                        </div>
-                                        <p className="text-xs text-text-secondary mt-1">Pegawai hanya bisa absen jika jarak GPS mereka ≤ radius ini dari titik pusat lokasi.</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button type="submit" disabled={lokasiForm.processing} className="btn-primary text-sm">{lokasiForm.processing ? 'Menyimpan...' : 'Simpan'}</button>
-                                        <button type="button" onClick={() => { setShowLokasiForm(false); setEditLokasi(null); lokasiForm.reset(); }} className="btn-secondary text-sm">Batal</button>
-                                    </div>
-                                </form>
-                            )}
-
-                            {(lokalis || []).length === 0 ? (
-                                <p className="text-sm text-text-secondary italic">Belum ada lokasi tambahan. Klik "Tambah Lokasi" untuk menambah wilayah/kampus kedua.</p>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="table-clean text-sm">
-                                        <thead>
-                                            <tr>
-                                                <th className="text-left py-2 px-3">Nama</th>
-                                                <th className="text-left py-2 px-3">Latitude</th>
-                                                <th className="text-left py-2 px-3">Longitude</th>
-                                                <th className="text-left py-2 px-3">Radius</th>
-                                                <th className="text-right py-2 px-3">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {lokalis.map(l => (
-                                                <tr key={l.id} className="border-t border-border">
-                                                    <td className="py-2 px-3 font-medium">{l.nama}</td>
-                                                    <td className="py-2 px-3 font-mono text-xs">{l.latitude}</td>
-                                                    <td className="py-2 px-3 font-mono text-xs">{l.longitude}</td>
-                                                    <td className="py-2 px-3">{l.radius_meter}m</td>
-                                                    <td className="py-2 px-3 text-right">
-                                                        <button type="button" onClick={() => startEditLokasi(l)} className="text-primary hover:underline text-xs mr-2">Edit</button>
-                                                        <button type="button" onClick={() => handleDeleteLokasi(l.id)} className="text-danger hover:underline text-xs">Hapus</button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
+                                    <span className="font-medium text-primary">{j.nama}</span>
+                                </label>
+                            );
+                        })}
                     </div>
-                </div>
+                    {errors.tembusan_jabatan_ids && <p className="mt-2 text-xs font-semibold text-rose-600">{errors.tembusan_jabatan_ids}</p>}
+                </Card>
+
+                <Card className="p-5 sm:p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 className="flex items-center gap-2 text-sm font-bold text-primary">
+                                <MapPin className="h-4 w-4" /> Lokasi / Kampus
+                            </h3>
+                            <p className="mt-1 text-xs text-text-secondary">Titik geofence tambahan untuk unit ini.</p>
+                        </div>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => { setShowLokasiForm(!showLokasiForm); setEditLokasi(null); lokasiForm.reset(); }}
+                        >
+                            <Plus className="h-4 w-4" /> Tambah Lokasi
+                        </Button>
+                    </div>
+
+                    {showLokasiForm && (
+                        <form onSubmit={handleSubmitLokasi} className="mt-4 space-y-4 rounded-xl border border-primary/10 bg-primary/5 p-4">
+                            <h4 className="text-sm font-bold text-primary">{editLokasi ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}</h4>
+                            <FormField label="Nama Lokasi" htmlFor="lokasi-nama" error={lokasiForm.errors.nama}>
+                                <Input
+                                    id="lokasi-nama"
+                                    type="text"
+                                    value={lokasiForm.data.nama}
+                                    onChange={(e) => lokasiForm.setData('nama', e.target.value)}
+                                    placeholder="Kampus 2 / Wilayah B"
+                                    required
+                                />
+                            </FormField>
+                            <LeafletPicker
+                                lat={lokasiForm.data.latitude}
+                                lng={lokasiForm.data.longitude}
+                                radius={lokasiForm.data.radius_meter}
+                                onChange={(la, ln) => {
+                                    lokasiForm.setData('latitude', la);
+                                    lokasiForm.setData('longitude', ln);
+                                }}
+                            />
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                <FormField label="Latitude" htmlFor="lokasi-latitude">
+                                    <Input id="lokasi-latitude" type="number" step="any" value={lokasiForm.data.latitude} onChange={(e) => lokasiForm.setData('latitude', e.target.value)} className="font-mono" required />
+                                </FormField>
+                                <FormField label="Longitude" htmlFor="lokasi-longitude">
+                                    <Input id="lokasi-longitude" type="number" step="any" value={lokasiForm.data.longitude} onChange={(e) => lokasiForm.setData('longitude', e.target.value)} className="font-mono" required />
+                                </FormField>
+                            </div>
+                            <div>
+                                <label className="mb-1.5 block text-[11px] font-bold text-text-secondary">Radius Toleransi Absen (Meter)</label>
+                                <div className="flex items-center gap-3">
+                                    <input type="range" min="10" max="10000" value={lokasiForm.data.radius_meter} onChange={(e) => lokasiForm.setData('radius_meter', Number(e.target.value))} className="flex-1 accent-primary" />
+                                    <Input type="number" min="10" max="100000" value={lokasiForm.data.radius_meter} onChange={(e) => lokasiForm.setData('radius_meter', Number(e.target.value))} className="w-28" />
+                                </div>
+                                <p className="mt-1 text-[10px] text-text-muted">Pegawai hanya bisa absen jika jarak GPS mereka di dalam radius ini.</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Button type="submit" disabled={lokasiForm.processing}>{lokasiForm.processing ? 'Menyimpan...' : 'Simpan'}</Button>
+                                <Button type="button" variant="secondary" onClick={() => { setShowLokasiForm(false); setEditLokasi(null); lokasiForm.reset(); }}>Batal</Button>
+                            </div>
+                        </form>
+                    )}
+
+                    {(lokalis || []).length === 0 ? (
+                        <p className="mt-4 text-sm text-text-secondary">Belum ada lokasi tambahan.</p>
+                    ) : (
+                        <div className="mt-4 overflow-hidden rounded-xl border border-border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead>Nama</TableHead>
+                                        <TableHead>Latitude</TableHead>
+                                        <TableHead>Longitude</TableHead>
+                                        <TableHead>Radius</TableHead>
+                                        <TableHead className="text-right">Aksi</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {lokalis.map((l) => (
+                                        <TableRow key={l.id}>
+                                            <TableCell className="font-medium">{l.nama}</TableCell>
+                                            <TableCell className="font-mono text-xs">{l.latitude}</TableCell>
+                                            <TableCell className="font-mono text-xs">{l.longitude}</TableCell>
+                                            <TableCell>{l.radius_meter}m</TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="inline-flex items-center gap-2">
+                                                    <Button type="button" variant="secondary" size="sm" onClick={() => startEditLokasi(l)}>Edit</Button>
+                                                    <Button type="button" variant="secondary" size="sm" onClick={() => handleDeleteLokasi(l.id)} className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800">
+                                                        <Trash2 className="h-3.5 w-3.5" /> Hapus
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </Card>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
