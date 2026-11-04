@@ -21,7 +21,7 @@ export default function StatCard({ Icon, label, value, sub, iconBg = 'bg-primary
                 <Icon className={`h-5 w-5 ${iconCls}`} />
             </div>
             <div className="min-w-0">
-                <p title={String(value)} className={`truncate text-2xl font-extrabold leading-none tabular-nums ${alert ? 'text-danger' : 'text-primary'} ${typeof value === 'string' && value.length > 10 ? '!text-lg' : ''}`}>{value}</p>
+                <p title={String(value)} className={`truncate text-2xl font-extrabold leading-none tabular-nums ${alert ? 'text-danger' : 'text-primary'} ${typeof value === 'string' && value.length > 14 ? '!text-[10px] sm:!text-xs lg:!text-sm' : typeof value === 'string' && value.length > 10 ? '!text-xs sm:!text-sm lg:!text-base' : ''}`}>{value}</p>
                 <p title={label} className="mt-1.5 text-[11px] font-semibold uppercase leading-tight tracking-wide text-text-secondary">{label}</p>
                 {sub && <p className="mt-0.5 text-[10px] text-text-muted truncate">{sub}</p>}
             </div>

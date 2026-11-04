@@ -1,26 +1,23 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { subscribeRouter } from '@/Utils/routerEvents';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader, Select } from '@/Components/AdminUI';
 import FilterSheet from '@/Components/FilterSheet';
 import StatCard from '@/Components/StatCard';
 import Pagination from '@/Components/Pagination';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { avatarTone, initials } from '@/Utils/avatar';
 import {
-    ArrowRight,
     Banknote,
-    CalendarDays,
     CheckCircle2,
     Clock3,
     Eye,
     FileText,
-    Loader2,
     Lock,
     RotateCcw,
     Settings2,
     Sparkles,
     Trash2,
-    Users,
     Wallet,
 } from 'lucide-react';
 
@@ -46,7 +43,6 @@ const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currenc
 export default function Index({ auth, penggajians, stats = {}, periodeOptions = [], filters = {} }) {
     const isAdmin = auth.permissions?.includes('view_payroll') || auth.is_payroll_operator;
     const isAdminUnit = isAdmin && !auth.permissions?.includes('view_all_units');
-    const { flash = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
 
     useEffect(() => subscribeRouter({
@@ -75,80 +71,43 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
         { label: 'Dibayar', value: s.paid, Icon: CheckCircle2, iconBg: 'bg-cyan-100', iconCls: 'text-cyan-600' },
     ];
 
-    const filterSelect = 'select-field text-xs h-9 w-full md:w-auto md:min-w-[150px]';
+    const filterSelect = 'h-9 text-xs';
     const [filterSheetOpen, setFilterSheetOpen] = React.useState(false);
     const activeFilterCount = [filterPeriode, filterStatus].filter(Boolean).length;
 
-    const unitName = (p) => p.pegawai?.units?.[0]?.singkatan || p.pegawai?.units?.[0]?.nama || '—';
+    const unitName = (p) => p.pegawai?.units?.[0]?.singkatan || p.pegawai?.units?.[0]?.nama || '-';
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Sistem Penggajian (Payroll)</h2>}
         >
             <Head title="Penggajian" />
-            <div className="bg-surface min-h-screen">
-                <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-                    {/* Flash */}
-                    {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                    {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
+            <div className="mx-auto w-full max-w-[1600px] space-y-5">
+                <PageHeader
+                    eyebrow="Penggajian"
+                    title="Riwayat Penggajian"
+                    description="Pantau slip gaji per periode, dari draft hingga dibayar."
+                    actions={isAdmin ? (
+                        <>
+                            <Link href={route('komponen-gaji.index')} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                                <Settings2 className="h-4 w-4" /> Konfigurasi
+                            </Link>
+                            <Link href={route('penggajian.run')} className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-white transition-colors hover:bg-primary-600">
+                                <Sparkles className="h-4 w-4" /> Run Payroll
+                            </Link>
+                        </>
+                    ) : null}
+                />
 
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
-                        <div>
-                            <h3 className="text-xl font-bold text-primary">Riwayat Penggajian Pegawai</h3>
-                            <p className="mt-1 text-sm text-text-secondary">Pantau slip gaji per periode, status draft → final → dibayar.</p>
-                        </div>
-                        {filterPeriode ? (
-                            <p className="flex items-center gap-2 text-xs font-medium text-text-secondary">
-                                <CalendarDays className="h-4 w-4 text-primary" />
-                                Periode {filterPeriode}
-                            </p>
-                        ) : null}
+                {/* Stats */}
+                {isAdmin && (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                        {statCards.map((card) => <StatCard key={card.label} {...card} />)}
                     </div>
+                )}
 
-                    {/* Stats */}
-                    {isAdmin && (
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                            {statCards.map((card) => <StatCard key={card.label} {...card} />)}
-                        </div>
-                    )}
-
-                    {/* Quick actions */}
-                    {isAdmin && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="card p-5 flex items-center justify-between gap-4 transition-shadow hover:shadow-card-hover">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                                        <Settings2 className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-sm font-bold text-primary">Konfigurasi Komponen</h4>
-                                        <p className="mt-0.5 text-xs text-text-secondary">Gaji Pokok, PPh21, BPJS, Tunjangan & Potongan</p>
-                                    </div>
-                                </div>
-                                <Link href={route('komponen-gaji.index')} className="btn-secondary btn-sm flex items-center gap-1.5 shrink-0">
-                                    Kelola <ArrowRight className="h-3.5 w-3.5" />
-                                </Link>
-                            </div>
-                            <div className="rounded-xl bg-primary p-5 flex items-center justify-between gap-4 shadow-card">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10">
-                                        <Sparkles className="h-5 w-5 text-accent" />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-sm font-bold text-white">Proses Penggajian Baru</h4>
-                                        <p className="mt-0.5 text-xs text-white/70">Wizard: tarik absensi, jadwal, dan hitung otomatis</p>
-                                    </div>
-                                </div>
-                                <Link href={route('penggajian.run')} className="btn-sm shrink-0 rounded-lg bg-white text-primary hover:bg-surface flex items-center gap-1.5 font-bold">
-                                    Run Wizard <ArrowRight className="h-3.5 w-3.5" />
-                                </Link>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Filter bar */}
+                {/* Filter bar */}
                     {isAdmin && (
                         <FilterSheet
                             open={filterSheetOpen}
@@ -157,7 +116,7 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                             onReset={() => { resetFilters(); setFilterSheetOpen(false); }}
                         >
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                <select
+                                <Select
                                     className={filterSelect}
                                     value={filterPeriode}
                                     onChange={(e) => {
@@ -168,8 +127,8 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                                 >
                                     <option value="">Semua Periode</option>
                                     {periodeOptions.map((p) => <option key={p} value={p}>{p}</option>)}
-                                </select>
-                                <select
+                                </Select>
+                                <Select
                                     className={filterSelect}
                                     value={filterStatus}
                                     onChange={(e) => {
@@ -180,13 +139,13 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                                 >
                                     <option value="">Semua Status</option>
                                     {Object.entries(STATUS_META).map(([key, m]) => <option key={key} value={key}>{m.label}</option>)}
-                                </select>
+                                </Select>
                             </div>
                             <div className="flex items-center gap-2 border-t border-border/60 pt-4">
                                 {hasFilter && (
-                                    <button type="button" onClick={resetFilters} className="btn-secondary btn-sm flex items-center gap-1.5">
+                                    <Button type="button" variant="secondary" size="sm" onClick={resetFilters}>
                                         <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
-                                    </button>
+                                    </Button>
                                 )}
                                 <p className="ml-auto text-[11px] text-text-muted">Filter diterapkan otomatis saat dipilih.</p>
                             </div>
@@ -195,39 +154,38 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
 
                     {/* Mass Delete Draft Payroll */}
                     {isAdmin && (
-                        <div className="card p-4 mb-4">
-                            <div className="flex items-center justify-between gap-3">
-                                <div>
-                                    <h4 className="text-sm font-bold text-primary">Hapus Draft</h4>
-                                    <p className="mt-1 text-xs text-text-secondary">Hapus semua data draft periode ini</p>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        if (confirm(`Yakin hapus semua draft slip gaji periode ${filterPeriode}?`)) {
-                                            router.delete(route('penggajian.destroyPeriod'), { preserveState: true, preserveScroll: true, body: { periode_bulan: filterPeriode } });
-                                        }
-                                    }}
-                                    className="btn-secondary btn-sm flex items-center gap-1.5"
-                                >
-                                    Hapus Semua Draft
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+                        <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h4 className="text-sm font-bold text-primary">Hapus Draft</h4>
+                                <p className="mt-1 text-xs text-text-secondary">Hapus semua data draft periode ini</p>
                             </div>
-                        </div>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                    if (confirm(`Yakin hapus semua draft slip gaji periode ${filterPeriode}?`)) {
+                                        router.delete(route('penggajian.destroyPeriod'), { preserveState: true, preserveScroll: true, body: { periode_bulan: filterPeriode } });
+                                    }
+                                }}
+                            >
+                                Hapus Semua Draft
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                        </Card>
                     )}
                     {/* Table */}
-                    <div className={`card p-0 overflow-hidden transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
+                    <Card className={`overflow-hidden p-0 transition-opacity ${processing ? 'pointer-events-none opacity-60' : ''}`}>
                         <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-border">
+                            <table className="w-full table-fixed divide-y divide-border">
                                 <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">
                                     <tr>
-                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Periode</th>
-                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Pegawai</th>
-                                        <th className="hidden px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider lg:table-cell">Pendapatan</th>
-                                        <th className="hidden px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider lg:table-cell">Potongan</th>
-                                        <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Gaji Bersih</th>
-                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Status</th>
-                                        <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Aksi</th>
+                                        <th className="hidden px-4 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-text-secondary md:table-cell md:w-28">Periode</th>
+                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-text-secondary">Pegawai</th>
+                                        <th className="hidden px-4 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-text-secondary lg:table-cell">Pendapatan</th>
+                                        <th className="hidden px-4 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-text-secondary lg:table-cell">Potongan</th>
+                                        <th className="w-32 px-4 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-text-secondary sm:w-40">Gaji Bersih</th>
+                                        <th className="hidden px-4 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-text-secondary md:table-cell md:w-32">Status</th>
+                                        <th className="w-16 px-2 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-text-secondary md:w-32 md:px-3 lg:w-60 lg:px-4">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/50">
@@ -235,35 +193,39 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                                         const nama = p.pegawai?.nama_lengkap || '-';
 
                                         return (
-                                            <tr key={p.id} className="group hover:bg-surface/70 transition-colors">
-                                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                            <tr key={p.id} className="group transition-colors hover:bg-surface/70">
+                                                <td className="hidden whitespace-nowrap px-4 py-3.5 md:table-cell">
                                                     <span className="inline-flex items-center rounded-full bg-primary/5 px-3 py-1 font-mono text-xs font-bold text-primary">{p.periode_bulan}</span>
                                                 </td>
-                                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                                <td className="px-4 py-3.5">
                                                     <div className="flex items-center gap-3">
-                                                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold ${avatarTone(nama)}`}>
+                                                        <span className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold sm:flex ${avatarTone(nama)}`}>
                                                             {initials(nama)}
                                                         </span>
                                                         <div className="min-w-0">
-                                                            <div className="text-sm font-bold text-primary truncate max-w-[200px]">{nama}</div>
+                                                            <div className="text-sm font-bold leading-tight text-primary">{nama}</div>
                                                             <div className="text-[11px] text-text-secondary">{unitName(p)}</div>
+                                                            <div className="mt-1 flex flex-wrap items-center gap-1.5 md:hidden">
+                                                                <span className="inline-flex items-center rounded-full bg-primary/5 px-2 py-0.5 font-mono text-[10px] font-bold text-primary">{p.periode_bulan}</span>
+                                                                <StatusBadge status={p.status} />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="hidden px-4 py-3.5 whitespace-nowrap text-right text-sm font-medium text-emerald-600 tabular-nums lg:table-cell">
+                                                <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-emerald-600 tabular-nums lg:table-cell">
                                                     {formatRupiah(p.total_pendapatan)}
                                                 </td>
-                                                <td className="hidden px-4 py-3.5 whitespace-nowrap text-right text-sm font-medium text-rose-600 tabular-nums lg:table-cell">
+                                                <td className="hidden whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium text-rose-600 tabular-nums lg:table-cell">
                                                     {formatRupiah(p.total_potongan)}
                                                 </td>
-                                                <td className="px-4 py-3.5 whitespace-nowrap text-right text-base font-bold text-primary tabular-nums">
+                                                <td className="whitespace-nowrap px-4 py-3.5 text-right text-base font-bold text-primary tabular-nums">
                                                     {formatRupiah(p.gaji_bersih)}
                                                 </td>
-                                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                                <td className="hidden whitespace-nowrap px-4 py-3.5 md:table-cell">
                                                     <StatusBadge status={p.status} />
                                                 </td>
-                                                <td className="px-4 py-3.5 whitespace-nowrap text-right">
-                                                    <div className="flex items-center justify-end gap-1.5">
+                                                <td className="px-2 py-3.5 text-right md:px-3 lg:px-4">
+                                                    <div className="flex flex-col items-end gap-1 md:flex-row md:items-center md:justify-end md:gap-1.5">
                                                         {isAdmin && p.status === 'draft' && (
                                                             <>
                                                                 {isAdminUnit && (
@@ -274,10 +236,12 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                                                                                 router.post(route('penggajian.finalize', p.id), {}, { preserveState: true });
                                                                             }
                                                                         }}
-                                                                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
+                                                                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 p-1.5 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-100 lg:px-2.5 lg:py-1.5"
                                                                         title="Finalisasi slip gaji ini"
                                                                     >
-                                                                        <Lock className="h-3 w-3" /> Finalisasi
+                                                                        <Lock className="h-3 w-3" />
+                                                                        <span className="hidden lg:inline">Finalisasi</span>
+                                                                        <span className="sr-only lg:hidden">Finalisasi</span>
                                                                     </button>
                                                                 )}
                                                                 <button
@@ -291,14 +255,17 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                                                                     title="Hapus draft slip gaji"
                                                                 >
                                                                     <Trash2 className="h-3.5 w-3.5" />
+                                                                    <span className="sr-only">Hapus draft</span>
                                                                 </button>
                                                             </>
                                                         )}
                                                         <Link
                                                             href={route('penggajian.show', p.id)}
-                                                            className="btn-primary btn-sm flex items-center gap-1.5"
+                                                            className="btn-primary btn-sm flex items-center gap-1.5 p-1.5 lg:px-3 lg:py-1.5"
                                                         >
-                                                            <Eye className="h-3.5 w-3.5" /> Slip
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                            <span className="hidden lg:inline">Slip</span>
+                                                            <span className="sr-only lg:hidden">Slip</span>
                                                         </Link>
                                                     </div>
                                                 </td>
@@ -316,9 +283,9 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                                                         {hasFilter ? 'Coba ubah atau bersihkan filter.' : 'Jalankan Run Payroll Wizard untuk membuat draft gaji pertama.'}
                                                     </p>
                                                     {hasFilter ? (
-                                                        <button onClick={resetFilters} className="btn-secondary btn-sm mt-4 flex items-center gap-1.5">
-                                                            <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
-                                                        </button>
+                        <Button variant="secondary" size="sm" className="mt-4" onClick={resetFilters}>
+                            <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
+                        </Button>
                                                     ) : isAdmin ? (
                                                         <Link href={route('penggajian.run')} className="btn-primary btn-sm mt-4 flex items-center gap-1.5">
                                                             <Sparkles className="h-3.5 w-3.5" /> Buka Run Payroll Wizard
@@ -331,19 +298,19 @@ export default function Index({ auth, penggajians, stats = {}, periodeOptions = 
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </Card>
 
                     {/* Pagination */}
                     {penggajians.total > 0 && (
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <p className="text-xs text-text-secondary">
-                                Menampilkan <b className="text-primary">{penggajians.from || 0}</b>–<b className="text-primary">{penggajians.to || 0}</b> dari <b className="text-primary">{penggajians.total}</b> data
+                                Menampilkan <b className="text-primary">{penggajians.from || 0}</b> - <b className="text-primary">{penggajians.to || 0}</b> dari <b className="text-primary">{penggajians.total}</b> data
                             </p>
                             <Pagination links={penggajians.links} pagination={{ current_page: penggajians.current_page, last_page: penggajians.last_page }} />
                         </div>
                     )}
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
+
