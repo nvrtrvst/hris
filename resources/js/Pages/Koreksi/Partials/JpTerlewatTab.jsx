@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
+import { Button, Card, Input, Select } from '@/Components/AdminUI';
 import { AlertCircle, BookOpen, CheckCircle2, Search } from 'lucide-react';
 
 const fmtTanggal = (value) => (value ? format(new Date(value), 'd MMM yyyy', { locale: idLocale }) : '-');
@@ -60,9 +61,9 @@ const KoreksiJpModal = ({ item, onClose }) => {
     return (
         <Modal show={Boolean(item)} onClose={() => { if (!processing) onClose(); }} maxWidth="lg" closeable={!processing}>
             {item && (
-                <form onSubmit={submit} className="p-6">
-                    <div className="mb-5 flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <form onSubmit={submit} className="max-h-[90dvh] overflow-y-auto p-5 sm:p-6">
+                    <div className="mb-5 flex items-start gap-3 border-b border-border pb-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                             <BookOpen className="h-5 w-5" />
                         </div>
                         <div className="min-w-0">
@@ -157,13 +158,13 @@ const KoreksiJpModal = ({ item, onClose }) => {
                     )}
 
                     <div className="mt-5 flex justify-end gap-3 border-t border-border pt-4">
-                        <button type="button" className="btn-secondary" onClick={onClose} disabled={processing}>
+                        <Button type="button" variant="secondary" onClick={onClose} disabled={processing}>
                             Batal
-                        </button>
-                        <button type="submit" className="btn-primary" disabled={processing}>
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                        </Button>
+                        <Button type="submit" disabled={processing}>
+                            <CheckCircle2 className="h-4 w-4" />
                             {processing ? 'Menyimpan...' : 'Simpan koreksi'}
-                        </button>
+                        </Button>
                     </div>
                 </form>
             )}
@@ -209,55 +210,52 @@ export default function JpTerlewatTab({ jpTerlewat, jpFilters, jpStats, units = 
 
     return (
         <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <div className="card p-4">
-                    <p className="text-2xl font-extrabold text-text-primary tabular-nums">{jpStats?.total ?? 0}</p>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Total JP terlewat</p>
+            <Card className="p-3 sm:p-4">
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                    {[
+                        { label: 'Total JP terlewat', value: jpStats?.total ?? 0, tone: 'text-primary' },
+                        { label: 'Belum presensi', value: jpStats?.belum_presensi ?? 0, tone: 'text-amber-600' },
+                        { label: 'Alpa otomatis', value: jpStats?.alpa_otomatis ?? 0, tone: 'text-rose-600' },
+                        { label: 'Alpa manual', value: jpStats?.alpa_manual ?? 0, tone: 'text-slate-600' },
+                    ].map(({ label, value, tone }) => (
+                        <div key={label} className="rounded-lg px-2 py-2">
+                            <p className={`text-lg font-bold tabular-nums ${tone}`}>{value}</p>
+                            <p className="text-[10px] font-semibold text-text-secondary">{label}</p>
+                        </div>
+                    ))}
                 </div>
-                <div className="card p-4">
-                    <p className="text-2xl font-extrabold text-amber-600 tabular-nums">{jpStats?.belum_presensi ?? 0}</p>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Belum presensi</p>
-                </div>
-                <div className="card p-4">
-                    <p className="text-2xl font-extrabold text-rose-600 tabular-nums">{jpStats?.alpa_otomatis ?? 0}</p>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Alpa otomatis</p>
-                </div>
-                <div className="card p-4">
-                    <p className="text-2xl font-extrabold text-slate-600 tabular-nums">{jpStats?.alpa_manual ?? 0}</p>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Alpa manual</p>
-                </div>
-            </div>
+            </Card>
 
-            <form onSubmit={applyFilter} className="card grid grid-cols-1 gap-3 p-4 md:grid-cols-2 lg:grid-cols-5">
+            <Card className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 lg:grid-cols-5">
                 <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
                     <span>Dari</span>
-                    <input type="date" className="input-field" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+                    <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
                 </label>
                 <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
                     <span>Sampai</span>
-                    <input type="date" className="input-field" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+                    <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
                 </label>
                 {units.length > 0 && (
                     <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
                         <span>Unit</span>
-                        <select className="select-field" value={unitId} onChange={(event) => setUnitId(event.target.value)}>
+                        <Select value={unitId} onChange={(event) => setUnitId(event.target.value)}>
                             <option value="">Semua unit</option>
                             {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                        </select>
+                        </Select>
                     </label>
                 )}
                 <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary lg:col-span-1">
                     <span>Pegawai</span>
                     <span className="relative">
-                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                        <input className="input-field pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama" />
+                        <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                        <Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama" />
                     </span>
                 </label>
                 <div className="flex items-end gap-2">
-                    <button type="submit" className="btn-primary min-h-11 flex-1">Terapkan</button>
-                    <button type="button" className="btn-secondary min-h-11" onClick={resetFilter}>Reset</button>
+                    <Button type="submit" className="min-h-11 flex-1">Terapkan</Button>
+                    <Button type="button" variant="secondary" className="min-h-11" onClick={resetFilter}>Reset</Button>
                 </div>
-            </form>
+            </Card>
 
             <div className="space-y-3 md:hidden">
                 {rows.length === 0 ? (
