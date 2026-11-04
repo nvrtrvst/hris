@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, Input, PageHeader, Select } from '@/Components/AdminUI';
+import { Head, Link, router } from '@inertiajs/react';
 import { Settings, ShieldAlert, Clock3 } from 'lucide-react';
 
 export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], canManage = false }) {
-    const { flash = {} } = usePage().props;
     const [koreksi, setKoreksi] = useState({});
 
     const perlu = sessions.filter((s) => s.perlu_tindakan);
@@ -38,21 +38,22 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                 <span className="min-w-0 text-xs">
                     <b>Fase {round.putaran}</b>{round.area ? ` · ${round.area}` : ''} · {round.jendela_mulai}–{round.jendela_selesai}
                 </span>
-                <input
-                    className="input-field h-11 flex-1 text-xs"
+                <Input
+                    className="h-11 flex-1 text-xs"
                     placeholder="Alasan buka fase (wajib)"
                     aria-label={`Alasan buka fase ${round.putaran}`}
                     value={alasan}
                     onChange={(e) => setAlasan(e.target.value)}
                 />
-                <button
+                <Button
                     type="button"
+                    variant="secondary"
+                    size="sm"
                     disabled={alasan.trim().length < 5}
                     onClick={() => router.post(route('piket.round.buka', round.id), { alasan }, { preserveScroll: true })}
-                    className="btn-secondary btn-sm"
                 >
                     Buka fase
-                </button>
+                </Button>
             </div>
         );
     };
@@ -69,7 +70,7 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                 : 'bg-sky-100 text-sky-700';
 
         return (
-            <div className="card p-4">
+            <Card className="p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                         <p className="text-sm font-bold text-text-primary">Sesi {sesi.jam}</p>
@@ -125,47 +126,50 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
 
                 {sesi.pos_belum.length > 0 && (
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
-                        <select className="select-field" aria-label="Pilih pos yang belum dilayani" value={form.pos_id} onChange={(e) => setForm({ pos_id: e.target.value })}>
+                        <Select aria-label="Pilih pos yang belum dilayani" value={form.pos_id} onChange={(e) => setForm({ pos_id: e.target.value })}>
                             <option value="">Pilih pos</option>
                             {pos.filter((p) => p.unit_sekolah_id === sesi.unit && p.is_wajib).map((p) => (
                                 <option key={p.id} value={p.id}>{p.nama}</option>
                             ))}
-                        </select>
-                        <input
-                            className="input-field sm:col-span-2"
+                        </Select>
+                        <Input
+                            className="sm:col-span-2"
                             placeholder="Alasan (wajib)"
                             aria-label="Alasan tindakan pos"
                             value={form.alasan}
                             onChange={(e) => setForm({ alasan: e.target.value })}
                         />
                         <div className="flex gap-2">
-                            <button type="button" onClick={() => aksi(sesi, 'layani')} className="btn-primary btn-sm flex-1">Layani</button>
-                            <button type="button" onClick={() => aksi(sesi, 'nonaktif')} className="btn-secondary btn-sm flex-1">Nonaktif</button>
+                            <Button type="button" size="sm" onClick={() => aksi(sesi, 'layani')} className="flex-1">Layani</Button>
+                            <Button type="button" variant="secondary" size="sm" onClick={() => aksi(sesi, 'nonaktif')} className="flex-1">Nonaktif</Button>
                         </div>
                     </div>
                 )}
-            </div>
+            </Card>
         );
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Piket</h2>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Piket</h2>}>
             <Head title="Piket" />
 
-            <div className="mx-auto w-full max-w-5xl space-y-4">
-                {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{flash.error}</div>}
+            <div className="mx-auto w-full max-w-5xl space-y-5">
+                <PageHeader
+                    eyebrow="Piket"
+                    title="Monitoring Piket"
+                    description="Pantau sesi piket dan selesaikan sesi yang perlu tindakan."
+                />
 
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <input
+                    <Input
                         type="date"
                         aria-label="Tanggal piket"
-                        className="input-field w-auto"
+                        className="w-auto"
                         value={tanggal}
                         onChange={(e) => router.get(route('piket.index'), { tanggal: e.target.value }, { preserveState: true })}
                     />
                     {canManage && (
-                        <Link href={route('piket.settings.index')} className="btn-secondary inline-flex items-center gap-1.5">
+                        <Link href={route('piket.settings.index')} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
                             <Settings className="h-4 w-4" /> Pengaturan
                         </Link>
                     )}
@@ -176,7 +180,7 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                         <ShieldAlert className="h-4 w-4" /> Perlu tindakan ({perlu.length})
                     </h3>
                     {perlu.length === 0 ? (
-                        <div className="card p-4 text-sm text-text-secondary">Tidak ada sesi yang perlu ditindaklanjuti.</div>
+                        <Card className="p-4 text-sm text-text-secondary">Tidak ada sesi yang perlu ditindaklanjuti.</Card>
                     ) : perlu.map((s) => <SesionCard key={s.id} sesi={s} />)}
                 </section>
 
@@ -184,9 +188,11 @@ export default function PiketMonitor({ auth, tanggal, sessions = [], pos = [], c
                     <h3 className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-primary">
                         <Clock3 className="h-4 w-4" /> Semua sesi ({lain.length})
                     </h3>
-                    {lain.map((s) => <SesionCard key={s.id} sesi={s} />)}
+                    {lain.length === 0 ? (
+                        <Card className="p-4 text-sm text-text-secondary">Belum ada sesi piket lain pada tanggal ini.</Card>
+                    ) : lain.map((s) => <SesionCard key={s.id} sesi={s} />)}
                 </section>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
