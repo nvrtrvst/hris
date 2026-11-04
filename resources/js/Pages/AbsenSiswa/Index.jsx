@@ -1,5 +1,6 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { PageHeader } from '@/Components/AdminUI';
 import FilterSheet from '@/Components/FilterSheet';
 import Modal from '@/Components/Modal';
 import { Head, Link, router } from '@inertiajs/react';
@@ -86,10 +87,15 @@ export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_o
         : sesi;
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Absen Siswa</h2>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Absen Siswa</h2>}>
             <Head title="Absen Siswa" />
-            <div className="bg-surface min-h-screen">
-                <div className="mx-auto w-full space-y-6">
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="Operasional"
+                        title="Absen Siswa"
+                        description="Pantau sesi kelas, koreksi absensi, dan siswa yang perlu perhatian."
+                    />
+
                     <FilterSheet
                         open={filterSheetOpen}
                         onOpenChange={setFilterSheetOpen}
@@ -255,7 +261,6 @@ export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_o
                             </div>
                         </div>
                     )}
-                </div>
             </div>
 
             <Modal show={detailSesi !== null} onClose={() => setDetailSesi(null)} maxWidth="2xl">
@@ -370,6 +375,6 @@ export default function Index({ auth, sesi = [], belum_diabsen = [], integrasi_o
                     </form>
                 )}
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

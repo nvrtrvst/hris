@@ -1,11 +1,11 @@
 import React from 'react';
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Head, Link, router } from '@inertiajs/react';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import Pagination from '@/Components/Pagination';
 import { CalendarDays, MapPin, Trash2, Plus } from 'lucide-react';
 
 export default function Index({ auth, tugasLuar, units, pegawais, filters = {} }) {
-    const { flash = {} } = usePage().props;
     const [pegawaiId, setPegawaiId] = React.useState('');
     const [unitId, setUnitId] = React.useState(filters.unit_sekolah_id || '');
     const [tanggal, setTanggal] = React.useState('');
@@ -47,13 +47,16 @@ export default function Index({ auth, tugasLuar, units, pegawais, filters = {} }
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Kelola Tugas Luar</h2>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Kelola Tugas Luar</h2>}>
             <Head title="Tugas Luar" />
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-                    {flash?.message && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="Operasional"
+                        title="Tugas Luar"
+                        description="Catat penugasan pegawai di luar unit pada tanggal dan jam tertentu."
+                    />
 
-                    <div className="card p-5">
+                    <Card className="p-5">
                         <h3 className="text-sm font-bold text-primary mb-3 flex items-center gap-2"><Plus className="h-4 w-4" /> Tambah Jadwal Tugas Luar</h3>
                         <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             <select className="input-field text-xs h-9" value={pegawaiId} onChange={(e) => setPegawaiId(e.target.value)} required>
@@ -70,13 +73,13 @@ export default function Index({ auth, tugasLuar, units, pegawais, filters = {} }
                             <input type="text" className="input-field text-xs h-9" value={tujuan} onChange={(e) => setTujuan(e.target.value)} placeholder="Tujuan" required />
                             <textarea className="input-field text-xs h-9 py-2 sm:col-span-2 lg:col-span-3" value={keterangan} onChange={(e) => setKeterangan(e.target.value)} placeholder="Keterangan (opsional)" />
                             {error && <p className="text-xs font-semibold text-rose-600 sm:col-span-3">{error}</p>}
-                            <button type="submit" disabled={processing} className="btn-primary btn-sm flex items-center gap-1.5 sm:col-span-3 w-fit">
+                            <Button type="submit" size="sm" disabled={processing} className="w-fit sm:col-span-3">
                                 {processing ? 'Menyimpan...' : <><Plus className="h-3.5 w-3.5" /> Simpan Jadwal</>}
-                            </button>
+                            </Button>
                         </form>
-                    </div>
+                    </Card>
 
-                    <div className="card p-0 overflow-hidden">
+                    <Card className="overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-border">
                                 <thead className="bg-surface/80">
@@ -134,13 +137,12 @@ export default function Index({ auth, tugasLuar, units, pegawais, filters = {} }
                         <div className="p-4">
                             <Pagination links={tugasLuar.links} />
                         </div>
-                    </div>
+                    </Card>
 
                     <div>
-                        <Link href={route('presensi.index')} className="btn-secondary btn-sm">Kembali ke Presensi</Link>
+                        <Link href={route('presensi.index')} className="inline-flex h-9 items-center rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">Kembali ke Presensi</Link>
                     </div>
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
