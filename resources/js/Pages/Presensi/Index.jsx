@@ -58,7 +58,7 @@ const ChipFilter = ({ label, value, onChange, options }) => (
     </div>
 );
 
-const PegawaiAvatar = ({ pegawai, sizeClass = 'h-9 w-9', textClass = 'text-[11px]' }) => {
+const PegawaiAvatar = ({ pegawai, sizeClass = 'h-10 w-10', textClass = 'text-xs' }) => {
     const nama = pegawai?.nama_lengkap || '-';
     const foto = pegawai?.foto_url;
     const [failed, setFailed] = React.useState(false);
@@ -74,13 +74,13 @@ const PegawaiAvatar = ({ pegawai, sizeClass = 'h-9 w-9', textClass = 'text-[11px
                 alt=""
                 loading="lazy"
                 onError={() => setFailed(true)}
-                className={`${sizeClass} shrink-0 rounded-full object-cover`}
+                className={`${sizeClass} shrink-0 rounded-full object-cover ring-2 ring-white`}
             />
         );
     }
 
     return (
-        <span className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-full font-extrabold ${textClass} ${avatarTone(nama)}`}>
+        <span className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-full font-extrabold ring-2 ring-white ${textClass} ${avatarTone(nama)}`}>
             {initials(nama)}
         </span>
     );
@@ -381,7 +381,7 @@ const TugasLuarBadge = ({ status, onClick }) => {
 };
 
 const TugasLuarCell = ({ p, openTugasLuar }) => (
-    <td className="hidden lg:table-cell px-4 py-3.5 whitespace-nowrap">
+    <td className="hidden lg:table-cell px-4 py-4 whitespace-nowrap">
         {p.is_tugas_luar ? (
             <div>
                 <TugasLuarBadge status={p.tugas_luar_status} onClick={() => openTugasLuar(p)} />
@@ -477,7 +477,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                                 ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 8)}</span>
                         : <span className="text-sm text-text-secondary">—</span>}
                 </td>
-                <td className="hidden px-4 py-3.5 whitespace-nowrap lg:table-cell">
+                <td className="hidden px-4 py-4 whitespace-nowrap lg:table-cell">
                     {c.is_tugas_luar ? (
                         (c.foto_masuk_url || (c.foto_kegiatan_urls || []).length > 0) ? (
                             <div className="flex flex-wrap gap-1.5">
@@ -491,7 +491,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         ) : <span className="text-[11px] text-text-muted">tanpa foto</span>
                     ) : <span className="text-[11px] text-text-muted">tanpa foto</span>}
                 </td>
-                <td className="hidden px-4 py-3.5 whitespace-nowrap lg:table-cell">
+                <td className="hidden px-4 py-4 whitespace-nowrap lg:table-cell">
                     {c.is_lembur ? (
                         <div>
                             <LemburBadge status={c.lembur_status} />
@@ -499,7 +499,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         </div>
                     ) : <span className="text-xs text-text-secondary">—</span>}
                 </td>
-                <td className="hidden px-4 py-3.5 whitespace-nowrap lg:table-cell">
+                <td className="hidden px-4 py-4 whitespace-nowrap lg:table-cell">
                     {c.is_tugas_luar ? (
                         <div>
                             <TugasLuarBadge status={c.tugas_luar_status} onClick={() => openTugasLuar(c)} />
@@ -507,10 +507,10 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         </div>
                     ) : <span className="text-xs text-text-secondary">—</span>}
                 </td>
-                <td className="px-4 py-3.5 whitespace-nowrap">
+                <td className="px-4 py-4 whitespace-nowrap">
                     {auth.permissions?.includes('manage_master_data') ? (
                         <select
-                            className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                            className={`cursor-pointer rounded-full border px-3 py-1 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
                             value={c.status}
                             onChange={(e) => setConfirmStatus({ id: c.id, statusLama: c.status, statusBaru: e.target.value })}
                         >
@@ -526,7 +526,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                     )}
                 </td>
                 {auth.permissions?.includes('manage_master_data') && (
-                    <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                    <td className="px-4 py-4 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-1.5">
                             {c.lokasi_perlu_review && (
                                 <button onClick={() => openReview(c)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-amber-600 transition-colors hover:bg-amber-50 md:min-h-0 md:min-w-0 md:p-1.5" title="Detail review anti-spoof"><ShieldAlert className="h-4 w-4" /></button>
@@ -564,10 +564,12 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                     <button
                         type="button"
                         onClick={() => setExpandedMapel((s) => ({ ...s, [mkey]: !s[mkey] }))}
-                        className="flex h-11 w-11 items-center justify-center rounded-md text-text-secondary transition-colors hover:text-primary"
-                        title={mIsOpen ? 'Tutup' : 'Buka'}
+                        className="flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-white hover:text-primary"
+                        title={mIsOpen ? 'Tutup rincian mapel' : 'Buka rincian mapel'}
+                        aria-label={mIsOpen ? `Tutup rincian ${mg.nama}` : `Buka rincian ${mg.nama}`}
+                        aria-expanded={mIsOpen}
                     >
-                        {mIsOpen ? '▾' : '▸'}
+                        <ChevronRight className={`h-4 w-4 transition-transform ${mIsOpen ? 'rotate-90' : ''}`} />
                     </button>
                 </td>
                 <td className="px-4 py-2.5 whitespace-nowrap"></td>
@@ -611,10 +613,10 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         ? <span className="font-mono text-sm font-bold text-primary">{c.jam_keluar.substring(0, 8)}</span>
                                 : <span className="text-sm text-text-secondary">—</span>}
                         </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                             <span className="text-[11px] text-text-muted">tanpa foto</span>
                         </td>
-                        <td className="hidden px-4 py-3.5 whitespace-nowrap lg:table-cell">
+                        <td className="hidden px-4 py-4 whitespace-nowrap lg:table-cell">
                             {c.is_lembur ? (
                         <div>
                             <LemburBadge status={c.lembur_status} />
@@ -622,13 +624,13 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                         </div>
                     ) : <span className="text-xs text-text-secondary">—</span>}
                         </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                             <span className="text-xs text-text-secondary">—</span>
                         </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap">
                             {auth.permissions?.includes('manage_master_data') && !c.is_sintetis ? (
                                 <select
-                                    className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                                    className={`cursor-pointer rounded-full border px-3 py-1 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[c.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
                                     value={c.status}
                                     onChange={(e) => setConfirmStatus({ id: c.id, statusLama: c.status, statusBaru: e.target.value })}
                                 >
@@ -644,7 +646,7 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
                             )}
                         </td>
                         {auth.permissions?.includes('manage_master_data') && (
-                            <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                            <td className="px-4 py-4 whitespace-nowrap text-right">
                                 <div className="flex items-center justify-end gap-1.5">
                                     {!c.is_sintetis && (
                                         <>
@@ -726,11 +728,18 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
 
         return (
             <React.Fragment key={key}>
-                <tr className={`group transition-colors ${parentTelat ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-surface/70'}`}>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                <tr className={`group transition-colors ${parentTelat ? 'bg-amber-50/80 hover:bg-amber-50' : 'even:bg-surface/20 hover:bg-surface/60'}`}>
+                    <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                            <button type="button" onClick={() => setExpanded((s) => ({ ...s, [key]: !s[key] }))} className="flex h-11 w-11 items-center justify-center rounded-md text-text-secondary transition-colors hover:text-primary" title={isOpen ? 'Tutup' : 'Buka'}>
-                                {isOpen ? '▾' : '▸'}
+                            <button
+                                type="button"
+                                onClick={() => setExpanded((s) => ({ ...s, [key]: !s[key] }))}
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-white hover:text-primary"
+                                title={isOpen ? 'Tutup rincian' : 'Buka rincian'}
+                                aria-label={isOpen ? `Tutup rincian ${nama}` : `Buka rincian ${nama}`}
+                                aria-expanded={isOpen}
+                            >
+                                <ChevronRight className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
                             </button>
                             <PegawaiAvatar pegawai={parent.pegawai} />
                             <div className="min-w-0">
@@ -748,16 +757,16 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             </div>
                         </div>
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    <td className="px-4 py-4 whitespace-nowrap">
                         <div className="text-sm font-semibold text-primary">{format(parseDate(parent.tanggal), 'd MMM yyyy', { locale: id })}</div>
                         <div className="text-[11px] text-text-secondary">{format(parseDate(parent.tanggal), 'EEEE', { locale: id })}</div>
                     </td>
-                    <td className="hidden sm:table-cell px-4 py-3.5 align-top">
+                    <td className="hidden sm:table-cell px-4 py-4 align-top">
                         <span className="block max-w-[10rem] break-words text-xs font-semibold leading-snug text-text-secondary">
                             {jenisLabel}
                         </span>
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    <td className="px-4 py-4 whitespace-nowrap">
                         {parent.jam_masuk ? (
                             <div className="flex flex-col">
                                 <span className="font-mono text-sm font-bold text-primary">{parent.jam_masuk.substring(0, 8)}</span>
@@ -767,7 +776,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             </div>
                         ) : <span className="text-sm text-text-secondary">—</span>}
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    <td className="px-4 py-4 whitespace-nowrap">
                         {parent.jam_keluar ? (
                             <div className="flex flex-col">
                                 <span className="font-mono text-sm font-bold text-primary">{parent.jam_keluar.substring(0, 8)}</span>
@@ -777,7 +786,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             </div>
                         ) : <span className="text-sm text-text-secondary">—</span>}
                     </td>
-                    <td className="hidden md:table-cell px-4 py-3.5 whitespace-nowrap">
+                    <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap">
                         <div className="flex flex-wrap gap-1.5">
                             {parent.foto_masuk_url
                                 ? <a href={parent.foto_masuk_url} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border"><img src={parent.foto_masuk_url} alt="Masuk" className="h-full w-full object-cover" loading="lazy" /></a>
@@ -790,7 +799,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             ))}
                         </div>
                     </td>
-                    <td className="hidden lg:table-cell px-4 py-3.5 whitespace-nowrap">
+                    <td className="hidden lg:table-cell px-4 py-4 whitespace-nowrap">
                         {lembur ? (
                             <div>
                                 <LemburBadge status={lembur.lembur_status} />
@@ -798,7 +807,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             </div>
                         ) : <span className="text-xs text-text-secondary">—</span>}
                     </td>
-                    <td className="hidden lg:table-cell px-4 py-3.5 whitespace-nowrap">
+                    <td className="hidden lg:table-cell px-4 py-4 whitespace-nowrap">
                         {tugasLuar ? (
                             <div>
                                 <TugasLuarBadge status={tugasLuar.tugas_luar_status} onClick={() => openTugasLuar(tugasLuar)} />
@@ -808,7 +817,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             </div>
                         ) : <span className="text-xs text-text-secondary">—</span>}
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    <td className="px-4 py-4 whitespace-nowrap">
                         {parent.status === 'belum_presensi' ? (
                             <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase ${STATUS_META.belum_presensi.badge}`}>
                                 <span className={`h-1.5 w-1.5 rounded-full ${STATUS_META.belum_presensi.dot}`} />
@@ -816,7 +825,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                             </span>
                         ) : auth.permissions?.includes('manage_master_data') ? (
                             <select
-                                className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[parent.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                                className={`cursor-pointer rounded-full border px-3 py-1 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[parent.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
                                 value={parent.status}
                                 onChange={(e) => setConfirmStatus({ id: parent.id, statusLama: parent.status, statusBaru: e.target.value })}
                             >
@@ -832,7 +841,7 @@ const RingkasBody = ({ data, auth, now, expanded, setExpanded, openReview, openA
                         )}
                     </td>
                     {auth.permissions?.includes('manage_master_data') && (
-                        <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                        <td className="px-4 py-4 whitespace-nowrap text-right">
                             <div className="flex items-center justify-end gap-1.5">
                                 {!parent.is_sintetis && (
                                     <button onClick={() => openAudit(parent)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5" title="Riwayat perubahan"><History className="h-4 w-4" /></button>
@@ -863,7 +872,7 @@ const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setCon
     }
 
     return (
-        <div className="divide-y divide-border/60 md:hidden">
+        <div className="divide-y divide-border/50 md:hidden">
             {groups.map((group) => {
                 const kantorRow = group.find((g) => g.tipe_presensi === 'kantor' && !g.is_lembur && !g.is_tugas_luar);
                 const parent = kantorRow || group.find((g) => !g.is_sintetis) || group[0];
@@ -883,7 +892,7 @@ const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setCon
                 ].filter(Boolean);
 
                 return (
-                    <article key={key} className={`px-4 py-3.5 ${kantorRow?.status === 'telat' ? 'bg-amber-50/60' : ''}`}>
+                    <article key={key} className={`px-4 py-4 transition-colors ${kantorRow?.status === 'telat' ? 'bg-amber-50/60' : 'even:bg-surface/15'}`}>
                         <div className="flex items-start gap-3">
                             <PegawaiAvatar pegawai={parent.pegawai} sizeClass="h-10 w-10" textClass="text-xs" />
                             <div className="min-w-0 flex-1">
@@ -917,12 +926,12 @@ const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setCon
                         </div>
 
                         <dl className="mt-2.5 grid grid-cols-2 gap-2">
-                            <div className="rounded-lg bg-surface px-3 py-2">
+                            <div className="rounded-xl border border-border/60 bg-surface/80 px-3 py-2.5">
                                 <dt className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Masuk</dt>
                                 <dd className="font-mono text-sm font-bold text-primary">{parent.jam_masuk ? parent.jam_masuk.substring(0, 5) : '—'}</dd>
                                 {presensiLokasiLabel(parent, 'masuk') && <dd className="truncate text-[11px] lowercase text-slate-500">{presensiLokasiLabel(parent, 'masuk').toLowerCase()}</dd>}
                             </div>
-                            <div className="rounded-lg bg-surface px-3 py-2">
+                            <div className="rounded-xl border border-border/60 bg-surface/80 px-3 py-2.5">
                                 <dt className="text-[11px] font-bold uppercase tracking-wide text-text-muted">Keluar</dt>
                                 <dd className="font-mono text-sm font-bold text-primary">{parent.jam_keluar ? parent.jam_keluar.substring(0, 5) : '—'}</dd>
                                 {presensiLokasiLabel(parent, 'keluar') && <dd className="truncate text-[11px] lowercase text-slate-500">{presensiLokasiLabel(parent, 'keluar').toLowerCase()}</dd>}
@@ -937,7 +946,7 @@ const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setCon
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     aria-label={photo.label}
-                                    className="block h-11 w-11 overflow-hidden rounded-lg border border-border active:opacity-80"
+                                    className="block h-12 w-12 overflow-hidden rounded-xl border border-border active:opacity-80"
                                 >
                                     <img src={photo.url} alt={photo.label} className="h-full w-full object-cover" loading="lazy" />
                                 </a>
@@ -953,15 +962,15 @@ const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setCon
                                     type="button"
                                     onClick={() => setExpanded((state) => ({ ...state, [key]: !state[key] }))}
                                     aria-expanded={isOpen}
-                                    className="mt-2 flex min-h-11 w-full items-center justify-between rounded-lg border border-border px-3 text-xs font-bold text-text-secondary"
+                                    className="mt-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-white px-3 text-xs font-bold text-primary shadow-sm"
                                 >
                                     Rincian {children.length} aktivitas
-                                    <span aria-hidden="true">{isOpen ? '▴' : '▾'}</span>
+                                    <ChevronRight className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} aria-hidden="true" />
                                 </button>
                                 {isOpen && (
                                     <ul className="mt-2 space-y-1.5">
                                         {children.map((c) => (
-                                            <li key={c.id} className="rounded-lg bg-surface px-3 py-2">
+                                            <li key={c.id} className="rounded-xl border border-border/60 bg-white px-3 py-2.5 shadow-sm">
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="min-w-0">
                                                         <p className="truncate text-xs font-bold text-text-primary">
@@ -1536,9 +1545,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         ref={filterSheetRef}
                         className={`card p-5 ${filterSheetOpen ? 'fixed inset-x-0 bottom-0 z-50 max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-2xl rounded-b-none !border-b-0 pb-[calc(1.25rem+env(safe-area-inset-bottom))]' : 'hidden'} md:static md:block md:max-h-none md:overflow-visible md:rounded-card md:border-b md:pb-5`}
                     >
-                        <div className="mb-3 flex items-center justify-between md:hidden">
+                        <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-4 flex items-center justify-between border-b border-border bg-white/95 px-5 py-3 backdrop-blur-sm md:hidden">
                             <p className="text-sm font-bold text-text-primary">Filter presensi</p>
-                            <button type="button" onClick={() => setFilterSheetOpen(false)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary" aria-label="Tutup filter">
+                            <button type="button" onClick={() => setFilterSheetOpen(false)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary" aria-label="Tutup filter">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
@@ -1690,14 +1699,14 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     </button>
                                 )}
                                 {hasFilter && (
-                                    <button type="button" onClick={() => { resetFilters(); setFilterSheetOpen(false); }} className="btn-secondary h-11 flex items-center gap-1.5 px-4">
+                                    <Button variant="secondary" size="lg" onClick={() => { resetFilters(); setFilterSheetOpen(false); }} className="px-4">
                                         <RotateCcw className="h-3.5 w-3.5" /> Reset
-                                    </button>
+                                    </Button>
                                 )}
-                                <button type="button" onClick={() => { applyFilters(); setFilterSheetOpen(false); }} disabled={processing} className="btn-primary h-11 flex items-center gap-1.5 px-4">
+                                <Button size="lg" onClick={() => { applyFilters(); setFilterSheetOpen(false); }} disabled={processing} className="px-4">
                                     {processing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Filter className="h-3.5 w-3.5" />}
                                     Terapkan
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -1803,25 +1812,38 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             return <span className="ml-1 text-primary">{sortDir === 'asc' ? '↑' : '↓'}</span>;
                         };
                     return isAdmin && !is_personal ? (
-                        <div className="card p-0 overflow-hidden">
+                        <Card className="overflow-hidden p-0 shadow-sm">
                             <StatusDistribution stats={s} />
+                            <div className="hidden items-center justify-between border-b border-border bg-white px-4 py-3.5 md:flex sm:px-6">
+                                <div>
+                                    <h2 className="text-sm font-bold text-primary">Daftar Presensi</h2>
+                                    <p className="mt-0.5 text-[11px] text-text-secondary">
+                                        {viewMode === 'ringkas'
+                                            ? `${rows.length} kelompok pegawai/tanggal di halaman ini`
+                                            : `${rows.length} baris presensi di halaman ini`}
+                                    </p>
+                                </div>
+                                <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-bold text-text-secondary">
+                                    {viewMode === 'ringkas' ? 'Ringkas' : 'Detail'}
+                                </span>
+                            </div>
                             {viewMode === 'ringkas' && (
                                 <RingkasCards data={rows} auth={auth} expanded={expanded} setExpanded={setExpanded} openTugasLuar={openTugasLuar} setConfirmStatus={setConfirmStatus} />
                             )}
                             <div className={`overflow-x-auto lg:max-h-[72vh] lg:overflow-y-auto ${viewMode === 'ringkas' ? 'hidden md:block' : ''}`}>
                                 <table className="min-w-full divide-y divide-border">
-                                    <thead className="bg-surface/80 sticky top-0 z-10 backdrop-blur-sm">
+                                    <thead className="sticky top-0 z-10 border-b border-border bg-surface/95 backdrop-blur-sm">
                                         <tr>
-                                            <th onClick={() => toggleSort('nama')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Pegawai & Unit <SortIcon col="nama" /></th>
-                                            <th onClick={() => toggleSort('tanggal')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Tanggal <SortIcon col="tanggal" /></th>
-                                            <th className="hidden sm:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Jadwal</th>
-                                            <th onClick={() => toggleSort('masuk')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Masuk <SortIcon col="masuk" /></th>
-                                            <th onClick={() => toggleSort('keluar')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Keluar <SortIcon col="keluar" /></th>
-                                            <th className="hidden md:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Foto</th>
-                                            <th className="hidden lg:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lembur</th>
-                                            <th className="hidden lg:table-cell px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider">Tugas Luar</th>
-                                            <th onClick={() => toggleSort('status')} className="px-4 py-3.5 text-left text-[11px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Status <SortIcon col="status" /></th>
-                                            {auth.permissions?.includes('manage_master_data') && <th className="px-4 py-3.5 text-right text-[11px] font-bold text-text-secondary uppercase tracking-wider">Lokasi</th>}
+                                            <th scope="col" onClick={() => toggleSort('nama')} tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleSort('nama')} className="px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Pegawai & Unit <SortIcon col="nama" /></th>
+                                            <th scope="col" onClick={() => toggleSort('tanggal')} tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleSort('tanggal')} className="px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Tanggal <SortIcon col="tanggal" /></th>
+                                            <th scope="col" className="hidden sm:table-cell px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider">Jadwal</th>
+                                            <th scope="col" onClick={() => toggleSort('masuk')} tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleSort('masuk')} className="px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Masuk <SortIcon col="masuk" /></th>
+                                            <th scope="col" onClick={() => toggleSort('keluar')} tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleSort('keluar')} className="px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Keluar <SortIcon col="keluar" /></th>
+                                            <th scope="col" className="hidden md:table-cell px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider">Foto</th>
+                                            <th scope="col" className="hidden lg:table-cell px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider">Lembur</th>
+                                            <th scope="col" className="hidden lg:table-cell px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider">Tugas Luar</th>
+                                            <th scope="col" onClick={() => toggleSort('status')} tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleSort('status')} className="px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Status <SortIcon col="status" /></th>
+                                            {auth.permissions?.includes('manage_master_data') && <th scope="col" className="px-4 py-3.5 text-right text-[10px] font-bold text-text-secondary uppercase tracking-wider">Lokasi</th>}
                                         </tr>
                                     </thead>
                                     <tbody className={`divide-y divide-border/50 ${processing ? 'opacity-60 pointer-events-none transition-opacity' : ''}`}>
@@ -1833,8 +1855,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                             const nama = p.pegawai?.nama_lengkap || '-';
 
                                             return (
-                                                <tr key={p.id} className={`group transition-colors ${p.status === 'telat' && !p.jadwal_id ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-surface/70'}`}>
-                                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                                <tr key={p.id} className={`group transition-colors ${p.status === 'telat' && !p.jadwal_id ? 'bg-amber-50/80 hover:bg-amber-50' : 'even:bg-surface/20 hover:bg-surface/60'}`}>
+                                                    <td className="px-4 py-4 whitespace-nowrap">
                                                         <div className="flex items-center gap-3">
                                                             <PegawaiAvatar pegawai={p.pegawai} />
                                                             <div className="min-w-0">
@@ -1852,11 +1874,11 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    <td className="px-4 py-4 whitespace-nowrap">
                                                         <div className="text-sm font-semibold text-primary">{format(parseDate(p.tanggal), 'd MMM yyyy', { locale: id })}</div>
                                                         <div className="text-[11px] text-text-secondary">{format(parseDate(p.tanggal), 'EEEE', { locale: id })}</div>
                                                     </td>
-                                                    <td className="hidden sm:table-cell px-4 py-3.5 whitespace-nowrap">
+                                                    <td className="hidden sm:table-cell px-4 py-4 whitespace-nowrap">
                                                         {p.jadwal ? (
                                                             <div className="text-xs leading-tight">
                             <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center justify-end gap-2 border-t border-border/60 bg-white px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 md:static md:mx-0 md:mb-0 md:border-0 md:bg-transparent md:px-0 md:pb-0 md:pt-0">
@@ -1873,7 +1895,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             <span className="text-xs font-semibold text-text-secondary">Kantor</span>
                                                         ) : <span className="text-xs text-text-secondary">—</span>}
                                                     </td>
-                                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    <td className="px-4 py-4 whitespace-nowrap">
                                                         {p.jam_masuk ? (
                                                             <div className="flex flex-col">
                                                                 <span className="font-mono text-sm font-bold text-primary">{p.jam_masuk.substring(0, 8)}</span>
@@ -1885,7 +1907,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             </div>
                                                         ) : <span className="text-sm text-text-secondary">—</span>}
                                                     </td>
-                                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    <td className="px-4 py-4 whitespace-nowrap">
                                                         {p.jam_keluar ? (
                                                             <div className="flex flex-col">
                                                                 <span className="font-mono text-sm font-bold text-primary">{p.jam_keluar.substring(0, 8)}</span>
@@ -1895,7 +1917,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             </div>
                                                         ) : <span className="text-sm text-text-secondary">—</span>}
                                                     </td>
-                                                    <td className="hidden md:table-cell px-4 py-3.5 whitespace-nowrap">
+                                                    <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap">
                                                         <div className="flex gap-1.5">
                                                             {p.foto_masuk_url ? (
                                                                 <a href={p.foto_masuk_url} target="_blank" rel="noopener noreferrer" className="block h-9 w-9 overflow-hidden rounded-lg border border-border hover:ring-2 hover:ring-primary transition-shadow" title="Foto masuk">
@@ -1913,7 +1935,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                             ) : null}
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    <td className="px-4 py-4 whitespace-nowrap">
                                                         {p.is_lembur ? (
                                                             <div>
                                                                 <LemburBadge status={p.lembur_status} />
@@ -1922,10 +1944,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                         ) : <span className="text-xs text-text-secondary">—</span>}
                                                     </td>
                                                     <TugasLuarCell p={p} openTugasLuar={openTugasLuar} />
-                                                    <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    <td className="px-4 py-4 whitespace-nowrap">
                                                         {auth.permissions?.includes('manage_master_data') ? (
                                                             <select
-                                                                className={`cursor-pointer rounded-lg border px-2.5 py-1.5 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[p.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                                                                className={`cursor-pointer rounded-full border px-3 py-1 pr-7 text-[11px] font-bold uppercase shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_META[p.status]?.badge || 'bg-gray-50 text-gray-700 border-gray-200'}`}
                                                                 value={p.status}
                                                                 onChange={(e) => setConfirmStatus({ id: p.id, statusLama: p.status, statusBaru: e.target.value })}
                                                             >
@@ -1941,7 +1963,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                                         )}
                                                     </td>
                                                     {auth.permissions?.includes('manage_master_data') && (
-                                                    <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                                                    <td className="px-4 py-4 whitespace-nowrap text-right">
                                                         <div className="flex items-center justify-end gap-1.5">
                                                             {flagReview && (
                                                                 <button onClick={() => openReview(p)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-amber-600 transition-colors hover:bg-amber-50 md:min-h-0 md:min-w-0 md:p-1.5" title="Detail review anti-spoof">
@@ -1990,7 +2012,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
+                        </Card>
                     ) : (
                         <div className="space-y-3">
                             {presensis.data.map((p) => (
@@ -2066,7 +2088,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                     {/* Pagination */}
                     {presensis.total > 0 && (
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-3 rounded-xl border border-border bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
                             <p className="text-xs text-text-secondary" aria-live="polite">
                                 {viewMode === 'ringkas' ? (
                                     <>
@@ -2090,7 +2112,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                             applyFilters({ per_page: nilai });
                                         }}
                                         disabled={processing}
-                                        className="h-11 cursor-pointer rounded-lg border border-border bg-white px-2.5 text-xs font-bold text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
+                                        className="h-11 cursor-pointer rounded-xl border border-border bg-white px-2.5 text-xs font-bold text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
                                     >
                                         <option value={25}>25</option>
                                         <option value={50}>50</option>
@@ -2108,10 +2130,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                     {/* ─── MODAL: Riwayat Perubahan ─── */}
                     <Modal show={auditModal.show} onClose={() => setAuditModal({ show: false, loading: false, data: [], presensi: null })} maxWidth="3xl">
-                        <div className="p-6">
-                            <div className="mb-6 flex items-center justify-between">
+                        <div className="p-5 sm:p-6">
+                            <div className="mb-5 flex items-center justify-between border-b border-border pb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface text-primary">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/5 text-primary ring-1 ring-primary/10">
                                         <History className="h-5 w-5" />
                                     </div>
                                     <div>
@@ -2119,7 +2141,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         {auditPegawai && <p className="mt-0.5 text-sm text-text-secondary">{auditPegawai}</p>}
                                     </div>
                                 </div>
-                                <button onClick={() => setAuditModal({ show: false, loading: false, data: [], presensi: null })} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5">
+                                <button onClick={() => setAuditModal({ show: false, loading: false, data: [], presensi: null })} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5" aria-label="Tutup riwayat perubahan">
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
@@ -2224,10 +2246,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                     {/* ─── MODAL: Review Anti-Spoof ─── */}
                     <Modal show={reviewModal.show} onClose={() => setReviewModal({ show: false, loading: false, data: null })} maxWidth="3xl">
-                        <div className="p-6">
-                            <div className="mb-6 flex items-center justify-between">
+                        <div className="p-5 sm:p-6">
+                            <div className="mb-5 flex items-center justify-between border-b border-border pb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 ring-1 ring-amber-200">
                                         <ShieldAlert className="h-5 w-5" />
                                     </div>
                                     <div>
@@ -2235,7 +2257,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         {reviewModal.data && <p className="mt-0.5 text-sm text-text-secondary">{reviewModal.data.pegawai_nama} • {reviewModal.data.tanggal}</p>}
                                     </div>
                                 </div>
-                                <button onClick={() => setReviewModal({ show: false, loading: false, data: null })} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5">
+                                <button onClick={() => setReviewModal({ show: false, loading: false, data: null })} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5" aria-label="Tutup detail review">
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
@@ -2398,10 +2420,10 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
 
                     {/* ─── MODAL: Detail Dinas Luar ─── */}
                     <Modal show={tugasLuarModal.show} onClose={() => setTugasLuarModal({ show: false, loading: false, data: null })} maxWidth="3xl">
-                        <div className="p-6">
-                            <div className="mb-6 flex items-center justify-between">
+                        <div className="p-5 sm:p-6">
+                            <div className="mb-5 flex items-center justify-between border-b border-border pb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-100 text-sky-600 ring-1 ring-sky-200">
                                         <MapPin className="h-5 w-5" />
                                     </div>
                                     <div>
@@ -2409,7 +2431,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         {tugasLuarModal.data && <p className="mt-0.5 text-sm text-text-secondary">{tugasLuarModal.data.pegawai_nama} · {tugasLuarModal.data.tanggal}</p>}
                                     </div>
                                 </div>
-                                <button onClick={() => setTugasLuarModal({ show: false, loading: false, data: null })} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5">
+                                <button onClick={() => setTugasLuarModal({ show: false, loading: false, data: null })} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5" aria-label="Tutup detail dinas luar">
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
@@ -2530,24 +2552,25 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         {/* Tombol approve/reject (jika pending) */}
                                         {d.tugas_luar_status === 'pending' && (
                                             <div className="flex justify-end gap-3 border-t border-border pt-4">
-                                                <button
+                                                <Button
+                                                    variant="secondary"
                                                     onClick={() => {
                                                         router.post(route('presensi.rejectTugasLuar', d.id), {}, { preserveState: true });
                                                         setTugasLuarModal({ show: false, loading: false, data: null });
                                                     }}
-                                                    className="rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-50"
+                                                    className="border-rose-300 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
                                                 >
                                                     Tolak
-                                                </button>
-                                                <button
+                                                </Button>
+                                                <Button
+                                                    variant="success"
                                                     onClick={() => {
                                                         router.post(route('presensi.approveTugasLuar', d.id), {}, { preserveState: true });
                                                         setTugasLuarModal({ show: false, loading: false, data: null });
                                                     }}
-                                                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
                                                 >
                                                     Setujui
-                                                </button>
+                                                </Button>
                                             </div>
                                         )}
                                     </div>
@@ -2560,7 +2583,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     <Modal show={confirmStatus !== null} onClose={() => setConfirmStatus(null)} maxWidth="sm">
                         <div className="p-6">
                             <div className="mb-5 flex items-center gap-3">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 ring-1 ring-amber-200">
                                     <AlertTriangle className="h-5 w-5" />
                                 </div>
                                 <div>
@@ -2595,17 +2618,17 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                     </div>
                                 )}
                             </div>
-                            <div className="flex justify-end gap-3">
-                                <button onClick={() => setConfirmStatus(null)} className="btn-secondary btn-sm min-w-[80px]">Batal</button>
-                                <button
+                            <div className="flex justify-end gap-3 border-t border-border pt-4">
+                                <Button variant="secondary" onClick={() => setConfirmStatus(null)} className="min-w-[80px]">Batal</Button>
+                                <Button
                                     onClick={() => {
                                         router.put(route('presensi.update', confirmStatus.id), { status: confirmStatus.statusBaru, persentase_bayar_jam: persentaseBayar }, { preserveState: false });
                                         setConfirmStatus(null);
                                     }}
-                                    className="btn-primary btn-sm min-w-[100px]"
+                                    className="min-w-[100px]"
                                 >
                                     Ya, Ubah
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </Modal>
