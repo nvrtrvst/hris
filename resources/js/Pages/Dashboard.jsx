@@ -1,5 +1,6 @@
 import React, { useState, Component, useMemo } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { PageHeader, Select } from '@/Components/AdminUI';
 import StatCard from '@/Components/StatCard';
 import { Head, Link, router } from '@inertiajs/react';
 import usePolling from '@/Utils/usePolling';
@@ -9,7 +10,6 @@ import {
     ArrowRight,
     Banknote,
     BookOpen,
-    Building2,
     CalendarDays,
     CalendarClock,
     Megaphone,
@@ -409,38 +409,33 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth?.user}
-            header={
-                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="flex flex-col gap-1">
-                        <h1 className="page-title">Dashboard {roleType}</h1>
-                        <p className="page-subtitle">{todayString}</p>
-                    </div>
-                    {units.length > 0 && (
-                        <div className="relative sm:mb-1 sm:w-64">
-                            <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                            <select
+            header={<h2 className="page-title">Dashboard {roleType}</h2>}
+        >
+            <Head title={`Dashboard ${roleType}`} />
+
+            <div className="mx-auto w-full max-w-[1600px] space-y-6">
+                <PageHeader
+                    eyebrow="Ringkasan"
+                    title={`Dashboard ${roleType}`}
+                    description={todayString}
+                    actions={units.length > 0 ? (
+                        <div className="w-full sm:w-64">
+                            <Select
                                 aria-label="Filter unit"
                                 value={selectedUnitId || ''}
                                 onChange={setUnitFilter}
-                                className="select-field h-11 pl-9 text-xs font-semibold"
                             >
                                 <option value="">Semua Unit</option>
                                 {units.map((u) => (
                                     <option key={u.id} value={u.id}>{u.nama}</option>
                                 ))}
-                            </select>
+                            </Select>
                         </div>
-                    )}
-                </div>
-            }
-        >
-            <Head title={`Dashboard ${roleType}`} />
+                    ) : null}
+                />
 
-            <div className="bg-surface min-h-screen">
-                <div className="mx-auto w-full space-y-6">
-                    {/* Kehadiran Hari Ini, prominent full-width */}
                     <div className="card p-6">
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
                             <UserCheck className="h-4 w-4 text-emerald-600" />
@@ -478,7 +473,6 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                         </div>
                     </div>
 
-                    {/* Stat cards */}
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
                         <StatCard label="Pegawai Aktif" value={s.total_pegawai || 0} Icon={Users} iconBg="bg-primary/10" iconCls="text-primary" />
                         <StatCard label={selectedUnitNama ? `Unit: ${selectedUnitNama}` : 'Unit Sekolah'} value={selectedUnitNama || s.total_unit || 0} Icon={School} iconBg="bg-blue-100" iconCls="text-blue-600" />
@@ -504,7 +498,6 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                         )}
                     </div>
 
-                    {/* Kelas kosong — JP tanpa presensi guru (mengajar), lalu piket */}
                     <KelasKosongCard rows={kelasKosongMengajar} summary={kelasKosongSummary} />
                     {(kelasKosongPiket?.length > 0) && (
                         <div className="card border-l-4 border-info px-5 py-4">
@@ -583,7 +576,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                         </div>
                     )}
 
-                    {/* Jadwal Hari Ini */}
+
                     <div className="card p-0 overflow-hidden">
                         <div className="flex flex-col gap-3 border-b border-border/60 bg-surface/50 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                             <h3 className="flex flex-wrap items-center gap-2 text-base font-bold text-primary">
@@ -807,7 +800,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                         })()}
                     </div>
 
-                    {/* Tren Kehadiran + Payroll */}
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div className="card p-6">
                             <h3 className="flex flex-wrap items-center gap-2 text-base font-bold text-primary">
@@ -874,7 +867,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                         </div>
                     </div>
 
-                    {/* Kontrak Berakhir + Pengumuman */}
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div className="card p-0 overflow-hidden">
                             <div className="flex items-center justify-between border-b border-border/60 bg-surface/50 px-5 py-4">
@@ -967,8 +960,7 @@ function DashboardContent({ auth, roleType, stats, trends, kontrakBerakhir, jadw
                             )}
                         </div>
                     </div>
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
