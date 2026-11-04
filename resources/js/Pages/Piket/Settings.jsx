@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, usePage } from '@inertiajs/react';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, Input, PageHeader, Select } from '@/Components/AdminUI';
+import { Head, router } from '@inertiajs/react';
 import { Save, Plus, Trash2, MapPin, ListChecks, Users, ShieldAlert } from 'lucide-react';
 
 const TABS = [
@@ -11,8 +12,6 @@ const TABS = [
 ];
 
 export default function PiketSettings({ auth, units = [], unit, areas = [], mapping = [], unmapped = [], pos = [], templates = [], penugasan = [], pegawai = [], sesiHariIni = null }) {
-    const { flash = {} } = usePage().props;
-    const [modeErr, setModeErr] = useState(null);
     const [tab, setTab] = useState('area');
     const [areaForm, setAreaForm] = useState({ id: '', nama: '', urutan: 1 });
     const [mapForm, setMapForm] = useState({ kelas_label: '', area_id: '' });
@@ -54,61 +53,60 @@ export default function PiketSettings({ auth, units = [], unit, areas = [], mapp
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Piket</h2>}>
-            <Head title="Piket" />
+        <AdminShell user={auth.user} header={<h2 className="page-title">Piket</h2>}>
+            <Head title="Pengaturan Piket" />
 
-            <div className="mx-auto w-full max-w-6xl space-y-4">
-                {flash.error && (
-                    <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-                        {flash.error}
-                    </div>
-                )}
-                {flash.message && (
-                    <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                        {flash.message}
-                    </div>
-                )}
+            <div className="mx-auto w-full max-w-6xl space-y-5">
+                <PageHeader
+                    eyebrow="Piket"
+                    title="Pengaturan Piket"
+                    description="Atur area, pos, checklist, dan penugasan petugas piket."
+                />
 
                 {units.length === 0 ? (
-                    <div className="card p-6 text-sm text-text-secondary">
+                    <Card className="p-6 text-sm text-text-secondary">
                         Belum ada unit dengan mode area. Aktifkan lewat seeder/migrasi terlebih dahulu.
-                    </div>
+                    </Card>
                 ) : (
                     <>
-                        <div className="flex flex-wrap items-center gap-3">
+                        <Card className="flex flex-wrap items-center gap-3 p-4">
                             <label className="text-xs font-semibold text-text-secondary">Unit</label>
-                            <select
-                                className="select-field w-auto"
+                            <Select
+                                className="w-auto"
                                 value={unitId}
                                 onChange={(e) => router.get(route('piket.settings.index'), { unit: e.target.value }, { preserveState: true })}
+                                aria-label="Pilih unit"
                             >
                                 {units.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
-                            </select>
+                            </Select>
                             <span className={`rounded-full px-2 py-1 text-xs font-bold uppercase ${unit?.piket_mode === 'area' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                                 mode {unit?.piket_mode === 'area' ? 'area' : 'sederhana'}
                             </span>
-                            <button
+                            <Button
                                 type="button"
+                                variant="secondary"
+                                size="sm"
                                 onClick={() => post('piket.settings.mode', {
                                     unit_sekolah_id: unitId,
                                     mode: unit?.piket_mode === 'area' ? 'simple' : 'area',
                                 })}
-                                className="btn-secondary btn-sm"
                             >
                                 {unit?.piket_mode === 'area' ? 'Kembali ke sederhana' : 'Aktifkan mode area'}
-                            </button>
-                        </div>
+                            </Button>
+                        </Card>
 
-                        <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-white p-1">
+                        <div className="inline-flex max-w-full overflow-x-auto rounded-xl border border-border bg-white p-1">
                             {TABS.map(({ key, label, Icon }) => (
-                                <button
+                                <Button
                                     key={key}
                                     type="button"
+                                    size="sm"
+                                    variant={tab === key ? 'primary' : 'ghost'}
                                     onClick={() => setTab(key)}
-                                    className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs font-bold ${tab === key ? 'bg-primary text-white' : 'text-text-secondary'}`}
+                                    className="min-h-11 whitespace-nowrap"
                                 >
                                     <Icon className="h-4 w-4" /> {label}
-                                </button>
+                                </Button>
                             ))}
                         </div>
 
@@ -301,6 +299,6 @@ export default function PiketSettings({ auth, units = [], unit, areas = [], mapp
                     </>
                 )}
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
