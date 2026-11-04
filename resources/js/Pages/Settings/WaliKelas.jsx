@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
+import { Head, router, useForm } from '@inertiajs/react';
 import { Save, UserRoundCheck } from 'lucide-react';
 
 import { labelKelas } from '@/Utils/kelas';
 
 export default function WaliKelas({ auth, units = [], mappings = [], pegawais = [], classes = [], filters = {}, defaults = {} }) {
-    const { flash } = usePage().props;
     const [manualClass, setManualClass] = useState(false);
     const [editingId, setEditingId] = useState(null);
 
@@ -92,17 +92,18 @@ export default function WaliKelas({ auth, units = [], mappings = [], pegawais = 
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Wali Kelas</h2>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Wali Kelas</h2>}>
             <Head title="Wali Kelas" />
 
-            <div className="mx-auto w-full max-w-6xl space-y-4">
-                {flash?.message && (
-                    <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                        {flash.message}
-                    </div>
-                )}
+            <div className="mx-auto w-full max-w-6xl space-y-5">
+                <PageHeader
+                    eyebrow="Pengaturan"
+                    title="Wali Kelas"
+                    description="Tetapkan wali kelas per unit, tahun ajaran, dan semester."
+                />
 
-                <form onSubmit={submitFilter} className="page-card p-4 sm:p-5">
+                <Card className="p-4 sm:p-5">
+                <form onSubmit={submitFilter}>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                         <label className="block">
                             <span className="form-label">Unit</span>
@@ -122,13 +123,15 @@ export default function WaliKelas({ auth, units = [], mappings = [], pegawais = 
                             </select>
                         </label>
                         <div className="flex items-end">
-                            <button type="submit" className="btn-primary w-full">Tampilkan</button>
+                            <Button type="submit" className="w-full">Tampilkan</Button>
                         </div>
                     </div>
                 </form>
+                </Card>
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-                    <form onSubmit={submit} className="page-card p-4 sm:p-5 lg:col-span-2">
+                    <Card className="p-4 sm:p-5 lg:col-span-2">
+                    <form onSubmit={submit}>
                         <div className="mb-4 flex items-center gap-2">
                             <UserRoundCheck className="h-5 w-5 text-primary" />
                             <h3 className="section-title">{editingId ? 'Ubah Wali Kelas' : 'Tambah Wali Kelas'}</h3>
@@ -177,12 +180,13 @@ export default function WaliKelas({ auth, units = [], mappings = [], pegawais = 
                             </div>
                         </div>
 
-                        <button type="submit" disabled={processing || !filters.unit_id || pegawais.length === 0} className="btn-primary mt-4 inline-flex w-full items-center justify-center gap-2">
+                        <Button type="submit" disabled={processing || !filters.unit_id || pegawais.length === 0} className="mt-4 w-full">
                             <Save className="h-4 w-4" /> Simpan
-                        </button>
+                        </Button>
                     </form>
+                    </Card>
 
-                    <div className="page-card card-table lg:col-span-3">
+                    <Card className="overflow-hidden lg:col-span-3">
                         <div className="border-b border-border px-4 py-3">
                             <h3 className="section-title">Daftar Wali Kelas</h3>
                             <p className="mt-0.5 text-xs text-text-muted">{mappings.length} mapping</p>
@@ -223,9 +227,9 @@ export default function WaliKelas({ auth, units = [], mappings = [], pegawais = 
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </Card>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

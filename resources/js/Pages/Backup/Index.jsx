@@ -1,5 +1,6 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import { Head } from '@inertiajs/react';
 import { AlertTriangle, Database, Download, ShieldCheck } from 'lucide-react';
 
@@ -10,20 +11,20 @@ export default function BackupIndex({ auth, errors }) {
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Backup Database</h2>}
         >
             <Head title="Backup Database" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    <div>
-                        <h3 className="text-xl font-extrabold text-text-primary">Pencadangan Sistem (Database)</h3>
-                        <p className="text-sm text-text-muted">Unduh salinan mentah (raw dump) database HRIS sebagai arsip keamanan.</p>
-                    </div>
+            <div className="mx-auto w-full max-w-4xl space-y-5">
+                    <PageHeader
+                        eyebrow="Sistem"
+                        title="Pencadangan Sistem"
+                        description="Unduh salinan mentah (raw dump) database HRIS sebagai arsip keamanan."
+                    />
 
-                    <div className="card p-6">
+                    <Card className="p-6">
                         <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-start">
                             <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
                                 <Database className="h-8 w-8 text-primary" />
@@ -51,9 +52,9 @@ export default function BackupIndex({ auth, errors }) {
                                         <li>Simpan file <code className="rounded bg-white px-1 py-0.5 font-bold">.sql</code> di tempat yang aman karena memuat data rahasia yayasan.</li>
                                     </ul>
 
-                                    <button onClick={handleBackup} className="btn-primary mt-4 inline-flex items-center gap-2">
+                                    <Button onClick={handleBackup} className="mt-4">
                                         <Download className="h-4 w-4" /> Backup & Download (.sql)
-                                    </button>
+                                    </Button>
                                 </div>
 
                                 <div className="mt-4 flex items-start gap-2 text-xs text-text-muted">
@@ -62,9 +63,8 @@ export default function BackupIndex({ auth, errors }) {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </Card>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

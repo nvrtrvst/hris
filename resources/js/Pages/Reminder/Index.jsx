@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, usePage, router } from '@inertiajs/react';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
+import { Head, useForm, router } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
 import { Bell, Plus, Trash2, Send, Clock, Calendar, Filter, AlertCircle, Repeat, Users, Building2, CheckCircle, RotateCcw, Pencil } from 'lucide-react';
@@ -13,7 +14,6 @@ const TYPE_OPTIONS = [
 ];
 
 export default function Index({ auth, reminders, units, filters, pegawaiOptions = [] }) {
-    const { flash } = usePage().props;
     const [showCreate, setShowCreate] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
     const [editingReminder, setEditingReminder] = useState(null);
@@ -127,24 +127,22 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Kelola Reminder</h2>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Kelola Reminder</h2>}>
             <Head title="Reminder" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    {/* Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div>
-                            <h3 className="text-xl font-extrabold text-text-primary">Reminder</h3>
-                            <p className="text-sm text-text-muted">Kirim pengingat otomatis atau manual ke pegawai.</p>
-                        </div>
-                        <button onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
-                            <Plus className="w-4 h-4" /> Buat Reminder
-                        </button>
-                    </div>
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="Pengaturan"
+                        title="Reminder"
+                        description="Kirim pengingat otomatis atau manual ke pegawai."
+                        actions={
+                            <Button onClick={openCreate}>
+                                <Plus className="w-4 h-4" /> Buat Reminder
+                            </Button>
+                        }
+                    />
 
-                    {/* Filter */}
-                    <div className="card p-4">
+                    <Card className="p-4">
                         <div className="flex items-center gap-3 flex-wrap">
                             <Filter className="w-4 h-4 text-text-muted" />
                             <button onClick={() => handleFilterType('semua')}
@@ -158,10 +156,9 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                                 </button>
                             ))}
                         </div>
-                    </div>
+                    </Card>
 
-                    {/* List */}
-                    <div className="card overflow-hidden">
+                    <Card className="overflow-hidden">
                         {reminders.data.length === 0 ? (
                             <div className="text-center py-12">
                                 <Bell className="mx-auto h-12 w-12 text-text-muted/30" />
@@ -244,11 +241,9 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                                 <Pagination links={reminders.links} data={{ type: typeFilter }} />
                             </div>
                         )}
-                    </div>
-                </div>
+                    </Card>
             </div>
 
-            {/* Create Modal */}
             <Modal show={showCreate} onClose={closeCreate} maxWidth="lg">
                 <div className="bg-white rounded-card overflow-hidden">
                     <div className="page-card-header px-6 py-4 bg-surface border-border">
@@ -393,7 +388,6 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                 </div>
             </Modal>
 
-            {/* Edit Modal */}
             <Modal show={showEdit} onClose={closeEdit} maxWidth="lg">
                 <div className="bg-white rounded-card overflow-hidden">
                     <div className="page-card-header px-6 py-4 bg-surface border-border">
@@ -518,6 +512,6 @@ export default function Index({ auth, reminders, units, filters, pegawaiOptions 
                     </form>
                 </div>
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

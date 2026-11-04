@@ -1,10 +1,11 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, PageHeader } from '@/Components/AdminUI';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Copy, Save } from 'lucide-react';
 
 export default function Templates({ templates = [], units = [] }) {
-    const { auth, flash = {}, errors = {} } = usePage().props;
+    const { auth, errors = {} } = usePage().props;
     const [drafts, setDrafts] = React.useState(() => Object.fromEntries(templates.map((template) => [template.id, {
         nama: template.nama,
         indicators: template.indicators.map((indicator) => ({
@@ -37,17 +38,19 @@ export default function Templates({ templates = [], units = [] }) {
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h1 className="page-title">Template KPI</h1>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Template KPI</h2>}>
             <Head title="Template KPI" />
-            <div className="min-h-screen bg-surface py-6">
-                <div className="mx-auto max-w-6xl space-y-5 px-4 sm:px-6 lg:px-8">
-                    <Link href={route('kpi.index')} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ArrowLeft className="h-4 w-4" />Kembali ke laporan</Link>
-                    <div>
-                        <h2 className="text-xl font-extrabold text-text-primary">Template KPI per jabatan</h2>
-                        <p className="mt-1 text-sm text-text-muted">Total bobot setiap template harus 100%. Perubahan hanya berlaku untuk evaluasi baru.</p>
-                    </div>
-                    {flash.message && <div role="status" className="rounded-xl border border-success/30 bg-success-light px-4 py-3 text-sm font-semibold text-success">{flash.message}</div>}
-                    {flash.error && <div role="alert" className="rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm font-semibold text-danger">{flash.error}</div>}
+            <div className="mx-auto w-full max-w-6xl space-y-5">
+                    <PageHeader
+                        eyebrow="KPI"
+                        title="Template KPI per Jabatan"
+                        description="Total bobot setiap template harus 100%. Perubahan hanya berlaku untuk evaluasi baru."
+                        actions={
+                            <Link href={route('kpi.index')} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                                <ArrowLeft className="h-4 w-4" /> Kembali
+                            </Link>
+                        }
+                    />
                     {errors.indicators && <div role="alert" className="rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm font-semibold text-danger">{errors.indicators}</div>}
 
                     <form onSubmit={createOverride} className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-white p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
@@ -62,7 +65,7 @@ export default function Templates({ templates = [], units = [] }) {
                                 <option value="">Pilih unit</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
                             </select>
                         </label>
-                        <button type="submit" className="btn-secondary inline-flex items-center justify-center gap-2"><Copy className="h-4 w-4" />Buat penyesuaian</button>
+                        <Button type="submit" variant="secondary"><Copy className="h-4 w-4" />Buat penyesuaian</Button>
                     </form>
 
                     <div className="space-y-4">
@@ -102,13 +105,12 @@ export default function Templates({ templates = [], units = [] }) {
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="flex justify-end border-t border-border p-4"><button disabled={Math.round(total * 100) / 100 !== 100} type="submit" className="btn-primary inline-flex items-center gap-2 disabled:opacity-50"><Save className="h-4 w-4" />Simpan template</button></div>
+                                    <div className="flex justify-end border-t border-border p-4"><Button disabled={Math.round(total * 100) / 100 !== 100} type="submit"><Save className="h-4 w-4" />Simpan template</Button></div>
                                 </form>
                             );
                         })}
                     </div>
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

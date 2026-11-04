@@ -1,6 +1,7 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
+import { Head, Link, router } from '@inertiajs/react';
 import { CalendarDays, Search } from 'lucide-react';
 
 const PERIOD_LABEL = { daily: 'Harian', weekly: 'Mingguan', monthly: 'Bulanan' };
@@ -20,7 +21,6 @@ export default function Index({ auth, rows = [], units = [], jabatans = [], filt
         jabatan_id: filters.jabatan_id || '',
         search: filters.search || '',
     });
-    const flash = usePage().props.flash || {};
     const isMonthly = (filters.periode || 'monthly') === 'monthly';
     const hasFilter = Boolean(filters.unit_sekolah_id || filters.jabatan_id || filters.search);
 
@@ -41,28 +41,26 @@ export default function Index({ auth, rows = [], units = [], jabatans = [], filt
     const exportParams = { ...filters, page: undefined };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h1 className="page-title">KPI Pegawai</h1>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">KPI Pegawai</h2>}>
             <Head title="KPI Pegawai" />
-            <div className="min-h-screen bg-surface py-6">
-                <div className="mx-auto w-full max-w-7xl space-y-5 px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                            <h2 className="text-xl font-extrabold text-text-primary">Pemantauan & penilaian KPI</h2>
-                            <p className="mt-1 max-w-2xl text-sm text-text-muted">Harian dan mingguan untuk memantau; bulanan untuk nilai resmi. Angka per pegawai dibandingkan dalam jabatan yang sama.</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <a href={route('kpi.index', { ...exportParams, export: 'excel' })} className="btn-secondary">Unduh Excel</a>
-                            {pdfTerlaluBesar
-                                ? <span className="text-xs font-semibold text-text-muted">PDF maksimal 500 baris — pakai Excel.</span>
-                                : <a href={route('kpi.index', { ...exportParams, export: 'pdf' })} className="btn-secondary">Unduh PDF</a>}
-                            {canManageTemplates && <Link href={route('kpi.templates.index')} className="btn-secondary">Atur template KPI</Link>}
-                        </div>
-                    </div>
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="KPI"
+                        title="Pemantauan & Penilaian KPI"
+                        description="Harian dan mingguan untuk memantau; bulanan untuk nilai resmi."
+                        actions={
+                            <>
+                                <a href={route('kpi.index', { ...exportParams, export: 'excel' })} className="inline-flex h-10 items-center rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">Unduh Excel</a>
+                                {pdfTerlaluBesar
+                                    ? <span className="text-xs font-semibold text-text-muted">PDF maksimal 500 baris, pakai Excel.</span>
+                                    : <a href={route('kpi.index', { ...exportParams, export: 'pdf' })} className="inline-flex h-10 items-center rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">Unduh PDF</a>}
+                                {canManageTemplates && <Link href={route('kpi.templates.index')} className="inline-flex h-10 items-center rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">Atur template KPI</Link>}
+                            </>
+                        }
+                    />
 
-                    {flash.message && <div role="status" className="rounded-xl border border-success/30 bg-success-light px-4 py-3 text-sm font-semibold text-success">{flash.message}</div>}
-                    {flash.error && <div role="alert" className="rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm font-semibold text-danger">{flash.error}</div>}
-
-                    <form onSubmit={filter} className="rounded-xl border border-border bg-white p-4">
+                    <Card className="p-4">
+                    <form onSubmit={filter}>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                             <label className="form-label text-xs">Periode
                                 <select value={form.periode} onChange={(e) => setForm({ ...form, periode: e.target.value })} className="select-field mt-1 w-full">
@@ -89,11 +87,12 @@ export default function Index({ auth, rows = [], units = [], jabatans = [], filt
                         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                             <p className="flex items-center gap-1.5 text-xs font-semibold text-text-muted"><CalendarDays className="h-4 w-4" />{periode.start} s/d {periode.end}{isMonthly && periode.kalender_selesai !== periode.end ? ' · progres bulan berjalan' : ''}</p>
                             <div className="flex items-center gap-2">
-                                {hasFilter && <button type="button" onClick={() => { setForm({ ...form, unit_sekolah_id: '', jabatan_id: '', search: '' }); router.get(route('kpi.index'), { periode: form.periode, tanggal: form.tanggal }, { preserveState: true }); }} className="btn-secondary">Reset filter</button>}
-                                <button type="submit" className="btn-primary">Tampilkan</button>
+                                {hasFilter && <Button variant="secondary" onClick={() => { setForm({ ...form, unit_sekolah_id: '', jabatan_id: '', search: '' }); router.get(route('kpi.index'), { periode: form.periode, tanggal: form.tanggal }, { preserveState: true }); }}>Reset filter</Button>}
+                                <Button type="submit">Tampilkan</Button>
                             </div>
                         </div>
                     </form>
+                    </Card>
 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {isMonthly ? (
@@ -186,9 +185,8 @@ export default function Index({ auth, rows = [], units = [], jabatans = [], filt
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </div>
+        </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
