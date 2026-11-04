@@ -47,9 +47,9 @@ export default function ProfileHero({ user }) {
 
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl break-words">
+                            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl break-words">
                                 {user?.name ?? 'Pengguna'}
-                            </h1>
+                            </h2>
                             {verified && (
                                 <span className="badge inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
                                     <BadgeCheck className="h-3.5 w-3.5" /> Terverifikasi

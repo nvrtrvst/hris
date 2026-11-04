@@ -1,4 +1,5 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { PageHeader } from '@/Components/AdminUI';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import PegawaiDataCard from './Partials/PegawaiDataCard';
 import ProfileHero from './Partials/ProfileHero';
@@ -8,26 +9,20 @@ import { Head, usePage } from '@inertiajs/react';
 
 export default function Edit({ mustVerifyEmail, status }) {
     const user = usePage().props.auth.user;
-    const Layout = AuthenticatedLayout;
 
     return (
-        <Layout
+        <AdminShell
             user={user}
-            header={
-                <div>
-                    <h2 className="text-2xl font-bold leading-tight text-text-primary">
-                        Profil Saya
-                    </h2>
-                    <p className="mt-1 text-sm text-text-secondary">
-                        Kelola informasi akun, kata sandi, dan preferensi Anda.
-                    </p>
-                </div>
-            }
+            header={<h2 className="page-title">Profil Saya</h2>}
         >
             <Head title="Profile" />
 
-            <div className="py-10">
-                <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8 animate-fade-in-up">
+            <div className="mx-auto w-full max-w-6xl space-y-6">
+                    <PageHeader
+                        eyebrow="Akun"
+                        title="Profil Saya"
+                        description="Kelola informasi akun, kata sandi, dan preferensi Anda."
+                    />
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                         <aside className="lg:sticky lg:top-24 lg:self-start">
                             <ProfileHero user={user} />
@@ -52,8 +47,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                             </div>
                         </main>
                     </div>
-                </div>
             </div>
-        </Layout>
+        </AdminShell>
     );
 }

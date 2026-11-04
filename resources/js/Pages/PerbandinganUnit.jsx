@@ -1,5 +1,6 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import { Head, router } from '@inertiajs/react';
 
 const statusStyle = {
@@ -38,20 +39,18 @@ export default function PerbandinganUnit({ units, filter }) {
     };
 
     return (
-        <AuthenticatedLayout
-            user={null}
-            header={
-                <div className="page-header mb-0">
-                    <h1 className="page-title">Perbandingan Kehadiran Antar Unit</h1>
-                </div>
-            }
+        <AdminShell
+            header={<h2 className="page-title">Perbandingan Unit</h2>}
         >
             <Head title="Perbandingan Unit" />
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="Dashboard"
+                        title="Perbandingan Kehadiran Antar Unit"
+                        description="Bandingkan rekap kehadiran unit pada periode yang sama."
+                    />
 
-                    {/* Filter */}
-                    <div className="filter-bar card p-4">
+                    <Card className="flex flex-wrap items-end gap-3 p-4">
                         <div>
                             <label className="form-label text-xs">Periode</label>
                             <select className="select-field text-sm h-9" value={period} onChange={e => {
@@ -75,13 +74,12 @@ export default function PerbandinganUnit({ units, filter }) {
                                     <label className="form-label text-xs">Sampai</label>
                                     <input type="date" className="input-field text-sm h-9" value={endDate} onChange={e => setEndDate(e.target.value)} />
                                 </div>
-                                <button onClick={applyFilter} className="btn-primary btn-sm self-end">Terapkan</button>
+                                <Button size="sm" className="self-end" onClick={applyFilter}>Terapkan</Button>
                             </>
                         )}
-                    </div>
+                    </Card>
 
-                    {/* Tabel */}
-                    <div className="card-table">
+                    <Card className="overflow-hidden">
                         <div className="table-wrap">
                             <table className="table-base">
                                 <thead>
@@ -125,10 +123,8 @@ export default function PerbandinganUnit({ units, filter }) {
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-
-                </div>
+                    </Card>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
