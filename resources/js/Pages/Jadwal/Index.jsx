@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { subscribeRouter } from '@/Utils/routerEvents';
 import useNowEveryMinute from '@/Utils/useNowEveryMinute';
 import usePolling from '@/Utils/usePolling';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import Dropdown from '@/Components/Dropdown';
 import FilterSheet from '@/Components/FilterSheet';
-import StatCard from '@/Components/StatCard';
+import { Button, Card, Input, PageHeader, Select } from '@/Components/AdminUI';
 import { DAYS, durasiMenit, fmtDurasi, jenisBadge, toMinutes } from '@/Pages/Jadwal/Partials/jadwalMeta';
 import GenerateModal from '@/Pages/Jadwal/Partials/GenerateModal';
 import ImportModal from '@/Pages/Jadwal/Partials/ImportModal';
@@ -58,7 +59,7 @@ const JadwalLiveBadge = ({ jadwal, presensi, now }) => {
 
     return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700 print:hidden">
-            <span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-amber-500" aria-hidden="true" />
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
             Mengajar
         </span>
     );
@@ -66,7 +67,7 @@ const JadwalLiveBadge = ({ jadwal, presensi, now }) => {
 
 export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, stats = {}, filters = {}, presensiHariIni = [], canMutateJadwal = false, needsUnitFilter = false, jpMinggu = {}, targetJpMinggu = 24 }) {
     const isAdmin = auth.permissions?.includes('view_jadwal') || auth.permissions?.includes('manage_jadwal');
-    const { flash = {}, errors = {} } = usePage().props;
+    const { errors = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
     const now = useNowEveryMinute();
 
@@ -428,57 +429,74 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         { label: 'Kelas Unik', value: s.total_kelas, Icon: GraduationCap, iconBg: 'bg-purple-100', iconCls: 'text-purple-600' },
     ];
 
-    const filterSelect = 'select-field text-xs h-9 w-full md:w-auto md:min-w-[150px]';
+    const filterSelect = 'h-10 w-full text-xs';
     const [filterSheetOpen, setFilterSheetOpen] = React.useState(false);
     const activeFilterCount = [unitFilter, jenisFilter, kelasFilter, searchName].filter(Boolean).length;
 
     const unitSingkatan = (pegawai) => pegawai?.units?.[0]?.singkatan || '-';
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">{isAdmin ? 'Jadwal Pegawai' : 'Jadwal Pribadi'}</h2>}
         >
             <Head title="Jadwal Pegawai" />
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-                    
-                    {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                    {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
-
-                    
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
-                        <div>
-                            <h3 className="text-xl font-bold text-primary">{isAdmin ? 'Jadwal Mingguan (Matriks)' : 'Jadwal Saya'}</h3>
-                            <p className="mt-1 text-sm text-text-secondary">Pantau beban mengajar & antrean kelas semua pegawai dalam satu papan tanpa bentrok.</p>
-                        </div>
-                        {isAdmin && (
-                            <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setViewMode('matrix')}
-                                    aria-pressed={viewMode === 'matrix'}
-                                    className={`btn-sm flex items-center gap-1.5 ${viewMode === 'matrix' ? 'btn-primary' : 'btn-secondary'}`}
-                                >
-                                    <LayoutGrid className="h-3.5 w-3.5" /> Matriks
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setViewMode('guru')}
-                                    aria-pressed={viewMode === 'guru'}
-                                    className={`btn-sm flex items-center gap-1.5 ${viewMode === 'guru' ? 'btn-primary' : 'btn-secondary'}`}
-                                >
-                                    <UserRound className="h-3.5 w-3.5" /> Per Guru
-                                </button>
-                        </div>
-                    )}
-                    </div>
-
-                    
+            <div className="mx-auto max-w-7xl space-y-5">
                     {isAdmin && (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                            {statCards.map((card) => <StatCard key={card.label} {...card} />)}
-                        </div>
+                        <PageHeader
+                            eyebrow="Kepegawaian"
+                            title={viewMode === 'matrix' ? 'Jadwal Mingguan' : 'Jadwal Per Guru'}
+                            description="Pantau beban mengajar dan antrean kelas tanpa bentrok."
+                            actions={
+                                <div className="inline-flex rounded-xl border border-border bg-white p-1">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={viewMode === 'matrix' ? 'primary' : 'ghost'}
+                                        onClick={() => setViewMode('matrix')}
+                                        aria-pressed={viewMode === 'matrix'}
+                                    >
+                                        <LayoutGrid className="h-3.5 w-3.5" /> Matriks
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={viewMode === 'guru' ? 'primary' : 'ghost'}
+                                        onClick={() => setViewMode('guru')}
+                                        aria-pressed={viewMode === 'guru'}
+                                    >
+                                        <UserRound className="h-3.5 w-3.5" /> Per Guru
+                                    </Button>
+                                </div>
+                            }
+                        />
+                    )}
+
+                    {!isAdmin && (
+                        <PageHeader
+                            eyebrow="Kepegawaian"
+                            title="Jadwal Saya"
+                            description="Jadwal mengajar dan aktivitas yang ditetapkan untuk Anda."
+                        />
+                    )}
+
+                    {isAdmin && (
+                        <Card className="p-3 sm:p-4">
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                                {statCards.map(({ label, value, sub, Icon, iconBg, iconCls }) => (
+                                    <div key={label} className="flex items-center gap-2.5 rounded-lg px-2 py-2">
+                                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconBg} ${iconCls}`}>
+                                            <Icon className="h-4 w-4" />
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-base font-bold leading-tight text-primary">{value}</p>
+                                            <p className="truncate text-[10px] font-semibold text-text-secondary">{label}</p>
+                                            {sub && <p className="truncate text-[10px] text-text-muted">{sub}</p>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
                     )}
 
                     
@@ -493,89 +511,86 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                             
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
                                 <div className="relative lg:col-span-2">
-                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <input
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                    <Input
                                         type="text"
                                         value={searchName}
                                         onChange={(e) => setSearchName(e.target.value)}
-                                        placeholder="Cari nama pegawai…"
+                                        placeholder="Cari nama pegawai..."
                                         aria-label="Cari nama pegawai"
-                                        className="input-field h-9 pl-9 text-xs w-full"
+                                        className="h-10 pl-9 text-xs"
                                     />
                                 </div>
-                                <select aria-label="Filter unit" className={filterSelect} value={unitFilter} onChange={handleUnitFilterChange}>
+                                <Select aria-label="Filter unit" className={filterSelect} value={unitFilter} onChange={handleUnitFilterChange}>
                                     <option value="">Semua Unit</option>
                                     {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                                </select>
-                                <select aria-label="Filter jenis pegawai" className={filterSelect} value={jenisFilter} onChange={handleJenisFilterChange}>
+                                </Select>
+                                <Select aria-label="Filter jenis pegawai" className={filterSelect} value={jenisFilter} onChange={handleJenisFilterChange}>
                                     <option value="semua">Semua Jenis</option>
                                     <option value="pendidik">Pendidik (Guru)</option>
                                     <option value="kependidikan">Tenaga Kependidikan</option>
-                                </select>
-                                <select aria-label="Filter kelas" className={filterSelect} value={kelasFilter} onChange={handleKelasFilterChange}>
+                                </Select>
+                                <Select aria-label="Filter kelas" className={filterSelect} value={kelasFilter} onChange={handleKelasFilterChange}>
                                     <option value="">Semua Kelas</option>
                                     {kelasLabels.map((kl) => <option key={kl} value={kl}>{kl}</option>)}
-                                </select>
+                                </Select>
                             </div>
                         </FilterSheet>
 
                             
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
                                 {hasFilter && (
-                                    <button type="button" onClick={resetFilters} className="btn-secondary btn-sm flex items-center gap-1.5">
+                                    <Button type="button" variant="secondary" size="sm" onClick={resetFilters}>
                                         <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
-                                    </button>
+                                    </Button>
                                 )}
-                                <div className="ml-auto flex flex-wrap items-center gap-2 print:hidden">
-                                    <a href={route('jadwal.export-pdf', buildParams())} className="btn-secondary btn-sm flex items-center gap-1.5">
-                                        <Printer className="h-3.5 w-3.5" /> Cetak PDF
-                                    </a>
-                                    {canMutateJadwal && (
-                                        <button type="button" onClick={() => setShowImportModal(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
-                                            <Upload className="h-3.5 w-3.5" /> Import Jadwal
+
+                                <Dropdown>
+                                    <Dropdown.Trigger>
+                                        <Button type="button" variant="secondary" size="sm">
+                                            <CalendarRange className="h-3.5 w-3.5" /> Alat Jadwal <ChevronDown className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </Dropdown.Trigger>
+                                    <Dropdown.Content align="right" width="48">
+                                        <a href={route('jadwal.export-pdf', buildParams())} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-text-primary hover:bg-surface">
+                                            <Printer className="h-4 w-4" /> Cetak PDF
+                                        </a>
+                                        {canMutateJadwal && (
+                                            <button type="button" onClick={() => setShowImportModal(true)} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-text-primary hover:bg-surface">
+                                                <Upload className="h-4 w-4" /> Import Jadwal
+                                            </button>
+                                        )}
+                                        {canMutateJadwal && (
+                                            <button type="button" onClick={() => { setDayUnit(unitFilter || units[0]?.id || ''); setShowDayModal(true); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-text-primary hover:bg-surface">
+                                                <ArrowLeftRight className="h-4 w-4" /> Tukar Seharian
+                                            </button>
+                                        )}
+                                        {canMutateJadwal && (
+                                            <button type="button" onClick={() => { setBulkUnit(unitFilter || units[0]?.id || ''); setBulkPairs([{ asal: '', tujuan: '' }]); setShowBulkModal(true); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-text-primary hover:bg-surface">
+                                                <ArrowLeftRight className="h-4 w-4" /> Tukar Banyak
+                                            </button>
+                                        )}
+                                        {canMutateJadwal && (
+                                            <button type="button" onClick={() => { setSlotUnit(unitFilter || units[0]?.id || ''); setSlotA(''); setSlotB(''); setShowSlotModal(true); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-text-primary hover:bg-surface">
+                                                <Clock3 className="h-4 w-4" /> Tukar Slot
+                                            </button>
+                                        )}
+                                        <button type="button" onClick={() => setShowRekapModal(true)} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-text-primary hover:bg-surface">
+                                            <CalendarRange className="h-4 w-4" /> Rekap Kelas
                                         </button>
-                                    )}
-                                    {canMutateJadwal && (
-                                        <button
-                                            type="button"
-                                            onClick={() => { setDayUnit(unitFilter || units[0]?.id || ''); setShowDayModal(true); }}
-                                            className="btn-secondary btn-sm flex items-center gap-1.5"
-                                        >
-                                            <ArrowLeftRight className="h-3.5 w-3.5" /> Tukar Seharian
-                                        </button>
-                                    )}
-                                    {canMutateJadwal && (
-                                        <button
-                                            type="button"
-                                            onClick={() => { setBulkUnit(unitFilter || units[0]?.id || ''); setBulkPairs([{ asal: '', tujuan: '' }]); setShowBulkModal(true); }}
-                                            className="btn-secondary btn-sm flex items-center gap-1.5"
-                                        >
-                                            <ArrowLeftRight className="h-3.5 w-3.5" /> Tukar Banyak
-                                        </button>
-                                    )}
-                                    {canMutateJadwal && (
-                                        <button
-                                            type="button"
-                                            onClick={() => { setSlotUnit(unitFilter || units[0]?.id || ''); setSlotA(''); setSlotB(''); setShowSlotModal(true); }}
-                                            className="btn-secondary btn-sm flex items-center gap-1.5"
-                                        >
-                                            <Clock3 className="h-3.5 w-3.5" /> Tukar Slot
-                                        </button>
-                                    )}
-                                    {canMutateJadwal && (
-                                        <button type="button" onClick={() => setShowGenerateModal(true)} className="btn-primary btn-sm bg-accent text-primary-800 hover:bg-yellow-500 flex items-center gap-1.5">
-                                            <Sparkles className="h-3.5 w-3.5" /> Generate Otomatis
-                                        </button>
-                                    )}
-                                    <button type="button" onClick={() => setShowRekapModal(true)} className="btn-secondary btn-sm flex items-center gap-1.5">
-                                        <CalendarRange className="h-3.5 w-3.5" /> Rekap Kelas
-                                    </button>
-                                    {canMutateJadwal && (
-                                        <Link href={route('jadwal.create')} className="btn-primary btn-sm flex items-center gap-1.5">
-                                            <Plus className="h-3.5 w-3.5" /> Tambah Jadwal
-                                        </Link>
-                                    )}
-                                </div>
+                                    </Dropdown.Content>
+                                </Dropdown>
+
+                                {canMutateJadwal && (
+                                    <Button type="button" size="sm" onClick={() => setShowGenerateModal(true)} className="bg-accent text-primary-800 hover:bg-yellow-500">
+                                        <Sparkles className="h-3.5 w-3.5" /> Generate Otomatis
+                                    </Button>
+                                )}
+                                {canMutateJadwal && (
+                                    <Link href={route('jadwal.create')} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white transition-colors hover:bg-primary-600">
+                                        <Plus className="h-3.5 w-3.5" /> Tambah Jadwal
+                                    </Link>
+                                )}
                             </div>
                         </>
                     )}
@@ -1104,8 +1119,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                             units={units}
                         />
                     )}
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
