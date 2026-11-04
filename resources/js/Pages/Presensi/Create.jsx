@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 export default function Create({ auth, jadwals, presensis, pegawai }) {
@@ -20,7 +21,6 @@ export default function Create({ auth, jadwals, presensis, pegawai }) {
     });
 
     useEffect(() => {
-        // Get Geolocation
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -43,7 +43,6 @@ export default function Create({ auth, jadwals, presensis, pegawai }) {
             setLocError("Browser Anda tidak mendukung Geolocation.");
         }
 
-        // Setup Camera
         const startCamera = async () => {
             try {
                 const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
@@ -88,23 +87,27 @@ export default function Create({ auth, jadwals, presensis, pegawai }) {
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Absensi Mandiri</h2>}
         >
             <Head title="Absensi Mandiri" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="mb-4">
-                        <Link href={route('presensi.index')} className="link inline-flex items-center text-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Kembali ke Riwayat Presensi
-                        </Link>
-                    </div>
-                    <div className="page-card">
+            <div className="mx-auto w-full max-w-4xl space-y-5">
+                    <PageHeader
+                        eyebrow="Presensi"
+                        title="Live Attendance"
+                        description="Sistem mencatat lokasi dan memvalidasi radius dengan unit sekolah."
+                        actions={
+                            <Link href={route('presensi.index')} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Kembali
+                            </Link>
+                        }
+                    />
+                    <Card>
                         <div className="p-8">
                             <div className="text-center mb-8">
                                 <h3 className="page-title text-2xl">Live Attendance</h3>
@@ -124,7 +127,6 @@ export default function Create({ auth, jadwals, presensis, pegawai }) {
                             )}
 
                             <form onSubmit={submit} className="form-section space-y-8">
-                                {/* Jadwal Selection */}
                                 <div className="bg-info-light p-6 rounded-card border border-info/20">
                                     <h4 className="section-title text-info mb-4">1. Pilih Jadwal Anda Hari Ini</h4>
                                     {jadwals.length > 0 ? (
@@ -158,9 +160,7 @@ export default function Create({ auth, jadwals, presensis, pegawai }) {
                                     {errors.jadwal_id && <p className="form-error">{errors.jadwal_id}</p>}
                                 </div>
 
-                                {/* Absen Action */}
                                 <div className="form-grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {/* Camera Section */}
                                     <div>
                                         <h4 className="section-title text-text-primary mb-4">2. Verifikasi Wajah</h4>
                                         <div className="relative bg-black rounded-card overflow-hidden aspect-[3/4] flex items-center justify-center shadow-inner">
@@ -174,7 +174,7 @@ export default function Create({ auth, jadwals, presensis, pegawai }) {
                                             ) : (
                                                 <>
                                                     <img src={photoData} alt="Captured" className="w-full h-full object-cover" />
-                                                    <button type="button" onClick={retakePhoto} className="absolute bottom-6 btn-danger rounded-full shadow-elevated">Ulangi Foto</button>
+                                                    <Button type="button" variant="danger" className="absolute bottom-6 rounded-full shadow-elevated" onClick={retakePhoto}>Ulangi Foto</Button>
                                                 </>
                                             )}
                                             <canvas ref={canvasRef} className="hidden"></canvas>
@@ -182,7 +182,6 @@ export default function Create({ auth, jadwals, presensis, pegawai }) {
                                         {errors.foto && <p className="form-error mt-2 text-center">{errors.foto}</p>}
                                     </div>
 
-                                    {/* Action Section */}
                                     <div className="flex flex-col justify-center">
                                         <div className="bg-surface p-6 rounded-card border border-border mb-8">
                                             <h4 className="section-title text-text-primary mb-2">Status GPS</h4>
@@ -194,7 +193,7 @@ export default function Create({ auth, jadwals, presensis, pegawai }) {
                                                     <p className="text-xs text-text-muted mt-1">{location.lat}, {location.lng}</p>
                                                 </div>
                                             ) : (
-                                                <p className="text-text-muted text-sm animate-pulse">Mencari sinyal GPS...</p>
+                                                <p className="text-text-muted text-sm">Mencari sinyal GPS...</p>
                                             )}
                                         </div>
 
@@ -209,21 +208,21 @@ export default function Create({ auth, jadwals, presensis, pegawai }) {
                                             </label>
                                         </div>
 
-                                        <button
+                                        <Button
                                             type="submit"
+                                            size="lg"
                                             disabled={processing || !photoData || !location || jadwals.length === 0}
-                                            className="btn-primary btn-lg w-full mt-8"
+                                            className="mt-8 w-full"
                                         >
                                             {processing ? 'Memproses...' : 'Kirim Absensi'}
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
                             </form>
 
                         </div>
-                    </div>
-                </div>
+                    </Card>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

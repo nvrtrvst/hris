@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import { Head, router, useForm } from '@inertiajs/react';
 import { BookOpen, CalendarClock, GraduationCap, Loader2, Pencil, Plus, Save, Trash2, Users } from 'lucide-react';
 import Modal from '@/Components/Modal';
@@ -14,7 +15,7 @@ function CountBadge({ count, tone, label }) {
     );
 }
 
-export default function Index({ auth, mapels, stats, flash }) {
+export default function Index({ auth, mapels, stats }) {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const { data, setData, post, put, processing, errors, reset } = useForm({ nama: '' });
@@ -52,38 +53,31 @@ export default function Index({ auth, mapels, stats, flash }) {
     const hasMapels = (mapels || []).length > 0;
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Referensi Mata Pelajaran</h2>}
         >
             <Head title="Mata Pelajaran" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    {/* Header */}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="text-xl font-extrabold text-text-primary">Daftar Mata Pelajaran</h3>
-                            <p className="text-sm text-text-muted">Master mapel dipakai saat menugaskan guru & menyusun jadwal mengajar.</p>
-                        </div>
-                        <button onClick={openCreate} className="btn-primary inline-flex shrink-0 items-center gap-2">
-                            <Plus className="h-4 w-4" /> Tambah Mapel
-                        </button>
-                    </div>
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="Master Data"
+                        title="Daftar Mata Pelajaran"
+                        description="Master mapel dipakai saat menugaskan guru dan menyusun jadwal mengajar."
+                        actions={
+                            <Button onClick={openCreate}>
+                                <Plus className="h-4 w-4" /> Tambah Mapel
+                            </Button>
+                        }
+                    />
 
-                    {/* Flash */}
-                    {flash?.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                    {flash?.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
-
-                    {/* Stats */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <StatCard Icon={BookOpen} label="Total Mapel" value={stats?.total_mapel ?? 0} />
                         <StatCard Icon={Users} label="Penugasan Guru" value={stats?.total_penugasan_guru ?? 0} sub="Jumlah guru × mapel yang diampu" />
                         <StatCard Icon={CalendarClock} label="Total Jadwal" value={stats?.total_jadwal ?? 0} sub="Jadwal mengajar memakai mapel ini" />
                     </div>
 
-                    {/* Table */}
-                    <div className="card overflow-hidden">
+                    <Card className="overflow-hidden">
                         {hasMapels ? (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
@@ -139,16 +133,14 @@ export default function Index({ auth, mapels, stats, flash }) {
                                 <p className="mt-1 max-w-sm text-sm text-text-muted">
                                     Tambahkan mapel pertama untuk mulai menyusun jadwal mengajar dan menugaskan guru.
                                 </p>
-                                <button onClick={openCreate} className="btn-primary mt-5 inline-flex items-center gap-2">
+                                <Button className="mt-5" onClick={openCreate}>
                                     <Plus className="h-4 w-4" /> Tambah Mapel Pertama
-                                </button>
+                                </Button>
                             </div>
                         )}
-                    </div>
-                </div>
+                    </Card>
             </div>
 
-            {/* Modal Create/Edit */}
             <Modal show={showModal} onClose={() => { setShowModal(false); reset(); }} maxWidth="md">
                 <form onSubmit={handleSubmit} className="p-6">
                     <h3 className="flex items-center gap-2 text-lg font-extrabold text-text-primary">
@@ -171,13 +163,13 @@ export default function Index({ auth, mapels, stats, flash }) {
                     </div>
 
                     <div className="mt-6 flex items-center justify-end gap-3 border-t border-border pt-4">
-                        <button type="button" onClick={() => { setShowModal(false); reset(); }} className="btn-secondary">Batal</button>
-                        <button type="submit" disabled={processing} className="btn-primary flex items-center gap-2">
-                            {processing ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan…</> : <><Save className="h-4 w-4" /> {editing ? 'Simpan' : 'Tambah'}</>}
-                        </button>
+                        <Button variant="secondary" onClick={() => { setShowModal(false); reset(); }}>Batal</Button>
+                        <Button type="submit" disabled={processing}>
+                            {processing ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan...</> : <><Save className="h-4 w-4" /> {editing ? 'Simpan' : 'Tambah'}</>}
+                        </Button>
                     </div>
                 </form>
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

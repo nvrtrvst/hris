@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import { Head, router, useForm } from '@inertiajs/react';
 import { Briefcase, CheckCircle2, Loader2, Pencil, Plus, Save, ShieldCheck, Trash2, Users } from 'lucide-react';
 import Modal from '@/Components/Modal';
@@ -27,7 +28,7 @@ function ApproverChip({ label, name }) {
     );
 }
 
-export default function Index({ auth, jabatans, stats, flash }) {
+export default function Index({ auth, jabatans, stats }) {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
 
@@ -79,37 +80,30 @@ export default function Index({ auth, jabatans, stats, flash }) {
     const totalNonGuru = (stats?.total_jabatan ?? 0) - (stats?.total_guru ?? 0);
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Kelola Jabatan</h2>}
         >
             <Head title="Jabatan" />
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    {/* Header */}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="text-xl font-extrabold text-text-primary">Daftar Jabatan</h3>
-                            <p className="text-sm text-text-muted">Kelola jabatan/posisi pegawai, tipe guru, dan rantai approval izin.</p>
-                        </div>
-                        <button onClick={openCreate} className="btn-primary inline-flex shrink-0 items-center gap-2">
-                            <Plus className="h-4 w-4" /> Tambah Jabatan
-                        </button>
-                    </div>
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="Master Data"
+                        title="Daftar Jabatan"
+                        description="Kelola jabatan, tipe guru, dan rantai approval izin."
+                        actions={
+                            <Button onClick={openCreate}>
+                                <Plus className="h-4 w-4" /> Tambah Jabatan
+                            </Button>
+                        }
+                    />
 
-                    {/* Flash */}
-                    {flash?.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                    {flash?.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
-
-                    {/* Stats */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <StatCard Icon={Briefcase} label="Total Jabatan" value={stats?.total_jabatan ?? 0} sub={`${stats?.total_guru ?? 0} guru · ${totalNonGuru} non-guru`} />
                         <StatCard Icon={CheckCircle2} label="Jabatan Guru" value={stats?.total_guru ?? 0} sub="Tenaga pendidik" />
                         <StatCard Icon={Users} label="Total Pegawai" value={stats?.total_pegawai ?? 0} sub="Pegawai yang memegang jabatan" />
                     </div>
 
-                    {/* Table */}
-                    <div className="card overflow-hidden">
+                    <Card className="overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-border">
                                 <thead className="bg-surface">
@@ -185,11 +179,9 @@ export default function Index({ auth, jabatans, stats, flash }) {
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </div>
+                    </Card>
             </div>
 
-            {/* Modal Create/Edit */}
             <Modal show={showModal} onClose={() => { setShowModal(false); reset(); }} maxWidth="md">
                 <form onSubmit={handleSubmit} className="p-6">
                     <h3 className="flex items-center gap-2 text-lg font-extrabold text-text-primary">
@@ -252,13 +244,13 @@ export default function Index({ auth, jabatans, stats, flash }) {
                     </div>
 
                     <div className="mt-6 flex items-center justify-end gap-3 border-t border-border pt-4">
-                        <button type="button" onClick={() => { setShowModal(false); reset(); }} className="btn-secondary">Batal</button>
-                        <button type="submit" disabled={processing} className="btn-primary flex items-center gap-2">
-                            {processing ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan…</> : <><Save className="h-4 w-4" /> {editing ? 'Simpan' : 'Tambah'}</>}
-                        </button>
+                        <Button variant="secondary" onClick={() => { setShowModal(false); reset(); }}>Batal</Button>
+                        <Button type="submit" disabled={processing}>
+                            {processing ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan...</> : <><Save className="h-4 w-4" /> {editing ? 'Simpan' : 'Tambah'}</>}
+                        </Button>
                     </div>
                 </form>
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

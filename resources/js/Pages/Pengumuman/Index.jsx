@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, PageHeader } from '@/Components/AdminUI';
 import Pagination from '@/Components/Pagination';
 import StatCard from '@/Components/StatCard';
 import { Calendar, Megaphone, Paperclip, Pencil, Pin as PinIcon, Plus, Save, Trash2, X as XIcon } from 'lucide-react';
@@ -11,7 +12,7 @@ import { validateUpload } from '@/Utils/file';
 const FILE_MAX = 5 * 1024 * 1024;
 const FILE_ACCEPT = ['application/pdf', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip'];
 
-export default function PengumumanIndex({ auth, announcements, units, userUnitId, flash }) {
+export default function PengumumanIndex({ auth, announcements, units, userUnitId }) {
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ title: '', body: '', is_pinned: false, unit_sekolah_id: userUnitId || '', published_at: new Date().toISOString().slice(0, 16), attachment: null, attachmentType: null, imagePreview: null, attachmentRemoved: false });
@@ -68,32 +69,25 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
     const serverErrors = usePage().props.errors || {};
 
     return (
-        <AuthenticatedLayout header={<h2 className="page-title">Pengumuman</h2>}>
+        <AdminShell header={<h2 className="page-title">Pengumuman</h2>}>
             <Head title="Pengumuman" />
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-4">
-                    {/* Header */}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="text-xl font-extrabold text-text-primary">Pengumuman</h3>
-                            <p className="text-sm text-text-muted">Bagikan informasi penting kepada seluruh pegawai.</p>
-                        </div>
-                        <button onClick={() => { resetForm(); setShowForm(!showForm); }} className="btn-primary inline-flex shrink-0 items-center gap-2">
-                            {showForm ? <><XIcon className="h-4 w-4" /> Tutup form</> : <><Plus className="h-4 w-4" /> Tambah pengumuman</>}
-                        </button>
-                    </div>
+            <div className="mx-auto w-full max-w-4xl space-y-5">
+                    <PageHeader
+                        eyebrow="Komunikasi"
+                        title="Pengumuman"
+                        description="Bagikan informasi penting kepada seluruh pegawai."
+                        actions={
+                            <Button onClick={() => { resetForm(); setShowForm(!showForm); }}>
+                                {showForm ? <><XIcon className="h-4 w-4" /> Tutup form</> : <><Plus className="h-4 w-4" /> Tambah pengumuman</>}
+                            </Button>
+                        }
+                    />
 
-                    {/* Flash */}
-                    {flash?.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                    {flash?.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
-
-                    {/* Stats */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <StatCard Icon={Megaphone} label="Total Pengumuman" value={total} />
                         <StatCard Icon={PinIcon} label="Disematkan (Pin)" value={items.filter((a) => a.is_pinned).length} />
                     </div>
 
-                    {/* Form */}
                     {showForm && (
                         <form onSubmit={submit} className="card space-y-4 p-6">
                             <h4 className="text-sm font-extrabold uppercase tracking-wide text-primary">
@@ -178,15 +172,14 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
                                 </div>
                             </div>
                             <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
-                                <button type="button" onClick={resetForm} className="btn-secondary">Batal</button>
-                                <button type="submit" className="btn-primary inline-flex items-center gap-2">
+                                <Button variant="secondary" onClick={resetForm}>Batal</Button>
+                                <Button type="submit">
                                     <Save className="h-4 w-4" /> {editing ? 'Simpan' : 'Publikasikan'}
-                                </button>
+                                </Button>
                             </div>
                         </form>
                     )}
 
-                    {/* List */}
                     <div className="space-y-2">
                         {items.length === 0 ? (
                             <div className="card flex flex-col items-center px-6 py-12 text-center">
@@ -241,8 +234,7 @@ export default function PengumumanIndex({ auth, announcements, units, userUnitId
                     {announcements.links && items.length > 0 && (
                         <Pagination links={announcements.links} className="justify-center" />
                     )}
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

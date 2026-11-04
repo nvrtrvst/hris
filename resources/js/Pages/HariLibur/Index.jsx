@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
+import { Head, router, useForm } from '@inertiajs/react';
 import { CalendarPlus, Download, Pencil, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
@@ -23,8 +24,6 @@ const tipeLabel = {
 };
 
 export default function Index({ auth, holidays, units, years, filters }) {
-    const { props } = usePage();
-    const flash = props.flash || {};
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
 
@@ -88,60 +87,43 @@ export default function Index({ auth, holidays, units, years, filters }) {
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Kalender Hari Libur</h2>}
         >
             <Head title="Hari Libur" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto space-y-4 px-4 sm:px-6 lg:px-8">
-                    {flash.message && (
-                        <div className="rounded-button border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-                            {flash.message}
-                        </div>
-                    )}
-                    {flash.error && (
-                        <div className="rounded-button border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-                            {flash.error}
-                        </div>
-                    )}
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="Master Data"
+                        title="Daftar Hari Libur"
+                        description="Hari libur nasional dan sekolah dikecualikan dari hitungan hari kerja."
+                        actions={
+                            <>
+                                <Button onClick={openCreate}>
+                                    <Plus className="h-4 w-4" /> Tambah
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => importForm.post(route('hari-libur.import'), { preserveScroll: true })}
+                                    disabled={importForm.processing}
+                                    title="Impor dari data lokal (offline)"
+                                >
+                                    <Upload className="h-4 w-4" /> Import Lokal {importForm.year}
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => syncForm.post(route('hari-libur.sync-api'), { preserveScroll: true })}
+                                    disabled={syncForm.processing}
+                                    title="Sinkron dari API publik"
+                                >
+                                    <RefreshCw className="h-4 w-4" /> Sync API {syncForm.year}
+                                </Button>
+                            </>
+                        }
+                    />
 
-                    {/* Header + aksi */}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="text-xl font-extrabold text-text-primary">Daftar Hari Libur</h3>
-                            <p className="text-sm text-text-muted">
-                                Hari libur nasional &amp; sekolah dikecualikan dari hitungan hari kerja (alpa/payroll).
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <button type="button" onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
-                                <Plus className="h-4 w-4" /> Tambah
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => importForm.post(route('hari-libur.import'), { preserveScroll: true })}
-                                disabled={importForm.processing}
-                                className="btn-secondary inline-flex items-center gap-2"
-                                title="Impor dari data lokal (offline)"
-                            >
-                                <Upload className="h-4 w-4" /> Import Lokal {importForm.year}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => syncForm.post(route('hari-libur.sync-api'), { preserveScroll: true })}
-                                disabled={syncForm.processing}
-                                className="btn-secondary inline-flex items-center gap-2"
-                                title="Sinkron dari API publik"
-                            >
-                                <RefreshCw className="h-4 w-4" /> Sync API {syncForm.year}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Filter */}
-                    <div className="card flex flex-wrap items-end gap-3 p-4">
+                    <Card className="flex flex-wrap items-end gap-3 p-4">
                         <div className="w-32">
                             <label className="mb-1 block text-xs font-bold text-text-muted">Tahun</label>
                             <select
@@ -183,10 +165,9 @@ export default function Index({ auth, holidays, units, years, filters }) {
                                 ))}
                             </select>
                         </div>
-                    </div>
+                    </Card>
 
-                    {/* Table */}
-                    <div className="card overflow-hidden">
+                    <Card className="overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-border">
                                 <thead className="bg-surface">
@@ -238,11 +219,9 @@ export default function Index({ auth, holidays, units, years, filters }) {
                         <div className="px-6 py-3">
                             <Pagination links={holidays.links} data={filters} />
                         </div>
-                    </div>
-                </div>
+                    </Card>
             </div>
 
-            {/* Modal create/edit */}
             <Modal show={showModal} onClose={() => setShowModal(false)} maxWidth="lg">
                 <form onSubmit={submit} className="p-6">
                     <div className="mb-4 flex items-center gap-2">
@@ -290,13 +269,13 @@ export default function Index({ auth, holidays, units, years, filters }) {
                     </div>
 
                     <div className="mt-6 flex justify-end gap-2">
-                        <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Batal</button>
-                        <button type="submit" disabled={form.processing} className="btn-primary">
+                        <Button variant="secondary" onClick={() => setShowModal(false)}>Batal</Button>
+                        <Button type="submit" disabled={form.processing}>
                             {editing ? 'Simpan Perubahan' : 'Tambah'}
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

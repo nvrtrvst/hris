@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { PageHeader } from '@/Components/AdminUI';
 import Pagination from '@/Components/Pagination';
 import StatCard from '@/Components/StatCard';
 import { Archive, ArchiveRestore, Bell, CheckCheck, ChevronRight, Inbox, MailOpen, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 
-/** Map notification data.type → admin route. */
 const NOTIF_ROUTE_BY_TYPE = {
     status_izin: 'pengajuan-izin.index',
     izin_baru: 'pengajuan-izin.index',
@@ -21,7 +21,7 @@ const NOTIF_ROUTE_BY_TYPE = {
     announcement: 'pengumuman.index',
 };
 
-export default function NotificationsIndex({ auth, notifications, filters, flash }) {
+export default function NotificationsIndex({ auth, notifications, filters }) {
     const [search, setSearch] = useState(filters?.search || '');
     const debounceRef = useRef(null);
     const view = filters?.view === 'archived' ? 'archived' : 'all';
@@ -49,7 +49,6 @@ export default function NotificationsIndex({ auth, notifications, filters, flash
         { key: 'archived', label: 'Diarsipkan' },
     ];
 
-    /** Map notification data.type → admin route. */
     const getNotificationRoute = (n) => {
         const name = NOTIF_ROUTE_BY_TYPE[n.data?.type];
 
@@ -59,27 +58,20 @@ export default function NotificationsIndex({ auth, notifications, filters, flash
     const total = notifications?.total ?? notifications.data?.length ?? 0;
 
     return (
-        <AuthenticatedLayout header={<h2 className="page-title">Notifikasi</h2>}>
+        <AdminShell header={<h2 className="page-title">Notifikasi</h2>}>
             <Head title="Notifikasi" />
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-4">
-                    {/* Header */}
-                    <div>
-                        <h3 className="text-xl font-extrabold text-text-primary">Inbox Notifikasi</h3>
-                        <p className="text-sm text-text-muted">Pantau pemberitahuan sistem dan aktivitas pengajuan.</p>
-                    </div>
+            <div className="mx-auto w-full max-w-4xl space-y-5">
+                    <PageHeader
+                        eyebrow="Inbox"
+                        title="Inbox Notifikasi"
+                        description="Pantau pemberitahuan sistem dan aktivitas pengajuan."
+                    />
 
-                    {/* Flash */}
-                    {flash?.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                    {flash?.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
-
-                    {/* Stats */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <StatCard Icon={Inbox} label="Total Notifikasi" value={total} />
                         <StatCard Icon={MailOpen} label="Belum Dibaca" value={unread.length} />
                     </div>
 
-                    {/* Search + Tabs */}
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="relative flex-1 sm:max-w-xs">
                             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
@@ -110,7 +102,6 @@ export default function NotificationsIndex({ auth, notifications, filters, flash
                         </div>
                     </div>
 
-                    {/* List */}
                     {notifications.data?.length === 0 ? (
                         <div className="card flex flex-col items-center px-6 py-12 text-center">
                             <Bell className="h-8 w-8 text-border" />
@@ -182,8 +173,7 @@ export default function NotificationsIndex({ auth, notifications, filters, flash
                     )}
 
                     <Pagination links={notifications.links} data={filters} pagination={notifications} className="justify-center" />
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
