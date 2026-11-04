@@ -168,7 +168,7 @@ export default function AdminShell({ user: userProp, header, children }) {
                 </div>
             )}
 
-            <nav className="scrollbar-thin flex-1 space-y-4 overflow-y-auto px-3 py-3">
+            <nav className="sidebar-scroll flex-1 space-y-4 overflow-y-auto px-3 py-3">
                 {navGroups(drawer)}
                 {query !== '' && visibleGroups.length === 0 && (
                     <p className="px-3 py-2 text-xs text-white/45">Menu tidak ditemukan.</p>
