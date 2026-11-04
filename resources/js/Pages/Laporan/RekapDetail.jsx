@@ -1,4 +1,5 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, User, Calendar, GraduationCap, Hash } from 'lucide-react';
 
@@ -25,25 +26,25 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
     const persen = summary.persen ?? (summary.hariKerja > 0 ? Math.min(100, Math.round(((summary.hadir + summary.telat) / summary.hariKerja) * 100)) : 0);
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
-            header={<h1 className="page-title">Detail Kehadiran Pegawai</h1>}
+            header={<h2 className="page-title">Detail Kehadiran Pegawai</h2>}
         >
             <Head title={`Kehadiran - ${pegawai.nama}`} />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    {/* Back button */}
-                    <button
-                        onClick={() => (window.history.length > 1 ? window.history.back() : router.get(route('laporan.index')))}
-                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-muted hover:text-primary transition-colors"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        Kembali ke laporan
-                    </button>
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                <PageHeader
+                    eyebrow="Laporan"
+                    title="Detail Kehadiran Pegawai"
+                    description={`${pegawai.nama} · ${periode.start_date} sampai ${periode.end_date}`}
+                    actions={
+                        <Button variant="secondary" onClick={() => (window.history.length > 1 ? window.history.back() : router.get(route('laporan.index')))}>
+                            <ArrowLeft className="h-4 w-4" /> Kembali
+                        </Button>
+                    }
+                />
 
-                    {/* Header */}
-                    <div className="card p-6">
+                    <Card className="p-6">
                         <div className="flex items-start gap-4">
                             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                                 <User className="h-6 w-6" />
@@ -68,10 +69,9 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </Card>
 
-                    {/* Ringkasan: satu angka utama + rincian */}
-                    <div className="card p-5">
+                    <Card className="p-5">
                         <div className="flex flex-wrap items-end justify-between gap-4">
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">% Kehadiran berbobot</p>
@@ -88,10 +88,9 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                                 <div className="flex items-baseline justify-between gap-3"><dt className="text-text-secondary">Cuti</dt><dd className="font-bold tabular-nums text-info">{summary.cuti}</dd></div>
                             </dl>
                         </div>
-                    </div>
+                    </Card>
 
-                    {/* Detail Table */}
-                    <div className="card overflow-hidden">
+                    <Card className="overflow-hidden">
                         <div className="border-b border-border bg-surface px-6 py-4">
                             <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary">Rincian Kehadiran Harian</h3>
                             <p className="mt-0.5 text-xs text-text-muted">{detail.length} hari tercatat</p>
@@ -133,9 +132,8 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </div>
+                    </Card>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
