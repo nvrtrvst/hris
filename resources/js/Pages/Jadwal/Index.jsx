@@ -5,17 +5,20 @@ import usePolling from '@/Utils/usePolling';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import FilterSheet from '@/Components/FilterSheet';
 import StatCard from '@/Components/StatCard';
-import Modal from '@/Components/Modal';
+import { DAYS, durasiMenit, fmtDurasi, jenisBadge, toMinutes } from '@/Pages/Jadwal/Partials/jadwalMeta';
+import GenerateModal from '@/Pages/Jadwal/Partials/GenerateModal';
+import ImportModal from '@/Pages/Jadwal/Partials/ImportModal';
+import RekapModal from '@/Pages/Jadwal/Partials/RekapModal';
+import SwapModal from '@/Pages/Jadwal/Partials/SwapModal';
+import { SwapBulkModal, SwapDayModal, SwapSlotModal } from '@/Pages/Jadwal/Partials/SwapModals';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     BookOpen,
     CalendarDays,
     ArrowLeftRight,
     CalendarRange,
-    CheckCircle2,
     ChevronDown,
     Clock3,
-    Download,
     GraduationCap,
     Info,
     LayoutGrid,
@@ -33,41 +36,6 @@ import {
     UserRound,
     School,
 } from 'lucide-react';
-
-const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-
-const JENIS_META = {
-    mengajar: { badge: 'bg-blue-50 text-blue-700', label: 'Mengajar' },
-    piket: { badge: 'bg-amber-50 text-amber-700', label: 'Piket' },
-    ekskul: { badge: 'bg-purple-50 text-purple-700', label: 'Ekskul' },
-    shift_satpam: { badge: 'bg-slate-100 text-slate-700', label: 'Shift Satpam' },
-    shift_kebersihan: { badge: 'bg-emerald-50 text-emerald-700', label: 'Shift Kebersihan' },
-    lainnya: { badge: 'bg-gray-100 text-gray-600', label: 'Lainnya' },
-};
-
-const jenisBadge = (jenis) => JENIS_META[jenis] || JENIS_META.lainnya;
-
-const durasiMenit = (mulai, selesai) => {
-    const [h1, m1] = String(mulai || '0:0').split(':').map(Number);
-    const [h2, m2] = String(selesai || '0:0').split(':').map(Number);
-
-    return Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
-};
-
-const fmtDurasi = (menit) => {
-    if (!menit) return '0 menit';
-    const h = Math.floor(menit / 60);
-    const m = menit % 60;
-
-    return h > 0 ? `${h}j ${m}m` : `${m} mnt`;
-};
-
-const toMinutes = (hms) => {
-    if (!hms) return 0;
-    const p = String(hms).split(':');
-
-    return (+p[0]) * 60 + (+p[1] || 0);
-};
 
 // Indikator status mengajar hari ini — konsisten dengan halaman Presensi & Dashboard:
 // "Mengajar" (amber berkedip) selama jam_selesai belum lewat, "Selesai" setelahnya.
@@ -133,7 +101,6 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
     const [viewMode, setViewMode] = useState('matrix');
     const [expandedGuru, setExpandedGuru] = useState(null);
 
-    // Modal Generate
     const [showGenerateModal, setShowGenerateModal] = useState(false);
     const [generating, setGenerating] = useState(false);
     const [genData, setGenData] = useState({
@@ -145,7 +112,6 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         waktu_selesai: '15:00',
     });
 
-    // Modal Swap
     const [showSwapModal, setShowSwapModal] = useState(false);
     const [swapData, setSwapData] = useState({ jadwal_asal_id: '', jadwal_tujuan_id: '' });
     const [targetPegawaiId, setTargetPegawaiId] = useState('');
@@ -154,7 +120,6 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
     const [swapError, setSwapError] = useState('');
     const swapCache = useRef({});
 
-    // Modal Tukar Seharian (B)
     const [showDayModal, setShowDayModal] = useState(false);
     const [dayUnit, setDayUnit] = useState('');
     const [dayA, setDayA] = useState('');
@@ -162,19 +127,16 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
     const [dayHari, setDayHari] = useState([]);
     const [daySubmitting, setDaySubmitting] = useState(false);
 
-    // Modal Tukar Banyak / multi-pasangan (A)
     const [showBulkModal, setShowBulkModal] = useState(false);
     const [bulkUnit, setBulkUnit] = useState('');
     const [bulkPairs, setBulkPairs] = useState([{ asal: '', tujuan: '' }]);
 
-    // Modal Tukar Slot waktu (hari+jam, pemilik & mapel tetap)
     const [showSlotModal, setShowSlotModal] = useState(false);
     const [slotUnit, setSlotUnit] = useState('');
     const [slotA, setSlotA] = useState('');
     const [slotB, setSlotB] = useState('');
     const [slotSubmitting, setSlotSubmitting] = useState(false);
 
-    // Modal Import
     const [showImportModal, setShowImportModal] = useState(false);
     const [importMode, setImportMode] = useState('excel');
     const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
@@ -200,7 +162,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
         ? (pegawaiCountByUnit[genData.unit_sekolah_id] || 0)
         : pegawais.length;
 
-    // ── Index O(1): jadwal per pegawai (hemat filter berulang O(n) di dalam loop render) ──
+    // Index O(1): jadwal per pegawai, menghindari filter berulang di dalam loop render.
     const jadwalByPegawai = useMemo(() => {
         const m = new Map();
         jadwals.forEach((j) => {
@@ -277,7 +239,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
     const latestFiltersRef = useRef({ unitFilter, kelasFilter, jenisFilter });
     latestFiltersRef.current = { unitFilter, kelasFilter, jenisFilter };
 
-    // ── Search debounce → server (filter konsisten dengan matriks) ──
+    // Debounce search ke server agar filter konsisten dengan matriks.
     useEffect(() => {
         if (searchName === (filters.search || '')) return;
         const timer = setTimeout(() => {
@@ -480,11 +442,11 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
             <Head title="Jadwal Pegawai" />
             <div className="py-8 bg-surface min-h-screen">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-                    {/* Flash */}
+                    
                     {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
                     {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
 
-                    {/* Header */}
+                    
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
                         <div>
                             <h3 className="text-xl font-bold text-primary">{isAdmin ? 'Jadwal Mingguan (Matriks)' : 'Jadwal Saya'}</h3>
@@ -512,14 +474,14 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                     )}
                     </div>
 
-                    {/* Stats */}
+                    
                     {isAdmin && (
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                             {statCards.map((card) => <StatCard key={card.label} {...card} />)}
                         </div>
                     )}
 
-                    {/* Filter bar */}
+                    
                     {isAdmin && (
                         <>
                         <FilterSheet
@@ -528,7 +490,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                             activeCount={activeFilterCount}
                             onReset={() => { resetFilters(); setFilterSheetOpen(false); }}
                         >
-                            {/* Row 1: Search + Quick Filters */}
+                            
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
                                 <div className="relative lg:col-span-2">
                                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
@@ -557,7 +519,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                             </div>
                         </FilterSheet>
 
-                            {/* Row 2: Actions */}
+                            
                             <div className="flex flex-wrap items-center gap-2">
                                 {hasFilter && (
                                     <button type="button" onClick={resetFilters} className="btn-secondary btn-sm flex items-center gap-1.5">
@@ -618,7 +580,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                         </>
                     )}
 
-                    {/* ─── ADMIN: prompt pilih unit (skip load semua unit) ─── */}
+                    
                     {isAdmin && needsUnitFilter && (
                         <div className="card p-12 text-center">
                             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-surface">
@@ -629,7 +591,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                         </div>
                     )}
 
-                    {/* ─── ADMIN: Per Guru View ─── */}
+                    
                     {isAdmin && !needsUnitFilter && viewMode === 'guru' && (
                         <div className="space-y-3">
                             {pegawais.length === 0 ? (
@@ -720,7 +682,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                         </div>
                     )}
 
-                    {/* Print Header */}
+                    
                     <div className="hidden print:block">
                         <div className="print-header">
                             <h1>JADWAL PEGAWAI</h1>
@@ -730,10 +692,10 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                         </div>
                     </div>
 
-                    {/* ─── ADMIN: Matrix Table Board ─── */}
+                    
                     {isAdmin && !needsUnitFilter && viewMode === 'matrix' && (
                         <>
-                        {/* Mobile card view */}
+                        
                         <div className={`md:hidden space-y-3 transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
                             {pegawais.length > 0 ? pegawais.map((pegawai) => {
                                 const pJadwals = jadwalByPegawai.get(pegawai.id) || [];
@@ -819,7 +781,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                             )}
                         </div>
 
-                        {/* Desktop matrix table */}
+                        
                         <div className={`hidden md:block card p-0 overflow-hidden transition-opacity ${processing ? 'opacity-60 pointer-events-none' : ''}`}>
                         <div className="overflow-x-auto max-h-[72vh] overflow-y-auto print:max-h-none print:overflow-visible">
                                 <table className="w-full table-fixed divide-y divide-gray-200 bg-white text-sm">
@@ -878,7 +840,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                                 now={now}
                                                                             />
 
-                                            {/* Action Overlay */}
+                                            
                                             {canMutateJadwal && (
                                             <div className="absolute inset-0 bg-primary/90 opacity-0 pointer-events-none group-hover/card:opacity-100 group-hover/card:pointer-events-auto group-focus-within/card:opacity-100 group-focus-within/card:pointer-events-auto flex items-center justify-center gap-2 rounded-lg transition-opacity backdrop-blur-sm print:hidden">
                                                                                 <button
@@ -957,7 +919,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                         </>
                     )}
 
-                    {/* Print Footer */}
+                    
                     <div className="hidden print:block print-footer">
                         Dicetak oleh: <span className="font-bold">{auth.user.name}</span>
                         {' '}&mdash;{' '}
@@ -965,7 +927,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                         <div className="signature-line" />
                     </div>
 
-                    {/* Info anti-bentrok */}
+                    
                     {isAdmin && (
                         <div className="flex items-start gap-3 rounded-xl border border-info/30 bg-info-light p-4">
                             <Info className="mt-0.5 h-5 w-5 shrink-0 text-info" />
@@ -975,7 +937,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                         </div>
                     )}
 
-                    {/* ─── NON-ADMIN: Jadwal Pribadi ─── */}
+                    
                     {!isAdmin && (
                         <div className="space-y-3">
                             {jadwals.length === 0 ? (
@@ -1019,865 +981,128 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                         </div>
                     )}
 
-                    {/* ─── MODAL: Generate Otomatis ─── */}
                     {isAdmin && (
-                        <Modal show={showGenerateModal} onClose={() => setShowGenerateModal(false)} maxWidth="md">
-                            <div className="px-6 py-5">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 rounded-full bg-warning-light flex items-center justify-center shrink-0">
-                                        <Sparkles className="w-5 h-5 text-warning" />
-                                    </div>
-                                    <div>
-                                        <h3 className="page-title">Generate Jadwal Otomatis</h3>
-                                        <p className="page-subtitle">Algoritma mengisi jadwal mengajar per pegawai tanpa bentrok</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning-light p-3 text-xs text-warning mb-4">
-                                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                                    <span>Jadwal yang <strong>sudah ada tidak akan dihapus</strong>. Generate hanya menambah jadwal baru jika tidak ada bentrok. Anda bisa generate berulang kali.</span>
-                                </div>
-
-                                <form onSubmit={handleGenerate} className="space-y-4">
-                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                        <div>
-                                            <label className="form-label mb-1">Unit Sekolah</label>
-                                            <select
-                                                value={genData.unit_sekolah_id}
-                                                onChange={(e) => setGenData({ ...genData, unit_sekolah_id: e.target.value })}
-                                                className="select-field"
-                                            >
-                                                <option value="">Semua Unit</option>
-                                                {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                                            </select>
-                                            {selectedUnitPegCount > 0 && (
-                                                <p className="mt-1 text-xs text-gray-500">≈ {selectedUnitPegCount} pegawai aktif</p>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="form-label mb-1">Semester</label>
-                                            <select
-                                                value={genData.semester}
-                                                onChange={(e) => setGenData({ ...genData, semester: e.target.value })}
-                                                className="select-field"
-                                            >
-                                                <option value="1">1 (Ganjil)</option>
-                                                <option value="2">2 (Genap)</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="form-label mb-1">Mata Pelajaran <span className="text-danger">*</span></label>
-                                        <select
-                                            value={genData.mata_pelajaran_id}
-                                            onChange={(e) => setGenData({ ...genData, mata_pelajaran_id: e.target.value })}
-                                            className={`select-field ${errors?.mata_pelajaran_id ? 'input-error' : ''}`}
-                                            required
-                                        >
-                                            <option value="">Pilih Mapel</option>
-                                            {mapel.map((m) => <option key={m.id} value={m.id}>{m.nama}</option>)}
-                                        </select>
-                                        {errors?.mata_pelajaran_id && <p className="form-error">{errors.mata_pelajaran_id}</p>}
-                                    </div>
-
-                                    <div>
-                                        <label className="form-label mb-1">Tahun Ajaran</label>
-                                        <select
-                                            value={genData.tahun_ajaran}
-                                            onChange={(e) => setGenData({ ...genData, tahun_ajaran: e.target.value })}
-                                            className="select-field"
-                                        >
-                                            {['2024/2025', '2025/2026', '2026/2027', '2027/2028', '2028/2029'].map((ta) => (
-                                                <option key={ta} value={ta}>{ta}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="form-label mb-1">Rentang Jam</label>
-                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                            <div className="relative">
-                                                <span className="absolute -top-2 left-3 text-[11px] text-text-muted bg-white px-1">Mulai</span>
-                                                <input
-                                                    type="time"
-                                                    value={genData.waktu_mulai}
-                                                    onChange={(e) => setGenData({ ...genData, waktu_mulai: e.target.value })}
-                                                    className="input-field pt-2"
-                                                />
-                                            </div>
-                                            <div className="relative">
-                                                <span className="absolute -top-2 left-3 text-[11px] text-text-muted bg-white px-1">Selesai</span>
-                                                <input
-                                                    type="time"
-                                                    value={genData.waktu_selesai}
-                                                    onChange={(e) => setGenData({ ...genData, waktu_selesai: e.target.value })}
-                                                    className="input-field pt-2"
-                                                />
-                                            </div>
-                                        </div>
-                                        <p className="form-hint">Blok waktu default: 07:00-09:00, 09:30-11:30, 13:00-15:00. Filter ini mempersempit blok yang digunakan.</p>
-                                    </div>
-
-                                    <div className="flex justify-end gap-3 pt-2 border-t border-border">
-                                        <button type="button" onClick={() => setShowGenerateModal(false)} disabled={generating} className="btn-secondary">
-                                            Batal
-                                        </button>
-                                        <button type="submit" disabled={generating} className="btn-primary bg-accent text-primary-800 hover:bg-yellow-500">
-                                            {generating ? (
-                                                <>
-                                                    <Loader2 className="-ml-1 mr-2 h-4 w-4 animate-spin text-primary" />
-                                                    Memproses…
-                                                </>
-                                            ) : 'Generate Jadwal'}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </Modal>
+                        <GenerateModal
+                            show={showGenerateModal}
+                            onClose={() => setShowGenerateModal(false)}
+                            handleGenerate={handleGenerate}
+                            genData={genData}
+                            setGenData={setGenData}
+                            units={units}
+                            selectedUnitPegCount={selectedUnitPegCount}
+                            mapel={mapel}
+                            errors={errors}
+                            generating={generating}
+                        />
                     )}
 
-                    {/* ─── MODAL: Tukar Jadwal ─── */}
                     {isAdmin && (
-                        <Modal show={showSwapModal} onClose={() => setShowSwapModal(false)} maxWidth="lg">
-                            <div className="px-6 py-5">
-                                <div className="flex items-center gap-3 mb-5">
-                                    <div className="w-10 h-10 rounded-full bg-info-light flex items-center justify-center shrink-0">
-                                        <ArrowLeftRight className="w-5 h-5 text-info" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-primary">Tukar Jadwal</h3>
-                                        <p className="text-sm text-text-secondary">Pilih pegawai dan jadwal target untuk ditukar kepemilikannya.</p>
-                                    </div>
-                                </div>
-
-                                {errors?.conflict && (
-                                    <div className="mb-4 bg-danger-light text-danger p-3 rounded-card text-sm border border-danger/20">
-                                        {errors.conflict}
-                                    </div>
-                                )}
-
-                                {/* Asal */}
-                                <div className="mb-4">
-                                    <label className="form-label font-semibold mb-2 flex items-center gap-2">
-                                        <span className="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">1</span>
-                                        Jadwal Asal
-                                    </label>
-                                    {(() => {
-                                        const j = jadwalById.get(swapData.jadwal_asal_id);
-                                        if (!j) return <div className="p-3 bg-surface border border-border rounded-card text-sm text-text-muted">Pilih jadwal dari matriks (ikon tukar) untuk memulai.</div>;
-
-                                        return (
-                                            <div className="p-3 bg-surface border border-primary/20 rounded-card">
-                                                <div className="font-bold text-primary text-sm">{j.pegawai?.nama_lengkap}</div>
-                                                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-secondary">
-                                                    <span>{j.hari}, {j.jam_mulai?.substring(0, 5)}-{j.jam_selesai?.substring(0, 5)}</span>
-                                                    <span className="font-medium text-primary/70 uppercase">{j.jenis_jadwal}</span>
-                                                    {j.mata_pelajaran?.nama && <span>{j.mata_pelajaran.nama}</span>}
-                                                    {j.kelas_label && <span>Kls: {j.kelas_label}</span>}
-                                                    <span>{j.unit_sekolah?.singkatan || '-'}</span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-
-                                {/* Target Pegawai */}
-                                <div className="mb-4">
-                                    <label className="form-label font-semibold mb-2 flex items-center gap-2">
-                                        <span className="w-5 h-5 rounded-full bg-accent text-primary-800 text-xs flex items-center justify-center font-bold">2</span>
-                                        Tukar Dengan Pegawai
-                                    </label>
-                                    <select
-                                        value={targetPegawaiId}
-                                        onChange={(e) => {
-                                            setTargetPegawaiId(e.target.value);
-                                            setSwapData({ ...swapData, jadwal_tujuan_id: '' });
-                                        }}
-                                        className="select-field"
-                                    >
-                                        <option value="">-- Pilih Pegawai --</option>
-                                        {(() => {
-                                            if (swapLoading && !swapCandidates) return <option value="" disabled>Memuat daftar pegawai…</option>;
-                                            if (swapError && !swapCandidates) return <option value="" disabled>{swapError}</option>;
-                                            const asal = jadwalById.get(swapData.jadwal_asal_id);
-                                            const unitId = asal?.unit_sekolah_id;
-
-                                            return (swapCandidates?.pegawais || []).filter((p) => {
-                                                if (asal && asal.pegawai_id === p.id) return false;
-                                                if (unitId) return (p.unit_ids || []).some((id) => id == unitId);
-
-                                                return true;
-                                            }).map((p) => <option key={p.id} value={p.id}>{p.nama_lengkap}</option>);
-                                        })()}
-                                    </select>
-                                </div>
-
-                                {/* Target Jadwal */}
-                                {targetPegawaiId && (
-                                    <div className="mb-4">
-                                        <label className="form-label font-semibold mb-2 flex items-center gap-2">
-                                            <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-xs flex items-center justify-center font-bold">3</span>
-                                            Pilih Jadwal Target
-                                        </label>
-                                        <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                                            {(() => {
-                                                const asal = jadwalById.get(swapData.jadwal_asal_id);
-                                                const unitId = asal?.unit_sekolah_id;
-                                                const targets = (candJadwalByPegawai.get(Number(targetPegawaiId)) || [])
-                                                    .filter((j) => !unitId || j.unit_sekolah_id == unitId);
-                                                if (targets.length === 0) {
-                                                    return <p className="p-3 bg-surface border border-border rounded-card text-sm text-text-muted">Pegawai ini tidak memiliki jadwal.</p>;
-                                                }
-
-                                                return targets.map((j) => (
-                                                    <button
-                                                        key={j.id}
-                                                        type="button"
-                                                        onClick={() => setSwapData({ ...swapData, jadwal_tujuan_id: j.id })}
-                                                        className={`w-full text-left p-3 rounded-card border text-sm transition-colors cursor-pointer ${
-                                                            swapData.jadwal_tujuan_id === j.id
-                                                                ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                                                                : 'border-border bg-surface hover:border-primary/40'
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-center justify-between">
-                                                            <div>
-                                                                <span className="font-bold text-text-primary">{j.hari}, {j.jam_mulai?.substring(0, 5)}-{j.jam_selesai?.substring(0, 5)}</span>
-                                                                <span className={`ml-2 text-[11px] font-bold px-1.5 py-0.5 rounded ${jenisBadge(j.jenis_jadwal).badge}`}>{j.jenis_jadwal}</span>
-                                                            </div>
-                                                            <div className="text-xs text-text-secondary text-right">
-                                                                {j.mapel_nama && <div>{j.mapel_nama}</div>}
-                                                                {j.kelas_label && <div>{j.kelas_label}</div>}
-                                                            </div>
-                                                        </div>
-                                                        {swapData.jadwal_tujuan_id === j.id && (
-                                                            <div className="mt-1 text-xs text-primary font-medium flex items-center gap-1">
-                                                                <CheckCircle2 className="h-3 w-3" /> Dipilih
-                                                            </div>
-                                                        )}
-                                                    </button>
-                                                ));
-                                            })()}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Preview hasil tukar */}
-                                {swapData.jadwal_asal_id && swapData.jadwal_tujuan_id && (() => {
-                                    const asal = jadwalById.get(swapData.jadwal_asal_id);
-                                    const tujuan = jadwalById.get(swapData.jadwal_tujuan_id);
-                                    if (!asal || !tujuan) return null;
-
-                                    return (
-                                        <div className="mb-4 p-3 bg-info-light border border-info/30 rounded-card">
-                                            <p className="text-xs font-bold text-info uppercase tracking-wider mb-2">Preview Hasil Tukar</p>
-                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
-                                                <div>
-                                                    <p className="text-text-muted mb-0.5">← {asal.pegawai?.nama_lengkap} mendapat:</p>
-                                                    <p className="font-semibold text-text-primary">{tujuan.hari}, {tujuan.jam_mulai?.substring(0, 5)}-{tujuan.jam_selesai?.substring(0, 5)}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-text-muted mb-0.5">→ {tujuan.pegawai?.nama_lengkap} mendapat:</p>
-                                                    <p className="font-semibold text-text-primary">{asal.hari}, {asal.jam_mulai?.substring(0, 5)}-{asal.jam_selesai?.substring(0, 5)}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-
-                                <div className="flex justify-between items-center gap-3 pt-4 border-t border-border">
-                                    <div className="flex gap-3 text-xs">
-                                        <button
-                                            type="button"
-                                            onClick={() => { setShowSwapModal(false); setDayUnit(unitFilter || units[0]?.id || ''); setShowDayModal(true); }}
-                                            className="text-primary font-semibold hover:underline"
-                                        >
-                                            Tukar seharian →
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setShowSwapModal(false); setBulkUnit(unitFilter || units[0]?.id || ''); setBulkPairs([{ asal: '', tujuan: '' }]); setShowBulkModal(true); }}
-                                            className="text-primary font-semibold hover:underline"
-                                        >
-                                            Tukar banyak →
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setShowSwapModal(false); setSlotUnit(unitFilter || units[0]?.id || ''); setSlotA(''); setSlotB(''); setShowSlotModal(true); }}
-                                            className="text-primary font-semibold hover:underline"
-                                        >
-                                            Tukar slot →
-                                        </button>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <button type="button" onClick={() => setShowSwapModal(false)} className="btn-secondary">
-                                            Batal
-                                        </button>
-                                        <button
-                                            onClick={handleSwap}
-                                            disabled={!swapData.jadwal_tujuan_id}
-                                            className="btn-primary"
-                                        >
-                                            <ArrowLeftRight className="h-4 w-4 mr-1.5" />
-                                            Eksekusi Tukar
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </Modal>
+                        <SwapModal
+                            show={showSwapModal}
+                            onClose={() => setShowSwapModal(false)}
+                            onOpenDay={() => { setShowSwapModal(false); setDayUnit(unitFilter || units[0]?.id || ''); setShowDayModal(true); }}
+                            onOpenBulk={() => { setShowSwapModal(false); setBulkUnit(unitFilter || units[0]?.id || ''); setBulkPairs([{ asal: '', tujuan: '' }]); setShowBulkModal(true); }}
+                            onOpenSlot={() => { setShowSwapModal(false); setSlotUnit(unitFilter || units[0]?.id || ''); setSlotA(''); setSlotB(''); setShowSlotModal(true); }}
+                            handleSwap={handleSwap}
+                            errors={errors}
+                            jadwalById={jadwalById}
+                            swapData={swapData}
+                            setSwapData={setSwapData}
+                            targetPegawaiId={targetPegawaiId}
+                            setTargetPegawaiId={setTargetPegawaiId}
+                            swapCandidates={swapCandidates}
+                            swapLoading={swapLoading}
+                            swapError={swapError}
+                            candJadwalByPegawai={candJadwalByPegawai}
+                        />
                     )}
 
-                    {/* ─── MODAL: Tukar Seharian (B) ─── */}
                     {canMutateJadwal && (
-                        <Modal show={showDayModal} onClose={() => setShowDayModal(false)} maxWidth="lg">
-                            <div className="px-6 py-5">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-primary">Tukar Seharian</h3>
-                                        <p className="text-sm text-text-secondary">Semua jadwal dua pegawai pada hari terpilih bertukar sekaligus (atomik).</p>
-                                    </div>
-                                    <ArrowLeftRight className="h-5 w-5 text-primary shrink-0" />
-                                </div>
-
-                                {errors?.conflict && (
-                                    <div className="mb-4 p-3 bg-danger-light border border-danger/30 rounded-card text-sm text-danger">
-                                        {errors.conflict}
-                                    </div>
-                                )}
-
-                                <div className="mb-4">
-                                    <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Unit Sekolah</label>
-                                    <select value={dayUnit} onChange={(e) => { setDayUnit(e.target.value); setDayA(''); setDayB(''); }} className="select-field">
-                                        {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                                    </select>
-                                </div>
-
-                                {!swapCandidates && swapLoading && (
-                                    <p className="text-sm text-text-muted py-4 text-center">Memuat daftar pegawai…</p>
-                                )}
-                                {swapError && !swapCandidates && (
-                                    <p className="text-sm text-danger py-4 text-center">{swapError}</p>
-                                )}
-
-                                {swapCandidates && (
-                                    <>
-                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Pegawai A</label>
-                                                <select value={dayA} onChange={(e) => setDayA(e.target.value)} className="select-field">
-                                                    <option value="">— Pilih —</option>
-                                                    {swapCandidates.pegawais
-                                                        .filter((p) => p.id !== Number(dayB))
-                                                        .map((p) => <option key={p.id} value={p.id}>{p.nama_lengkap}</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Pegawai B</label>
-                                                <select value={dayB} onChange={(e) => setDayB(e.target.value)} className="select-field">
-                                                    <option value="">— Pilih —</option>
-                                                    {swapCandidates.pegawais
-                                                        .filter((p) => p.id !== Number(dayA))
-                                                        .map((p) => <option key={p.id} value={p.id}>{p.nama_lengkap}</option>)}
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div className="mb-4">
-                                            <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Hari</label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {DAYS.map((h) => {
-                                                    const checked = dayHari.includes(h);
-
-                                                    return (
-                                                        <button
-                                                            key={h}
-                                                            type="button"
-                                                            onClick={() => setDayHari(checked ? dayHari.filter((x) => x !== h) : [...dayHari, h])}
-                                                            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors cursor-pointer ${
-                                                                checked ? 'bg-primary text-white border-primary' : 'bg-surface border-border text-text-secondary hover:border-primary/40'
-                                                            }`}
-                                                        >
-                                                            {h}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-
-                                        {dayA && dayB && dayHari.length > 0 && (
-                                            <div className="mb-4 p-3 bg-info-light border border-info/30 rounded-card">
-                                                <p className="text-xs font-bold text-info uppercase tracking-wider mb-2">Preview</p>
-                                                {dayHari.map((h) => {
-                                                    const jadwals = swapCandidates.jadwals;
-                                                    const a = jadwals.filter((j) => j.pegawai_id === Number(dayA) && j.hari === h).length;
-                                                    const b = jadwals.filter((j) => j.pegawai_id === Number(dayB) && j.hari === h).length;
-
-                                                    return (
-                                                        <div key={h} className="text-sm text-text-primary flex justify-between">
-                                                            <span className="font-semibold">{h}</span>
-                                                            <span>{a} jadwal ↔ {b} jadwal</span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-
-                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                                    <button type="button" onClick={() => setShowDayModal(false)} className="btn-secondary">
-                                        Batal
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleSwapHari}
-                                        disabled={!dayA || !dayB || !dayHari.length || daySubmitting}
-                                        className="btn-primary"
-                                    >
-                                        <ArrowLeftRight className="h-4 w-4 mr-1.5" />
-                                        {daySubmitting ? 'Memproses…' : 'Eksekusi Tukar'}
-                                    </button>
-                                </div>
-                            </div>
-                        </Modal>
+                        <SwapDayModal
+                            show={showDayModal}
+                            onClose={() => setShowDayModal(false)}
+                            units={units}
+                            dayUnit={dayUnit}
+                            setDayUnit={setDayUnit}
+                            dayA={dayA}
+                            setDayA={setDayA}
+                            dayB={dayB}
+                            setDayB={setDayB}
+                            dayHari={dayHari}
+                            setDayHari={setDayHari}
+                            daySubmitting={daySubmitting}
+                            handleSwapHari={handleSwapHari}
+                            swapCandidates={swapCandidates}
+                            swapLoading={swapLoading}
+                            swapError={swapError}
+                            errors={errors}
+                        />
                     )}
 
-                    {/* ─── MODAL: Tukar Banyak / multi-pasangan (A) ─── */}
                     {canMutateJadwal && (
-                        <Modal show={showBulkModal} onClose={() => setShowBulkModal(false)} maxWidth="2xl">
-                            <div className="px-6 py-5">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-primary">Tukar Banyak Jadwal</h3>
-                                        <p className="text-sm text-text-secondary">Beberapa pasangan tukar dalam 1 transaksi — satu gagal, semua batal.</p>
-                                    </div>
-                                    <ArrowLeftRight className="h-5 w-5 text-primary shrink-0" />
-                                </div>
-
-                                {errors?.conflict && (
-                                    <div className="mb-4 p-3 bg-danger-light border border-danger/30 rounded-card text-sm text-danger">
-                                        {errors.conflict}
-                                    </div>
-                                )}
-
-                                <div className="mb-4">
-                                    <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Unit Sekolah (sumber daftar)</label>
-                                    <select value={bulkUnit} onChange={(e) => setBulkUnit(e.target.value)} className="select-field">
-                                        {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                                    </select>
-                                </div>
-
-                                {!swapCandidates && swapLoading && (
-                                    <p className="text-sm text-text-muted py-4 text-center">Memuat daftar pegawai…</p>
-                                )}
-                                {swapError && !swapCandidates && (
-                                    <p className="text-sm text-danger py-4 text-center">{swapError}</p>
-                                )}
-
-                                {swapCandidates && (
-                                    <>
-                                        <div className="space-y-3 mb-4">
-                                            {bulkPairs.map((pair, idx) => {
-                                                const usedOther = bulkPairs
-                                                    .filter((_, i) => i !== idx)
-                                                    .flatMap((p) => [p.asal, p.tujuan])
-                                                    .filter(Boolean)
-                                                    .map(Number);
-                                                const options = swapCandidates.jadwals.filter((j) => !usedOther.includes(j.id));
-                                                const asalJ = candJadwalById.get(Number(pair.asal));
-                                                const tujuanJ = candJadwalById.get(Number(pair.tujuan));
-
-                                                return (
-                                                    <div key={idx} className="p-3 border border-border rounded-card bg-surface">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <span className="text-xs font-bold text-text-secondary">Pasangan #{idx + 1}</span>
-                                                            {bulkPairs.length > 1 && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setBulkPairs(bulkPairs.filter((_, i) => i !== idx))}
-                                                                    className="text-xs text-danger font-semibold hover:underline cursor-pointer"
-                                                                >
-                                                                    Hapus
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                            <select value={pair.asal} onChange={(e) => setBulkPairs(bulkPairs.map((p, i) => (i === idx ? { ...p, asal: e.target.value, tujuan: p.tujuan === e.target.value ? '' : p.tujuan } : p)))} className="select-field text-xs">
-                                                                <option value="">— Jadwal asal —</option>
-                                                                {options.map((j) => <option key={j.id} value={j.id}>{jadwalOptionLabel(j)}</option>)}
-                                                            </select>
-                                                            <select value={pair.tujuan} onChange={(e) => setBulkPairs(bulkPairs.map((p, i) => (i === idx ? { ...p, tujuan: e.target.value } : p)))} className="select-field text-xs">
-                                                                <option value="">— Jadwal tujuan —</option>
-                                                                {options.filter((j) => j.id !== Number(pair.asal)).map((j) => <option key={j.id} value={j.id}>{jadwalOptionLabel(j)}</option>)}
-                                                            </select>
-                                                        </div>
-                                                        {asalJ && tujuanJ && (
-                                                            <div className="mt-2 text-xs bg-info-light border border-info/30 rounded p-2">
-                                                                <span className="text-text-muted">{candNamaById.get(tujuanJ.pegawai_id) || '?'}</span> ←
-                                                                <span className="font-semibold text-text-primary"> {jadwalOptionLabel(asalJ)}</span>
-                                                                <span className="mx-2 text-text-muted">│</span>
-                                                                <span className="text-text-muted">{candNamaById.get(asalJ.pegawai_id) || '?'}</span> ←
-                                                                <span className="font-semibold text-text-primary"> {jadwalOptionLabel(tujuanJ)}</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-
-                                        {bulkPairs.length < 20 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setBulkPairs([...bulkPairs, { asal: '', tujuan: '' }])}
-                                                className="btn-secondary btn-sm mb-4"
-                                            >
-                                                <Plus className="h-3.5 w-3.5 mr-1.5" /> Tambah Pasangan
-                                            </button>
-                                        )}
-                                    </>
-                                )}
-
-                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                                    <button type="button" onClick={() => setShowBulkModal(false)} className="btn-secondary">
-                                        Batal
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleSwapBulk}
-                                        disabled={!bulkPairs.some((p) => p.asal && p.tujuan)}
-                                        className="btn-primary"
-                                    >
-                                        <ArrowLeftRight className="h-4 w-4 mr-1.5" />
-                                        Eksekusi Tukar Semua
-                                    </button>
-                                </div>
-                            </div>
-                        </Modal>
+                        <SwapBulkModal
+                            show={showBulkModal}
+                            onClose={() => setShowBulkModal(false)}
+                            units={units}
+                            bulkUnit={bulkUnit}
+                            setBulkUnit={setBulkUnit}
+                            bulkPairs={bulkPairs}
+                            setBulkPairs={setBulkPairs}
+                            handleSwapBulk={handleSwapBulk}
+                            swapCandidates={swapCandidates}
+                            swapLoading={swapLoading}
+                            swapError={swapError}
+                            errors={errors}
+                            candJadwalById={candJadwalById}
+                            candNamaById={candNamaById}
+                            jadwalOptionLabel={jadwalOptionLabel}
+                        />
                     )}
 
-                    {/* ─── MODAL: Tukar Slot waktu (pemilik & mapel tetap) ─── */}
                     {canMutateJadwal && (
-                        <Modal show={showSlotModal} onClose={() => setShowSlotModal(false)} maxWidth="lg">
-                            <div className="px-6 py-5">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-primary">Tukar Slot Waktu</h3>
-                                        <p className="text-sm text-text-secondary">Guru, mapel, dan kelas tetap — yang bertukar hanya hari & jam pelajaran.</p>
-                                    </div>
-                                    <Clock3 className="h-5 w-5 text-primary shrink-0" />
-                                </div>
-
-                                {errors?.conflict && (
-                                    <div className="mb-4 p-3 bg-danger-light border border-danger/30 rounded-card text-sm text-danger">
-                                        {errors.conflict}
-                                    </div>
-                                )}
-
-                                <div className="mb-4">
-                                    <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Unit Sekolah</label>
-                                    <select value={slotUnit} onChange={(e) => { setSlotUnit(e.target.value); setSlotA(''); setSlotB(''); }} className="select-field">
-                                        {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                                    </select>
-                                </div>
-
-                                {!swapCandidates && swapLoading && (
-                                    <p className="text-sm text-text-muted py-4 text-center">Memuat daftar jadwal…</p>
-                                )}
-                                {swapError && !swapCandidates && (
-                                    <p className="text-sm text-danger py-4 text-center">{swapError}</p>
-                                )}
-
-                                {swapCandidates && (
-                                    <>
-                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Jadwal A</label>
-                                                <select value={slotA} onChange={(e) => setSlotA(e.target.value)} className="select-field text-xs">
-                                                    <option value="">— Pilih —</option>
-                                                    {swapCandidates.jadwals
-                                                        .filter((j) => j.id !== Number(slotB))
-                                                        .map((j) => <option key={j.id} value={j.id}>{jadwalOptionLabel(j)}</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-text-secondary uppercase mb-1.5">Jadwal B</label>
-                                                <select value={slotB} onChange={(e) => setSlotB(e.target.value)} className="select-field text-xs">
-                                                    <option value="">— Pilih —</option>
-                                                    {swapCandidates.jadwals
-                                                        .filter((j) => j.id !== Number(slotA))
-                                                        .map((j) => <option key={j.id} value={j.id}>{jadwalOptionLabel(j)}</option>)}
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        {slotA && slotB && (() => {
-                                            const ax = candJadwalById.get(Number(slotA));
-                                            const bx = candJadwalById.get(Number(slotB));
-                                            if (!ax || !bx) return null;
-
-                                            return (
-                                                <div className="mb-4 p-3 bg-info-light border border-info/30 rounded-card">
-                                                    <p className="text-xs font-bold text-info uppercase tracking-wider mb-2">Preview Slot Baru</p>
-                                                    <div className="space-y-1 text-sm">
-                                                        <div>
-                                                            <span className="font-semibold text-text-primary">{candNamaById.get(ax.pegawai_id) || '?'} ({ax.mapel_nama || ax.jenis_jadwal}):</span>{' '}
-                                                            <span className="text-text-muted">{ax.hari} {String(ax.jam_mulai || '').substring(0, 5)}-{String(ax.jam_selesai || '').substring(0, 5)}</span>
-                                                            {' → '}
-                                                            <span className="font-semibold text-text-primary">{bx.hari} {String(bx.jam_mulai || '').substring(0, 5)}-{String(bx.jam_selesai || '').substring(0, 5)}</span>
-                                                        </div>
-                                                        <div>
-                                                            <span className="font-semibold text-text-primary">{candNamaById.get(bx.pegawai_id) || '?'} ({bx.mapel_nama || bx.jenis_jadwal}):</span>{' '}
-                                                            <span className="text-text-muted">{bx.hari} {String(bx.jam_mulai || '').substring(0, 5)}-{String(bx.jam_selesai || '').substring(0, 5)}</span>
-                                                            {' → '}
-                                                            <span className="font-semibold text-text-primary">{ax.hari} {String(ax.jam_mulai || '').substring(0, 5)}-{String(ax.jam_selesai || '').substring(0, 5)}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })()}
-                                    </>
-                                )}
-
-                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                                    <button type="button" onClick={() => setShowSlotModal(false)} className="btn-secondary">
-                                        Batal
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleSwapSlot}
-                                        disabled={!slotA || !slotB || slotSubmitting}
-                                        className="btn-primary"
-                                    >
-                                        <ArrowLeftRight className="h-4 w-4 mr-1.5" />
-                                        {slotSubmitting ? 'Memproses…' : 'Eksekusi Tukar Slot'}
-                                    </button>
-                                </div>
-                            </div>
-                        </Modal>
+                        <SwapSlotModal
+                            show={showSlotModal}
+                            onClose={() => setShowSlotModal(false)}
+                            units={units}
+                            slotUnit={slotUnit}
+                            setSlotUnit={setSlotUnit}
+                            slotA={slotA}
+                            setSlotA={setSlotA}
+                            slotB={slotB}
+                            setSlotB={setSlotB}
+                            slotSubmitting={slotSubmitting}
+                            handleSwapSlot={handleSwapSlot}
+                            swapCandidates={swapCandidates}
+                            swapLoading={swapLoading}
+                            swapError={swapError}
+                            errors={errors}
+                            candJadwalById={candJadwalById}
+                            candNamaById={candNamaById}
+                            jadwalOptionLabel={jadwalOptionLabel}
+                        />
                     )}
 
-                    {/* ─── MODAL: Rekap Kelas ─── */}
                     {isAdmin && (
-                        <Modal show={showRekapModal} onClose={() => setShowRekapModal(false)} maxWidth="2xl">
-                            <div className="px-6 py-5 max-h-[90vh] overflow-y-auto">
-                                <div className="flex items-center gap-3 mb-5">
-                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                        <CalendarRange className="w-5 h-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-primary">Rekap Kelas</h3>
-                                        <p className="text-sm text-text-secondary">Mapel, guru, dan total jam per kelas.</p>
-                                    </div>
-                                </div>
-
-                                {(() => {
-                                    const grouped = {};
-                                    jadwals.filter((j) => j.kelas_label && j.jenis_jadwal === 'mengajar').forEach((j) => {
-                                        if (!grouped[j.kelas_label]) grouped[j.kelas_label] = {};
-                                        const mapelId = j.mata_pelajaran?.id || 0;
-                                        const mapelName = j.mata_pelajaran?.nama || 'Tanpa Mapel';
-                                        if (!grouped[j.kelas_label][mapelId]) {
-                                            grouped[j.kelas_label][mapelId] = { nama: mapelName, guru: {} };
-                                        }
-                                        const pegNama = j.pegawai?.nama_lengkap || 'Tanpa Nama';
-                                        const durasi = durasiMenit(j.jam_mulai, j.jam_selesai);
-                                        grouped[j.kelas_label][mapelId].guru[pegNama] = (grouped[j.kelas_label][mapelId].guru[pegNama] || 0) + durasi;
-                                    });
-
-                                    const entries = Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]));
-                                    if (entries.length === 0) {
-                                        return <div className="p-6 text-center text-text-muted">Belum ada jadwal mengajar dengan kelas.</div>;
-                                    }
-
-                                    return (
-                                        <div className="space-y-6">
-                                            {entries.map(([kelas, mapels]) => {
-                                                const mapelEntries = Object.entries(mapels);
-                                                const totalJam = mapelEntries.reduce((sum, [, m]) => sum + Object.values(m.guru).reduce((a, b) => a + b, 0), 0);
-
-                                                return (
-                                                    <div key={kelas} className="bg-surface border border-border rounded-card overflow-hidden">
-                                                        <div className="px-4 py-3 bg-primary/5 border-b border-border flex items-center justify-between">
-                                                            <h4 className="font-bold text-primary text-sm">Kls {kelas}</h4>
-                                                            <span className="text-xs text-text-muted">{fmtDurasi(totalJam)} / {mapelEntries.length} mapel</span>
-                                                        </div>
-                                                        <div className="divide-y divide-border">
-                                                            {mapelEntries.sort((a, b) => a[1].nama.localeCompare(b[1].nama)).map(([mapelId, m]) => (
-                                                                <div key={mapelId} className="px-4 py-2.5">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="font-medium text-sm text-text-primary">{m.nama}</span>
-                                                                        <span className="text-xs text-text-muted">{fmtDurasi(Object.values(m.guru).reduce((a, b) => a + b, 0))}</span>
-                                                                    </div>
-                                                                    <div className="mt-1 flex flex-wrap gap-1.5">
-                                                                        {Object.entries(m.guru).sort((a, b) => b[1] - a[1]).map(([guru, menit]) => (
-                                                                            <span key={guru} className="inline-flex items-center gap-1 text-xs bg-white border border-border px-2 py-0.5 rounded-full">
-                                                                                <span className="text-text-primary">{guru}</span>
-                                                                                <span className="text-text-muted">{menit}m</span>
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    );
-                                })()}
-
-                                <div className="mt-6 pt-4 border-t border-border flex justify-end">
-                                    <button type="button" onClick={() => setShowRekapModal(false)} className="btn-secondary">
-                                        Tutup
-                                    </button>
-                                </div>
-                            </div>
-                        </Modal>
+                        <RekapModal
+                            show={showRekapModal}
+                            onClose={() => setShowRekapModal(false)}
+                            jadwals={jadwals}
+                        />
                     )}
 
-                    {/* Import Jadwal Modal */}
                     {showImportModal && (
-                        <Modal show={showImportModal} onClose={() => setShowImportModal(false)} maxWidth="md">
-                            <form onSubmit={handleImportSubmit}>
-                                <div className="px-6 py-5">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                                            <Upload className="w-5 h-5 text-blue-600" />
-                                        </div>
-                                        <div>
-                                            <h3 className="page-title">Import Jadwal</h3>
-                                            <p className="page-subtitle">Upload massal — pilih format sesuai unit Anda.</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Mode: Excel (umum) / PDF (layout SMK) */}
-                                    <div className="mb-4 inline-flex rounded-xl border border-border bg-surface p-1">
-                                        {[
-                                            { k: 'excel', label: 'Excel (Semua Unit)' },
-                                            { k: 'pdf', label: 'PDF (Format SMK)' },
-                                        ].map((m) => (
-                                            <button
-                                                key={m.k}
-                                                type="button"
-                                                onClick={() => setImportMode(m.k)}
-                                                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${importMode === m.k ? 'bg-primary text-white shadow-sm' : 'text-text-secondary hover:text-primary'}`}
-                                            >
-                                                {m.label}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        {importMode === 'excel' && (
-                                            <div className="space-y-2">
-                                                <a
-                                                    href={route('jadwal.template', importData.unit_sekolah_id ? { unit_sekolah_id: importData.unit_sekolah_id } : {})}
-                                                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold ${importData.unit_sekolah_id ? 'border-info/30 bg-info-light text-info hover:bg-info/10' : 'border-border bg-surface text-text-secondary'}`}
-                                                >
-                                                    <Download className="h-4 w-4" /> Unduh Template Excel
-                                                </a>
-                                                {!importData.unit_sekolah_id && (
-                                                    <p className="text-xs text-amber-600">
-                                                        Pilih unit dulu sebelum unduh — daftar guru &amp; durasi JP di template mengikuti unit.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        <div>
-                                            <label className="form-label mb-1">Unit Sekolah <span className="text-danger">*</span></label>
-                                            <select
-                                                value={importData.unit_sekolah_id}
-                                                onChange={(e) => setImportData('unit_sekolah_id', e.target.value)}
-                                                className="select-field"
-                                                required
-                                            >
-                                                <option value="">-- Pilih Unit --</option>
-                                                {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                                            </select>
-                                            {importErrors.unit_sekolah_id && <p className="form-error">{importErrors.unit_sekolah_id}</p>}
-                                        </div>
-
-                                        <div>
-                                            <label className="form-label mb-1">
-                                                {importMode === 'excel' ? 'File Excel (.xlsx/.xls/.csv)' : 'File PDF (.pdf)'} <span className="text-danger">*</span>
-                                            </label>
-                                            <input
-                                                type="file"
-                                                accept={importMode === 'excel' ? '.xlsx,.xls,.csv' : '.pdf'}
-                                                onChange={(e) => setImportData('file', e.target.files[0])}
-                                                className="mt-1 block w-full text-sm text-text-muted file:mr-4 file:rounded-lg file:border-0 file:bg-primary-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary-100"
-                                                required
-                                            />
-                                            {importErrors.file && <p className="form-error">{importErrors.file}</p>}
-                                        </div>
-
-                                        {importMode === 'excel' && (
-                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                <div>
-                                                    <label className="form-label mb-1">Tahun Ajaran (opsional)</label>
-                                                    <input
-                                                        type="text"
-                                                        value={importData.tahun_ajaran}
-                                                        onChange={(e) => setImportData('tahun_ajaran', e.target.value)}
-                                                        placeholder="mis. 2026/2027"
-                                                        className="input-field"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="form-label mb-1">Semester (opsional)</label>
-                                                    <select
-                                                        value={importData.semester}
-                                                        onChange={(e) => setImportData('semester', e.target.value)}
-                                                        className="select-field"
-                                                    >
-                                                        <option value="">Default</option>
-                                                        <option value="1">1</option>
-                                                        <option value="2">2</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                id="import_delete_existing"
-                                                checked={importData.delete_existing}
-                                                onChange={(e) => setImportData('delete_existing', e.target.checked)}
-                                                className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
-                                            />
-                                            <label htmlFor="import_delete_existing" className="text-sm text-text-secondary">
-                                                Hapus jadwal lama sebelum import (untuk periode yang sama)
-                                            </label>
-                                        </div>
-
-                                        <div className="flex items-start gap-2 rounded-xl border border-info/30 bg-info-light p-3 text-xs text-info">
-                                            <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                                            <span>
-                                                {importMode === 'excel'
-                                                    ? 'Isi sesuai template: Hari, Kelas, Nama Guru, Mata Pelajaran, Jam Mulai, Jam Selesai, Jenis Jadwal, Tahun Ajaran, Semester. Guru & mapel harus sudah terdaftar. Duplikat & bentrok waktu dilewati/dilaporkan per baris.'
-                                                    : 'File PDF harus berupa jadwal pelajaran dengan format tabel SMK. Duplikat akan dilewati otomatis.'}
-                                            </span>
-                                        </div>
-
-                                        {importErrors.import && (
-                                            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 whitespace-pre-line">{importErrors.import}</div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-border">
-                                        <button type="button" onClick={() => setShowImportModal(false)} disabled={importProcessing} className="btn-secondary">
-                                            Batal
-                                        </button>
-                                        <button type="submit" disabled={importProcessing || !importData.file || !importData.unit_sekolah_id} className="btn-primary flex items-center gap-1.5">
-                                            {importProcessing ? <><Loader2 className="h-4 w-4 animate-spin" /> Mengimport…</> : <><Upload className="h-4 w-4" /> Upload & Proses</>}
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </Modal>
+                        <ImportModal
+                            show={showImportModal}
+                            onClose={() => setShowImportModal(false)}
+                            handleImportSubmit={handleImportSubmit}
+                            importMode={importMode}
+                            setImportMode={setImportMode}
+                            importData={importData}
+                            setImportData={setImportData}
+                            importErrors={importErrors}
+                            importProcessing={importProcessing}
+                            units={units}
+                        />
                     )}
                 </div>
             </div>
