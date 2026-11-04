@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { subscribeRouter } from '@/Utils/routerEvents';
 import useNowEveryMinute from '@/Utils/useNowEveryMinute';
 import AdminShell from '@/Layouts/AdminShell';
-import { Card } from '@/Components/AdminUI';
+import { Button, Card, EmptyState, Input, Select } from '@/Components/AdminUI';
 import StatCard from '@/Components/StatCard';
 import Pagination from '@/Components/Pagination';
 import Modal from '@/Components/Modal';
@@ -853,11 +853,12 @@ const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setCon
 
     if (groups.length === 0) {
         return (
-            <div className="px-4 py-12 text-center md:hidden">
-                <CalendarDays className="mx-auto h-8 w-8 text-border" />
-                <p className="mt-3 text-sm font-bold text-primary">Belum ada data presensi</p>
-                <p className="mt-1 text-xs text-text-secondary">Coba ubah periode atau bersihkan filter.</p>
-            </div>
+            <EmptyState
+                icon={CalendarDays}
+                title="Belum ada data presensi"
+                description="Tidak ada data pada periode ini. Ubah periode atau bersihkan filter."
+                className="md:hidden"
+            />
         );
     }
 
@@ -1394,9 +1395,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const adminSummaryCards = adminStatsCards.filter((card) => ['hadir', 'telat', 'sakit', 'izin', 'alpa'].includes(card.key));
     const statsCards = is_personal ? personalStatsCards : adminSummaryCards;
     const attentionCards = [
-        { key: 'perlu_review', label: 'Perlu review', value: s.perlu_review, Icon: ShieldAlert, filter: { status_filter: '', lembur_filter: '', lokasi_filter: 'perlu_review', suspicious_filter: '' } },
-        { key: 'lembur_pending', label: 'Lembur pending', value: s.lembur_pending, Icon: AlarmClock, filter: { status_filter: '', lembur_filter: 'lembur_pending', lokasi_filter: '', suspicious_filter: '' } },
-        { key: 'belum_presensi', label: 'Belum presensi', value: s.belum_presensi, Icon: UserRoundX, filter: { status_filter: 'belum_presensi', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' } },
+        { key: 'perlu_review', label: 'Perlu review', value: s.perlu_review, Icon: ShieldAlert, iconBg: 'bg-amber-50 text-amber-600', filter: { status_filter: '', lembur_filter: '', lokasi_filter: 'perlu_review', suspicious_filter: '' }, active: lokasiFilter === 'perlu_review' },
+        { key: 'lembur_pending', label: 'Lembur pending', value: s.lembur_pending, Icon: AlarmClock, iconBg: 'bg-sky-50 text-sky-600', filter: { status_filter: '', lembur_filter: 'lembur_pending', lokasi_filter: '', suspicious_filter: '' }, active: lemburFilter === 'lembur_pending' },
+        { key: 'belum_presensi', label: 'Belum presensi', value: s.belum_presensi, Icon: UserRoundX, iconBg: 'bg-slate-100 text-slate-600', filter: { status_filter: 'belum_presensi', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'belum_presensi' },
     ];
     const personalExportStatus = ['hadir', 'telat', 'sakit', 'izin', 'cuti', 'alpa'].includes(statusFilter) ? statusFilter : undefined;
     const personalExportParams = {
@@ -1406,7 +1407,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     };
     const canExportPersonal = is_personal && statusFilter !== 'belum_presensi';
 
-    const filterSelect = 'select-field text-xs h-11 w-full';
+    const filterSelect = 'h-11 w-full text-xs';
 
     return (
         <AdminShell
@@ -1431,9 +1432,9 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             </div>
                             <div className="grid gap-3 sm:grid-cols-3">
                                 {attentionCards.map((card) => (
-                                    <button key={card.key} type="button" onClick={() => applyStatFilter(card.filter)} className="w-full text-left">
-                                        <Card className="flex items-center gap-3 p-4 transition-colors hover:border-primary/30 hover:bg-surface/50">
-                                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                                    <button key={card.key} type="button" onClick={() => applyStatFilter(card.filter)} className="w-full text-left" aria-pressed={card.active}>
+                                        <Card className={`flex items-center gap-3 p-4 transition-colors hover:border-primary/30 hover:bg-surface/50 ${card.active ? 'border-primary/40 bg-primary-50/40' : ''}`}>
+                                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${card.iconBg}`}>
                                                 <card.Icon className="h-4 w-4" />
                                             </span>
                                             <span className="min-w-0 flex-1">
@@ -1504,12 +1505,12 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         {canManage && (
                             <div className="relative flex-1">
                                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                <input
+                                <Input
                                     type="text"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Cari nama pegawai…"
-                                    className="input-field h-11 w-full pl-9 text-xs"
+                                    placeholder="Cari nama pegawai..."
+                                    className="h-11 pl-9 text-xs"
                                     aria-label="Cari nama pegawai"
                                 />
                             </div>
@@ -1546,30 +1547,30 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             {canManage && (
                                 <div className="relative">
                                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <input
-                                        type="text"
-                                        value={search}
-                                        onChange={(e) => setSearch(e.target.value)}
-                                        placeholder="Cari nama pegawai…"
-                                        className="input-field h-11 pl-9 text-xs w-full"
-                                        aria-label="Cari nama pegawai"
-                                    />
+                                    <Input
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Cari nama pegawai..."
+                                    className="h-11 pl-9 text-xs"
+                                    aria-label="Cari nama pegawai"
+                                />
                                 </div>
                             )}
                             <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
                                 <span>Status</span>
-                                <select className={filterSelect} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter status">
+                                <Select className={filterSelect} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter status">
                                     <option value="">Semua Status</option>
                                     {Object.entries(STATUS_META).map(([key, m]) => <option key={key} value={key}>{m.label}</option>)}
-                                </select>
+                                </Select>
                             </label>
                             {canManage && auth.permissions?.includes('view_all_units') && (
                                 <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
                                     <span>Unit</span>
-                                    <select className={filterSelect} value={unitId} onChange={(e) => setUnitId(e.target.value)} aria-label="Filter unit">
+                                    <Select className={filterSelect} value={unitId} onChange={(e) => setUnitId(e.target.value)} aria-label="Filter unit">
                                         <option value="">Semua Unit</option>
                                         {units?.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
-                                    </select>
+                                    </Select>
                                 </label>
                             )}
                             {canManage && (
@@ -1605,13 +1606,13 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                 />
                                 <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
                                     <span>Lembur</span>
-                                    <select className={filterSelect} value={lemburFilter} onChange={(e) => setLemburFilter(e.target.value)} aria-label="Filter lembur">
+                                    <Select className={filterSelect} value={lemburFilter} onChange={(e) => setLemburFilter(e.target.value)} aria-label="Filter lembur">
                                         <option value="">Semua Presensi</option>
                                         <option value="lembur_semua">Semua Lembur</option>
                                         <option value="lembur_pending">Lembur Pending</option>
                                         <option value="lembur_disetujui">Lembur Disetujui</option>
                                         <option value="lembur_ditolak">Lembur Ditolak</option>
-                                    </select>
+                                    </Select>
                                 </label>
                                 <ChipFilter
                                     label="Lokasi"
@@ -1973,18 +1974,16 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         {rows.length === 0 && (
                                             <tr>
                                                 <td colSpan="10" className="px-6 py-16">
-                                                    <div className="flex flex-col items-center text-center">
-                                                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface">
-                                                            <CalendarDays className="h-8 w-8 text-border" />
-                                                        </div>
-                                                        <p className="mt-4 text-base font-bold text-primary">Belum ada data presensi</p>
-                                                        <p className="mt-1 text-sm text-text-secondary">Coba ubah periode atau bersihkan filter.</p>
-                                                        {hasFilter && (
-                                                            <button onClick={resetFilters} className="btn-secondary btn-sm mt-4 flex items-center gap-1.5">
+                                                    <EmptyState
+                                                        icon={CalendarDays}
+                                                        title="Belum ada data presensi"
+                                                        description={hasFilter ? 'Tidak ada data yang cocok dengan filter aktif.' : 'Tidak ada data pada periode ini. Coba ubah periode.'}
+                                                        action={hasFilter ? (
+                                                            <Button variant="secondary" size="sm" onClick={resetFilters}>
                                                                 <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                            </Button>
+                                                        ) : null}
+                                                    />
                                                 </td>
                                             </tr>
                                         )}
@@ -2053,13 +2052,13 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                 </div>
                             ))}
                             {presensis.data.length === 0 && (
-                                <div className="card p-12 text-center">
-                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-surface">
-                                        <CalendarDays className="h-8 w-8 text-border" />
-                                    </div>
-                                    <p className="mt-4 text-base font-bold text-primary">Belum ada riwayat presensi</p>
-                                    <p className="mt-1 text-sm text-text-secondary">Data akan muncul setelah Anda melakukan absen pertama.</p>
-                                </div>
+                                <Card>
+                                    <EmptyState
+                                        icon={CalendarDays}
+                                        title="Belum ada riwayat presensi"
+                                        description="Data akan muncul setelah Anda melakukan absen pertama."
+                                    />
+                                </Card>
                             )}
                         </div>
                     );
