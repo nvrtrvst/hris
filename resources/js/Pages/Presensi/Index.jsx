@@ -2,7 +2,8 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { subscribeRouter } from '@/Utils/routerEvents';
 import useNowEveryMinute from '@/Utils/useNowEveryMinute';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Card } from '@/Components/AdminUI';
 import StatCard from '@/Components/StatCard';
 import Pagination from '@/Components/Pagination';
 import Modal from '@/Components/Modal';
@@ -16,6 +17,7 @@ import {
     CalendarDays,
     CalendarOff,
     CheckCircle2,
+    ChevronRight,
     Clock3,
     FileDown,
     FileText,
@@ -1389,7 +1391,13 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         { key: 'alpa', label: 'Alpa', value: s.alpa, Icon: UserX, iconBg: 'bg-rose-100', iconCls: 'text-rose-600', filter: { status_filter: 'alpa', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'alpa' },
     ];
 
-    const statsCards = is_personal ? personalStatsCards : adminStatsCards;
+    const adminSummaryCards = adminStatsCards.filter((card) => ['hadir', 'telat', 'sakit', 'izin', 'alpa'].includes(card.key));
+    const statsCards = is_personal ? personalStatsCards : adminSummaryCards;
+    const attentionCards = [
+        { key: 'perlu_review', label: 'Perlu review', value: s.perlu_review, Icon: ShieldAlert, filter: { status_filter: '', lembur_filter: '', lokasi_filter: 'perlu_review', suspicious_filter: '' } },
+        { key: 'lembur_pending', label: 'Lembur pending', value: s.lembur_pending, Icon: AlarmClock, filter: { status_filter: '', lembur_filter: 'lembur_pending', lokasi_filter: '', suspicious_filter: '' } },
+        { key: 'belum_presensi', label: 'Belum presensi', value: s.belum_presensi, Icon: UserRoundX, filter: { status_filter: 'belum_presensi', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' } },
+    ];
     const personalExportStatus = ['hadir', 'telat', 'sakit', 'izin', 'cuti', 'alpa'].includes(statusFilter) ? statusFilter : undefined;
     const personalExportParams = {
         start_date: startDate || todayStr,
@@ -1401,7 +1409,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
     const filterSelect = 'select-field text-xs h-11 w-full';
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">{is_personal ? `Riwayat Absensi${pegawai ? `, ${pegawai.nama_lengkap}` : ''}` : 'Kehadiran Harian'}</h2>}
         >
@@ -1412,7 +1420,38 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
                     {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
 
-                    {/* Stats: strip horizontal di mobile, grid di desktop */}
+                    {!is_personal && (
+                        <div className="space-y-2">
+                            <div className="flex flex-wrap items-end justify-between gap-2">
+                                <div>
+                                    <h2 className="text-sm font-bold text-primary">Perlu perhatian</h2>
+                                    <p className="mt-0.5 text-[11px] text-text-secondary">Triage absensi hari ini sebelum masuk ke tabel detail.</p>
+                                </div>
+                                <span className="text-[10px] font-semibold text-text-muted">Filter cepat</span>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-3">
+                                {attentionCards.map((card) => (
+                                    <button key={card.key} type="button" onClick={() => applyStatFilter(card.filter)} className="w-full text-left">
+                                        <Card className="flex items-center gap-3 p-4 transition-colors hover:border-primary/30 hover:bg-surface/50">
+                                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                                                <card.Icon className="h-4 w-4" />
+                                            </span>
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block text-lg font-extrabold text-primary">{card.value}</span>
+                                                <span className="block text-[11px] font-bold text-ink">{card.label}</span>
+                                            </span>
+                                            <ChevronRight className="h-4 w-4 text-text-muted" />
+                                        </Card>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-bold text-primary">{is_personal ? 'Ringkasan saya' : 'Ringkasan kehadiran'}</h2>
+                        <span className="text-[10px] text-text-muted">Angka mengikuti filter aktif</span>
+                    </div>
                     <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 lg:grid-cols-5">
                         {statsCards.map((card) => <div key={card.label} className="min-h-[88px] w-[168px] shrink-0 snap-start md:w-auto md:min-w-0"><StatCard {...card} onClick={() => applyStatFilter(card.filter)} /></div>)}
                     </div>
@@ -2573,6 +2612,6 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                     </Modal>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
