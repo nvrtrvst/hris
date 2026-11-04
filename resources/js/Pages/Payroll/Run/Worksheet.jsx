@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, Input, Label, PageHeader } from '@/Components/AdminUI';
 import Modal from '@/Components/Modal';
 import axios from 'axios';
 import { formatRupiah } from '@/Utils/format';
@@ -33,7 +34,6 @@ const STEPS = [
 /** Identitas unik kolom = tipe + nama (ad-hoc dgn nama sama + tipe sama = 1 kolom). */
 const keyOf = (d) => `${d.tipe}::${d.nama_komponen}`;
 
-/** Format pendek status pegawai (chip kecil di baris). */
 const pegawaiInitials = (nama = '') =>
     nama.split(' ').map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
@@ -301,11 +301,21 @@ export default function RunPayrollWorksheet({ auth, month, year, periode, unit =
     };
 
     return (
-        <AuthenticatedLayout user={auth.user}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Worksheet Penggajian</h2>}>
             <Head title="Draft Worksheet" />
 
-            <div className="bg-surface pt-6 pb-6 px-4 sm:px-6 lg:px-8">
-                <div className="mx-auto max-w-7xl space-y-4">
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                <PageHeader
+                    eyebrow="Penggajian"
+                    title="Worksheet Penggajian"
+                    description={`Review dan koreksi komponen gaji periode ${periode} sebelum finalisasi.`}
+                    actions={
+                        <Link href={route('penggajian.index')} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                            <ArrowLeft className="h-4 w-4" /> Kembali
+                        </Link>
+                    }
+                />
+
                     {/* Wizard steps */}
                     <div className="flex items-center justify-center gap-2 sm:gap-3">
                         {STEPS.map((s, i) => (
@@ -325,51 +335,45 @@ export default function RunPayrollWorksheet({ auth, month, year, periode, unit =
                     </div>
 
                     {/* Mobile: tabel komponen terlalu lebar untuk HP */}
-                    <div className="card p-5 text-center md:hidden">
+                    <Card className="p-5 text-center md:hidden">
                         <ClipboardList className="mx-auto h-8 w-8 text-primary/60" />
                         <p className="mt-2 text-sm font-bold text-text-primary">Worksheet butuh layar lebar</p>
-                        <p className="mt-1 mx-auto max-w-xs text-xs text-text-muted">
+                        <p className="mx-auto mt-1 max-w-xs text-xs text-text-muted">
                             Tabel komponen gaji tidak muat di HP. Buka halaman ini di komputer/laptop untuk mengedit, atau kembali ke ringkasan periode.
                         </p>
-                        <button type="button" onClick={() => window.history.back()} className="btn-secondary mt-4">
+                        <Button variant="secondary" className="mt-4" onClick={() => window.history.back()}>
                             Kembali
-                        </button>
-                    </div>
+                        </Button>
+                    </Card>
 
                     <div className="hidden space-y-4 md:block">
                     {/* Toolbar */}
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                        <div>
-                            <h2 className="flex items-center gap-2 text-xl font-extrabold text-primary">
-                                <ClipboardList className="h-5 w-5" />
-                                Worksheet Penggajian
-                            </h2>
-                            <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-text-secondary">
-                                <span className="inline-flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" /> Periode {periode}</span>
-                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">Draft</span>
-                                <span className="text-[11px] text-text-muted">Edit sel → tersimpan otomatis saat sel ditinggalkan.</span>
-                            </p>
-                        </div>
+                        <p className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+                            <span className="inline-flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" /> Periode {periode}</span>
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">Draft</span>
+                            <span className="text-[11px] text-text-muted">Edit sel → tersimpan otomatis saat sel ditinggalkan.</span>
+                        </p>
                         <div className="flex flex-wrap items-center gap-2">
-                            <button type="button" onClick={() => openAdHoc('pendapatan')} className="btn-secondary btn-sm flex items-center gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+                            <Button variant="secondary" size="sm" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50" onClick={() => openAdHoc('pendapatan')}>
                                 <Plus className="h-3.5 w-3.5" /> Pendapatan Khusus
-                            </button>
-                            <button type="button" onClick={() => openAdHoc('potongan')} className="btn-secondary btn-sm flex items-center gap-1.5 border-rose-200 text-rose-600 hover:bg-rose-50">
+                            </Button>
+                            <Button variant="secondary" size="sm" className="border-rose-200 text-rose-600 hover:bg-rose-50" onClick={() => openAdHoc('potongan')}>
                                 <Minus className="h-3.5 w-3.5" /> Potongan Khusus
-                            </button>
+                            </Button>
                             {dirtyCount > 0 && (
-                                <button type="button" onClick={() => saveAllDirty()} className="btn-secondary btn-sm flex items-center gap-1.5">
+                                <Button variant="secondary" size="sm" onClick={() => saveAllDirty()}>
                                     <Save className="h-3.5 w-3.5" /> Simpan Semua ({dirtyCount})
-                                </button>
+                                </Button>
                             )}
-                            <button type="button" onClick={finalize} className="btn-primary btn-sm flex items-center gap-1.5">
+                            <Button size="sm" onClick={finalize}>
                                 <Lock className="h-3.5 w-3.5" /> Finalisasi (Kunci)
-                            </button>
+                            </Button>
                         </div>
                     </div>
 
                     {/* Table */}
-                    <div className="card overflow-hidden">
+                    <Card className="overflow-hidden">
                         {loading ? (
                             <div className="flex flex-col items-center justify-center py-24 text-center">
                                 <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
@@ -383,7 +387,7 @@ export default function RunPayrollWorksheet({ auth, month, year, periode, unit =
                                 </div>
                                 <p className="mt-4 text-base font-bold text-primary">Gagal memuat draft</p>
                                 <p className="mt-1 max-w-sm text-sm text-text-secondary">{loadError}</p>
-                                <button type="button" onClick={() => window.location.reload()} className="btn-secondary btn-sm mt-4">Muat Ulang</button>
+                                <Button variant="secondary" size="sm" className="mt-4" onClick={() => window.location.reload()}>Muat Ulang</Button>
                             </div>
                         ) : rows.length === 0 ? (
                             <div className="flex flex-col items-center py-24 text-center">
@@ -394,7 +398,7 @@ export default function RunPayrollWorksheet({ auth, month, year, periode, unit =
                                 <p className="mt-1 max-w-sm text-sm text-text-secondary">
                                     Jalankan <b>Run Payroll</b> (Step 1) untuk periode {periode} terlebih dahulu.
                                 </p>
-                                <Link href={route('penggajian.run')} className="btn-primary btn-sm mt-4 flex items-center gap-1.5">
+                                <Link href={route('penggajian.run')} className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white transition-colors hover:bg-primary-600">
                                     <Sparkles className="h-3.5 w-3.5" /> Buka Run Payroll
                                 </Link>
                             </div>
@@ -405,14 +409,15 @@ export default function RunPayrollWorksheet({ auth, month, year, periode, unit =
                                         <b className="text-primary">{rows.length}</b> pegawai · <b className="text-emerald-600">{columns.filter((c) => c.tipe === 'pendapatan').length}</b> kolom pendapatan · <b className="text-rose-600">{columns.filter((c) => c.tipe === 'potongan').length}</b> kolom potongan
                                         <span className="ml-2 hidden text-[11px] text-text-muted md:inline">Sel kosong = tidak dihitung. Set 0 = pakai nilai default.</span>
                                     </p>
-                                    <div className="relative sm:w-64">
-                                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                        <input
+                                    <div className="relative w-full sm:w-64">
+                                        <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                        <Input
                                             type="text"
                                             value={search}
                                             onChange={(e) => setSearch(e.target.value)}
                                             placeholder="Cari nama / NIP…"
-                                            className="input-field h-9 pl-9 text-xs"
+                                            aria-label="Cari pegawai"
+                                            className="h-9 pl-9 text-xs"
                                         />
                                     </div>
                                 </div>
@@ -507,7 +512,7 @@ export default function RunPayrollWorksheet({ auth, month, year, periode, unit =
                                 </div>
                             </>
                         )}
-                    </div>
+                    </Card>
                     </div>
 
                     {/* Summary footer */}
@@ -551,16 +556,8 @@ export default function RunPayrollWorksheet({ auth, month, year, periode, unit =
                             </div>
                         </div>
                     )}
-
-                    <div className="flex justify-center">
-                        <Link href={route('penggajian.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
-                            <ArrowLeft className="h-4 w-4" /> Kembali ke Riwayat Penggajian
-                        </Link>
-                    </div>
-                </div>
             </div>
 
-            {/* ─── MODAL: Tambah Komponen Khusus (ad-hoc) ─── */}
             <Modal show={adHocTipe !== null} onClose={() => setAdHocTipe(null)} maxWidth="sm">
                 <form onSubmit={submitAdHoc} className="px-6 py-5">
                     <div className="flex items-center gap-3 mb-4">
@@ -576,24 +573,25 @@ export default function RunPayrollWorksheet({ auth, month, year, periode, unit =
                     </div>
 
                     <div>
-                        <label className="form-label mb-1">Nama Komponen <span className="text-danger">*</span></label>
-                        <input
+                        <Label htmlFor="ad-hoc-name" required>Nama Komponen</Label>
+                        <Input
+                            id="ad-hoc-name"
                             type="text"
                             autoFocus
                             value={adHocName}
                             onChange={(e) => setAdHocName(e.target.value)}
                             placeholder={adHocTipe === 'pendapatan' ? 'Contoh: Bonus THR, Uang Transport' : 'Contoh: Kasbon, Potongan Seragam'}
-                            className="input-field"
+                            aria-invalid={Boolean(adHocError)}
                         />
-                        {adHocError && <p className="form-error mt-1">{adHocError}</p>}
+                        {adHocError && <p className="mt-1 text-[10px] font-semibold text-rose-600">{adHocError}</p>}
                     </div>
 
                     <div className="mt-5 flex justify-end gap-3 border-t border-border pt-4">
-                        <button type="button" onClick={() => setAdHocTipe(null)} className="btn-secondary">Batal</button>
-                        <button type="submit" className="btn-primary">Tambah Kolom</button>
+                        <Button variant="secondary" onClick={() => setAdHocTipe(null)}>Batal</Button>
+                        <Button type="submit">Tambah Kolom</Button>
                     </div>
                 </form>
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
