@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { kepagawaianBadge, STATUS_AKTIF_BADGE } from '@/Utils/statusMeta';
 import Modal from '@/Components/Modal';
@@ -40,9 +41,9 @@ const InfoRow = ({ label, children }) => (
 );
 
 const SectionCard = ({ Icon, title, action, children }) => (
-    <div className="card p-6">
+    <Card className="p-5 sm:p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h4 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-primary">
+            <h4 className="flex items-center gap-2 text-sm font-bold text-primary">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                     <Icon className="h-4 w-4 text-primary" />
                 </span>
@@ -51,7 +52,7 @@ const SectionCard = ({ Icon, title, action, children }) => (
             {action}
         </div>
         {children}
-    </div>
+    </Card>
 );
 
 const JENIS_DOKUMEN = ['SK', 'Ijazah', 'KTP', 'Sertifikat', 'Kontrak', 'Surat Lain', 'Lainnya'];
@@ -67,7 +68,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
         }
     };
 
-    // ── NIK asli (khusus permission view_sensitive_data, via endpoint ber-audit) ──
+    // NIK asli khusus permission view_sensitive_data, via endpoint ber-audit.
     const canViewSensitive = auth.permissions?.includes('view_sensitive_data');
     const [nikRevealed, setNikRevealed] = useState(false);
     const [nikAsli, setNikAsli] = useState(null);
@@ -93,7 +94,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
         }
     };
 
-    // ── Username asli (akun mobile login, via endpoint ber-audit) ──
+    // Username asli akun mobile, via endpoint ber-audit.
     const [usernameRevealed, setUsernameRevealed] = useState(false);
     const [usernameAsli, setUsernameAsli] = useState(null);
     const [usernameLoading, setUsernameLoading] = useState(false);
@@ -118,7 +119,6 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
         }
     };
 
-    // ── Upload dokumen ──
     const [showUpload, setShowUpload] = useState(false);
     const [docError, setDocError] = useState(null);
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
@@ -159,20 +159,24 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
         : null;
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Detail Pegawai</h2>}
         >
             <Head title={`Detail Pegawai - ${pegawai.nama_lengkap}`} />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="mx-auto max-w-7xl space-y-5">
                     <Link href={route('pegawai.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
                         <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Pegawai
                     </Link>
 
-                    {/* Hero profile */}
-                    <div className="card p-6">
+                    <PageHeader
+                        eyebrow="Kepegawaian"
+                        title={pegawai.nama_lengkap}
+                        description="Detail data pribadi, kepegawaian, dokumen, dan riwayat perubahan."
+                    />
+
+                    <Card className="p-5 sm:p-6">
                         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
                             <div className="flex items-start gap-5">
                                 <div className="relative shrink-0">
@@ -244,22 +248,20 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                 </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 shrink-0">
-                                <Link href={route('pegawai.keuangan', pegawai.id)} className="btn-secondary btn-sm flex items-center gap-1.5">
+                                <Link href={route('pegawai.keuangan', pegawai.id)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
                                     <Banknote className="h-3.5 w-3.5" /> Keuangan & Gaji
                                 </Link>
-                                <Link href={route('pegawai.edit', pegawai.id)} className="btn-secondary btn-sm flex items-center gap-1.5">
+                                <Link href={route('pegawai.edit', pegawai.id)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white transition-colors hover:bg-primary-600">
                                     <Pencil className="h-3.5 w-3.5" /> Edit Data
                                 </Link>
-                                <button type="button" onClick={handleDelete} className="btn-danger btn-sm flex items-center gap-1.5">
+                                <Button type="button" variant="secondary" size="sm" onClick={handleDelete} className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800">
                                     <UserX className="h-3.5 w-3.5" /> Nonaktifkan
-                                </button>
+                                </Button>
                             </div>
                         </div>
-                    </div>
+                    </Card>
 
-                    {/* Grid utama */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {/* Data Pribadi */}
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                         <SectionCard Icon={User} title="Data Pribadi">
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <InfoRow label="Tempat, Tanggal Lahir">
@@ -282,7 +284,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                 <InfoRow label="Jumlah Tanggungan">{pegawai.jumlah_tanggungan != null ? `${pegawai.jumlah_tanggungan} orang` : '—'}</InfoRow>
                             </div>
 
-                            {/* Akun login mobile */}
+
                             <div className="mt-5 rounded-xl border border-info/30 bg-info-light p-4">
                                 <p className="text-xs font-bold uppercase tracking-wide text-info">Akun Login Mobile</p>
                                 {pegawai.user ? (
@@ -325,7 +327,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                             </div>
                         </SectionCard>
 
-                        {/* Data Kepegawaian */}
+
                         <SectionCard Icon={Briefcase} title="Data Kepegawaian">
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <InfoRow label="Pendidikan Terakhir">
@@ -343,7 +345,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                 {canViewKontrak && pegawai.tanggal_akhir_kontrak && <InfoRow label="Akhir Kontrak">{fmtDate(pegawai.tanggal_akhir_kontrak)}</InfoRow>}
                             </div>
 
-                            {/* Unit & Jabatan */}
+
                             <div className="mt-5">
                                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">Unit & Jabatan</p>
                                 {pegawai.units && pegawai.units.length > 0 ? (
@@ -386,7 +388,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                 )}
                             </div>
 
-                            {/* Sisa cuti */}
+
                             <div className="mt-5 flex items-center justify-between rounded-xl bg-primary p-4 text-white">
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Sisa Cuti Tahunan</p>
@@ -419,14 +421,14 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                         </SectionCard>
                     </div>
 
-                    {/* Dokumen */}
+
                     <SectionCard
                         Icon={Paperclip}
                         title={`Dokumen (${(pegawai.dokumen || []).length})`}
                         action={
-                            <button type="button" onClick={openUpload} className="btn-primary btn-sm flex items-center gap-1.5">
-                                <Upload className="h-3.5 w-3.5" /> Upload Dokumen
-                            </button>
+                            <Button type="button" size="sm" onClick={openUpload}>
+                                <Upload className="h-3.5 w-3.5" /> Unggah
+                            </Button>
                         }
                     >
                         {pegawai.dokumen && pegawai.dokumen.length > 0 ? (
@@ -475,7 +477,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                             </div>
                         )}
 
-                        {/* Modal upload */}
+
                         <Modal show={showUpload} onClose={() => setShowUpload(false)} maxWidth="md">
                             <form onSubmit={submitDokumen} className="p-6">
                                 <div className="mb-5 flex items-center justify-between">
@@ -548,16 +550,16 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                                 </div>
 
                                 <div className="mt-6 flex items-center justify-end gap-2">
-                                    <button type="button" onClick={() => setShowUpload(false)} className="btn-secondary btn-sm">Batal</button>
-                                    <button type="submit" disabled={processing} className="btn-primary btn-sm flex items-center gap-1.5">
-                                        {processing ? 'Mengunggah…' : (<><Upload className="h-3.5 w-3.5" /> Unggah</>)}
-                                    </button>
+                                    <Button type="button" variant="secondary" size="sm" onClick={() => setShowUpload(false)}>Batal</Button>
+                                    <Button type="submit" size="sm" disabled={processing}>
+                                        {processing ? 'Mengunggah...' : (<><Upload className="h-3.5 w-3.5" /> Unggah</>)}
+                                    </Button>
                                 </div>
                             </form>
                         </Modal>
                     </SectionCard>
 
-                    {/* Riwayat perubahan */}
+
                     <SectionCard Icon={History} title="Riwayat Perubahan Data">
                         {pegawai.riwayat && pegawai.riwayat.length > 0 ? (
                             <div className="relative">
@@ -594,8 +596,7 @@ export default function Show({ auth, pegawai, canViewKontrak = false }) {
                             </div>
                         )}
                     </SectionCard>
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

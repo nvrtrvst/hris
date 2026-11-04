@@ -1,6 +1,8 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function Create({ auth, pegawais, units, mapel, lokalis }) {
     const [jumlahJp, setJumlahJp] = React.useState(1);
@@ -71,24 +73,22 @@ export default function Create({ auth, pegawais, units, mapel, lokalis }) {
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Tambah Jadwal Pegawai</h2>}
         >
             <Head title="Tambah Jadwal" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="mb-4">
-                        <Link href={route('jadwal.index')} className="link inline-flex items-center text-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Kembali ke Jadwal Mingguan
-                        </Link>
-                    </div>
-                    <div className="page-card">
-                        <div className="p-8">
+            <div className="mx-auto max-w-3xl space-y-5">
+                    <Link href={route('jadwal.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
+                        <ArrowLeft className="h-4 w-4" /> Kembali ke Jadwal Mingguan
+                    </Link>
+                    <PageHeader
+                        eyebrow="Kepegawaian"
+                        title="Tambah Jadwal"
+                        description="Atur pegawai, unit, kelas, dan waktu pelaksanaan jadwal."
+                    />
+                    <Card className="p-5 sm:p-6">
                             
                             {errors.conflict && (
                                 <div className="mb-6 bg-danger-light border-l-4 border-danger p-4 rounded-r-md">
@@ -251,21 +251,15 @@ export default function Create({ auth, pegawais, units, mapel, lokalis }) {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-end mt-8 border-t border-border pt-6">
-                                    <Link href={route('jadwal.index')} className="btn-secondary mr-6">Batal</Link>
-                                    <button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="btn-primary"
-                                    >
+                                <div className="mt-8 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-5">
+                                    <Link href={route('jadwal.index')} className="inline-flex h-10 items-center rounded-lg border border-border bg-white px-4 text-sm font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">Batal</Link>
+                                    <Button type="submit" disabled={processing}>
                                         {processing ? 'Menyimpan...' : 'Simpan Jadwal'}
-                                    </button>
+                                    </Button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-                </div>
+                    </Card>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
