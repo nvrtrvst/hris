@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, Input, Label, PageHeader, Select } from '@/Components/AdminUI';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import {
-    AlertTriangle,
-    Building2,
-    Calendar,
     Download,
     FileSpreadsheet,
     Loader2,
@@ -216,61 +214,51 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
     ] : [];
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h1 className="page-title">Laporan Pengawasan</h1>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Laporan Pengawasan</h2>}>
             <Head title="Laporan Pengawasan Kehadiran & Mengajar" />
-            <div className="min-h-screen bg-surface py-8">
-                <div className="mx-auto max-w-7xl space-y-4 px-4 sm:px-6 lg:px-8">
-                    <div>
-                        <h2 className="text-xl font-extrabold text-text-primary">Laporan Pengawasan Kehadiran &amp; Mengajar</h2>
-                        <p className="text-sm text-text-muted">
-                            Ringkasan seluruh pegawai, pengecualian kehadiran, JP guru, dan kelas yang belum terpantau.
-                        </p>
-                    </div>
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                <PageHeader
+                    className="print:hidden"
+                    eyebrow="Laporan"
+                    title="Laporan Pengawasan Kehadiran & Mengajar"
+                    description="Ringkasan seluruh pegawai, pengecualian kehadiran, JP guru, dan kelas yang belum terpantau."
+                />
 
-                    <div className="card p-5">
+                <Card className="p-5">
                         <div className="flex flex-wrap gap-2">
-                            <button type="button" className="btn-secondary text-xs" onClick={() => applyPreset('day')}>Hari ini</button>
-                            <button type="button" className="btn-secondary text-xs" onClick={() => applyPreset('week')}>Minggu ini</button>
-                            <button type="button" className="btn-secondary text-xs" onClick={() => applyPreset('month')}>Bulan ini</button>
+                            <Button variant="secondary" size="sm" onClick={() => applyPreset('day')}>Hari ini</Button>
+                            <Button variant="secondary" size="sm" onClick={() => applyPreset('week')}>Minggu ini</Button>
+                            <Button variant="secondary" size="sm" onClick={() => applyPreset('month')}>Bulan ini</Button>
                         </div>
 
                         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                             <div>
-                                <label htmlFor="unit" className="form-label text-xs">Unit</label>
-                                <div className="relative mt-1">
-                                    <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <select id="unit" className="select-field pl-9" value={unitId} onChange={(e) => setUnitId(e.target.value)}>
-                                        {units.length > 1 && <option value="">Semua unit</option>}
-                                        {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                                    </select>
-                                </div>
+                                <Label htmlFor="unit">Unit</Label>
+                                <Select id="unit" value={unitId} onChange={(e) => setUnitId(e.target.value)}>
+                                    {units.length > 1 && <option value="">Semua unit</option>}
+                                    {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
+                                </Select>
                             </div>
                             <div>
-                                <label htmlFor="from" className="form-label text-xs">Dari</label>
-                                <div className="relative mt-1">
-                                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <input id="from" type="date" className="input-field pl-9" value={from} onChange={(e) => setFrom(e.target.value)} />
-                                </div>
+                                <Label htmlFor="from">Dari</Label>
+                                <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
                             </div>
                             <div>
-                                <label htmlFor="to" className="form-label text-xs">Sampai</label>
-                                <div className="relative mt-1">
-                                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <input id="to" type="date" className="input-field pl-9" value={to} onChange={(e) => setTo(e.target.value)} />
-                                </div>
+                                <Label htmlFor="to">Sampai</Label>
+                                <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
                             </div>
                             <div>
-                                <label htmlFor="jenis" className="form-label text-xs">Jenis Pegawai</label>
-                                <select id="jenis" className="select-field mt-1" value={jenisPegawai} onChange={(e) => setJenisPegawai(e.target.value)}>
+                                <Label htmlFor="jenis">Jenis Pegawai</Label>
+                                <Select id="jenis" value={jenisPegawai} onChange={(e) => setJenisPegawai(e.target.value)}>
                                     <option value="all">Semua pegawai</option>
                                     <option value="guru">Pendidik</option>
                                     <option value="non_guru">Tenaga kependidikan</option>
-                                </select>
+                                </Select>
                             </div>
                             <div className="flex items-end">
-                                <button type="button" onClick={() => loadPreview()} disabled={loading} className="btn-primary inline-flex w-full items-center justify-center gap-2">
+                                <Button onClick={() => loadPreview()} disabled={loading} className="w-full">
                                     {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat...</> : <><Search className="h-4 w-4" /> Tampilkan</>}
-                                </button>
+                                </Button>
                             </div>
                         </div>
 
@@ -284,25 +272,25 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                         )}
 
                         <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row">
-                            <button type="button" onClick={() => download('pdf')} disabled={!preview || loading} className="btn-secondary inline-flex items-center gap-2">
+                            <Button variant="secondary" onClick={() => download('pdf')} disabled={!preview || loading}>
                                 <Download className="h-4 w-4" /> Unduh PDF
-                            </button>
-                            <button type="button" onClick={() => download('excel')} disabled={!preview || loading} className="btn-secondary inline-flex items-center gap-2">
+                            </Button>
+                            <Button variant="secondary" onClick={() => download('excel')} disabled={!preview || loading}>
                                 <FileSpreadsheet className="h-4 w-4" /> Unduh Excel
-                            </button>
+                            </Button>
                         </div>
-                    </div>
+                    </Card>
 
                     {loading && (
-                        <div role="status" className="card flex items-center justify-center gap-3 p-12">
+                        <Card role="status" className="flex items-center justify-center gap-3 p-12">
                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
                             <span className="text-sm font-semibold text-text-secondary">Memuat laporan...</span>
-                        </div>
+                        </Card>
                     )}
 
                     {!loading && preview && summary && (
                         <>
-                            <div className="card p-5">
+                            <Card className="p-5">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <p className="text-sm font-extrabold text-text-primary">{preview.unit?.nama || 'Semua Unit'}</p>
@@ -323,9 +311,9 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                     <div className="rounded-lg border border-border p-3"><p className="text-[10px] font-bold uppercase text-text-muted">Alpa</p><p className="text-xl font-extrabold text-danger">{summary.alpa}</p></div>
                                     <div className="rounded-lg border border-border p-3"><p className="text-[10px] font-bold uppercase text-text-muted">JP (jam pelajaran)</p><p className="text-xl font-extrabold">{fmtJp(summary.actual_jp)} dari {fmtJp(summary.scheduled_jp)}</p></div>
                                 </div>
-                            </div>
+                            </Card>
 
-                            <div className="card p-5">
+                            <Card className="p-5">
                                 <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary">Perlu Tindakan</h3>
                                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
                                     {cards.map((card) => (
@@ -349,7 +337,7 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                             <p className="text-xs font-bold text-text-secondary">
                                                 Detail: {metricLabel[metric]} ({detailRows.length} baris)
                                             </p>
-                                            <button type="button" className="btn-secondary text-xs" onClick={() => setMetric(null)}>Tutup</button>
+                                            <Button variant="secondary" size="sm" onClick={() => setMetric(null)}>Tutup</Button>
                                         </div>
                                         {detailRows.length === 0 ? (
                                             <div className="rounded-lg border border-dashed border-border bg-surface p-4 text-center text-xs text-text-muted">
@@ -360,9 +348,9 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                         )}
                                     </div>
                                 )}
-                            </div>
+                            </Card>
 
-                            <div className="card overflow-hidden">
+                            <Card className="overflow-hidden">
                                 <div className="border-b border-border bg-surface px-4 py-3">
                                     <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary">Matriks Pegawai</h3>
                                     <p className="text-xs text-text-muted">{Math.round(preview.period.days)} hari · JP hanya untuk guru</p>
@@ -400,9 +388,9 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                 <p className="border-t border-border px-4 py-3 text-[10px] text-text-muted">
                                     Hadir/Telat/Izin/Alpa dihitung per hari. JP = jam pelajaran; durasi mengikuti durasi JP unit.
                                 </p>
-                            </div>
+                            </Card>
 
-                            <div className="card overflow-hidden">
+                            <Card className="overflow-hidden">
                                 <div className="border-b border-border bg-surface px-4 py-3">
                                     <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary">Kelas &amp; Mengajar</h3>
                                     <p className="text-xs text-text-muted">Hanya jadwal yang bermasalah</p>
@@ -437,17 +425,16 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                         </table>
                                     </div>
                                 )}
-                            </div>
+                            </Card>
                         </>
                     )}
 
                     {!loading && !preview && !error && (
-                        <div className="card p-6 text-center text-sm text-text-muted">
+                        <Card className="p-6 text-center text-sm text-text-muted">
                             Pilih periode lalu klik Tampilkan.
-                        </div>
+                        </Card>
                     )}
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

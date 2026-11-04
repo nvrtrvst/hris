@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, Input, Label, PageHeader, Select } from '@/Components/AdminUI';
 import Modal from '@/Components/Modal';
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
-import { Building2, Calendar, Download, Loader2, Search, UserRound, X } from 'lucide-react';
+import { Download, Loader2, Search, X } from 'lucide-react';
 
 const fieldId = (label) => label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 const Field = ({ label, children }) => (
     <div>
-        <label htmlFor={fieldId(label)} className="form-label text-xs">{label}</label>
-        <div className="mt-1">{children}</div>
+        <Label htmlFor={fieldId(label)}>{label}</Label>
+        {children}
     </div>
 );
 
@@ -110,58 +111,47 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h1 className="page-title">Laporan Presensi Pegawai</h1>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Laporan Presensi Pegawai</h2>}>
             <Head title="Laporan Presensi Pegawai" />
-            <div className="min-h-screen bg-surface py-8">
-                <div className="mx-auto max-w-7xl space-y-4 px-4 sm:px-6 lg:px-8">
-                    <div>
-                        <h2 className="text-xl font-extrabold text-text-primary">Presensi Pegawai Bulanan</h2>
-                        <p className="text-sm text-text-muted">
-                            Laporan per pegawai dengan JP aktual, persentase kehadiran harian, mingguan, dan bulanan.
-                        </p>
-                    </div>
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                <PageHeader
+                    eyebrow="Laporan"
+                    title="Presensi Pegawai Bulanan"
+                    description="Laporan per pegawai dengan JP aktual, persentase kehadiran harian, mingguan, dan bulanan."
+                />
 
-                    <div className="card p-5">
+                    <Card className="p-5">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                             <Field label="Unit Sekolah">
-                                <div className="relative">
-                                    <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <select id={fieldId('Unit Sekolah')} className="select-field pl-9" value={unitId} onChange={(e) => pilihUnit(e.target.value)}>
-                                        <option value="">Pilih unit</option>
-                                        {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                                    </select>
-                                </div>
+                                <Select id={fieldId('Unit Sekolah')} value={unitId} onChange={(e) => pilihUnit(e.target.value)}>
+                                    <option value="">Pilih unit</option>
+                                    {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
+                                </Select>
                             </Field>
 
                             <Field label="Pegawai">
-                                <div className="relative">
-                                    <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <select id={fieldId('Pegawai')} className="select-field pl-9" value={pegawaiId} onChange={(e) => { setPegawaiId(e.target.value); setPreview(null); }}>
-                                        <option value="">Pilih pegawai</option>
-                                        {guruOptions.map((guru) => <option key={guru.id} value={guru.id}>{guru.nama}</option>)}
-                                    </select>
-                                </div>
+                                <Select id={fieldId('Pegawai')} value={pegawaiId} onChange={(e) => { setPegawaiId(e.target.value); setPreview(null); }}>
+                                    <option value="">Pilih pegawai</option>
+                                    {guruOptions.map((guru) => <option key={guru.id} value={guru.id}>{guru.nama}</option>)}
+                                </Select>
                             </Field>
 
                             <Field label="Bulan">
-                                <div className="relative">
-                                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <input id={fieldId('Bulan')} type="month" className="input-field pl-9" value={periode} onChange={(e) => { setPeriode(e.target.value); setPreview(null); }} />
-                                </div>
+                                <Input id={fieldId('Bulan')} type="month" value={periode} onChange={(e) => { setPeriode(e.target.value); setPreview(null); }} />
                             </Field>
 
                             <Field label="Tahun Pelajaran">
-                                <select className="select-field" value={tahunAjaran} onChange={(e) => { setTahunAjaran(e.target.value); setPreview(null); }}>
+                                <Select value={tahunAjaran} onChange={(e) => { setTahunAjaran(e.target.value); setPreview(null); }}>
                                     {years.length === 0 && <option value={tahunAjaran}>{tahunAjaran}</option>}
                                     {years.map((year) => <option key={year} value={year}>{year}</option>)}
-                                </select>
+                                </Select>
                             </Field>
 
                             <Field label="Semester">
-                                <select className="select-field" value={semester} onChange={(e) => { setSemester(e.target.value); setPreview(null); }}>
+                                <Select value={semester} onChange={(e) => { setSemester(e.target.value); setPreview(null); }}>
                                     <option value="1">1</option>
                                     <option value="2">2</option>
-                                </select>
+                                </Select>
                             </Field>
                         </div>
 
@@ -175,25 +165,25 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                         )}
 
                         <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row">
-                            <button type="button" onClick={handlePreview} disabled={loading || !unitId || !pegawaiId} className="btn-primary inline-flex items-center gap-2">
+                            <Button onClick={handlePreview} disabled={loading || !unitId || !pegawaiId}>
                                 {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat...</> : <><Search className="h-4 w-4" /> Tampilkan Pratinjau</>}
-                            </button>
-                            <button type="button" onClick={handleDownload} disabled={!unitId || !pegawaiId} className="btn-secondary inline-flex items-center gap-2">
+                            </Button>
+                            <Button variant="secondary" onClick={handleDownload} disabled={!unitId || !pegawaiId}>
                                 <Download className="h-4 w-4" /> Unduh PDF
-                            </button>
+                            </Button>
                         </div>
-                    </div>
+                    </Card>
 
                     {loading && (
-                        <div role="status" className="card flex items-center justify-center gap-3 p-12">
+                        <Card role="status" className="flex items-center justify-center gap-3 p-12">
                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
                             <span className="text-sm font-semibold text-text-secondary">Memuat...</span>
-                        </div>
+                        </Card>
                     )}
 
                     {!loading && preview && (
                         <div className="space-y-4">
-                            <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
+                            <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
                                 <div>
                                     <p className="text-sm font-extrabold text-text-primary">{preview.pegawai.nama}</p>
                                     <p className="text-xs text-text-muted">
@@ -205,7 +195,7 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                     <span>JP terjadwal: {preview.summary.scheduled_jp}</span>
                                     <span>B (bulan): {preview.summary.b !== null ? `${preview.summary.b}%` : '-'}</span>
                                 </div>
-                            </div>
+                            </Card>
 
                             {preview.rows.some((row) => row.tugas) && preview.aturan && !preview.aturan.sakit_wajib_tugas && (
                                 <div role="status" className="rounded-xl border border-warning/30 bg-warning-light px-4 py-3 text-sm text-warning">
@@ -214,7 +204,7 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                             )}
 
                             {preview.weeks.map((week) => (
-                                <div key={week.label} className="card overflow-hidden">
+                                <Card key={week.label} className="overflow-hidden">
                                     <div className="border-b border-border bg-surface px-4 py-3">
                                         <h3 className="text-sm font-extrabold text-primary">{week.label}</h3>
                                         <p className="mt-0.5 text-xs text-text-muted">
@@ -280,7 +270,7 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                             </tbody>
                                         </table>
                                     </div>
-                                </div>
+                                </Card>
                             ))}
 
                             <p className="text-xs text-text-muted">
@@ -289,7 +279,6 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                             </p>
                         </div>
                     )}
-                </div>
             </div>
 
             <Modal show={tugasRow !== null} onClose={() => !tugasSending && setTugasRow(null)} maxWidth="md" closeable={!tugasSending}>
@@ -323,29 +312,29 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                     </label>
 
                     <div>
-                        <label className="form-label text-xs" htmlFor="tugas-catatan">Catatan</label>
+                        <Label htmlFor="tugas-catatan">Catatan</Label>
                         <textarea
                             id="tugas-catatan"
                             value={tugasForm.catatan}
                             onChange={(e) => setTugasForm({ ...tugasForm, catatan: e.target.value })}
-                            className="input-field mt-1 min-h-20"
+                            className="mt-1 min-h-20 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/10"
                             maxLength={500}
                             placeholder="Contoh: guru lupa mencatat, kelas diberi tugas halaman 12"
                         />
                     </div>
 
-                    {tugasError && <p className="form-error">{tugasError}</p>}
+                    {tugasError && <p className="text-[10px] font-semibold text-rose-600">{tugasError}</p>}
 
                     <div className="flex justify-end gap-2 border-t border-border pt-4">
-                        <button type="button" className="btn-secondary" disabled={tugasSending} onClick={() => setTugasRow(null)}>
+                        <Button variant="secondary" disabled={tugasSending} onClick={() => setTugasRow(null)}>
                             Batal
-                        </button>
-                        <button type="submit" className="btn-primary" disabled={tugasSending}>
+                        </Button>
+                        <Button type="submit" disabled={tugasSending}>
                             {tugasSending ? 'Menyimpan...' : 'Simpan'}
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
