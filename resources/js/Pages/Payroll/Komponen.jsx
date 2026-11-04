@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { PageHeader } from '@/Components/AdminUI';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import { AlertTriangle, Coins, Grid3X3, Loader2, Pencil, Plus, Save, Search, Trash2, Users as UsersIcon } from 'lucide-react';
 import Modal from '@/Components/Modal';
@@ -168,26 +169,28 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
     const isLoading = processing || menghapus;
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Komponen Gaji</h2>}
         >
             <Head title="Komponen Gaji" />
 
-            <div className="bg-surface min-h-screen">
-                <div className="mx-auto w-full space-y-4">
-                    {/* Deskripsi + aksi */}
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <p className="text-sm text-text-secondary">Kelola master komponen pendapatan & potongan yang dipakai perhitungan payroll.</p>
-                        <div className="flex flex-wrap gap-2">
-                            <Link href={route('komponen-gaji.matrix')} className="btn-secondary inline-flex min-h-[44px] items-center gap-1.5">
-                                <Grid3X3 className="h-4 w-4" /> Buka Matrix Gaji
-                            </Link>
-                            <button type="button" onClick={() => { handleCancel(); scrollToForm(); }} className="btn-primary inline-flex min-h-[44px] items-center gap-1.5 lg:hidden">
-                                <Plus className="h-4 w-4" /> Tambah Komponen
-                            </button>
-                        </div>
-                    </div>
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="Penggajian"
+                        title="Komponen Gaji"
+                        description="Kelola master komponen pendapatan dan potongan untuk perhitungan payroll."
+                        actions={
+                            <div className="flex flex-wrap gap-2">
+                                <Link href={route('komponen-gaji.matrix')} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                                    <Grid3X3 className="h-4 w-4" /> Matrix Gaji
+                                </Link>
+                                <button type="button" onClick={() => { handleCancel(); scrollToForm(); }} className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-white transition-colors hover:bg-primary-600 lg:hidden">
+                                    <Plus className="h-4 w-4" /> Tambah Komponen
+                                </button>
+                            </div>
+                        }
+                    />
 
                     {/* Ringkasan satu baris (audit 001 #4): angka sudah terlihat di tabel,
                         kartu metrik hanya menfonduang tempat tanpa memandu keputusan. */}
@@ -197,7 +200,7 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
 
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
                         {/* Form */}
-                        <div id="komponen-form" className="w-full scroll-mt-6 lg:w-1/3 lg:sticky lg:top-6">
+                        <div id="komponen-form" className="min-w-0 w-full scroll-mt-6 lg:w-1/3 lg:sticky lg:top-6">
                             <div className="card overflow-hidden">
                                 <div className="flex items-center justify-between border-b border-border bg-surface px-5 py-3.5">
                                     <h3 className="flex items-center gap-2 text-sm font-extrabold text-primary">
@@ -364,7 +367,7 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                         </div>
 
                         {/* Tabel */}
-                        <div className="w-full lg:w-2/3">
+                        <div className="min-w-0 w-full lg:flex-1">
                             <div className="card overflow-hidden">
                                 <div className="flex flex-col gap-3 border-b border-border bg-surface px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                                     <h3 className="flex flex-wrap items-baseline gap-2 text-base font-extrabold text-text-primary">
@@ -401,7 +404,7 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                                     </div>
                                 </div>
                                 <div className="overflow-x-auto lg:max-h-[72vh] lg:overflow-y-auto">
-                                    <table className="min-w-full divide-y divide-border" aria-busy={isLoading}>
+                                    <table className="w-full table-fixed divide-y divide-border" aria-busy={isLoading}>
                                         <caption className="sr-only">
                                             Daftar komponen gaji, menampilkan {filtered.length} dari {komponens.length} komponen
                                         </caption>
@@ -409,9 +412,9 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                                             <tr>
                                                 <th scope="col" className="px-4 py-3.5 text-left text-xs font-semibold text-text-secondary sm:px-6">Nama</th>
                                                 <th scope="col" className="px-4 py-3.5 text-left text-xs font-semibold text-text-secondary sm:px-6">Kategori</th>
-                                                <th scope="col" className="px-4 py-3.5 text-left text-xs font-semibold text-text-secondary sm:px-6">Nilai Default</th>
-                                                <th scope="col" className="px-4 py-3.5 text-left text-xs font-semibold text-text-secondary sm:px-6">Status</th>
-                                                <th scope="col" className="px-4 py-3.5 text-right text-xs font-semibold text-text-secondary sm:px-6">Aksi</th>
+                                                <th scope="col" className="hidden px-4 py-3.5 text-left text-xs font-semibold text-text-secondary sm:px-6 md:table-cell">Nilai Default</th>
+                                                <th scope="col" className="hidden px-4 py-3.5 text-left text-xs font-semibold text-text-secondary sm:px-6 md:table-cell">Status</th>
+                                                <th scope="col" className="w-16 px-2 py-3.5 text-right text-xs font-semibold text-text-secondary md:w-48 md:px-6">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-border bg-white">
@@ -432,9 +435,14 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                                                 </tr>
                                             ) : filtered.length > 0 ? filtered.map((k) => (
                                                 <tr key={k.id} className="transition-colors hover:bg-surface">
-                                                    <td className="whitespace-nowrap px-4 py-3.5 sm:px-6">
+                                                    <td className="px-4 py-3.5 sm:px-6">
                                                         <p className="text-sm font-bold text-text-primary">{k.nama}</p>
                                                         {k.kode && <p className="mt-0.5 text-[11px] text-text-secondary">{k.kode}</p>}
+                                                        <p className="mt-1 text-[11px] font-medium text-text-secondary md:hidden">
+                                                            {k.nilai_default !== null && k.nilai_default !== '' && k.nilai_default != 0
+                                                                ? (k.jenis === 'persentase' ? `${k.nilai_default}%` : formatRupiah(k.nilai_default))
+                                                                : 'Default / per pegawai'} · {k.is_active ? 'Aktif' : 'Nonaktif'}
+                                                        </p>
                                                     </td>
                                                     <td className="px-4 py-3.5 sm:px-6">
                                                         {/* Satu badge berwarna hanya untuk tipe (audit 001 #1):
@@ -455,12 +463,12 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                                                             return attr.length > 0 && <p className="text-[11px] text-text-secondary">{attr.join(' · ')}</p>;
                                                         })()}
                                                     </td>
-                                                    <td className="whitespace-nowrap px-4 py-3.5 text-sm font-medium text-text-secondary tabular-nums sm:px-6">
+                                                    <td className="hidden whitespace-nowrap px-4 py-3.5 text-sm font-medium text-text-secondary tabular-nums sm:px-6 md:table-cell">
                                                         {k.nilai_default !== null && k.nilai_default !== '' && k.nilai_default != 0
                                                             ? (k.jenis === 'persentase' ? `${k.nilai_default}%` : formatRupiah(k.nilai_default))
                                                             : <span className="text-xs italic text-text-muted">Default / per pegawai</span>}
                                                     </td>
-                                                    <td className="whitespace-nowrap px-4 py-3.5 sm:px-6">
+                                                    <td className="hidden whitespace-nowrap px-4 py-3.5 sm:px-6 md:table-cell">
                                                         {/* Titik status (audit 001 #8): aktif/nonaktif cukup dot + teks,
                                                             info matrix sekunder satu baris teks, du dua tidak bertumpuk. */}
                                                         <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${k.is_active ? 'text-emerald-700' : 'text-text-secondary'}`}>
@@ -471,8 +479,8 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                                                             {k.tampil_di_matrix ? `Matrix · urutan ${k.urutan}` : 'Di luar Matrix'}
                                                         </p>
                                                     </td>
-                                                    <td className="whitespace-nowrap px-4 py-3.5 text-right sm:px-6">
-                                                        <div className="inline-flex items-center gap-2">
+                                                    <td className="w-16 px-2 py-3.5 text-right md:w-48 md:px-6">
+                                                        <div className="flex flex-col items-end gap-1.5 md:inline-flex md:flex-row md:items-center">
                                                             <Link href={route('komponen-gaji.pegawai.index', k.id)} title="Atur nominal khusus per pegawai" className={aksiClass}>
                                                                 <UsersIcon className="h-4 w-4" aria-hidden="true" />
                                                                 <span className="sr-only">Pegawai: atur nominal khusus {k.nama}</span>
@@ -509,10 +517,8 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                             </div>
                         </div>
                     </div>
-                </div>
             </div>
 
-            {/* Konfirmasi hapus, menggantikan confirm() bawaan browser */}
             <Modal show={!!konfirmasiHapus} maxWidth="sm" onClose={() => { if (!menghapus) setKonfirmasiHapus(null); }}>
                 <div className="p-6">
                     <div className="flex items-start gap-3">
@@ -536,6 +542,6 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                     </div>
                 </div>
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
