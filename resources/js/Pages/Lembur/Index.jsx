@@ -1,9 +1,10 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
 import FilterSheet from '@/Components/FilterSheet';
 import Pagination from '@/Components/Pagination';
 import Modal from '@/Components/Modal';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Input, PageHeader, Select } from '@/Components/AdminUI';
+import { Head, router } from '@inertiajs/react';
 import { format, subDays } from 'date-fns';
 import { id } from 'date-fns/locale/id';
 import {
@@ -77,7 +78,6 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
     const [filterSheetOpen, setFilterSheetOpen] = React.useState(false);
     const activeFilterCount = [status, unitId, search, endDate].filter(Boolean).length;
     const [detail, setDetail] = React.useState({ show: false, loading: false, data: null, row: null });
-    const flash = usePage().props.flash || {};
 
     const applyFilters = (overrides = {}) => {
         router.get(
@@ -125,17 +125,19 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
     ];
 
     const bisaApprove = bolehApproveLembur(auth);
-    const filterSelect = 'select-field text-xs h-11 w-full';
+    const filterSelect = 'h-11 w-full text-xs';
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Lembur</h2>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Lembur</h2>}>
             <Head title="Lembur" />
-            <div className="bg-surface min-h-screen">
-                <div className="mx-auto w-full space-y-6">
-                    {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                    {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="Kepegawaian"
+                        title="Lembur"
+                        description="Tinjau pengajuan lembur dan selesaikan approval yang menunggu."
+                    />
 
-                    {/* Chips status */}
+                    
                     <div className="flex flex-wrap gap-2">
                         {chips.map((c) => (
                             <button
@@ -160,7 +162,7 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
                         ))}
                     </div>
 
-                    {/* Filter */}
+                    
                     <FilterSheet
                         open={filterSheetOpen}
                         onOpenChange={setFilterSheetOpen}
@@ -171,26 +173,26 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                             <div>
                                 <label className="mb-1 block text-[11px] font-bold text-text-secondary">Dari Tanggal</label>
-                                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={filterSelect} />
+                                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={filterSelect} />
                             </div>
                             <div>
                                 <label className="mb-1 block text-[11px] font-bold text-text-secondary">Sampai Tanggal</label>
-                                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={filterSelect} />
+                                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={filterSelect} />
                             </div>
                             {units.length > 0 && (
                                 <div>
                                     <label className="mb-1 block text-[11px] font-bold text-text-secondary">Unit</label>
-                                    <select value={unitId} onChange={(e) => setUnitId(e.target.value)} className={filterSelect}>
+                                    <Select value={unitId} onChange={(e) => setUnitId(e.target.value)} className={filterSelect}>
                                         <option value="">Semua Unit</option>
                                         {units.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
-                                    </select>
+                                    </Select>
                                 </div>
                             )}
                             <div>
                                 <label className="mb-1 block text-[11px] font-bold text-text-secondary">Cari Nama</label>
                                 <div className="relative">
-                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
-                                    <input
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-secondary" />
+                                    <Input
                                         type="text"
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
@@ -205,7 +207,7 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
                     </FilterSheet>
 
 
-                    {/* Mobile: kartu lembur */}
+                    
                     <div className="space-y-3 md:hidden">
                         {lemburs.data.length === 0 ? (
                             <div className="card p-6 text-center text-sm text-text-muted">Tidak ada pengajuan lembur pada filter ini.</div>
@@ -256,7 +258,7 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
                         <Pagination links={lemburs.links} pagination={lemburs} data={{ start_date: startDate, end_date: endDate, lembur_status: status, unit_id: unitId, search }} variant="mobile" />
                     </div>
 
-                    {/* Tabel (desktop) */}
+                    
                     <div className="hidden overflow-hidden rounded-xl border border-border bg-white md:block">
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-border">
@@ -264,11 +266,11 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
                                     <tr>
                                         <th className={TH_CLASS}>Tanggal</th>
                                         <th className={TH_CLASS}>Pegawai</th>
-                                        <th className="hidden lg:table-cell">Unit</th>
+                                        <th className={`hidden lg:table-cell ${TH_CLASS}`}>Unit</th>
                                         <th className={TH_CLASS}>Jam</th>
                                         <th className={TH_CLASS}>Durasi</th>
                                         <th className={TH_CLASS}>Status</th>
-                                        <th className="hidden sm:table-cell">Detail</th>
+                                        <th className={`hidden sm:table-cell ${TH_CLASS}`}>Detail</th>
                                         <th className={TH_CLASS}>&nbsp;</th>
                                     </tr>
                                 </thead>
@@ -329,10 +331,9 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
                             <Pagination links={lemburs.links} pagination={lemburs} data={{ start_date: startDate, end_date: endDate, lembur_status: status, unit_id: unitId, search }} />
                         </div>
                     </div>
-                </div>
             </div>
 
-            {/* Modal detail anti-spoof / review */}
+            
             <Modal show={detail.show} onClose={() => setDetail({ show: false, loading: false, data: null })} maxWidth="3xl">
                 <div className="rounded-xl bg-white p-6">
                     <div className="mb-4 flex items-start justify-between">
@@ -402,6 +403,6 @@ export default function Index({ auth, lemburs, counts = {}, filters = {}, units 
                     )}
                 </div>
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
