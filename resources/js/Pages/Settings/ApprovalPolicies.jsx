@@ -1,6 +1,7 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, Input, Label, PageHeader, Select } from '@/Components/AdminUI';
+import { Head, useForm } from '@inertiajs/react';
 import { SlidersHorizontal, Save } from 'lucide-react';
 
 const LABELS = {
@@ -13,7 +14,6 @@ const LABELS = {
 };
 
 export default function ApprovalPolicies({ auth, policies }) {
-    const { flash } = usePage().props;
     const { data, setData, put, processing, errors } = useForm({
         policies: policies.map((p) => ({
             jenis: p.jenis,
@@ -35,17 +35,18 @@ export default function ApprovalPolicies({ auth, policies }) {
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Aturan Persetujuan</h2>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Aturan Persetujuan</h2>}>
             <Head title="Aturan Persetujuan" />
 
-            <div className="mx-auto w-full max-w-4xl space-y-4">
-                {flash?.message && (
-                    <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                        {flash.message}
-                    </div>
-                )}
+            <div className="mx-auto w-full max-w-4xl space-y-5">
+                <PageHeader
+                    eyebrow="Pengaturan"
+                    title="Aturan Persetujuan"
+                    description="Atur jumlah tahap, ambang tahap kedua, SLA, dan tembusan tiap jenis pengajuan."
+                />
 
-                <form onSubmit={submit} className="card p-4 sm:p-6">
+                <Card className="p-4 sm:p-6">
+                <form onSubmit={submit}>
                     <div className="mb-4 flex items-start gap-3">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                             <SlidersHorizontal className="h-5 w-5 text-primary" />
@@ -64,42 +65,39 @@ export default function ApprovalPolicies({ auth, policies }) {
                                 <p className="mb-3 text-sm font-bold text-text-primary">{LABELS[row.jenis] || row.jenis}</p>
 
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                    <label className="block">
-                                        <span className="form-label text-xs">Jumlah tahap</span>
-                                        <select
-                                            className="select-field w-full"
+                                    <div>
+                                        <Label>Jumlah tahap</Label>
+                                        <Select
                                             value={row.levels}
                                             onChange={(e) => setRow(index, 'levels', Number(e.target.value))}
                                         >
                                             <option value={1}>1 tahap</option>
                                             <option value={2}>2 tahap</option>
-                                        </select>
-                                    </label>
+                                        </Select>
+                                    </div>
 
-                                    <label className="block">
-                                        <span className="form-label text-xs">Tahap 2 bila lebih dari (hari)</span>
-                                        <input
+                                    <div>
+                                        <Label>Tahap 2 bila lebih dari (hari)</Label>
+                                        <Input
                                             type="number"
                                             min="1"
                                             max="30"
-                                            className="input-field w-full"
                                             value={row.second_level_min_days}
                                             disabled={row.levels < 2}
                                             onChange={(e) => setRow(index, 'second_level_min_days', e.target.value)}
                                         />
-                                    </label>
+                                    </div>
 
-                                    <label className="block">
-                                        <span className="form-label text-xs">Batas waktu (hari kerja)</span>
-                                        <input
+                                    <div>
+                                        <Label>Batas waktu (hari kerja)</Label>
+                                        <Input
                                             type="number"
                                             min="1"
                                             max="30"
-                                            className="input-field w-full"
                                             value={row.sla_days}
                                             onChange={(e) => setRow(index, 'sla_days', Number(e.target.value))}
                                         />
-                                    </label>
+                                    </div>
                                 </div>
 
                                 <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-text-secondary">
@@ -120,12 +118,13 @@ export default function ApprovalPolicies({ auth, policies }) {
                     </div>
 
                     <div className="mt-5 flex justify-end">
-                        <button type="submit" disabled={processing} className="btn-primary inline-flex items-center gap-2">
+                        <Button type="submit" disabled={processing}>
                             <Save className="h-4 w-4" /> Simpan
-                        </button>
+                        </Button>
                     </div>
                 </form>
+                </Card>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

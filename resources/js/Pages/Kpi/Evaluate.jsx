@@ -1,5 +1,6 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, PageHeader } from '@/Components/AdminUI';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, CheckCircle2, LockKeyhole } from 'lucide-react';
 
@@ -39,7 +40,7 @@ export default function Evaluate({ auth, assignment, periode, template, indicato
     const [ringkasan, setRingkasan] = React.useState(evaluation?.ringkasan || '');
     const [tanggapan, setTanggapan] = React.useState(evaluation?.tanggapan_pegawai || '');
     const [processing, setProcessing] = React.useState(false);
-    const { errors = {}, flash = {} } = usePage().props;
+    const { errors = {} } = usePage().props;
     const locked = evaluation?.status === 'finalized' || !can_edit;
 
     const update = (id, key, value) => setItems((prev) => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
@@ -69,11 +70,19 @@ export default function Evaluate({ auth, assignment, periode, template, indicato
     const manual = indicators.filter((indicator) => indicator.sumber !== 'system');
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h1 className="page-title">Penilaian KPI</h1>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Penilaian KPI</h2>}>
             <Head title={`KPI - ${assignment.pegawai}`} />
-            <div className="min-h-screen bg-surface py-6">
-                <div className="mx-auto max-w-4xl space-y-4 px-4 sm:px-6 lg:px-8">
-                    <Link href={route('kpi.index', { periode: 'monthly', tanggal: periode.mulai })} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ArrowLeft className="h-4 w-4" />Kembali ke laporan KPI</Link>
+            <div className="mx-auto w-full max-w-4xl space-y-5">
+                    <PageHeader
+                        eyebrow="KPI"
+                        title="Penilaian KPI"
+                        description={`${assignment.pegawai} · ${assignment.jabatan} · ${periode.mulai} sampai ${periode.selesai}`}
+                        actions={
+                            <Link href={route('kpi.index', { periode: 'monthly', tanggal: periode.mulai })} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                                <ArrowLeft className="h-4 w-4" /> Kembali
+                            </Link>
+                        }
+                    />
 
                     <section className="rounded-xl border border-border bg-white p-5">
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -97,12 +106,11 @@ export default function Evaluate({ auth, assignment, periode, template, indicato
                         )}
                         {locked && evaluation?.status === 'finalized' && auth.permissions?.includes('manage_kpi_templates') && (
                             <div className="mt-3 border-t border-border pt-3">
-                                <button type="button" onClick={() => router.post(route('kpi.evaluations.reopen', evaluation.id), {}, { preserveScroll: true })} className="btn-secondary btn-sm">Buka koreksi</button>
+                                <Button type="button" variant="secondary" size="sm" onClick={() => router.post(route('kpi.evaluations.reopen', evaluation.id), {}, { preserveScroll: true })}>Buka koreksi</Button>
                             </div>
                         )}
                     </section>
 
-                    {flash.message && <div role="status" className="rounded-xl border border-success/30 bg-success-light px-4 py-3 text-sm font-semibold text-success">{flash.message}</div>}
                     {Object.keys(errors).length > 0 && <div role="alert" className="rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm font-semibold text-danger">{Object.values(errors).flat().join(' · ')}</div>}
                     {evaluation?.tanggapan_pegawai && <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-text-secondary"><strong className="text-text-primary">Tanggapan pegawai:</strong> {evaluation.tanggapan_pegawai}{evaluation.ditanggapi_pada && <span className="ml-2 text-xs text-text-muted">({evaluation.ditanggapi_pada})</span>}</div>}
 
@@ -217,7 +225,7 @@ export default function Evaluate({ auth, assignment, periode, template, indicato
                         {!locked && <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                             <p className="text-xs font-semibold text-text-muted">{terisi}/{indicators.length} indikator terisi · {previewScore == null ? 'skor belum tersedia' : `skor sementara ${previewScore.toFixed(1)}%`}</p>
                             <div className="flex gap-2">
-                                <button type="button" disabled={processing} onClick={() => submit(false)} className="btn-secondary">Simpan draft</button>
+                                <Button type="button" variant="secondary" disabled={processing} onClick={() => submit(false)}>Simpan draft</Button>
                                 <button type="button" disabled={processing} onClick={() => submit(true)} className="btn-primary inline-flex items-center gap-2">{processing ? 'Menyimpan…' : <><CheckCircle2 className="h-4 w-4" />Finalisasi</>}</button>
                             </div>
                         </div>}
@@ -232,8 +240,7 @@ export default function Evaluate({ auth, assignment, periode, template, indicato
                             router.post(route('kpi.evaluations.respond', evaluation.id), { tanggapan_pegawai: tanggapan }, { preserveScroll: true, onFinish: () => setProcessing(false) });
                         }} className="btn-secondary disabled:opacity-50">Kirim tanggapan</button></div>
                     </section>}
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
