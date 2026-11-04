@@ -1,5 +1,6 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { PageHeader } from '@/Components/AdminUI';
 import { Head, Link } from '@inertiajs/react';
 import { CalendarCheck, UserCheck, Receipt, FileText, ChevronRight, Clock, ShieldCheck } from 'lucide-react';
 
@@ -17,30 +18,25 @@ export default function DashboardSelfService({ auth, stats }) {
     ];
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
-            header={
-                <div className="page-header mb-0">
-                    <div>
-                        <h1 className="page-title">Beranda Pegawai</h1>
-                        <p className="page-subtitle">{todayString}</p>
-                    </div>
-                </div>
-            }
+            header={<h2 className="page-title">Beranda Pegawai</h2>}
         >
             <Head title="Beranda Pegawai" />
 
-            <div className="bg-surface min-h-screen">
-                <div className="mx-auto w-full space-y-6">
+            <div className="mx-auto w-full max-w-[1600px] space-y-6">
+                    <PageHeader
+                        eyebrow="Self Service"
+                        title="Beranda Pegawai"
+                        description={todayString}
+                    />
 
-                    {/* Welcome Banner */}
-                    <div className="bg-gradient-to-r from-primary to-primary-600 rounded-xl p-6 text-white shadow-card">
+                    <div className="rounded-xl bg-primary p-6 text-white shadow-card">
                         <h3 className="text-xl font-bold">Halo, {auth.user.name}</h3>
-                        <p className="text-white/70 mt-1">Selamat datang di portal self-service HRIS Yayasan.</p>
+                        <p className="mt-1 text-white/70">Selamat datang di portal self-service HRIS Yayasan.</p>
                     </div>
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                         {statCards.map((card, i) => (
                             <div key={i} className="card p-6">
                                 <div className="flex items-center justify-between mb-4">
@@ -74,8 +70,7 @@ export default function DashboardSelfService({ auth, stats }) {
                         ))}
                     </div>
 
-                    {/* Quick Actions */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                         <Link href={route('presensi.index')} className="card-hover p-5 flex items-center justify-between group">
                             <div className="flex items-center gap-4">
                                 <div className="stat-icon bg-primary/5">
@@ -126,8 +121,7 @@ export default function DashboardSelfService({ auth, stats }) {
                         </Link>
                     </div>
 
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

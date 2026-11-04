@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, PageHeader } from '@/Components/AdminUI';
 import { Head, useForm } from '@inertiajs/react';
 import { Camera, CheckCircle } from 'lucide-react';
 import ComboSelect from '@/Components/ComboSelect';
@@ -152,13 +153,18 @@ export default function LengkapiData({ auth, pegawai, statusKepegawaian }) {
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
-            header={<h2 className="text-xl font-bold text-primary">Lengkapi Data Pegawai</h2>}
+            header={<h2 className="page-title">Lengkapi Data Pegawai</h2>}
         >
             <Head title="Lengkapi Data" />
 
-            <div className="mx-auto max-w-3xl space-y-6 py-6">
+            <div className="mx-auto w-full max-w-3xl space-y-5">
+                <PageHeader
+                    eyebrow="Profil"
+                    title="Lengkapi Data Pegawai"
+                    description="Lengkapi data diri sebelum menggunakan seluruh fitur HRIS."
+                />
                 {errorFields.length > 0 ? (
                     <div role="alert" className="rounded-card border border-rose-300 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
                         Periksa kembali field berikut: {errorFields.map((f) => FIELD_LABELS[f] || f).join(', ')}.
@@ -264,16 +270,17 @@ export default function LengkapiData({ auth, pegawai, statusKepegawaian }) {
                         </div>
                     </SectionCard>
 
-                    <button
+                    <Button
                         type="submit"
+                        size="lg"
                         disabled={processing}
-                        className="btn-primary btn-lg w-full"
+                        className="w-full"
                     >
                         <CheckCircle className="h-5 w-5" />
-                        {processing ? 'Menyimpan…' : 'Simpan Data'}
-                    </button>
+                        {processing ? 'Menyimpan...' : 'Simpan Data'}
+                    </Button>
                 </form>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
