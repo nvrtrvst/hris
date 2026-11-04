@@ -35,29 +35,6 @@ import {
     X,
 } from 'lucide-react';
 
-const ChipFilter = ({ label, value, onChange, options }) => (
-    <div className="flex flex-col gap-1">
-        <span className="text-[11px] font-semibold text-text-secondary">{label}</span>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label={label}>
-            {options.map((opt) => {
-                const active = value === opt.value;
-
-                return (
-                    <button
-                        key={opt.value || 'semua'}
-                        type="button"
-                        onClick={() => onChange(opt.value)}
-                        aria-pressed={active}
-                        className={`min-h-11 rounded-full border px-3 text-[11px] font-bold transition-colors ${active ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text-secondary'}`}
-                    >
-                        {opt.label}
-                    </button>
-                );
-            })}
-        </div>
-    </div>
-);
-
 const PegawaiAvatar = ({ pegawai, sizeClass = 'h-10 w-10', textClass = 'text-xs' }) => {
     const nama = pegawai?.nama_lengkap || '-';
     const foto = pegawai?.foto_url;
@@ -1552,7 +1529,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                             </button>
                         </div>
                         {/* Row 1: Search + Quick Filters */}
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {canManage && (
                                 <div className="relative">
                                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
@@ -1583,36 +1560,37 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                 </label>
                             )}
                             {canManage && (
-                                <ChipFilter
-                                    label="Jenis"
-                                    value={jenisFilter}
-                                    onChange={setJenisFilter}
-                                    options={[
-                                        { value: '', label: 'Semua' },
-                                        { value: 'pendidik', label: 'Pendidik' },
-                                        { value: 'kependidikan', label: 'Tenaga Kependidikan' },
-                                    ]}
-                                />
+                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
+                                    <span>Jenis</span>
+                                    <Select className={filterSelect} value={jenisFilter} onChange={(e) => setJenisFilter(e.target.value)} aria-label="Filter jenis pegawai">
+                                        <option value="">Semua Jenis</option>
+                                        <option value="pendidik">Pendidik</option>
+                                        <option value="kependidikan">Tenaga Kependidikan</option>
+                                    </Select>
+                                </label>
                             )}
-
-                            {/* Row 2: Extended Filters (admin only) */}
                             {canManage && (
-                                <>
-                                <ChipFilter
-                                    label="Jadwal"
-                                    value={jadwalFilter}
-                                    onChange={(value) => {
-                                        setJadwalFilter(value);
-                                        if (value === 'sedang_berlangsung') {
-                                            setStartDate('');
-                                            setEndDate('');
-                                        }
-                                    }}
-                                    options={[
-                                        { value: '', label: 'Semua' },
-                                        { value: 'sedang_berlangsung', label: 'Sedang berlangsung' },
-                                    ]}
-                                />
+                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
+                                    <span>Jadwal</span>
+                                    <Select
+                                        className={filterSelect}
+                                        value={jadwalFilter}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setJadwalFilter(value);
+                                            if (value === 'sedang_berlangsung') {
+                                                setStartDate('');
+                                                setEndDate('');
+                                            }
+                                        }}
+                                        aria-label="Filter jadwal"
+                                    >
+                                        <option value="">Semua Jadwal</option>
+                                        <option value="sedang_berlangsung">Sedang berlangsung</option>
+                                    </Select>
+                                </label>
+                            )}
+                            {canManage && (
                                 <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
                                     <span>Lembur</span>
                                     <Select className={filterSelect} value={lemburFilter} onChange={(e) => setLemburFilter(e.target.value)} aria-label="Filter lembur">
@@ -1623,27 +1601,26 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         <option value="lembur_ditolak">Lembur Ditolak</option>
                                     </Select>
                                 </label>
-                                <ChipFilter
-                                    label="Lokasi"
-                                    value={lokasiFilter}
-                                    onChange={setLokasiFilter}
-                                    options={[
-                                        { value: '', label: 'Semua' },
-                                        { value: 'review_semua', label: 'Perlu review' },
-                                        { value: 'perlu_review', label: 'GPS' },
-                                        { value: 'pulang_awal', label: 'Pulang awal' },
-                                    ]}
-                                />
-                                <ChipFilter
-                                    label="GPS"
-                                    value={suspiciousFilter}
-                                    onChange={setSuspiciousFilter}
-                                    options={[
-                                        { value: '', label: 'Semua' },
-                                        { value: '1', label: 'Posisi mencurigakan' },
-                                    ]}
-                                />
-                            </>
+                            )}
+                            {canManage && (
+                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
+                                    <span>Lokasi</span>
+                                    <Select className={filterSelect} value={lokasiFilter} onChange={(e) => setLokasiFilter(e.target.value)} aria-label="Filter lokasi">
+                                        <option value="">Semua Lokasi</option>
+                                        <option value="review_semua">Perlu review</option>
+                                        <option value="perlu_review">GPS</option>
+                                        <option value="pulang_awal">Pulang awal</option>
+                                    </Select>
+                                </label>
+                            )}
+                            {canManage && (
+                                <label className="flex flex-col gap-1 text-[11px] font-semibold text-text-secondary">
+                                    <span>GPS</span>
+                                    <Select className={filterSelect} value={suspiciousFilter} onChange={(e) => setSuspiciousFilter(e.target.value)} aria-label="Filter GPS">
+                                        <option value="">Semua GPS</option>
+                                        <option value="1">Posisi mencurigakan</option>
+                                    </Select>
+                                </label>
                             )}
                         </div>
 
@@ -2101,29 +2078,34 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                 )}
                                 {processing && <span className="ml-2 font-semibold text-primary">Memuat…</span>}
                             </p>
-                            <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
-                                <label className="flex items-center gap-1.5 text-xs text-text-secondary">
-                                    <span>{viewMode === 'ringkas' ? 'Kelompok/halaman' : 'Baris/halaman'}</span>
-                                    <select
-                                        value={perPage}
-                                        onChange={(e) => {
-                                            const nilai = Number(e.target.value);
-                                            setPerPage(nilai);
-                                            applyFilters({ per_page: nilai });
-                                        }}
-                                        disabled={processing}
-                                        className="h-11 cursor-pointer rounded-xl border border-border bg-white px-2.5 text-xs font-bold text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
-                                    >
-                                        <option value={25}>25</option>
-                                        <option value={50}>50</option>
-                                        <option value={100}>100</option>
-                                    </select>
-                                </label>
-                                <Pagination
-                                    links={presensis.links}
-                                    pagination={{ current_page: presensis.current_page, last_page: presensis.last_page }}
-                                    data={buildParams()}
-                                />
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-center gap-2 text-xs text-text-secondary">
+                                    <span className="whitespace-nowrap">Per halaman</span>
+                                    <div className="w-20 shrink-0">
+                                        <Select
+                                            value={perPage}
+                                            onChange={(e) => {
+                                                const nilai = Number(e.target.value);
+                                                setPerPage(nilai);
+                                                applyFilters({ per_page: nilai });
+                                            }}
+                                            disabled={processing}
+                                            className="h-11 w-full pl-3 pr-8 text-xs font-bold"
+                                            aria-label="Jumlah per halaman"
+                                        >
+                                            <option value={25}>25</option>
+                                            <option value={50}>50</option>
+                                            <option value={100}>100</option>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <div className="min-w-0 sm:flex-1">
+                                    <Pagination
+                                        links={presensis.links}
+                                        pagination={{ current_page: presensis.current_page, last_page: presensis.last_page }}
+                                        data={buildParams()}
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}
