@@ -36,7 +36,7 @@ export default function Index({ auth, users, filters, stats }) {
     return (
         <AdminShell
             user={auth.user}
-            header={<h2 className="page-title">Manajemen Hak Akses User</h2>}
+            header={<h2 className="page-title">Manajemen User</h2>}
         >
             <Head title="Manajemen User" />
 
@@ -88,7 +88,8 @@ export default function Index({ auth, users, filters, stats }) {
                             ) : null}
                         />
                     ) : (
-                        <Table>
+                        <>
+                        <Table className="hidden md:block">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead>Nama / Email</TableHead>
@@ -139,6 +140,39 @@ export default function Index({ auth, users, filters, stats }) {
                                 })}
                             </TableBody>
                         </Table>
+
+                        <div className="divide-y divide-border md:hidden">
+                            {users.data.map((u) => {
+                                const meta = roleMeta(u);
+
+                                return (
+                                    <div key={u.id} className="p-4">
+                                        <div className="flex items-start gap-3">
+                                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${avatarTone(u.name)}`}>
+                                                {initials(u.name)}
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-bold text-primary">{u.name}</p>
+                                                <p className="truncate text-xs text-text-muted">{u.email}</p>
+                                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                    <Badge variant={meta.variant}>
+                                                        <ShieldCheck className="h-3 w-3" />
+                                                        {meta.label}
+                                                    </Badge>
+                                                    <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary">
+                                                        <Building2 className="h-3 w-3" /> {u.unit_sekolah?.nama || 'Pusat'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Link href={route('users.edit', u.id)} className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-white text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                                            <ShieldCheck className="h-3.5 w-3.5" /> Atur Akses
+                                        </Link>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        </>
                     )}
 
                     {users.links?.length > 0 && (

@@ -45,7 +45,8 @@ export default function Index({ auth, units, stats }) {
 
                 <Card className="overflow-hidden">
                     {hasUnits ? (
-                        <Table>
+                        <>
+                        <Table className="hidden md:block">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead>Unit</TableHead>
@@ -107,6 +108,36 @@ export default function Index({ auth, units, stats }) {
                                 ))}
                             </TableBody>
                         </Table>
+
+                        <div className="divide-y divide-border md:hidden">
+                            {units.map((unit) => (
+                                <div key={unit.id} className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        {unit.logo_url ? (
+                                            <img src={unit.logo_url} alt={`Logo ${unit.nama}`} className="h-10 w-10 shrink-0 rounded-xl border border-border bg-white object-contain p-0.5" />
+                                        ) : (
+                                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${avatarTone(unit.nama)}`}>
+                                                {initials(unit.nama)}
+                                            </span>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-bold text-primary">{unit.nama}</p>
+                                            <p className="text-xs text-text-muted">{unit.singkatan}</p>
+                                            <p className="mt-1 font-mono text-[11px] text-text-secondary">{unit.latitude}, {unit.longitude}</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                        <Badge variant="success"><Ruler className="h-3 w-3" /> {unit.radius_meter} m</Badge>
+                                        <Badge variant="neutral"><Users className="h-3 w-3" /> {unit.pegawais_count ?? 0} pegawai</Badge>
+                                        <Badge variant="info"><CalendarClock className="h-3 w-3" /> {unit.jadwals_count ?? 0} jadwal</Badge>
+                                    </div>
+                                    <Link href={route('unit-sekolah.edit', unit.id)} className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-white text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                                        <Pencil className="h-3.5 w-3.5" /> Edit Unit
+                                    </Link>
+                                </div>
+                            ))}
+                        </div>
+                        </>
                     ) : (
                         <EmptyState
                             icon={Building2}

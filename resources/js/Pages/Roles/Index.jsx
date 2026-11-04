@@ -80,7 +80,8 @@ export default function Index({ auth, roles, filters, stats }) {
                             ) : null}
                         />
                     ) : (
-                        <Table>
+                        <>
+                        <Table className="hidden md:block">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead>Nama Role</TableHead>
@@ -130,6 +131,45 @@ export default function Index({ auth, roles, filters, stats }) {
                                 })}
                             </TableBody>
                         </Table>
+
+                        <div className="divide-y divide-border md:hidden">
+                            {roles.data.map((role) => {
+                                const isSystem = SYSTEM_ROLES.includes(role.name);
+
+                                return (
+                                    <div key={role.id} className="p-4">
+                                        <div className="flex items-start gap-3">
+                                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isSystem ? 'bg-amber-50 text-amber-600' : 'bg-primary/10 text-primary'}`}>
+                                                <ShieldCheck className="h-5 w-5" />
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-bold uppercase tracking-wide text-primary">{role.name}</p>
+                                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                    {isSystem && <Badge variant="warning">Bawaan Sistem</Badge>}
+                                                    <Badge variant="info">{role.permissions.length} akses</Badge>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 flex gap-2">
+                                            <Link href={route('roles.edit', role.id)} className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-white text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                                                <ShieldCheck className="h-3.5 w-3.5" /> Atur Akses
+                                            </Link>
+                                            {!isSystem && (
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => handleDelete(role.id, role.name)}
+                                                    className="h-10 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" /> Hapus
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        </>
                     )}
 
                     {roles.links?.length > 0 && (
