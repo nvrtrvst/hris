@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, Input, Label, PageHeader, Select } from '@/Components/AdminUI';
+import { Head, Link, router } from '@inertiajs/react';
 import { Clock3, Download, Eye, FileText, Loader2, Search, X } from 'lucide-react';
 
 const STATUS_LABEL = {
@@ -22,7 +23,6 @@ const STATUS_CLASS = {
 const pct = (value) => `${Number(value ?? 0).toFixed(1)}%`;
 
 export default function AbsenSiswa({ auth, filters, summary, sessions = [], students = [], classes = [], classSummary = [], perhatian = [], units = [], canFilterUnit }) {
-    const { flash } = usePage().props;
     const [form, setForm] = useState({
         mode: filters.mode || 'daily',
         tanggal: filters.tanggal || filters.start_date,
@@ -110,15 +110,25 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
     ];
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Laporan Absen Siswa</h2>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Laporan Absen Siswa</h2>}>
             <Head title="Laporan Absen Siswa" />
 
             <div className="mx-auto w-full max-w-7xl space-y-5">
-                {flash?.message && (
-                    <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                        {flash.message}
-                    </div>
-                )}
+                <PageHeader
+                    eyebrow="Laporan"
+                    title="Absen Siswa"
+                    description="Rekap kehadiran siswa per kelas dan periode."
+                    actions={
+                        <div className="flex gap-2">
+                            <Button variant="secondary" onClick={() => unduh('export')}>
+                                <Download className="h-4 w-4" /> Excel
+                            </Button>
+                            <Button variant="secondary" onClick={() => unduh('pdf')}>
+                                <FileText className="h-4 w-4" /> PDF
+                            </Button>
+                        </div>
+                    }
+                />
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="inline-flex rounded-lg border border-border bg-white p-1">
@@ -129,79 +139,73 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
                             Periode
                         </button>
                     </div>
-                    <div className="flex gap-2">
-                        <button type="button" onClick={() => unduh('export')} className="btn-secondary inline-flex items-center gap-1.5">
-                            <Download className="h-4 w-4" /> Excel
-                        </button>
-                        <button type="button" onClick={() => unduh('pdf')} className="btn-secondary inline-flex items-center gap-1.5">
-                            <FileText className="h-4 w-4" /> PDF
-                        </button>
-                    </div>
                 </div>
 
-                <form onSubmit={submit} className="page-card p-4 sm:p-5">
+                <Card className="p-4 sm:p-5">
+                    <form onSubmit={submit}>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
                         {filters.mode === 'period' ? (
                             <>
-                                <label className="block">
-                                    <span className="form-label">Dari tanggal</span>
-                                    <input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="input-field w-full" required />
-                                </label>
-                                <label className="block">
-                                    <span className="form-label">Sampai tanggal</span>
-                                    <input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="input-field w-full" required />
-                                </label>
+                                <div>
+                                    <Label>Dari tanggal</Label>
+                                    <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} required />
+                                </div>
+                                <div>
+                                    <Label>Sampai tanggal</Label>
+                                    <Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} required />
+                                </div>
                             </>
                         ) : (
-                            <label className="block">
-                                <span className="form-label">Tanggal</span>
-                                <input type="date" value={form.tanggal} onChange={(e) => setForm({ ...form, tanggal: e.target.value })} className="input-field w-full" required />
-                            </label>
+                            <div>
+                                <Label>Tanggal</Label>
+                                <Input type="date" value={form.tanggal} onChange={(e) => setForm({ ...form, tanggal: e.target.value })} required />
+                            </div>
                         )}
                         {canFilterUnit && (
-                            <label className="block">
-                                <span className="form-label">Unit</span>
-                                <select value={form.unit_id} onChange={(e) => setForm({ ...form, unit_id: e.target.value })} className="select-field w-full">
+                            <div>
+                                <Label>Unit</Label>
+                                <Select value={form.unit_id} onChange={(e) => setForm({ ...form, unit_id: e.target.value })}>
                                     <option value="">Semua unit</option>
                                     {units.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
-                                </select>
-                            </label>
+                                </Select>
+                            </div>
                         )}
-                        <label className="block">
-                            <span className="form-label">Kelas</span>
-                            <select value={form.class_label} onChange={(e) => setForm({ ...form, class_label: e.target.value })} className="select-field w-full">
+                        <div>
+                            <Label>Kelas</Label>
+                            <Select value={form.class_label} onChange={(e) => setForm({ ...form, class_label: e.target.value })}>
                                 <option value="">Semua kelas</option>
                                 {classes.map((c) => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                        </label>
-                        <label className="block">
-                            <span className="form-label">Status</span>
-                            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="select-field w-full">
+                            </Select>
+                        </div>
+                        <div>
+                            <Label>Status</Label>
+                            <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                                 <option value="semua">Semua</option>
                                 {Object.entries(STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                            </select>
-                        </label>
-                        <label className="block">
-                            <span className="form-label">Cari siswa</span>
-                            <input value={form.search} onChange={(e) => setForm({ ...form, search: e.target.value })} className="input-field w-full" placeholder="Nama atau NIS" maxLength={100} />
-                        </label>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label>Cari siswa</Label>
+                            <Input value={form.search} onChange={(e) => setForm({ ...form, search: e.target.value })} placeholder="Nama atau NIS" maxLength={100} />
+                        </div>
                         <div className="flex items-end">
-                            <button type="submit" className="btn-primary inline-flex w-full items-center justify-center gap-1.5">
+                            <Button type="submit" className="w-full">
                                 <Search className="h-4 w-4" /> Tampilkan
-                            </button>
+                            </Button>
                         </div>
                     </div>
                     {filters.mode === 'period' && (
-                        <p className="form-hint mt-2">Persentase = (Hadir + Telat) / Sesi tercatat. Hanya sesi kelas yang sudah diabsen.</p>
+                        <p className="mt-2 text-[10px] leading-relaxed text-text-muted">Persentase = (Hadir + Telat) / Sesi tercatat. Hanya sesi kelas yang sudah diabsen.</p>
                     )}
-                </form>
+                    </form>
+                </Card>
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
                     {summaryItems.map(([label, value]) => (
-                        <div key={label} className="page-card px-3 py-3">
+                        <Card key={label} className="px-3 py-3">
                             <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{label}</p>
                             <p className="mt-1 text-lg font-extrabold tabular-nums text-text-primary">{value}</p>
-                        </div>
+                        </Card>
                     ))}
                 </div>
 
@@ -226,7 +230,7 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
                 </Link>
 
                 {filters.mode === 'daily' ? (
-                    <div className="page-card card-table">
+                    <Card className="overflow-hidden">
                         <div className="border-b border-border px-4 py-3">
                             <h3 className="section-title">Absensi Harian</h3>
                             <p className="mt-0.5 text-xs text-text-muted">{sessions.length} kelas tercatat{filters.tanggal ? ` pada ${filters.tanggal}` : ''}</p>
@@ -261,11 +265,11 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
                                 ))}
                             </div>
                         )}
-                    </div>
+                    </Card>
                 ) : (
                     <>
                         {perhatian.length > 0 && (
-                            <div className="page-card card-table">
+                            <Card className="overflow-hidden">
                                 <div className="border-b border-border px-4 py-3">
                                     <h3 className="section-title">Perlu Perhatian</h3>
                                     <p className="mt-0.5 text-xs text-text-muted">Siswa dengan ketidakhadiran pada periode ini. Wali kelas menentukan tindak lanjut.</p>
@@ -289,10 +293,10 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
+                            </Card>
                         )}
 
-                        <div className="page-card card-table">
+                        <Card className="overflow-hidden">
                             <div className="border-b border-border px-4 py-3">
                                 <h3 className="section-title">Rekap Siswa</h3>
                                 <p className="mt-0.5 text-xs text-text-muted">{students.length} siswa · {summary.sesi} sesi tercatat</p>
@@ -327,10 +331,10 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
                                     </table>
                                 </div>
                             )}
-                        </div>
+                        </Card>
 
                         {classSummary.length > 0 && (
-                            <div className="page-card card-table">
+                            <Card className="overflow-hidden">
                                 <div className="border-b border-border px-4 py-3"><h3 className="section-title">Rekap Kelas</h3></div>
                                 <div className="table-wrap">
                                     <table className="table-base">
@@ -346,7 +350,7 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
+                            </Card>
                         )}
                     </>
                 )}
@@ -399,6 +403,6 @@ export default function AbsenSiswa({ auth, filters, summary, sessions = [], stud
                     </div>
                 </div>
             )}
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

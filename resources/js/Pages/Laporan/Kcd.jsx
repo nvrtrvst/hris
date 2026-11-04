@@ -1,15 +1,16 @@
 import { Fragment, useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, Input, Label, PageHeader, Select } from '@/Components/AdminUI';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import { Building2, Calendar, Download, Loader2, Search, X } from 'lucide-react';
+import { Download, Loader2, Search, X } from 'lucide-react';
 
 const fieldId = (label) => label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 const Field = ({ label, children }) => (
     <div>
-        <label htmlFor={fieldId(label)} className="form-label text-xs">{label}</label>
-        <div className="mt-1">{children}</div>
+        <Label htmlFor={fieldId(label)}>{label}</Label>
+        {children}
     </div>
 );
 
@@ -56,47 +57,36 @@ export default function Kcd({ auth, units }) {
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h1 className="page-title">Laporan KCD</h1>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Laporan KCD</h2>}>
             <Head title="Laporan KCD" />
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    <div>
-                        <h2 className="text-xl font-extrabold text-text-primary">Laporan Presensi KCD (Bulanan)</h2>
-                        <p className="text-sm text-text-muted">
-                            Pilih unit &amp; bulan, lalu pratinjau atau unduh PDF daftar hadir per minggu (Senin&ndash;Jumat).
-                        </p>
-                    </div>
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                <PageHeader
+                    eyebrow="Laporan"
+                    title="Presensi KCD Bulanan"
+                    description="Pilih unit dan bulan, lalu pratinjau atau unduh PDF daftar hadir per minggu (Senin-Jumat)."
+                />
 
-                    <div className="card p-6">
+                    <Card className="p-6">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             {units.length > 1 && (
                                 <Field label="Unit Sekolah">
-                                    <div className="relative">
-                                        <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                        <select id={fieldId('Unit Sekolah')} className="select-field pl-9" value={unitId} onChange={(e) => setUnitId(e.target.value)}>
-                                            {units.map((u) => (
-                                                <option key={u.id} value={u.id}>{u.nama}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <Select id={fieldId('Unit Sekolah')} value={unitId} onChange={(e) => setUnitId(e.target.value)}>
+                                        {units.map((u) => (
+                                            <option key={u.id} value={u.id}>{u.nama}</option>
+                                        ))}
+                                    </Select>
                                 </Field>
                             )}
                             <Field label="Bulan">
-                                <div className="relative">
-                                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <input id={fieldId('Bulan')} type="month" className="input-field pl-9" value={period} onChange={(e) => setPeriod(e.target.value)} />
-                                </div>
+                                <Input id={fieldId('Bulan')} type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
                             </Field>
                             <Field label="Minggu">
-                                <div className="relative">
-                                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                    <select id={fieldId('Minggu')} className="select-field pl-9" value={minggu} onChange={(e) => setMinggu(e.target.value)}>
-                                        <option value="">Semua (1 bulan)</option>
-                                        {Array.from({ length: weekCount }, (_, i) => (
-                                            <option key={i + 1} value={i + 1}>Minggu {i + 1}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <Select id={fieldId('Minggu')} value={minggu} onChange={(e) => setMinggu(e.target.value)}>
+                                    <option value="">Semua (1 bulan)</option>
+                                    {Array.from({ length: weekCount }, (_, i) => (
+                                        <option key={i + 1} value={i + 1}>Minggu {i + 1}</option>
+                                    ))}
+                                </Select>
                             </Field>
                         </div>
 
@@ -115,26 +105,26 @@ export default function Kcd({ auth, units }) {
                         )}
 
                         <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row">
-                            <button onClick={handlePreview} disabled={loading} className="btn-primary inline-flex items-center gap-2">
-                                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat…</> : <><Search className="h-4 w-4" /> Tampilkan Pratinjau</>}
-                            </button>
-                            <button onClick={handleDownload} className="btn-secondary inline-flex items-center gap-2">
+                            <Button onClick={handlePreview} disabled={loading}>
+                                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat...</> : <><Search className="h-4 w-4" /> Tampilkan Pratinjau</>}
+                            </Button>
+                            <Button variant="secondary" onClick={handleDownload}>
                                 <Download className="h-4 w-4" /> Unduh PDF
-                            </button>
+                            </Button>
                         </div>
-                    </div>
+                    </Card>
 
                     {loading && (
-                        <div role="status" className="card flex items-center justify-center gap-3 p-12">
+                        <Card role="status" className="flex items-center justify-center gap-3 p-12">
                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                            <span className="text-sm font-semibold text-text-secondary">Memuat…</span>
-                        </div>
+                            <span className="text-sm font-semibold text-text-secondary">Memuat...</span>
+                        </Card>
                     )}
 
                     {!loading && preview && (
                         <div className="space-y-4">
                             {preview.weeks.map((week, wi) => (
-                                <div key={wi} className="card overflow-hidden">
+                                <Card key={wi} className="overflow-hidden">
                                     <div className="px-6 py-3 border-b border-border bg-surface">
                                         <h3 className="text-sm font-extrabold text-primary">Minggu {wi + 1}, {preview.periode}</h3>
                                     </div>
@@ -188,15 +178,14 @@ export default function Kcd({ auth, units }) {
                                             </tbody>
                                         </table>
                                     </div>
-                                </div>
+                                </Card>
                             ))}
                             <p className="text-xs text-text-muted">
                                 Pratinjau menampilkan {minggu ? `Minggu ${minggu}` : 'seluruh bulan'}. Tombol &quot;Unduh PDF&quot; menghasilkan PDF sesuai pilihan minggu (atau seluruh bulan bila &quot;Semua&quot;).
                             </p>
                         </div>
                     )}
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

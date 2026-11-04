@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, Input, Label, PageHeader, Select } from '@/Components/AdminUI';
 import { Head, router } from '@inertiajs/react';
 import { Download, FileText, Search } from 'lucide-react';
 
@@ -36,59 +37,65 @@ export default function KeterlambatanSiswa({ auth, filters, rows = [], summary, 
     };
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Laporan Keterlambatan Gerbang</h2>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Laporan Keterlambatan Gerbang</h2>}>
             <Head title="Laporan Keterlambatan Gerbang" />
 
             <div className="mx-auto w-full max-w-7xl space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm text-text-secondary">Catatan keterlambatan siswa di pos gerbang. Terpisah dari status kehadiran kelas.</p>
-                    <div className="flex w-full gap-2 sm:w-auto">
-                        <button type="button" onClick={() => unduh('export')} className="btn-secondary inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 sm:flex-none">
-                            <Download className="h-4 w-4" /> Excel
-                        </button>
-                        <button type="button" onClick={() => unduh('pdf')} className="btn-secondary inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 sm:flex-none">
-                            <FileText className="h-4 w-4" /> PDF
-                        </button>
-                    </div>
-                </div>
+                <PageHeader
+                    eyebrow="Laporan"
+                    title="Keterlambatan Gerbang"
+                    description="Catatan keterlambatan siswa di pos gerbang, terpisah dari status kehadiran kelas."
+                    actions={
+                        <>
+                            <Button variant="secondary" onClick={() => unduh('export')}>
+                                <Download className="h-4 w-4" /> Excel
+                            </Button>
+                            <Button variant="secondary" onClick={() => unduh('pdf')}>
+                                <FileText className="h-4 w-4" /> PDF
+                            </Button>
+                        </>
+                    }
+                />
 
-                <form onSubmit={submit} className="page-card p-4 sm:p-5">
+                <Card className="p-4 sm:p-5">
+                    <form onSubmit={submit}>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                        <label className="block">
-                            <span className="form-label">Dari tanggal</span>
-                            <input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="input-field w-full" required />
-                        </label>
-                        <label className="block">
-                            <span className="form-label">Sampai tanggal</span>
-                            <input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="input-field w-full" required />
-                        </label>
+                        <div>
+                            <Label>Dari tanggal</Label>
+                            <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} required />
+                        </div>
+                        <div>
+                            <Label>Sampai tanggal</Label>
+                            <Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} required />
+                        </div>
                         {canFilterUnit && (
-                            <label className="block">
-                                <span className="form-label">Unit</span>
-                                <select value={form.unit_id} onChange={(e) => setForm({ ...form, unit_id: e.target.value })} className="select-field w-full">
+                            <div>
+                                <Label>Unit</Label>
+                                <Select value={form.unit_id} onChange={(e) => setForm({ ...form, unit_id: e.target.value })}>
                                     <option value="">Semua unit</option>
                                     {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nama}</option>)}
-                                </select>
-                            </label>
+                                </Select>
+                            </div>
                         )}
-                        <label className="block">
-                            <span className="form-label">Kelas</span>
-                            <select value={form.class_label} onChange={(e) => setForm({ ...form, class_label: e.target.value })} className="select-field w-full">
+                        <div>
+                            <Label>Kelas</Label>
+                            <Select value={form.class_label} onChange={(e) => setForm({ ...form, class_label: e.target.value })}>
                                 <option value="">Semua kelas</option>
                                 {classes.map((label) => <option key={label} value={label}>{label}</option>)}
-                            </select>
-                        </label>
-                        <label className="block">
-                            <span className="form-label">Cari siswa</span>
-                            <input value={form.search} onChange={(e) => setForm({ ...form, search: e.target.value })} className="input-field w-full" placeholder="Nama atau NIS" maxLength={100} />
-                        </label>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label>Cari siswa</Label>
+                            <Input value={form.search} onChange={(e) => setForm({ ...form, search: e.target.value })} placeholder="Nama atau NIS" maxLength={100} />
+                        </div>
                         <div className="flex items-end sm:col-span-2 lg:col-span-1">
-                            <button type="submit" className="btn-primary inline-flex min-h-11 w-full items-center justify-center gap-1.5">
+                            <Button type="submit" className="w-full">
                                 <Search className="h-4 w-4" /> Tampilkan
-                            </button>
+                            </Button>
                         </div>
                     </div>
-                </form>
+                    </form>
+                </Card>
 
                 <div className="grid grid-cols-3 gap-3">
                     {[
@@ -96,14 +103,14 @@ export default function KeterlambatanSiswa({ auth, filters, rows = [], summary, 
                         ['Kelas', summary.kelas],
                         ['Siswa', summary.siswa],
                     ].map(([label, value]) => (
-                        <div key={label} className="page-card px-3 py-3">
+                        <Card key={label} className="px-3 py-3">
                             <p className="text-xs font-bold uppercase tracking-wide text-text-secondary">{label}</p>
                             <p className="mt-1 text-lg font-extrabold tabular-nums text-text-primary">{value}</p>
-                        </div>
+                        </Card>
                     ))}
                 </div>
 
-                <div className="page-card card-table">
+                <Card className="overflow-hidden">
                     <div className="border-b border-border px-4 py-3">
                                 <h3 className="section-title">Daftar Keterlambatan Gerbang ({rows.length})</h3>
                         <p className="mt-0.5 text-xs text-text-secondary">Data per siswa per hari.</p>
@@ -161,29 +168,29 @@ export default function KeterlambatanSiswa({ auth, filters, rows = [], summary, 
                             </div>
                         </>
                     )}
-                </div>
+                </Card>
 
                 {(perClass.length > 0 || perDay.length > 0) && (
                     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                         {perClass.length > 0 && (
-                            <div className="page-card p-4">
+                            <Card className="p-4">
                                 <h3 className="section-title">Per Kelas</h3>
                                 <ul className="mt-2 divide-y divide-border/60 text-sm">
                                     {perClass.map((row) => <li key={row.class_label} className="flex justify-between gap-3 py-2"><span>{row.class_label}</span><span className="font-bold">{row.total}</span></li>)}
                                 </ul>
-                            </div>
+                            </Card>
                         )}
                         {perDay.length > 0 && (
-                            <div className="page-card p-4">
+                            <Card className="p-4">
                                 <h3 className="section-title">Per Hari</h3>
                                 <ul className="mt-2 divide-y divide-border/60 text-sm">
                                     {perDay.map((row) => <li key={row.tanggal} className="flex justify-between gap-3 py-2"><span className="font-mono text-xs">{row.tanggal}</span><span className="font-bold">{row.total}</span></li>)}
                                 </ul>
-                            </div>
+                            </Card>
                         )}
                     </div>
                 )}
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
