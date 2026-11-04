@@ -199,7 +199,7 @@ export default function AdminShell({ user: userProp, header, children }) {
 
             <aside
                 className={cn(
-                    'fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-primary text-white transition-transform duration-200 lg:static lg:z-auto lg:h-screen lg:translate-x-0',
+                    'fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-primary text-white transition-transform duration-200 lg:sticky lg:bottom-auto lg:left-auto lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 lg:self-start',
                     mobileOpen ? 'translate-x-0' : '-translate-x-full',
                     collapsed ? 'lg:w-[76px]' : 'lg:w-[260px]',
                 )}
