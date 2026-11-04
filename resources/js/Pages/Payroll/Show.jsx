@@ -1,5 +1,6 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, PageHeader } from '@/Components/AdminUI';
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, CheckCircle2, Printer } from 'lucide-react';
 import { formatRupiah } from '@/Utils/format';
@@ -10,42 +11,45 @@ export default function Show({ auth, penggajian }) {
     const potongan = penggajian.details.filter(d => d.tipe === 'potongan');
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Slip Gaji</h2>}
         >
             <Head title={`Slip Gaji - ${penggajian.pegawai.nama_lengkap}`} />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
-                        <Link href={route('penggajian.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
-                            <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar
-                        </Link>
-                        <div className="flex items-center gap-2">
-                            <button className="btn-secondary btn-sm inline-flex items-center gap-1.5" onClick={() => window.print()}>
-                                <Printer className="h-3.5 w-3.5" /> Cetak Slip
-                            </button>
+            <div className="mx-auto w-full max-w-4xl space-y-5">
+                <PageHeader
+                    className="print:hidden"
+                    eyebrow="Penggajian"
+                    title="Slip Gaji"
+                    description={`Periode ${penggajian.periode_bulan} · ${penggajian.pegawai.nama_lengkap}`}
+                    actions={
+                        <>
+                            <Link href={route('penggajian.index')} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                                <ArrowLeft className="h-4 w-4" /> Kembali
+                            </Link>
+                            <Button variant="secondary" onClick={() => window.print()}>
+                                <Printer className="h-4 w-4" /> Cetak Slip
+                            </Button>
                             {penggajian.status === PAYROLL_STATUS.FINALIZED && (
-                                <button
-                                    className="btn-primary btn-sm inline-flex items-center gap-1.5"
+                                <Button
                                     onClick={() => {
                                         if (confirm('Tandai slip gaji ini sudah DIBAYAR?')) {
                                             router.post(route('penggajian.mark_paid', penggajian.id));
                                         }
                                     }}
                                 >
-                                    <CheckCircle2 className="h-3.5 w-3.5" /> Tandai Dibayar
-                                </button>
+                                    <CheckCircle2 className="h-4 w-4" /> Tandai Dibayar
+                                </Button>
                             )}
-                        </div>
-                    </div>
+                        </>
+                    }
+                />
 
                     <div className="card p-6 sm:p-10 print:shadow-none print:border-none">
                         <div className="mb-8 flex flex-col gap-3 border-b-2 border-primary/30 pb-6 sm:flex-row sm:items-end sm:justify-between">
                             <div>
-                                <h1 className="text-3xl font-extrabold text-text-primary tracking-tight">YAYASAN PENDIDIKAN</h1>
+                                <p className="text-3xl font-extrabold tracking-tight text-text-primary">YAYASAN PENDIDIKAN</p>
                                 <p className="text-text-muted mt-1">Jl. Pendidikan No. 1, Jakarta Selatan</p>
                             </div>
                             <div className="text-right">
@@ -164,8 +168,7 @@ export default function Show({ auth, penggajian }) {
                         </div>
 
                     </div>
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

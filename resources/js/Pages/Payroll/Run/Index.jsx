@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, FormField, Input, PageHeader, Select } from '@/Components/AdminUI';
 import { ArrowLeft, ArrowRight, CalendarDays, ClipboardList, FileText, Info, Loader2, Lock, Sparkles, TrendingUp, UserCheck } from 'lucide-react';
 
 const MONTHS = [
@@ -37,12 +38,22 @@ export default function RunPayrollIndex({ auth, units = [], canPickAll = false }
     };
 
     return (
-        <AuthenticatedLayout user={auth.user}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Run Payroll</h2>}>
             <Head title="Run Payroll - Wizard" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-                    {/* Wizard steps */}
+            <div className="mx-auto w-full max-w-3xl space-y-5">
+                <PageHeader
+                    eyebrow="Penggajian"
+                    title="Run Payroll"
+                    description="Tarik data kehadiran, jam mengajar, dan komponen gaji untuk periode terpilih."
+                    actions={
+                        <Link href={route('penggajian.index')} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                            <ArrowLeft className="h-4 w-4" /> Kembali
+                        </Link>
+                    }
+                />
+
+                {/* Wizard steps */}
                     <div className="flex items-center justify-center gap-2 sm:gap-3">
                         {STEPS.map((s, i) => (
                             <React.Fragment key={s.label}>
@@ -58,8 +69,8 @@ export default function RunPayrollIndex({ auth, units = [], canPickAll = false }
                         ))}
                     </div>
 
-                    <div className="card p-6 sm:p-8">
-                        <div className="text-center mb-8">
+                    <Card className="p-6 sm:p-8">
+                        <div className="mb-8 text-center">
                             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                                 <Sparkles className="h-7 w-7 text-primary" />
                             </div>
@@ -78,51 +89,38 @@ export default function RunPayrollIndex({ auth, units = [], canPickAll = false }
                             </div>
 
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label className="form-label mb-1.5">Pilih Bulan</label>
-                                    <select
+                                <FormField label="Pilih Bulan" error={errors.month}>
+                                    <Select
                                         value={data.month}
                                         onChange={(e) => setData('month', e.target.value)}
-                                        className="select-field"
                                     >
                                         {MONTHS.map((m) => <option key={m.val} value={m.val}>{m.label}</option>)}
-                                    </select>
-                                    {errors.month && <p className="form-error">{errors.month}</p>}
-                                </div>
-                                <div>
-                                    <label className="form-label mb-1.5">Tahun</label>
-                                    <input
+                                    </Select>
+                                </FormField>
+                                <FormField label="Tahun" error={errors.year}>
+                                    <Input
                                         type="number"
                                         min="2020"
                                         max="2100"
                                         value={data.year}
                                         onChange={(e) => setData('year', e.target.value)}
-                                        className="input-field"
                                     />
-                                    {errors.year && <p className="form-error">{errors.year}</p>}
-                                </div>
+                                </FormField>
                             </div>
 
-                            <div>
-                                <label className="form-label mb-1.5">Unit Sekolah</label>
-                                <select
+                            <FormField label="Unit Sekolah" error={errors.unit_sekolah_id}>
+                                <Select
                                     value={data.unit_sekolah_id}
                                     onChange={(e) => setData('unit_sekolah_id', e.target.value)}
-                                    className="select-field"
                                 >
                                     {canPickAll && <option value="">Semua Unit</option>}
                                     {units.map((u) => (
                                         <option key={u.id} value={u.id}>{u.singkatan ? `${u.singkatan} — ${u.nama}` : u.nama}</option>
                                     ))}
-                                </select>
-                                {errors.unit_sekolah_id && <p className="form-error">{errors.unit_sekolah_id}</p>}
-                            </div>
+                                </Select>
+                            </FormField>
 
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="btn-primary w-full py-4 text-base font-bold flex items-center justify-center gap-2"
-                            >
+                            <Button type="submit" size="lg" disabled={processing} className="w-full py-4 text-base">
                                 {processing ? (
                                     <>
                                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -134,12 +132,12 @@ export default function RunPayrollIndex({ auth, units = [], canPickAll = false }
                                         <ArrowRight className="h-5 w-5" />
                                     </>
                                 )}
-                            </button>
+                            </Button>
                         </form>
-                    </div>
+                    </Card>
 
                     {/* Info yang ditarik */}
-                    <div className="card p-5">
+                    <Card className="p-5">
                         <p className="mb-4 flex items-center gap-2 text-sm font-bold text-primary">
                             <FileText className="h-4 w-4" /> Data yang dihitung otomatis
                         </p>
@@ -152,15 +150,8 @@ export default function RunPayrollIndex({ auth, units = [], canPickAll = false }
                                 </div>
                             ))}
                         </div>
-                    </div>
-
-                    <div className="text-center">
-                        <Link href={route('penggajian.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
-                            <ArrowLeft className="h-4 w-4" /> Kembali ke Riwayat Penggajian
-                        </Link>
-                    </div>
+                    </Card>
                 </div>
-            </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
