@@ -1,13 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Head, Link, router } from '@inertiajs/react';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Input, PageHeader, Select } from '@/Components/AdminUI';
 import { ArrowLeft, Coins, Loader2, Save, Search, X } from 'lucide-react';
 
 const fmtId = (v) => (v === '' || v == null ? '' : new Intl.NumberFormat('id-ID').format(v));
 
 export default function Matrix({ auth, pegawais, komponens, unitSekolahs = [] }) {
-    const { flash = {} } = usePage().props;
-
     // Initial data dihitung SEKALI (lazy initializer) — dulu dihitung ulang di
     // setiap render, termasuk tiap ketikan sel (O(n×k) per keystroke).
     const [data, setData] = useState(() => pegawais.map((p) => {
@@ -70,60 +69,59 @@ export default function Matrix({ auth, pegawais, komponens, unitSekolahs = [] })
     const pendapatanCols = komponens.filter((k) => colType(k) === 'pendapatan').length;
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Matrix Gaji Pegawai</h2>}
         >
             <Head title="Matrix Gaji Pegawai" />
 
-            <div className="-m-4 sm:-m-6 lg:-m-8 h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] flex flex-col bg-surface pt-6 pb-6 px-4 sm:px-6 lg:px-8">
-                {flash.message && <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                {flash.error && <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
-
-                <form onSubmit={submit} className="flex flex-col flex-1 min-h-0">
-                    <div className="flex flex-wrap items-start justify-between gap-3 mb-4 shrink-0">
-                        <div>
-                            <Link href={route('komponen-gaji.index')} className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-text-secondary transition-colors hover:text-primary">
-                                <ArrowLeft className="h-3.5 w-3.5" />
-                                Kembali ke Komponen Gaji
-                            </Link>
-                            <h2 className="text-xl font-extrabold text-text-primary">Matrix Gaji Pegawai</h2>
-                            <p className="text-sm text-text-muted">Atur nominal gaji & tunjangan semua pegawai sekaligus. Kosongkan = pakai nilai default.</p>
-                        </div>
+            <div className="mx-auto max-w-[1600px] space-y-5">
+                <PageHeader
+                    eyebrow="Penggajian"
+                    title="Matrix Gaji Pegawai"
+                    description="Atur nominal gaji dan tunjangan semua pegawai sekaligus. Kosongkan untuk memakai nilai default."
+                    actions={
                         <div className="flex flex-wrap items-center gap-2">
                             <div className="relative">
-                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                                <input
+                                <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                <Input
                                     type="text"
                                     placeholder="Cari Nama / NIP..."
-                                    className="input-field w-52 pl-9"
+                                    className="w-52 pl-9"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
+                                    aria-label="Cari pegawai"
                                 />
                             </div>
-                            <select className="select-field" value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)}>
+                            <Select value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)} aria-label="Filter unit">
                                 <option value="">Semua Unit Sekolah</option>
                                 {unitSekolahs.map((u) => (
                                     <option key={u.id} value={u.id}>{u.nama}</option>
                                 ))}
-                            </select>
-                            <Link href={route('komponen-gaji.index')} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+                            </Select>
+                            <Link href={route('komponen-gaji.index')} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
                                 <X className="h-3.5 w-3.5" /> Batal
                             </Link>
-                            <button type="submit" disabled={processing} className="btn-primary btn-sm inline-flex items-center gap-1.5">
-                                {processing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Menyimpan…</> : <><Save className="h-3.5 w-3.5" /> Simpan Perubahan</>}
-                            </button>
+                            <Button type="submit" size="sm" disabled={processing}>
+                                {processing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Menyimpan...</> : <><Save className="h-3.5 w-3.5" /> Simpan Perubahan</>}
+                            </Button>
                         </div>
-                    </div>
+                    }
+                />
 
-                    <div className="card flex-1 flex flex-col min-h-0 overflow-hidden">
+                <Link href={route('komponen-gaji.index')} className="inline-flex items-center gap-1.5 text-xs font-semibold text-text-secondary transition-colors hover:text-primary">
+                    <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Komponen Gaji
+                </Link>
+
+                <form onSubmit={submit} className="flex min-h-0 flex-col">
+                    <div className="card flex flex-col overflow-hidden">
                         <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-2.5 text-xs text-text-secondary">
                             <span className="inline-flex items-center gap-1"><Coins className="h-3.5 w-3.5 text-primary" /> {komponens.length} kolom komponen</span>
                             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">+ {pendapatanCols} pendapatan</span>
                             <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600">− {komponens.length - pendapatanCols} potongan</span>
                             <span className="ml-auto hidden text-[11px] text-text-muted md:inline">Default terlihat di placeholder sel kosong.</span>
                         </div>
-                        <div className="overflow-auto flex-1 relative">
+                        <div className="relative max-h-[70vh] overflow-auto">
                             <table className="min-w-full divide-y divide-border">
                                 <thead className="bg-primary-50/80 sticky top-0 z-20 shadow-card">
                                     <tr>
@@ -192,6 +190,6 @@ export default function Matrix({ auth, pegawais, komponens, unitSekolahs = [] })
                     </div>
                 </form>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

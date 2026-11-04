@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, PageHeader } from '@/Components/AdminUI';
 import { Head, useForm, router } from '@inertiajs/react';
 import { ArrowLeft, Database, Loader2, Plus, Save, Trash2, Pencil } from 'lucide-react';
 import { formatRupiah } from '@/Utils/format';
@@ -112,20 +113,29 @@ export default function ReferenceTypes({ auth, types, allowedSources, komponens 
     const emptyType = { kode: '', nama: '', source_field: '', is_active: true };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Payroll Reference Types</h2>}
         >
             <Head title="Reference Types" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-                    {/* Whitelisted source fields info */}
+            <div className="mx-auto max-w-[1400px] space-y-5">
+                    <PageHeader
+                        eyebrow="Penggajian"
+                        title="Reference Types"
+                        description="Kelola tipe referensi yang dipakai komponen gaji look-up."
+                        actions={
+                            <Button type="button" onClick={() => { setShowNewType(true); setEditingType(null); }}>
+                                <Plus className="h-4 w-4" /> Tambah Type
+                            </Button>
+                        }
+                    />
+
                     <div className="card p-4">
                         <p className="text-xs font-semibold text-text-muted mb-2">Whitelisted source fields (aman dipakai):</p>
                         <div className="flex flex-wrap gap-2">
                             {allowedSources.map((field) => (
-                                <span key={field} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded font-mono">
+                                <span key={field} className="rounded bg-slate-100 px-2 py-1 font-mono text-xs">
                                     {field}
                                 </span>
                             ))}
@@ -142,14 +152,8 @@ export default function ReferenceTypes({ auth, types, allowedSources, komponens 
                         <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
                             {types.length} type
                         </span>
-                        <div className="ml-auto">
-                            <button onClick={() => { setShowNewType(true); setEditingType(null); }} className="btn-primary text-xs flex items-center gap-1">
-                                <Plus className="h-3.5 w-3.5" /> Tambah Type
-                            </button>
-                        </div>
                     </div>
 
-                    {/* New type form */}
                     {showNewType && (
                         <div className="card p-5">
                             <TypeForm
@@ -266,9 +270,8 @@ export default function ReferenceTypes({ auth, types, allowedSources, komponens 
                             </div>
                         ))}
                     </div>
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
 
