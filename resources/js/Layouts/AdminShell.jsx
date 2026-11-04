@@ -65,7 +65,9 @@ export default function AdminShell({ user: userProp, header, children }) {
         ? 'Superadmin'
         : auth.roles?.includes('admin_unit')
             ? 'Admin Unit'
-            : 'Pegawai';
+            : auth.roles?.includes('pimpinan')
+                ? 'Pimpinan'
+                : 'Pegawai';
     const permissions = auth.permissions || [];
     const canSeeAnnouncements = permissions.includes('view_dashboard')
         || permissions.includes('manage_master_data')

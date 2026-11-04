@@ -1,5 +1,6 @@
 import React, { useState, Component, useMemo } from 'react';
 import AdminShell from '@/Layouts/AdminShell';
+import KepalaSekolahOverview from '@/Pages/Dashboard/Partials/KepalaSekolahOverview';
 import { PageHeader, Select } from '@/Components/AdminUI';
 import StatCard from '@/Components/StatCard';
 import { Head, Link, router } from '@inertiajs/react';
@@ -291,7 +292,9 @@ function KelasKosongCard({ rows = [], summary = {} }) {
 export default function Dashboard(props) {
     return (
         <ErrorBoundary>
-            <DashboardContent {...props} />
+            {props.roleType === 'Kepala Sekolah'
+                ? <KepalaSekolahOverview {...props} />
+                : <DashboardContent {...props} />}
         </ErrorBoundary>
     );
 }

@@ -17,6 +17,7 @@ use App\Models\StatusKepegawaian;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Services\JpCalculator;
+use App\Services\KepalaSekolahSnapshotService;
 use App\Services\PiketService;
 use App\Services\TugasVerifikasiService;
 use Carbon\Carbon;
@@ -124,12 +125,18 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
+        $isKepalaSekolah = $user->can('view_dashboard')
+            && $this->isPimpinanReadOnly($user)
+            && $this->isKepsek($user);
+
         $roleType = 'Staff';
-        if ($user->can('view_dashboard')) {
+        if ($isKepalaSekolah) {
+            $roleType = 'Kepala Sekolah';
+        } elseif ($user->can('view_dashboard')) {
             $roleType = 'Admin'; // Any admin module view (superadmin / admin unit)
         }
 
-        // Filter unit (superadmin saja — admin unit sudah ter-scope ke unitnya).
+        // Filter unit (superadmin saja; admin unit sudah ter-scope ke unitnya).
         $unitId = null;
         if ($roleType === 'Admin' && $user->can('view_all_units') && $request->filled('unit_id')) {
             $validatedUnit = $request->validate(['unit_id' => 'nullable|exists:unit_sekolah,id']);
@@ -187,28 +194,48 @@ class DashboardController extends Controller
 
         // Pimpinan: Kepsek scope by unit, lainnya scope by bawahan langsung.
         $bawahanIds = null;
-        if ($this->isPimpinanReadOnly($user)) {
-            if ($this->isKepsek($user)) {
-                // Kepsek: semua pegawai dalam unit.
-                $unitForKepsek = $user->unit_sekolah_id
-                    ?? $user->pegawai?->units->first()?->id;
-                $bawahanIds = $unitForKepsek
-                    ? Pegawai::whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $unitForKepsek))->pluck('id')->toArray()
-                    : [];
-            } else {
-                $userPegawaiId = $user->pegawai?->id;
-                $bawahanIds = $userPegawaiId
-                    ? Pegawai::where('atasan_langsung_id', $userPegawaiId)->pluck('id')->toArray()
-                    : [];
-            }
+        $kepsekUnitId = null;
+        if ($isKepalaSekolah) {
+            $kepsekUnitId = $user->unit_sekolah_id
+                ?? $user->pegawai?->units->first()?->id;
+            $bawahanIds = $kepsekUnitId
+                ? Pegawai::whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $kepsekUnitId))->pluck('id')->toArray()
+                : [];
+        } elseif ($this->isPimpinanReadOnly($user)) {
+            $userPegawaiId = $user->pegawai?->id;
+            $bawahanIds = $userPegawaiId
+                ? Pegawai::where('atasan_langsung_id', $userPegawaiId)->pluck('id')->toArray()
+                : [];
         }
 
         $cached = $this->adminCachedStats($user, $unitId, $bawahanIds);
         $live = $this->adminLiveData($user, $today, $unitId, $bawahanIds);
         $bebanJp = $this->bebanMengajarMingguan($unitId);
 
+        $kepsekSnapshot = null;
+        $kepsekUnitNama = null;
+        if ($isKepalaSekolah) {
+            $kepsekUnitNama = $kepsekUnitId ? UnitSekolah::whereKey($kepsekUnitId)->value('nama') : null;
+            $kepsekSnapshot = app(KepalaSekolahSnapshotService::class)->build(
+                $user,
+                $live,
+                $cached,
+                $kepsekUnitId,
+                $kepsekUnitNama,
+                $today,
+                $user->can('view_absen_siswa'),
+            );
+        }
+
         // Polling hanya butuh kartu live; lewati unit dan pengumuman.
         if ($this->wantsDashboardLiveOnly($request)) {
+            if ($isKepalaSekolah) {
+                return inertia('Dashboard', [
+                    'roleType' => $roleType,
+                    'kepsekDaily' => $kepsekSnapshot,
+                ]);
+            }
+
             return inertia('Dashboard', [
                 'stats' => $this->dashboardStats($cached, $live, $bebanJp),
                 'trends' => $live['attendanceTrend'],
@@ -241,6 +268,16 @@ class DashboardController extends Controller
                 'published_at' => $a->published_at?->toISOString(),
             ]);
 
+        if ($isKepalaSekolah) {
+            return inertia('Dashboard', [
+                'roleType' => $roleType,
+                'kepsekDaily' => $kepsekSnapshot,
+                'pengumuman' => $pengumuman,
+                'stats' => $this->dashboardStats($cached, $live, $bebanJp),
+                'kontrakBerakhir' => $cached['kontrakBerakhir'],
+            ]);
+        }
+
         return inertia('Dashboard', [
             'roleType' => $roleType,
             'units' => $units,
@@ -269,6 +306,7 @@ class DashboardController extends Controller
         $allowed = [
             'stats', 'trends', 'jadwalHariIni', 'presensiHariIni',
             'kelasKosongMengajar', 'kelasKosongSummary', 'kelasKosongPiket', 'piketHariIni',
+            'kepsekDaily',
         ];
         $props = array_values(array_filter(array_map('trim', explode(',', $partial))));
 
