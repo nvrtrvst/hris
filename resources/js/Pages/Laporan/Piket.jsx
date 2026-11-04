@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Head, Link, router } from '@inertiajs/react';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, Input, Label, PageHeader, Select } from '@/Components/AdminUI';
 import Modal from '@/Components/Modal';
 import { CheckCircle2, ChevronDown, Download, Printer, X } from 'lucide-react';
 
@@ -425,7 +426,6 @@ function LaporanDetail({ lap, label, canConvert = false, onConvert = () => {} })
 }
 
 export default function Piket({ auth, filters, units = [], areas = [], laporan = [], belum = [], ketidakhadiran = { rows: [], alpa: 0, terlambat: 0 }, label = {} }) {
-    const { flash = {} } = usePage().props;
     const [form, setForm] = useState({
         start_date: filters.start_date,
         end_date: filters.end_date,
@@ -544,35 +544,39 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
     const tampilKetidakhadiran = ket.rows.length > 0 || ['alpa_piket', 'terlambat_lapor'].includes(form.status);
 
     return (
-        <AuthenticatedLayout user={auth.user} header={<h2 className="page-title">Laporan Piket</h2>}>
+        <AdminShell user={auth.user} header={<h2 className="page-title">Laporan Piket</h2>}>
             <Head title="Laporan Piket" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-                    {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
+            <div className="mx-auto w-full max-w-6xl space-y-5">
+                <PageHeader
+                    eyebrow="Laporan"
+                    title="Laporan Piket"
+                    description="Pantau laporan piket, kualitas pengisian, dan ketidakhadiran petugas."
+                />
 
-                    <form onSubmit={tampilkan} className="page-card p-5">
+                <Card className="p-5">
+                    <form onSubmit={tampilkan}>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <div>
-                                <label className="form-label" htmlFor="f-start">Dari tanggal</label>
-                                <input id="f-start" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="input-field" required />
+                                <Label htmlFor="f-start">Dari tanggal</Label>
+                                <Input id="f-start" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} required />
                             </div>
                             <div>
-                                <label className="form-label" htmlFor="f-end">Sampai tanggal</label>
-                                <input id="f-end" type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="input-field" required />
+                                <Label htmlFor="f-end">Sampai tanggal</Label>
+                                <Input id="f-end" type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} required />
                             </div>
                             {units.length > 1 && (
                                 <div>
-                                    <label className="form-label" htmlFor="f-unit">Unit</label>
-                                    <select id="f-unit" value={form.unit_sekolah_id} onChange={(e) => setForm({ ...form, unit_sekolah_id: e.target.value })} className="select-field">
+                                    <Label htmlFor="f-unit">Unit</Label>
+                                    <Select id="f-unit" value={form.unit_sekolah_id} onChange={(e) => setForm({ ...form, unit_sekolah_id: e.target.value })}>
                                         <option value="">Semua unit</option>
                                         {units.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}
-                                    </select>
+                                    </Select>
                                 </div>
                             )}
                             <div>
-                                <label className="form-label" htmlFor="f-status">Status</label>
-                                <select id="f-status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="select-field">
+                                <Label htmlFor="f-status">Status</Label>
+                                <Select id="f-status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                                     <option value="semua">Semua</option>
                                     <option value="draft">Belum lengkap</option>
                                     <option value="submitted">Terkirim</option>
@@ -580,60 +584,41 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                                     <option value="belum">Belum melapor</option>
                                     <option value="alpa_piket">Hadir tapi tidak piket</option>
                                     <option value="terlambat_lapor">Terlambat lapor</option>
-                                </select>
+                                </Select>
                             </div>
                             {areas.length > 0 && (
-
                                 <div>
-
-                                    <label className="form-label" htmlFor="f-area">Area</label>
-
-                                    <select id="f-area" value={form.area_id} onChange={(e) => setForm({ ...form, area_id: e.target.value })} className="select-field">
-
+                                    <Label htmlFor="f-area">Area</Label>
+                                    <Select id="f-area" value={form.area_id} onChange={(e) => setForm({ ...form, area_id: e.target.value })}>
                                         <option value="">Semua area</option>
-
                                         {areas.map((a) => <option key={a.id} value={a.id}>{a.nama}</option>)}
-
-                                    </select>
-
+                                    </Select>
                                 </div>
-
                             )}
-
                             <div>
-
-                                <label className="form-label" htmlFor="f-kualitas">Kualitas</label>
-
-                                <select id="f-kualitas" value={form.kualitas} onChange={(e) => setForm({ ...form, kualitas: e.target.value })} className="select-field">
-
+                                <Label htmlFor="f-kualitas">Kualitas</Label>
+                                <Select id="f-kualitas" value={form.kualitas} onChange={(e) => setForm({ ...form, kualitas: e.target.value })}>
                                     <option value="semua">Semua</option>
-
                                     <option value="pos_belum">Pos belum</option>
-
                                     <option value="fase_terlewat">Fase terlewat</option>
-
                                     <option value="perlu_cek">Perlu cek</option>
-
-                                </select>
-
+                                </Select>
                             </div>
-
                             <div className="flex items-end">
-
-                                <button type="submit" className="btn-primary w-full">Tampilkan</button>
-
+                                <Button type="submit" className="w-full">Tampilkan</Button>
                             </div>
                         </div>
-                        <p className="form-hint mt-2">Maksimal 31 hari per tampil.</p>
+                        <p className="mt-2 text-[10px] leading-relaxed text-text-muted">Maksimal 31 hari per tampil.</p>
                         <div className="mt-2 flex flex-wrap justify-end gap-2">
-                            <a href={route('laporan.piket.alpa.excel', paramsExport())} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+                            <a href={route('laporan.piket.alpa.excel', paramsExport())} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
                                 <Download className="h-3.5 w-3.5" /> Export Excel
                             </a>
-                            <a href={route('laporan.piket.alpa.pdf', paramsExport())} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+                            <a href={route('laporan.piket.alpa.pdf', paramsExport())} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
                                 <Printer className="h-3.5 w-3.5" /> Export PDF
                             </a>
                         </div>
                     </form>
+                </Card>
 
                     {(() => {
 
@@ -948,7 +933,6 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Checklist wajib: jaga gerbang, cek guru absen, kelas kosong, buku piket, insiden.
                     </p>
-                </div>
             </div>
 
             <Modal show={izinEntry !== null} onClose={closeIzin} maxWidth="2xl" closeable={!izinSending}>
@@ -1093,6 +1077,6 @@ export default function Piket({ auth, filters, units = [], areas = [], laporan =
                     </div>
                 )}
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

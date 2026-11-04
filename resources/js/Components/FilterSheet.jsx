@@ -14,6 +14,7 @@ export default function FilterSheet({
     onReset,
     onApply,
     applyLabel = 'Terapkan',
+    showApplyOnDesktop = true,
     title = 'Filter',
     children,
 }) {
@@ -75,7 +76,7 @@ export default function FilterSheet({
                     <div className="sticky bottom-0 -mx-5 -mb-5 mt-4 flex items-center justify-end gap-2 border-t border-border/60 bg-white px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 md:static md:mx-0 md:mb-0 md:border-0 md:bg-transparent md:px-0 md:pb-0 md:pt-3">
                         {onReset && <button type="button" onClick={reset} className="btn-secondary">Reset</button>}
                         {onApply ? (
-                            <button type="button" onClick={() => { onApply(); close(); }} className="btn-primary">{applyLabel}</button>
+                            <button type="button" onClick={() => { onApply(); close(); }} className={`btn-primary ${showApplyOnDesktop ? '' : 'md:hidden'}`}>{applyLabel}</button>
                         ) : (
                             <button type="button" onClick={close} className="btn-primary md:hidden">Tutup</button>
                         )}

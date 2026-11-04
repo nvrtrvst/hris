@@ -453,6 +453,7 @@ export default function LaporanIndex({ auth, units }) {
                         onReset={() => { resetFilters(); setFilterSheetOpen(false); }}
                         onApply={handlePreview}
                         applyLabel="Tampilkan"
+                        showApplyOnDesktop={false}
                         title="Filter laporan"
                     >
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
