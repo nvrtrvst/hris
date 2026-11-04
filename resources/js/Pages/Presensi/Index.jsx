@@ -7,7 +7,7 @@ import { Button, Card, EmptyState, Input, Select } from '@/Components/AdminUI';
 import StatCard from '@/Components/StatCard';
 import Pagination from '@/Components/Pagination';
 import Modal from '@/Components/Modal';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale/id';
 import { avatarTone, initials } from '@/Utils/avatar';
@@ -1100,7 +1100,6 @@ const fmtDateInput = (d) =>
 export default function Index({ auth, presensis, pegawai, filters = {}, units, stats, is_personal = false, is_pimpinan = false, piket_hari = {} }) {
     const isAdmin = auth.permissions?.includes('view_presensi');
     const canManage = isAdmin && !is_personal;
-    const { flash = {} } = usePage().props;
     const [processing, setProcessing] = React.useState(false);
     // Jam "sekarang" yang live — dipakai badge Mengajar/Selesai biar berganti otomatis.
     const now = useNowEveryMinute();
@@ -1403,10 +1402,6 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
             <Head title="Presensi" />
             <div className="bg-surface min-h-screen">
                 <div className="mx-auto w-full space-y-6">
-                    {/* Flash */}
-                    {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                    {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
-
                     {!is_personal && (
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-end justify-between gap-2">

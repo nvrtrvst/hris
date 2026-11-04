@@ -1,18 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
 import Pagination from '@/Components/Pagination';
 import StatCard from '@/Components/StatCard';
+import { Badge, Card, EmptyState, Input, PageHeader, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/AdminUI';
 import { Head, Link, router } from '@inertiajs/react';
-import { Building2, Inbox, Search, ShieldCheck, UserCog, Users, UserPlus } from 'lucide-react';
+import { Building2, Search, ShieldCheck, UserCog, UserPlus, Users } from 'lucide-react';
 import { avatarTone, initials } from '@/Utils/avatar';
 
 const ROLE_META = {
-    superadmin: { label: 'Superadmin', badge: 'border-amber-200 bg-amber-50 text-amber-700' },
-    admin_unit: { label: 'Admin Unit', badge: 'border-blue-200 bg-blue-50 text-blue-700' },
-    pegawai: { label: 'Pegawai', badge: 'border-gray-200 bg-gray-100 text-gray-600' },
+    superadmin: { label: 'Superadmin', variant: 'warning' },
+    admin_unit: { label: 'Admin Unit', variant: 'info' },
+    pegawai: { label: 'Pegawai', variant: 'neutral' },
 };
 
-export default function Index({ auth, users, filters, stats, flash }) {
+export default function Index({ auth, users, filters, stats }) {
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
     const latestRef = useRef({ search: filters?.search || '' });
 
@@ -25,124 +26,162 @@ export default function Index({ auth, users, filters, stats, flash }) {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    const roleBadge = (u) => {
+    const roleMeta = (u) => {
         const names = u.roles?.map((r) => r.name) || [];
         const roleName = names.includes('superadmin') ? 'superadmin' : names.includes('admin_unit') ? 'admin_unit' : names[0] || 'pegawai';
-        const meta = ROLE_META[roleName] || ROLE_META.pegawai;
-        return (
-            <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold ${meta.badge}`}>
-                <ShieldCheck className="h-3 w-3" />
-                {names.includes('superadmin') ? 'Superadmin' : names.includes('admin_unit') ? 'Admin Unit' : (u.role || 'Pegawai')}
-            </span>
-        );
+
+        return ROLE_META[roleName] || ROLE_META.pegawai;
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
-            header={<h2 className="page-title">Manajemen Hak Akses User</h2>}
+            header={<h2 className="page-title">Manajemen User</h2>}
         >
             <Head title="Manajemen User" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    {/* Header */}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="text-xl font-extrabold text-text-primary">Daftar Akun & Akses</h3>
-                            <p className="text-sm text-text-muted">Kelola modul apa saja yang bisa dilihat oleh setiap pengguna.</p>
-                        </div>
-                        <Link href={route('users.create')} className="btn-primary inline-flex shrink-0 items-center gap-2">
+            <div className="mx-auto max-w-7xl space-y-5">
+                <PageHeader
+                    eyebrow="Pengaturan"
+                    title="Daftar Akun & Akses"
+                    description="Kelola akun dan modul yang bisa diakses setiap pengguna."
+                    actions={
+                        <Link href={route('users.create')} className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-bold text-white transition-colors hover:bg-primary-600">
                             <UserPlus className="h-4 w-4" /> Tambah User
                         </Link>
+                    }
+                />
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <StatCard Icon={Users} label="Total User" value={stats?.total_user ?? 0} sub="Berdasarkan filter aktif" />
+                    <StatCard Icon={ShieldCheck} label="Superadmin" value={stats?.total_superadmin ?? 0} />
+                    <StatCard Icon={UserCog} label="Admin Unit" value={stats?.total_admin_unit ?? 0} />
+                </div>
+
+                <Card className="overflow-hidden">
+                    <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                        <div className="relative w-full sm:max-w-sm">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                            <Input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="h-10 pl-9"
+                                placeholder="Cari nama / email..."
+                                aria-label="Cari user"
+                            />
+                        </div>
+                        <p className="text-xs text-text-secondary">
+                            {users.total} akun
+                        </p>
                     </div>
 
-                    {/* Flash */}
-                    {flash?.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                    {flash?.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{flash.error}</div>}
-
-                    {/* Stats */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <StatCard Icon={Users} label="Total User" value={stats?.total_user ?? 0} sub="Berdasarkan filter aktif" />
-                        <StatCard Icon={ShieldCheck} label="Superadmin" value={stats?.total_superadmin ?? 0} />
-                        <StatCard Icon={UserCog} label="Admin Unit" value={stats?.total_admin_unit ?? 0} />
-                    </div>
-
-                    {/* Search */}
-                    <div className="relative max-w-md">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <Search className="h-4 w-4 text-text-muted" />
-                        </span>
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="input-field pl-10"
-                            placeholder="Cari nama / email..."
+                    {users.data.length === 0 ? (
+                        <EmptyState
+                            icon={Users}
+                            title={searchTerm ? 'User tidak ditemukan' : 'Belum ada akun user'}
+                            description={searchTerm ? 'Coba kata kunci lain atau bersihkan pencarian.' : 'Tambahkan akun pertama untuk mulai mengatur akses.'}
+                            action={!searchTerm ? (
+                                <Link href={route('users.create')} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white hover:bg-primary-600">
+                                    <UserPlus className="h-3.5 w-3.5" /> Tambah User
+                                </Link>
+                            ) : null}
                         />
-                    </div>
+                    ) : (
+                        <>
+                        <Table className="hidden md:block">
+                            <TableHeader>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead>Nama / Email</TableHead>
+                                    <TableHead>Role Utama</TableHead>
+                                    <TableHead className="hidden md:table-cell">Unit Sekolah</TableHead>
+                                    <TableHead className="text-right">Aksi</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {users.data.map((u) => {
+                                    const meta = roleMeta(u);
 
-                    {/* Table */}
-                    <div className="card overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-border">
-                                <thead className="bg-surface">
-                                    <tr>
-                                        <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Nama / Email</th>
-                                        <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Role Utama</th>
-                                        <th className="hidden px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-text-muted md:table-cell">Unit Sekolah</th>
-                                        <th className="px-6 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-text-muted">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border bg-white">
-                                    {users.data.map((u) => (
-                                        <tr key={u.id} className="transition-colors hover:bg-surface">
-                                            <td className="whitespace-nowrap px-6 py-4">
+                                    return (
+                                        <TableRow key={u.id}>
+                                            <TableCell>
                                                 <div className="flex items-center gap-3">
                                                     <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${avatarTone(u.name)}`}>
                                                         {initials(u.name)}
                                                     </span>
                                                     <div className="min-w-0">
-                                                        <p className="truncate text-sm font-bold text-text-primary">{u.name}</p>
+                                                        <p className="truncate text-sm font-bold text-primary">{u.name}</p>
                                                         <p className="truncate text-xs text-text-muted">{u.email}</p>
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td className="whitespace-nowrap px-6 py-4">{roleBadge(u)}</td>
-                                            <td className="hidden whitespace-nowrap px-6 py-4 md:table-cell">
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant={meta.variant}>
+                                                    <ShieldCheck className="h-3 w-3" />
+                                                    {meta.label}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="hidden md:table-cell">
                                                 {u.unit_sekolah ? (
-                                                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary">
+                                                    <span className="inline-flex items-center gap-1.5 text-sm text-text-secondary">
                                                         <Building2 className="h-3.5 w-3.5 text-text-muted" /> {u.unit_sekolah.nama}
                                                     </span>
                                                 ) : (
                                                     <span className="text-sm text-text-muted">Pusat</span>
                                                 )}
-                                            </td>
-                                            <td className="whitespace-nowrap px-6 py-4 text-right">
-                                                <Link href={route('users.edit', u.id)} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Link href={route('users.edit', u.id)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
                                                     <ShieldCheck className="h-3.5 w-3.5" /> Atur Akses
                                                 </Link>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {users.data.length === 0 && (
-                                        <tr>
-                                            <td colSpan="4" className="px-6 py-12 text-center text-sm text-text-muted">
-                                                <Inbox className="mx-auto mb-2 h-6 w-6 text-border" />
-                                                Tidak ada data user.
-                                                <p className="mt-1 text-xs">Gunakan tombol Tambah User untuk membuat akun baru.</p>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+
+                        <div className="divide-y divide-border md:hidden">
+                            {users.data.map((u) => {
+                                const meta = roleMeta(u);
+
+                                return (
+                                    <div key={u.id} className="p-4">
+                                        <div className="flex items-start gap-3">
+                                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${avatarTone(u.name)}`}>
+                                                {initials(u.name)}
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-bold text-primary">{u.name}</p>
+                                                <p className="truncate text-xs text-text-muted">{u.email}</p>
+                                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                    <Badge variant={meta.variant}>
+                                                        <ShieldCheck className="h-3 w-3" />
+                                                        {meta.label}
+                                                    </Badge>
+                                                    <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary">
+                                                        <Building2 className="h-3 w-3" /> {u.unit_sekolah?.nama || 'Pusat'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Link href={route('users.edit', u.id)} className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-white text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                                            <ShieldCheck className="h-3.5 w-3.5" /> Atur Akses
+                                        </Link>
+                                    </div>
+                                );
+                            })}
                         </div>
-                        <div className="border-t border-border bg-surface/50 px-6 py-4">
+                        </>
+                    )}
+
+                    {users.links?.length > 0 && (
+                        <div className="border-t border-border px-4 py-3 sm:px-5">
                             <Pagination links={users.links} data={filters} />
                         </div>
-                    </div>
-                </div>
+                    )}
+                </Card>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

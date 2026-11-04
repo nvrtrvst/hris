@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/AdminUI';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { kepagawaianBadge, STATUS_AKTIF_BADGE } from '@/Utils/statusMeta';
 import {
     Building2,
@@ -46,7 +46,6 @@ import {
 
 export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSekolahs, mataPelajarans, jabatans, isPimpinan = false, perluPilihUnit = false }) {
     const isAdminUnit = auth.roles?.includes('admin_unit');
-    const { flash = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
 
     useEffect(() => subscribeRouter({
@@ -140,9 +139,6 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
             <Head title="Manajemen Pegawai" />
 
             <div className="mx-auto max-w-7xl space-y-5">
-                {flash.message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{flash.message}</div>}
-                {flash.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 whitespace-pre-line">{flash.error}</div>}
-
                 <PageHeader
                     eyebrow="Kepegawaian"
                     title="Daftar Pegawai"

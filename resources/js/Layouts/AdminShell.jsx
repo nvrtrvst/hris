@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { Bell, ChevronDown, ChevronLeft, ChevronRight, LogOut, Megaphone, Menu, Search, User, X } from 'lucide-react';
 import Avatar from '@/Components/AdminUI/ui/Avatar';
 import Dropdown from '@/Components/Dropdown';
+import FlashToast from '@/Components/FlashToast';
 import { cn } from '@/Components/AdminUI/lib/cn';
 import { buildAdminMenu } from '@/Layouts/adminMenu';
 
@@ -306,6 +307,7 @@ export default function AdminShell({ user: userProp, header, children }) {
                     </div>
                 </nav>
             )}
+            <FlashToast />
         </div>
     );
 }
