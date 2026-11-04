@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
 import FilterSheet from '@/Components/FilterSheet';
-import { Head, useForm, usePage, router } from '@inertiajs/react';
+import { Card, Input, PageHeader, Select } from '@/Components/AdminUI';
+import { Head, useForm, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
@@ -46,7 +47,6 @@ const ALASAN_LABEL = {
 const fmtJam = (j) => (j ? String(j).substring(0, 5) : '—');
 
 export default function Index({ auth, pengajuans, filters, stats }) {
-    const { flash } = usePage().props;
     const [selectedItem, setSelectedItem] = useState(null);
     const [modalType, setModalType] = useState(null);
 
@@ -100,61 +100,38 @@ export default function Index({ auth, pengajuans, filters, stats }) {
     const realisasi = realisasiInfo(selectedItem?.realisasi, selectedItem?.status);
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Izin Pulang Cepat</h2>}
         >
             <Head title="Izin Pulang Cepat" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    <div>
-                        <h3 className="text-xl font-extrabold text-text-primary">Pengajuan Izin Pulang Cepat</h3>
-                        <p className="text-sm text-text-muted">Tinjau dan proses permintaan pulang lebih awal dari pegawai.</p>
-                    </div>
+            <div className="mx-auto max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="Kepegawaian"
+                        title="Pengajuan Izin Pulang Cepat"
+                        description="Tinjau dan proses permintaan pulang lebih awal dari pegawai."
+                    />
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div className="card flex items-center gap-4 p-5">
-                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                                <Inbox className="h-5 w-5 text-primary" />
-                            </span>
-                            <div className="min-w-0">
-                                <p className="text-2xl font-extrabold leading-tight text-text-primary tabular-nums">{stats?.total ?? 0}</p>
-                                <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-muted">Total Pengajuan</p>
-                            </div>
+                    <Card className="p-3 sm:p-4">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                            {[
+                                { label: 'Total Pengajuan', value: stats?.total ?? 0, Icon: Inbox, tone: 'bg-primary/10 text-primary' },
+                                { label: 'Menunggu Persetujuan', value: stats?.pending ?? 0, Icon: Clock, tone: 'bg-amber-50 text-amber-600' },
+                                { label: 'Selesai Diproses', value: stats?.selesai ?? 0, Icon: CalendarCheck2, tone: 'bg-emerald-50 text-emerald-600' },
+                            ].map(({ label, value, Icon, tone }) => (
+                                <div key={label} className="flex items-center gap-3 rounded-lg px-2 py-2">
+                                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tone}`}>
+                                        <Icon className="h-4 w-4" />
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="text-lg font-bold leading-tight text-primary tabular-nums">{value}</p>
+                                        <p className="truncate text-[10px] font-semibold text-text-secondary">{label}</p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                        <div className="card flex items-center gap-4 p-5">
-                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50">
-                                <Clock className="h-5 w-5 text-amber-600" />
-                            </span>
-                            <div className="min-w-0">
-                                <p className="text-2xl font-extrabold leading-tight text-text-primary tabular-nums">{stats?.pending ?? 0}</p>
-                                <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-muted">Menunggu Persetujuan</p>
-                            </div>
-                        </div>
-                        <div className="card flex items-center gap-4 p-5">
-                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
-                                <CalendarCheck2 className="h-5 w-5 text-emerald-600" />
-                            </span>
-                            <div className="min-w-0">
-                                <p className="text-2xl font-extrabold leading-tight text-text-primary tabular-nums">{stats?.selesai ?? 0}</p>
-                                <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-muted">Selesai Diproses</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {flash.message && (
-                        <div className="bg-success-light border border-success/30 text-success px-4 py-3 rounded-card mb-6 flex items-center shadow-card">
-                            <CheckCircle className="w-5 h-5 mr-3 text-success" />
-                            <span className="font-medium">{flash.message}</span>
-                        </div>
-                    )}
-                    {flash.error && (
-                        <div className="bg-danger-light border border-danger/30 text-danger px-4 py-3 rounded-card mb-6 flex items-center shadow-card">
-                            <AlertCircle className="w-5 h-5 mr-3 text-danger" />
-                            <span className="font-medium">{flash.error}</span>
-                        </div>
-                    )}
+                    </Card>
 
                     <FilterSheet
                         open={filterSheetOpen}
@@ -163,33 +140,28 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                         onReset={() => { setSearch(''); setStatusFilter('semua'); setFilterSheetOpen(false); }}
                     >
                         <div className="relative w-full max-w-md">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Search className="h-5 w-5 text-text-muted" />
-                            </div>
-                            <input
+                            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                            <Input
                                 type="text"
-                                className="input-field pl-10"
+                                className="pl-9"
                                 placeholder="Cari nama pegawai..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
+                                aria-label="Cari nama pegawai"
                             />
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Filter className="h-4 w-4 text-text-muted" />
-                                </div>
-                                <select
-                                    className="select-field pl-9"
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                >
-                                    <option value="semua">Semua Status</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="disetujui">Disetujui</option>
-                                    <option value="ditolak">Ditolak</option>
-                                </select>
-                            </div>
+                            <Select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                aria-label="Filter status"
+                                className="w-full sm:w-48"
+                            >
+                                <option value="semua">Semua Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="disetujui">Disetujui</option>
+                                <option value="ditolak">Ditolak</option>
+                            </Select>
                         </div>
                     </FilterSheet>
 
@@ -317,7 +289,6 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                             </div>
                         )}
                     </div>
-                </div>
             </div>
 
             <Modal show={selectedItem !== null} onClose={closeModal} maxWidth={modalType === 'detail' ? '2xl' : 'lg'}>
@@ -471,6 +442,6 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                     </div>
                 )}
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

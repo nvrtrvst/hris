@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
 import FilterSheet from '@/Components/FilterSheet';
-import { Head, useForm, usePage, router } from '@inertiajs/react';
+import { Button, Card, Input, PageHeader, Select } from '@/Components/AdminUI';
+import { Head, useForm, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
@@ -30,7 +31,6 @@ const todayLocalISO = () => {
 };
 
 export default function Index({ auth, pengajuans, filters, stats }) {
-    const { flash } = usePage().props;
     const [selectedItem, setSelectedItem] = useState(null);
     const [modalType, setModalType] = useState(null);
     const [fotoSrc, setFotoSrc] = useState(FOTO_FALLBACK);
@@ -215,81 +215,54 @@ export default function Index({ auth, pengajuans, filters, stats }) {
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
-            header={<h2 className="page-title">Kelola Pengajuan Izin / Cuti</h2>}
+            header={<h2 className="page-title">Izin & Cuti</h2>}
         >
             <Head title="Pengajuan Izin" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    {/* Header */}
-                    <div>
-                        <h3 className="text-xl font-extrabold text-text-primary">Pengajuan Izin / Cuti</h3>
-                        <p className="text-sm text-text-muted">Tinjau dan proses pengajuan izin, sakit, dan cuti dari pegawai.</p>
-                    </div>
+            <div className="mx-auto max-w-7xl space-y-5">
+                    <PageHeader
+                        eyebrow="Kepegawaian"
+                        title="Pengajuan Izin / Cuti"
+                        description="Tinjau dan proses pengajuan izin, sakit, dan cuti dari pegawai."
+                    />
 
-                    {/* Stats */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div className="card flex items-center gap-4 p-5">
-                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                                <Inbox className="h-5 w-5 text-primary" />
-                            </span>
-                            <div className="min-w-0">
-                                <p className="text-2xl font-extrabold leading-tight text-text-primary tabular-nums">{stats?.total ?? 0}</p>
-                                <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-muted">Total Pengajuan</p>
-                                <p className="truncate text-[11px] text-text-muted">Sesuai tab & filter aktif</p>
-                            </div>
+                    <Card className="p-3 sm:p-4">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                            {[
+                                { label: 'Total Pengajuan', value: stats?.total ?? 0, sub: 'Sesuai tab & filter aktif', Icon: Inbox, tone: 'bg-primary/10 text-primary' },
+                                { label: 'Menunggu Persetujuan', value: stats?.pending ?? 0, sub: 'Butuh tindakan Anda', Icon: Clock, tone: 'bg-amber-50 text-amber-600' },
+                                { label: 'Selesai Diproses', value: stats?.selesai ?? 0, sub: 'Disetujui / ditolak', Icon: CalendarCheck2, tone: 'bg-emerald-50 text-emerald-600' },
+                            ].map(({ label, value, sub, Icon, tone }) => (
+                                <div key={label} className="flex items-center gap-3 rounded-lg px-2 py-2">
+                                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tone}`}>
+                                        <Icon className="h-4 w-4" />
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="text-lg font-bold leading-tight text-primary tabular-nums">{value}</p>
+                                        <p className="truncate text-[10px] font-semibold text-text-secondary">{label}</p>
+                                        <p className="truncate text-[10px] text-text-muted">{sub}</p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                        <div className="card flex items-center gap-4 p-5">
-                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50">
-                                <Clock className="h-5 w-5 text-amber-600" />
-                            </span>
-                            <div className="min-w-0">
-                                <p className="text-2xl font-extrabold leading-tight text-text-primary tabular-nums">{stats?.pending ?? 0}</p>
-                                <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-muted">Menunggu Persetujuan</p>
-                                <p className="truncate text-[11px] text-text-muted">Butuh tindakan Anda</p>
-                            </div>
-                        </div>
-                        <div className="card flex items-center gap-4 p-5">
-                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
-                                <CalendarCheck2 className="h-5 w-5 text-emerald-600" />
-                            </span>
-                            <div className="min-w-0">
-                                <p className="text-2xl font-extrabold leading-tight text-text-primary tabular-nums">{stats?.selesai ?? 0}</p>
-                                <p className="truncate text-xs font-semibold uppercase tracking-wide text-text-muted">Selesai Diproses</p>
-                                <p className="truncate text-[11px] text-text-muted">Disetujui / ditolak</p>
-                            </div>
-                        </div>
-                    </div>
+                    </Card>
 
-                    {flash.message && (
-                        <div className="bg-success-light border border-success/30 text-success px-4 py-3 rounded-card mb-6 flex items-center shadow-card">
-                            <CheckCircle className="w-5 h-5 mr-3 text-success" />
-                            <span className="font-medium">{flash.message}</span>
-                        </div>
-                    )}
-                    {flash.error && (
-                        <div className="bg-danger-light border border-danger/30 text-danger px-4 py-3 rounded-card mb-6 flex items-center shadow-card">
-                            <AlertCircle className="w-5 h-5 mr-3 text-danger" />
-                            <span className="font-medium">{flash.error}</span>
-                        </div>
-                    )}
-
-                    {/* Tabs */}
-                    <div className="card p-1 mb-6 inline-flex overflow-x-auto max-w-full">
+                    <div className="inline-flex max-w-full overflow-x-auto rounded-xl border border-border bg-white p-1" role="tablist" aria-label="Tahap approval izin">
                         {TABS.map((t) => (
-                            <button
+                            <Button
                                 key={t.key}
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === t.key}
+                                size="sm"
+                                variant={activeTab === t.key ? 'primary' : 'ghost'}
                                 onClick={() => switchTab(t.key)}
-                                className={`px-4 py-2 rounded-button text-sm font-bold transition-all ${
-                                    activeTab === t.key
-                                        ? 'bg-primary text-white shadow-card'
-                                        : 'text-text-secondary hover:text-text-primary hover:bg-surface'
-                                }`}
+                                className="whitespace-nowrap"
                             >
                                 {t.label}
-                            </button>
+                            </Button>
                         ))}
                     </div>
 
@@ -315,62 +288,49 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                             }}
                         >
                             <div className="relative flex-1">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Search className="h-5 w-5 text-text-muted" />
-                                </div>
-                                <input
+                                <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                                <Input
                                     type="text"
-                                    className="input-field pl-10"
+                                    className="pl-9"
                                     placeholder="Cari nama pegawai atau NIK..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
+                                    aria-label="Cari nama pegawai atau NIK"
                                 />
                             </div>
-                            <button type="submit" className="btn-primary btn-sm whitespace-nowrap px-3">
+                            <Button type="submit" size="sm" className="shrink-0 px-4">
                                 Cari
-                            </button>
+                            </Button>
                         </form>
                         <div className="flex flex-wrap gap-2">
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Filter className="h-4 w-4 text-text-muted" />
-                                </div>
-                                <select
-                                    className="select-field pl-9"
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                >
-                                    <option value="semua">Semua Status</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="disetujui">Disetujui</option>
-                                    <option value="ditolak">Ditolak</option>
-                                </select>
-                            </div>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Calendar className="h-4 w-4 text-text-muted" />
-                                </div>
-                                <input
-                                    type="date"
-                                    className="input-field pl-9"
-                                    value={dateFilter}
-                                    onChange={(e) => setDateFilter(e.target.value)}
-                                />
-                            </div>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Users className="h-4 w-4 text-text-muted" />
-                                </div>
-                                <select
-                                    className="select-field pl-9"
-                                    value={jenisFilter}
-                                    onChange={(e) => setJenisFilter(e.target.value)}
-                                >
-                                    <option value="">Semua Jenis</option>
-                                    <option value="pendidik">Pendidik (Guru)</option>
-                                    <option value="kependidikan">Tenaga Kependidikan</option>
-                                </select>
-                            </div>
+                            <Select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                aria-label="Filter status"
+                                className="w-full sm:w-44"
+                            >
+                                <option value="semua">Semua Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="disetujui">Disetujui</option>
+                                <option value="ditolak">Ditolak</option>
+                            </Select>
+                            <Input
+                                type="date"
+                                value={dateFilter}
+                                onChange={(e) => setDateFilter(e.target.value)}
+                                aria-label="Filter tanggal"
+                                className="w-full sm:w-44"
+                            />
+                            <Select
+                                value={jenisFilter}
+                                onChange={(e) => setJenisFilter(e.target.value)}
+                                aria-label="Filter jenis pegawai"
+                                className="w-full sm:w-52"
+                            >
+                                <option value="">Semua Jenis</option>
+                                <option value="pendidik">Pendidik (Guru)</option>
+                                <option value="kependidikan">Tenaga Kependidikan</option>
+                            </Select>
                         </div>
                     </FilterSheet>
 
@@ -538,10 +498,8 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                             </div>
                         )}
                     </div>
-                </div>
             </div>
 
-            {/* Modal Detail / Approve / Reject */}
             <Modal show={selectedItem !== null} onClose={closeModal} maxWidth={modalType === 'detail' ? '2xl' : 'lg'}>
                 {selectedItem && (
                     <div className="overflow-hidden bg-white rounded-card">
@@ -812,6 +770,6 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                     </div>
                 )}
             </Modal>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
