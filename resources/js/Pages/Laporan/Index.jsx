@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import FilterSheet from '@/Components/FilterSheet';
 import { Head, Link } from '@inertiajs/react';
 import { Calendar, Download, FileSpreadsheet, Loader2, Search, FileText, Users, X, ClipboardList, Clock3, UserCheck, ShieldCheck } from 'lucide-react';
@@ -404,22 +405,23 @@ export default function LaporanIndex({ auth, units }) {
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
-            header={<h1 className="page-title">Modul Laporan</h1>}
+            header={<h2 className="page-title">Modul Laporan</h2>}
         >
             <Head title="Laporan" />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    {/* Header */}
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                            <h2 className="text-xl font-extrabold text-text-primary">Ekspor & Pratinjau Laporan</h2>
-                            <p className="text-sm text-text-muted">Pilih jenis laporan, atur periode, lalu pratinjau atau unduh ke Excel.</p>
-                        </div>
-                        {auth.permissions?.includes('view_kpi') && <Link href={route('kpi.index')} className="btn-secondary">Laporan KPI Pegawai</Link>}
-                    </div>
+            <div className="mx-auto w-full max-w-7xl space-y-5">
+                <PageHeader
+                    eyebrow="Laporan"
+                    title="Ekspor & Pratinjau Laporan"
+                    description="Pilih jenis laporan, atur periode, lalu pratinjau atau unduh ke Excel."
+                    actions={auth.permissions?.includes('view_kpi') ? (
+                        <Link href={route('kpi.index')} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                            Laporan KPI Pegawai
+                        </Link>
+                    ) : null}
+                />
 
                     {reportLinks.length > 0 && (
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -664,31 +666,31 @@ export default function LaporanIndex({ auth, units }) {
                         )}
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                            <button onClick={handlePreview} disabled={loading} className="btn-primary inline-flex items-center gap-2">
-                                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat…</> : <><Search className="h-4 w-4" /> Tampilkan</>}
-                            </button>
-                            <button onClick={handleDownload} disabled={loading} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60">
+                            <Button onClick={handlePreview} disabled={loading}>
+                                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memuat...</> : <><Search className="h-4 w-4" /> Tampilkan</>}
+                            </Button>
+                            <Button variant="secondary" onClick={handleDownload} disabled={loading}>
                                 <Download className="h-4 w-4" /> Excel
-                            </button>
-                            <button onClick={handleDownloadPdf} disabled={loading || pdfLoading} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60">
-                                {pdfLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Membuat PDF…</> : <><FileText className="h-4 w-4" /> PDF</>}
-                            </button>
+                            </Button>
+                            <Button variant="secondary" onClick={handleDownloadPdf} disabled={loading || pdfLoading}>
+                                {pdfLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Membuat PDF...</> : <><FileText className="h-4 w-4" /> PDF</>}
+                            </Button>
                             <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
-                            <button onClick={cetakDaftarHadir} disabled={pdfLoading} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline disabled:opacity-60">
+                            <Button variant="ghost" className="text-primary" onClick={cetakDaftarHadir} disabled={pdfLoading}>
                                 <FileText className="h-4 w-4" /> Cetak daftar hadir (PDF)
-                            </button>
+                            </Button>
                     </div>
 
                     {/* Preview */}
                     {loading && (
-                        <div role="status" className="card flex items-center justify-center gap-3 p-12">
+                        <Card role="status" className="flex items-center justify-center gap-3 p-12">
                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
                             <span className="text-sm font-semibold text-text-secondary">Memuat Data Pratinjau...</span>
-                        </div>
+                        </Card>
                     )}
 
                     {!loading && previewData && activePreview && (
-                        <div className="card overflow-hidden">
+                        <Card className="overflow-hidden">
                             <div className="flex flex-col gap-1 border-b border-border bg-surface px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <h3 className="flex items-center gap-2 text-base font-extrabold uppercase tracking-wide text-primary">
@@ -1146,10 +1148,9 @@ export default function LaporanIndex({ auth, units }) {
                                 </table>
                             </div>
                             )}
-                        </div>
+                        </Card>
                     )}
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }
