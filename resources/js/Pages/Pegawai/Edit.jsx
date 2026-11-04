@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminShell from '@/Layouts/AdminShell';
+import { Button, Card, FormField, PageHeader } from '@/Components/AdminUI';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, BadgeCheck, Camera, Landmark, Loader2, MapPin, Save, Trash2, User, X as XIcon } from 'lucide-react';
 import { MapelSection } from '@/Pages/Pegawai/Partials/MapelSection';
@@ -11,30 +12,27 @@ const inputClass = 'input-field';
 const selectClass = 'select-field';
 
 const Field = ({ label, required, error, hint, children, className = '' }) => (
-    <div className={className}>
-        <label className="form-label text-xs">{label} {required && <span className="text-danger">*</span>}</label>
+    <FormField label={label} required={required} error={error} description={hint} className={className}>
         {children}
-        {error && <p className="form-error">{error}</p>}
-        {hint && !error && <p className="form-hint">{hint}</p>}
-    </div>
+    </FormField>
 );
 
 function SectionCard({ Icon, title, description, children }) {
     return (
-        <div className="card p-6">
+        <Card className="p-5 sm:p-6">
             <div className="mb-5">
-                <h3 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-primary">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-primary">
                     <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                         <Icon className="h-4 w-4 text-primary" />
                     </span>
                     {title}
                 </h3>
-                {description && <p className="mt-1.5 text-xs text-text-muted">{description}</p>}
+                {description && <p className="mt-1.5 text-xs text-text-secondary">{description}</p>}
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {children}
             </div>
-        </div>
+        </Card>
     );
 }
 
@@ -163,19 +161,23 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
     };
 
     return (
-        <AuthenticatedLayout
+        <AdminShell
             user={auth.user}
             header={<h2 className="page-title">Edit Pegawai: {pegawai.nama_lengkap}</h2>}
         >
             <Head title={`Edit Pegawai - ${pegawai.nama_lengkap}`} />
 
-            <div className="py-8 bg-surface min-h-screen">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                    <Link href={route('pegawai.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
-                        <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Pegawai
-                    </Link>
+            <div className="mx-auto max-w-4xl space-y-5">
+                <Link href={route('pegawai.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
+                    <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Pegawai
+                </Link>
+                <PageHeader
+                    eyebrow="Kepegawaian"
+                    title={`Edit Pegawai: ${pegawai.nama_lengkap}`}
+                    description="Perbarui data pribadi, kepegawaian, unit, dan komponen terkait."
+                />
 
-                    <form onSubmit={submit} className="space-y-4">
+                <form onSubmit={submit} className="space-y-4">
                         {/* Foto */}
                         <SectionCard Icon={Camera} title="Foto Pegawai">
                             <div className="sm:col-span-2">
@@ -462,15 +464,14 @@ export default function Edit({ auth, pegawai, unitSekolahs, jabatans, mapels, st
                         />
 
                         {/* Actions */}
-                        <div className="card flex items-center justify-end gap-3 p-5">
-                            <Link href={route('pegawai.show', pegawai.id)} className="btn-secondary">Batal</Link>
-                            <button type="submit" disabled={processing} className="btn-primary flex items-center gap-2">
-                                {processing ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan…</> : <><Save className="h-4 w-4" /> Perbarui Pegawai</>}
-                            </button>
+                        <div className="flex flex-wrap items-center justify-end gap-2 rounded-xl border border-border bg-white p-4">
+                            <Link href={route('pegawai.show', pegawai.id)} className="inline-flex h-10 items-center rounded-lg border border-border bg-white px-4 text-sm font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">Batal</Link>
+                            <Button type="submit" disabled={processing}>
+                                {processing ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan...</> : <><Save className="h-4 w-4" /> Perbarui Pegawai</>}
+                            </Button>
                         </div>
                     </form>
-                </div>
             </div>
-        </AuthenticatedLayout>
+        </AdminShell>
     );
 }

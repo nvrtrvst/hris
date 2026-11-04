@@ -1,4 +1,5 @@
 import React from 'react';
+import { Card } from '@/Components/AdminUI';
 import { GraduationCap, Plus, Trash2 } from 'lucide-react';
 
 /**
@@ -12,8 +13,8 @@ import { GraduationCap, Plus, Trash2 } from 'lucide-react';
  */
 export function MapelSection({ mapels, onUpdate, onAdd, onRemove, mapelList, unitSekolahs }) {
     return (
-        <div className="card p-6">
-            <h3 className="mb-1 flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-primary">
+        <Card className="p-5 sm:p-6">
+            <h3 className="mb-1 flex items-center gap-2 text-sm font-bold text-primary">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                     <GraduationCap className="h-4 w-4 text-primary" />
                 </span>
@@ -70,6 +71,6 @@ export function MapelSection({ mapels, onUpdate, onAdd, onRemove, mapelList, uni
             >
                 <Plus className="h-4 w-4" /> Tambah Mata Pelajaran
             </button>
-        </div>
+        </Card>
     );
 }
