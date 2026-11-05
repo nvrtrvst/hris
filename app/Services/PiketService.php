@@ -78,8 +78,59 @@ class PiketService
         }
 
         self::linkPetugas($sesi, $pegawai->id, null, null, 'area');
+        self::ensurePosAssignments($sesi);
 
         return $sesi->fresh('petugas');
+    }
+
+    /**
+     * Bagi pos aktif per area secara round-robin ke petugas yang belum punya
+     * pos. Petugas lebih banyak dari pos = sisanya menjadi backup.
+     */
+    public static function ensurePosAssignments(PiketSesi $sesi): void
+    {
+        if (! self::isAreaMode($sesi->unitSekolah)) {
+            return;
+        }
+
+        $petugas = PiketPetugas::where('sesi_id', $sesi->id)
+            ->whereNotNull('area_id')
+            ->orderBy('id')
+            ->get();
+
+        if ($petugas->isEmpty()) {
+            return;
+        }
+
+        $offset = Carbon::parse($sesi->tanggal)->dayOfYear;
+
+        foreach ($petugas->groupBy('area_id') as $areaId => $group) {
+            $posList = PiketPos::where('unit_sekolah_id', $sesi->unit_sekolah_id)
+                ->where('aktif', true)
+                ->where('area_id', $areaId)
+                ->orderBy('id')
+                ->get();
+
+            if ($posList->isEmpty()) {
+                continue;
+            }
+
+            $used = $group->pluck('pos_id')->filter()->map(fn ($id) => (int) $id)->all();
+            $available = $posList->reject(fn (PiketPos $pos) => in_array($pos->id, $used, true))->values();
+            $unassigned = $group->whereNull('pos_id')->values();
+
+            if ($available->isEmpty() || $unassigned->isEmpty()) {
+                continue;
+            }
+
+            $take = min($available->count(), $unassigned->count());
+            $start = $offset % $available->count();
+
+            for ($i = 0; $i < $take; $i++) {
+                $pos = $available->get(($start + $i) % $available->count());
+                $unassigned->get($i)->forceFill(['pos_id' => $pos->id])->save();
+            }
+        }
     }
 
     public static function sesiFor(Jadwal $slot): ?PiketSesi
@@ -317,10 +368,16 @@ class PiketService
 
                 $row->forceFill(['status' => 'tidak_hadir', 'status_alasan' => $reason])->save();
 
-                PiketRound::where('sesi_id', $sesi->id)
+                $rounds = PiketRound::where('sesi_id', $sesi->id)
                     ->where('petugas_id', $row->pegawai_id)
                     ->whereNull('selesai_at')
-                    ->update(['petugas_id' => $present->first()->pegawai_id]);
+                    ->get();
+
+                foreach ($rounds as $round) {
+                    $newOwner = $present->get($pointer % $present->count());
+                    $round->forceFill(['petugas_id' => $newOwner->pegawai_id])->save();
+                    $pointer++;
+                }
             }
 
             if ($reassigned > 0) {
@@ -481,7 +538,7 @@ class PiketService
             ->filter(function (PiketItemTemplate $t) use ($petugas) {
                 return match ($t->scope) {
                     'area' => $petugas?->area_id !== null,
-                    'pos' => $petugas?->pos_id !== null,
+                    'pos' => $petugas !== null && self::posFor($unit, $petugas) !== [],
                     default => true,
                 };
             })
@@ -546,6 +603,13 @@ class PiketService
             return [];
         }
 
+        $assignedByPresent = PiketPetugas::where('sesi_id', $petugas->sesi_id)
+            ->where('status', '!=', 'tidak_hadir')
+            ->whereNotNull('pos_id')
+            ->pluck('pos_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
         return PiketPos::where('unit_sekolah_id', $unit->id)
             ->where('aktif', true)
             ->where(function ($q) use ($petugas) {
@@ -553,6 +617,12 @@ class PiketService
                 if ($petugas->area_id) {
                     $q->orWhere('area_id', $petugas->area_id);
                 }
+            })
+            ->when($petugas->pos_id, function ($q) use ($assignedByPresent, $petugas) {
+                $q->where(function ($sub) use ($assignedByPresent, $petugas) {
+                    $sub->where('id', $petugas->pos_id)
+                        ->orWhereNotIn('id', $assignedByPresent);
+                });
             })
             ->orderBy('jam_mulai')
             ->get()
@@ -710,23 +780,47 @@ class PiketService
         $durasi = max(30, $akhir - $awal);
         $fmt = fn (int $m): string => sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
 
-        $petugas = PiketPetugas::where('sesi_id', $sesi->id)->whereNotNull('area_id')->get()->keyBy('area_id');
+        $petugas = PiketPetugas::where('sesi_id', $sesi->id)
+            ->whereNotNull('area_id')
+            ->where('status', '!=', 'tidak_hadir')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('area_id');
+        $offset = Carbon::parse($sesi->tanggal)->dayOfYear;
 
-        foreach ($petugas as $areaId => $row) {
+        foreach ($petugas as $areaId => $group) {
+            $group = $group->values();
+            if ($group->isEmpty()) {
+                continue;
+            }
+
             foreach ([1 => 0.25, 2 => 0.75] as $putaran => $porsi) {
                 $titik = $awal + (int) ($durasi * $porsi);
                 $mulai = max($awal, $titik - 10);
                 $selesai = min($akhir, $titik + 10);
 
-                $pegawai = Pegawai::find($row->pegawai_id);
-                if ($pegawai && self::overlapsTeaching($pegawai, $slot->hari, $fmt($mulai), $fmt($selesai))) {
+                $owner = null;
+                for ($i = 0; $i < $group->count(); $i++) {
+                    $candidate = $group->get(($offset + $putaran - 1 + $i) % $group->count());
+                    $pegawai = Pegawai::find($candidate->pegawai_id);
+
+                    if (! $pegawai || self::overlapsTeaching($pegawai, $slot->hari, $fmt($mulai), $fmt($selesai))) {
+                        continue;
+                    }
+
+                    $owner = $candidate;
+
+                    break;
+                }
+
+                if (! $owner) {
                     continue;
                 }
 
-                PiketRound::updateOrCreate(
+                PiketRound::firstOrCreate(
                     ['sesi_id' => $sesi->id, 'area_id' => $areaId, 'putaran' => $putaran],
                     [
-                        'petugas_id' => $row->pegawai_id,
+                        'petugas_id' => $owner->pegawai_id,
                         'jendela_mulai' => $fmt($mulai),
                         'jendela_selesai' => $fmt($selesai),
                     ],
@@ -807,6 +901,7 @@ class PiketService
         }
 
         $belum = PiketRound::where('sesi_id', $laporan->sesi_id)
+            ->where('petugas_id', $laporan->pegawai_id)
             ->whereNull('selesai_at')
             ->orderBy('putaran')
             ->get(['putaran', 'jendela_mulai', 'jendela_selesai']);
