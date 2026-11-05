@@ -3,17 +3,46 @@
 namespace App\Http\Controllers;
 
 use App\Models\MataPelajaran;
+use App\Models\PegawaiMapel;
 use Illuminate\Http\Request;
 
 class MataPelajaranController extends Controller
 {
     public function index()
     {
-        $mapels = MataPelajaran::withCount(['pegawais', 'jadwals'])->orderBy('nama', 'asc')->get();
+        $mapels = MataPelajaran::withCount('jadwals')->orderBy('nama', 'asc')->get();
+
+        $penugasan = PegawaiMapel::with([
+            'pegawai:id,nama_lengkap,nip,nuptk',
+            'unitSekolah:id,nama',
+        ])
+            ->whereIn('mata_pelajaran_id', $mapels->pluck('id'))
+            ->get()
+            ->groupBy('mata_pelajaran_id');
+
+        $mapels->each(function (MataPelajaran $mapel) use ($penugasan) {
+            $mapel->setAttribute('guru', $penugasan->get($mapel->id, collect())
+                ->groupBy('pegawai_id')
+                ->map(function ($rows) {
+                    $pegawai = $rows->first()->pegawai;
+
+                    return [
+                        'id' => $pegawai?->id,
+                        'nama' => $pegawai?->nama_lengkap ?? '-',
+                        'nip' => $pegawai?->nip,
+                        'nuptk' => $pegawai?->nuptk,
+                        'units' => $rows->pluck('unitSekolah.nama')->filter()->unique()->sort()->values()->all(),
+                    ];
+                })
+                ->filter(fn ($guru) => $guru['id'] !== null)
+                ->sortBy(fn ($guru) => mb_strtolower($guru['nama']))
+                ->values()
+                ->all());
+        });
 
         $stats = [
             'total_mapel' => $mapels->count(),
-            'total_penugasan_guru' => $mapels->sum('pegawais_count'),
+            'total_penugasan_guru' => $mapels->sum(fn (MataPelajaran $mapel) => count($mapel->guru)),
             'total_jadwal' => $mapels->sum('jadwals_count'),
         ];
 
