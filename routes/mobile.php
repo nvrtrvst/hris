@@ -8,6 +8,7 @@ use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileGajiController;
 use App\Http\Controllers\MobileIzinController;
 use App\Http\Controllers\MobileKoreksiController;
+use App\Http\Controllers\MobilePasswordResetController;
 use App\Http\Controllers\MobilePulangCepatController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PengajuanKoreksiController;
@@ -29,6 +30,14 @@ Route::get('/login', [MobileAuthController::class, 'create'])
     ->name('presensi.login');
 Route::post('/login', [MobileAuthController::class, 'store'])
     ->middleware('throttle:5,1')->name('presensi.login.store');
+Route::get('/forgot-password', [MobilePasswordResetController::class, 'create'])
+    ->name('presensi.password.request');
+Route::post('/forgot-password', [MobilePasswordResetController::class, 'store'])
+    ->middleware('throttle:5,1')->name('presensi.password.email');
+Route::get('/reset-password/{token}', [MobilePasswordResetController::class, 'edit'])
+    ->name('presensi.password.reset');
+Route::post('/reset-password', [MobilePasswordResetController::class, 'update'])
+    ->middleware('throttle:5,1')->name('presensi.password.store');
 // Client error telemetry (ErrorBoundary). Endpoint PUBLIK — user yang sesi-nya
 // expired tetap harus bisa kirim laporan error (kalau dibalik auth, justru
 // error pertama yang muncul setelah sesi jatuh tidak akan pernah tercatat).

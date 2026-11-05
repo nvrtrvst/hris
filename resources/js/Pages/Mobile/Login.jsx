@@ -135,7 +135,7 @@ export default function MobileLogin({ status }) {
                                 />
                                 Ingat saya
                             </label>
-                            <Link href={route('password.request')} className="flex min-h-11 items-center text-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
+                            <Link href={route('presensi.password.request')} className="flex min-h-11 items-center text-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
                                 Lupa sandi?
                             </Link>
                         </div>
