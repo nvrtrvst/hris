@@ -2,22 +2,36 @@ import React, { useState } from 'react';
 import AdminShell from '@/Layouts/AdminShell';
 import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import { Head, router, useForm } from '@inertiajs/react';
-import { BookOpen, CalendarClock, GraduationCap, Loader2, Pencil, Plus, Save, Trash2, Users } from 'lucide-react';
+import { BookOpen, CalendarClock, GraduationCap, Loader2, Pencil, Plus, Save, Trash2, Users, X } from 'lucide-react';
 import Modal from '@/Components/Modal';
 import StatCard from '@/Components/StatCard';
 import { avatarTone, initials } from '@/Utils/avatar';
 
-function CountBadge({ count, tone, label }) {
-    return (
-        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold tabular-nums ${tone}`}>
-            {count} {label}
-        </span>
-    );
+function CountBadge({ count, tone, label, onClick, ariaLabel }) {
+    const className = `inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold tabular-nums ${tone}`;
+
+    if (onClick) {
+        return (
+            <button
+                type="button"
+                onClick={onClick}
+                className={`${className} transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30`}
+                aria-haspopup="dialog"
+                aria-label={ariaLabel}
+                title={ariaLabel}
+            >
+                {count} {label}
+            </button>
+        );
+    }
+
+    return <span className={className}>{count} {label}</span>;
 }
 
 export default function Index({ auth, mapels, stats }) {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
+    const [guruMapel, setGuruMapel] = useState(null);
     const { data, setData, post, put, processing, errors, reset } = useForm({ nama: '' });
 
     const openCreate = () => {
@@ -104,7 +118,13 @@ export default function Index({ auth, mapels, stats }) {
                                                     </div>
                                                 </td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-center">
-                                                    <CountBadge count={m.pegawais_count ?? 0} tone="border-primary/20 bg-primary/10 text-primary" label="guru" />
+                                                    <CountBadge
+                                                        count={m.guru?.length ?? 0}
+                                                        tone="border-primary/20 bg-primary/10 text-primary"
+                                                        label="guru"
+                                                        onClick={m.guru?.length ? () => setGuruMapel(m) : undefined}
+                                                        ariaLabel={m.guru?.length ? `Lihat ${m.guru.length} guru pengampu ${m.nama}` : undefined}
+                                                    />
                                                 </td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-center">
                                                     <CountBadge count={m.jadwals_count ?? 0} tone="border-sky-200 bg-sky-50 text-sky-700" label="jadwal" />
@@ -140,6 +160,54 @@ export default function Index({ auth, mapels, stats }) {
                         )}
                     </Card>
             </div>
+
+            <Modal show={!!guruMapel} onClose={() => setGuruMapel(null)} maxWidth="lg">
+                <div className="p-6">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Guru Pengampu</p>
+                            <h3 className="mt-1 truncate text-lg font-extrabold text-text-primary">{guruMapel?.nama}</h3>
+                            <p className="mt-1 text-xs text-text-muted">{(guruMapel?.guru || []).length} guru terdaftar</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setGuruMapel(null)}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface hover:text-primary"
+                            aria-label="Tutup rincian guru"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+
+                    {(guruMapel?.guru || []).length > 0 ? (
+                        <ul className="mt-5 divide-y divide-border overflow-hidden rounded-xl border border-border">
+                            {guruMapel.guru.map((guru) => (
+                                <li key={guru.id} className="flex items-start gap-3 bg-white p-3.5 sm:items-center">
+                                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-extrabold ${avatarTone(guru.nama)}`}>
+                                        {initials(guru.nama)}
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-bold text-text-primary">{guru.nama}</p>
+                                        <p className="mt-0.5 text-xs text-text-muted">
+                                            {guru.nuptk ? `NUPTK ${guru.nuptk}` : 'NUPTK belum diisi'}
+                                            {guru.units?.length ? ` · ${guru.units.join(', ')}` : ''}
+                                        </p>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <div className="mt-5 rounded-xl border border-dashed border-border px-4 py-8 text-center">
+                            <p className="text-sm font-bold text-text-primary">Belum ada guru pengampu</p>
+                            <p className="mt-1 text-xs text-text-muted">Tambahkan mapel ini dari halaman Data Pegawai.</p>
+                        </div>
+                    )}
+
+                    <div className="mt-5 flex justify-end">
+                        <Button variant="secondary" onClick={() => setGuruMapel(null)}>Tutup</Button>
+                    </div>
+                </div>
+            </Modal>
 
             <Modal show={showModal} onClose={() => { setShowModal(false); reset(); }} maxWidth="md">
                 <form onSubmit={handleSubmit} className="p-6">
