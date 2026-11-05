@@ -64,7 +64,7 @@ export default function MobileLogin({ status }) {
 
                     <div className="mt-8">
                         <p className="text-sm font-semibold text-emerald-100">Selamat datang kembali</p>
-                        <p className="mt-3 max-w-sm text-sm leading-relaxed text-emerald-50/80">Akses presensi, jadwal kerja, riwayat kehadiran, dan pengajuan izin dari satu tempat.</p>
+                        <p className="mt-3 max-w-sm text-sm leading-relaxed text-emerald-50/80">Akses presensi, jadwal kerja dan riwayat kehadiran.</p>
                     </div>
                 </div>
             </section>
