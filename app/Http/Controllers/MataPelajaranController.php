@@ -13,7 +13,7 @@ class MataPelajaranController extends Controller
         $mapels = MataPelajaran::withCount('jadwals')->orderBy('nama', 'asc')->get();
 
         $penugasan = PegawaiMapel::with([
-            'pegawai:id,nama_lengkap,nip,nuptk',
+            'pegawai:id,nama_lengkap,nuptk',
             'unitSekolah:id,nama',
         ])
             ->whereIn('mata_pelajaran_id', $mapels->pluck('id'))
@@ -29,7 +29,6 @@ class MataPelajaranController extends Controller
                     return [
                         'id' => $pegawai?->id,
                         'nama' => $pegawai?->nama_lengkap ?? '-',
-                        'nip' => $pegawai?->nip,
                         'nuptk' => $pegawai?->nuptk,
                         'units' => $rows->pluck('unitSekolah.nama')->filter()->unique()->sort()->values()->all(),
                     ];

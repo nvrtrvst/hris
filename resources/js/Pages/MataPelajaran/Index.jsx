@@ -189,7 +189,7 @@ export default function Index({ auth, mapels, stats }) {
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-sm font-bold text-text-primary">{guru.nama}</p>
                                         <p className="mt-0.5 text-xs text-text-muted">
-                                            {guru.nip ? `NIP ${guru.nip}` : guru.nuptk ? `NUPTK ${guru.nuptk}` : 'NIP/NUPTK belum diisi'}
+                                            {guru.nuptk ? `NUPTK ${guru.nuptk}` : 'NUPTK belum diisi'}
                                             {guru.units?.length ? ` · ${guru.units.join(', ')}` : ''}
                                         </p>
                                     </div>
