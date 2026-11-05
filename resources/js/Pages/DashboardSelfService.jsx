@@ -25,101 +25,101 @@ export default function DashboardSelfService({ auth, stats }) {
             <Head title="Beranda Pegawai" />
 
             <div className="mx-auto w-full max-w-[1600px] space-y-6">
-                    <PageHeader
-                        eyebrow="Self Service"
-                        title="Beranda Pegawai"
-                        description={todayString}
-                    />
+                <PageHeader
+                    eyebrow="PORTAL SERVICE"
+                    title="Beranda Pegawai"
+                    description={todayString}
+                />
 
-                    <div className="rounded-xl bg-primary p-6 text-white shadow-card">
-                        <h3 className="text-xl font-bold">Halo, {auth.user.name}</h3>
-                        <p className="mt-1 text-white/70">Selamat datang di portal self-service HRIS Yayasan.</p>
-                    </div>
+                <div className="rounded-xl bg-primary p-6 text-white shadow-card">
+                    <h3 className="text-xl font-bold">Halo, {auth.user.name}</h3>
+                    <p className="mt-1 text-white/70">Selamat datang di portal HRIS Yayasan.</p>
+                </div>
 
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                        {statCards.map((card, i) => (
-                            <div key={i} className="card p-6">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider">{card.label}</h4>
-                                    <div className="stat-icon bg-primary/5">
-                                        <card.icon className="w-5 h-5 text-primary" />
-                                    </div>
-                                </div>
-                                {card.kontrak ? (
-                                    <div>
-                                        <span className="badge-success gap-1.5">
-                                            <UserCheck className="w-4 h-4" /> {card.value}
-                                        </span>
-                                        <p className="text-xs text-text-muted mt-3">Kontrak hingga: {card.sub}</p>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <span className="text-2xl font-bold text-text-primary">{card.value}</span>
-                                        <p className="text-xs text-text-muted mt-1">{card.sub}</p>
-                                    </div>
-                                )}
-                                {card.progress !== undefined && (
-                                    <div className="w-full bg-border rounded-full h-2 mt-4">
-                                        <div
-                                            className={`h-2 w-full origin-left rounded-full transition-transform duration-500 motion-reduce:transition-none ${persentaseHadir >= 90 ? 'bg-success' : 'bg-warning'}`}
-                                            style={{ transform: `scaleX(${Math.min(card.progress, 100) / 100})` }}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                        <Link href={route('presensi.index')} className="card-hover p-5 flex items-center justify-between group">
-                            <div className="flex items-center gap-4">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                    {statCards.map((card, i) => (
+                        <div key={i} className="card p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider">{card.label}</h4>
                                 <div className="stat-icon bg-primary/5">
-                                    <Clock className="w-5 h-5 text-primary" />
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold text-text-primary group-hover:text-primary transition-colors">Presensi Saya</h4>
-                                    <p className="text-sm text-text-muted">Riwayat absensi harian</p>
+                                    <card.icon className="w-5 h-5 text-primary" />
                                 </div>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-primary transition-colors" />
-                        </Link>
-                        <Link href={route('jadwal.index')} className="card-hover p-5 flex items-center justify-between group">
-                            <div className="flex items-center gap-4">
-                                <div className="stat-icon bg-accent/10">
-                                    <CalendarCheck className="w-5 h-5 text-accent" />
-                                </div>
+                            {card.kontrak ? (
                                 <div>
-                                    <h4 className="font-semibold text-text-primary group-hover:text-primary transition-colors">Jadwal Pribadi</h4>
-                                    <p className="text-sm text-text-muted">Lihat jadwal mengajar</p>
+                                    <span className="badge-success gap-1.5">
+                                        <UserCheck className="w-4 h-4" /> {card.value}
+                                    </span>
+                                    <p className="text-xs text-text-muted mt-3">Kontrak hingga: {card.sub}</p>
                                 </div>
-                            </div>
-                            <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-primary transition-colors" />
-                        </Link>
-                        <Link href={route('pengajuan-izin.index')} className="card-hover p-5 flex items-center justify-between group">
-                            <div className="flex items-center gap-4">
-                                <div className="stat-icon bg-success/5">
-                                    <FileText className="w-5 h-5 text-success" />
-                                </div>
+                            ) : (
                                 <div>
-                                    <h4 className="font-semibold text-text-primary group-hover:text-primary transition-colors">Pengajuan Izin</h4>
-                                    <p className="text-sm text-text-muted">Cuti, izin, sakit</p>
+                                    <span className="text-2xl font-bold text-text-primary">{card.value}</span>
+                                    <p className="text-xs text-text-muted mt-1">{card.sub}</p>
                                 </div>
+                            )}
+                            {card.progress !== undefined && (
+                                <div className="w-full bg-border rounded-full h-2 mt-4">
+                                    <div
+                                        className={`h-2 w-full origin-left rounded-full transition-transform duration-500 motion-reduce:transition-none ${persentaseHadir >= 90 ? 'bg-success' : 'bg-warning'}`}
+                                        style={{ transform: `scaleX(${Math.min(card.progress, 100) / 100})` }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <Link href={route('presensi.index')} className="card-hover p-5 flex items-center justify-between group">
+                        <div className="flex items-center gap-4">
+                            <div className="stat-icon bg-primary/5">
+                                <Clock className="w-5 h-5 text-primary" />
                             </div>
-                            <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-primary transition-colors" />
-                        </Link>
-                        <Link href={route('penggajian.index')} className="card-hover p-5 flex items-center justify-between group">
-                            <div className="flex items-center gap-4">
-                                <div className="stat-icon bg-warning/10">
-                                    <Receipt className="w-5 h-5 text-warning" />
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold text-text-primary group-hover:text-primary transition-colors">Slip Gaji</h4>
-                                    <p className="text-sm text-text-muted">Lihat riwayat gaji bulanan</p>
-                                </div>
+                            <div>
+                                <h4 className="font-semibold text-text-primary group-hover:text-primary transition-colors">Presensi Saya</h4>
+                                <p className="text-sm text-text-muted">Riwayat absensi harian</p>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-primary transition-colors" />
-                        </Link>
-                    </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-primary transition-colors" />
+                    </Link>
+                    <Link href={route('jadwal.index')} className="card-hover p-5 flex items-center justify-between group">
+                        <div className="flex items-center gap-4">
+                            <div className="stat-icon bg-accent/10">
+                                <CalendarCheck className="w-5 h-5 text-accent" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-text-primary group-hover:text-primary transition-colors">Jadwal Pribadi</h4>
+                                <p className="text-sm text-text-muted">Lihat jadwal mengajar</p>
+                            </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-primary transition-colors" />
+                    </Link>
+                    <Link href={route('pengajuan-izin.index')} className="card-hover p-5 flex items-center justify-between group">
+                        <div className="flex items-center gap-4">
+                            <div className="stat-icon bg-success/5">
+                                <FileText className="w-5 h-5 text-success" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-text-primary group-hover:text-primary transition-colors">Pengajuan Izin</h4>
+                                <p className="text-sm text-text-muted">Cuti, izin, sakit</p>
+                            </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-primary transition-colors" />
+                    </Link>
+                    <Link href={route('penggajian.index')} className="card-hover p-5 flex items-center justify-between group">
+                        <div className="flex items-center gap-4">
+                            <div className="stat-icon bg-warning/10">
+                                <Receipt className="w-5 h-5 text-warning" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-text-primary group-hover:text-primary transition-colors">Slip Gaji</h4>
+                                <p className="text-sm text-text-muted">Lihat riwayat gaji bulanan</p>
+                            </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-text-muted group-hover:text-primary transition-colors" />
+                    </Link>
+                </div>
 
             </div>
         </AdminShell>
