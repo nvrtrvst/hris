@@ -125,7 +125,7 @@ export default function AdminShell({ user: userProp, header, children }) {
                                 >
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d={item.icon} />
                                 </svg>
-                                {(!collapsed || drawer) && <span className="truncate">{item.name}</span>}
+                                {(!collapsed || drawer) && <span className="min-w-0 break-words leading-tight">{item.name}</span>}
                             </Link>
                         );
                     })}
@@ -137,8 +137,12 @@ export default function AdminShell({ user: userProp, header, children }) {
     const sidebarContent = (drawer = false) => (
         <>
             <div className={cn('flex h-16 shrink-0 items-center border-b border-white/10 px-4', collapsed && !drawer ? 'justify-center px-2' : '')}>
-                <Link href={route('dashboard')} className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xs font-extrabold text-accent ring-1 ring-white/15">NM</span>
+                <Link href={route('dashboard')} className="flex min-w-0 items-center gap-3" aria-label="Beranda Nuurul Muttaqiin">
+                    <img
+                        src="/logo.png"
+                        alt=""
+                        className="h-10 w-10 shrink-0 rounded-xl bg-white object-contain p-1 ring-1 ring-white/15"
+                    />
                     {(!collapsed || drawer) && (
                         <span className="min-w-0">
                             <span className="block truncate text-sm font-bold text-white">Nuurul Muttaqiin</span>
@@ -171,7 +175,7 @@ export default function AdminShell({ user: userProp, header, children }) {
                 </div>
             )}
 
-            <nav className="sidebar-scroll flex-1 space-y-4 overflow-y-auto px-3 py-3">
+            <nav className="sidebar-scroll flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
                 {navGroups(drawer)}
                 {query !== '' && visibleGroups.length === 0 && (
                     <p className="px-3 py-2 text-xs text-white/45">Menu tidak ditemukan.</p>
@@ -202,9 +206,9 @@ export default function AdminShell({ user: userProp, header, children }) {
 
             <aside
                 className={cn(
-                    'fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-primary text-white transition-transform duration-200 lg:sticky lg:bottom-auto lg:left-auto lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 lg:self-start',
+                    'fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col bg-primary text-white transition-transform duration-200 lg:sticky lg:bottom-auto lg:left-auto lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 lg:self-start',
                     mobileOpen ? 'translate-x-0' : '-translate-x-full',
-                    collapsed ? 'lg:w-[76px]' : 'lg:w-[260px]',
+                    collapsed ? 'lg:w-[76px]' : 'lg:w-[240px]',
                 )}
             >
                 {sidebarContent(false)}
