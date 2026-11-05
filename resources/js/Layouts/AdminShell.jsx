@@ -256,7 +256,7 @@ export default function AdminShell({ user: userProp, header, children }) {
                         </Link>
                     )}
 
-                    <Dropdown>
+                    <Dropdown closeOnOutsideClick>
                         <Dropdown.Trigger>
                             <button type="button" className="flex items-center gap-2 rounded-full border border-border bg-white p-1 pr-2 hover:bg-surface">
                                 <Avatar src={user.pegawai?.foto_url} name={user.name} className="h-8 w-8" textClassName="text-[10px]" />

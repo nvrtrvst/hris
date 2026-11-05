@@ -39,7 +39,12 @@ export default function NotificationsIndex({ auth, notifications, filters }) {
         return () => clearTimeout(debounceRef.current);
     }, [search]);
 
-    const markRead = (id) => router.post(route('notifications.read', id), {}, { preserveState: true });
+    const markRead = (id, afterSuccess) => router.post(route('notifications.read', id), {}, {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: afterSuccess,
+        onError: afterSuccess,
+    });
     const markAllRead = () => router.post(route('notifications.read-all'), {}, { preserveState: true });
     const archive = (id) => router.post(route('notifications.archive', id), {}, { preserveState: true });
     const restore = (id) => router.post(route('notifications.restore', id), {}, { preserveState: true });
@@ -106,30 +111,46 @@ export default function NotificationsIndex({ auth, notifications, filters }) {
                         <div className="card flex flex-col items-center px-6 py-12 text-center">
                             <Bell className="h-8 w-8 text-border" />
                             <p className="mt-3 text-sm font-bold text-text-primary">
-                                {search ? 'Tidak ada hasil pencarian' : view === 'archived' ? 'Tidak ada notifikasi diarsipkan' : 'Tidak ada notifikasi'}
+                                {search ? 'Tidak ada hasil pencarian' : view === 'archived' ? 'Belum ada notifikasi diarsipkan' : 'Belum ada notifikasi masuk'}
                             </p>
+                            {!search && view === 'all' && (
+                                <p className="mt-1 max-w-xs text-xs text-text-secondary">
+                                    Notifikasi pengajuan dan pengingat akan muncul di sini.
+                                </p>
+                            )}
                         </div>
                     ) : (
                         <div className="space-y-2">
                             {notifications.data.map((n) => {
                             const targetUrl = getNotificationRoute(n);
+                            const actionable = Boolean(targetUrl || !n.read_at);
                             const handleClick = () => {
-                                if (targetUrl) {
-                                    if (!n.read_at) markRead(n.id);
-                                    router.visit(targetUrl);
-                                } else if (!n.read_at) {
-                                    markRead(n.id);
+                                if (!actionable) return;
+
+                                const openTarget = () => {
+                                    if (targetUrl) router.visit(targetUrl);
+                                };
+
+                                if (n.read_at) {
+                                    openTarget();
+                                } else {
+                                    markRead(n.id, openTarget);
                                 }
                             };
                             return (
                                 <div key={n.id} className={`card p-4 transition-all hover:shadow-card ${!n.read_at ? 'border-primary/30 bg-primary/[0.02]' : ''}`}>
                                     <div className="flex items-start justify-between gap-2">
                                         <div
-                                            className={`flex min-w-0 flex-1 gap-3 ${targetUrl ? 'cursor-pointer' : ''}`}
+                                            className={`flex min-w-0 flex-1 gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${actionable ? 'cursor-pointer' : ''}`}
                                             onClick={handleClick}
-                                            role={targetUrl ? 'button' : undefined}
-                                            tabIndex={targetUrl ? 0 : undefined}
-                                            onKeyDown={targetUrl ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); } : undefined}
+                                            role={actionable ? 'button' : undefined}
+                                            tabIndex={actionable ? 0 : undefined}
+                                            onKeyDown={actionable ? (e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    handleClick();
+                                                }
+                                            } : undefined}
                                         >
                                             {n.data?.image && (
                                                 <img src={n.data.image} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-border object-cover" />
@@ -147,19 +168,13 @@ export default function NotificationsIndex({ auth, notifications, filters }) {
                                             {targetUrl && (
                                                 <ChevronRight className="h-4 w-4 flex-shrink-0 text-border" />
                                             )}
-                                            {view === 'all' && !n.read_at && (
-                                                <button onClick={() => markRead(n.id)}
-                                                    className="rounded-lg bg-surface px-2 py-1 text-[10px] font-bold text-primary transition-colors hover:bg-primary/10">
-                                                    Tandai baca
-                                                </button>
-                                            )}
                                             {view === 'all' ? (
-                                                <button onClick={() => archive(n.id)} title="Arsipkan"
+                                                <button onClick={(e) => { e.stopPropagation(); archive(n.id); }} title="Arsipkan"
                                                     className="rounded-lg bg-surface p-2 text-text-secondary transition-colors hover:text-primary">
                                                     <Archive className="h-4 w-4" />
                                                 </button>
                                             ) : (
-                                                <button onClick={() => restore(n.id)} title="Kembalikan"
+                                                <button onClick={(e) => { e.stopPropagation(); restore(n.id); }} title="Kembalikan"
                                                     className="rounded-lg bg-emerald-50 p-2 text-emerald-600 transition-colors hover:bg-emerald-100">
                                                     <ArchiveRestore className="h-4 w-4" />
                                                 </button>

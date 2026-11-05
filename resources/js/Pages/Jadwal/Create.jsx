@@ -13,7 +13,7 @@ export default function Create({ auth, pegawais, units, mapel, lokalis }) {
         unit_lokasi_id: '',
         kelas_label: '',
         mata_pelajaran_id: '',
-        hari: ['Senin'],
+        hari: [],
         jam_mulai: '',
         jam_selesai: '',
         jenis_jadwal: 'mengajar',
