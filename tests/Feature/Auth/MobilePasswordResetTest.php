@@ -35,6 +35,21 @@ class MobilePasswordResetTest extends TestCase
             'longitude' => 106.8,
             'radius_meter' => 100,
         ]);
+        UnitSekolah::create([
+            'nama' => 'LPQ Test',
+            'singkatan' => 'LPQ',
+            'latitude' => -6.2,
+            'longitude' => 106.8,
+            'radius_meter' => 100,
+        ]);
+        UnitSekolah::create([
+            'nama' => 'Yayasan Test',
+            'singkatan' => 'YYS',
+            'logo' => 'unit_logos/yayasan-test.png',
+            'latitude' => -6.2,
+            'longitude' => 106.8,
+            'radius_meter' => 100,
+        ]);
         $user = User::factory()->create();
 
         $this->post(route('presensi.password.email'), ['email' => $user->email])
@@ -51,6 +66,9 @@ class MobilePasswordResetTest extends TestCase
             $this->assertStringNotContainsString('data:image', $html);
             $this->assertStringContainsString('logo.png', $html);
             $this->assertStringContainsString('storage/unit_logos/test.png', $html);
+            $this->assertStringContainsString('>LPQ</span>', $html);
+            $this->assertStringNotContainsString('Yayasan Test', $html);
+            $this->assertStringNotContainsString('HRIS Portal', $html);
 
             return true;
         });
