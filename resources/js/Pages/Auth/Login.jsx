@@ -22,7 +22,7 @@ export default function Login({ status, canResetPassword, lembaga }) {
     return (
         <AuthShell
             title="Masuk"
-            portal="Portal Admin"
+            portal="Portal Kepegawaian"
             lembaga={lembaga}
             heading="Kelola SDM terpusat & terstruktur."
             heroFooter={
