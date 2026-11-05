@@ -113,6 +113,13 @@
                                 </tr>
                             </table>
 
+                            <p style="margin:0 0 6px;font-size:12px;color:#64748b;line-height:1.7;">
+                                Jika tombol tidak berfungsi, buka tautan berikut:
+                            </p>
+                            <p style="margin:0 0 22px;font-size:12px;line-height:1.7;word-break:break-all;">
+                                <a href="{{ $url }}" style="color:#0F3D3E;text-decoration:underline;">{{ $url }}</a>
+                            </p>
+
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F0F7F6;border:1px solid #D9EAE8;border-radius:10px;padding:16px 18px;">
                                 <tr>
                                     <td style="font-size:12.5px;color:#1A5A57;line-height:1.8;">

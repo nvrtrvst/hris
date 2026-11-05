@@ -14,7 +14,10 @@ use Illuminate\Notifications\Notification;
  */
 class ResetPasswordNotification extends Notification
 {
-    public function __construct(public string $token) {}
+    public function __construct(
+        public string $token,
+        public ?string $resetUrl = null,
+    ) {}
 
     /**
      * @return array<int, string>
@@ -26,12 +29,13 @@ class ResetPasswordNotification extends Notification
 
     public function toMail($notifiable): MailMessage
     {
-        $url = url(route('password.reset', [
+        $url = $this->resetUrl ?? route('password.reset', [
             'token' => $this->token,
             'email' => $notifiable->getEmailForPasswordReset(),
-        ], false));
+        ], true);
 
         $logos = $this->unitLogos();
+        $yayasanLogo = url('logo.png');
 
         return (new MailMessage)
             ->subject('Atur Ulang Kata Sandi — HRIS Yayasan Nuurul Muttaqiin')
@@ -41,32 +45,41 @@ class ResetPasswordNotification extends Notification
                 'url' => $url,
                 'appName' => config('app.name', 'HRIS Yayasan'),
                 'unitLogos' => $logos,
-                'yayasanLogo' => $logos[0]['logo'] ?? null,
+                'yayasanLogo' => $yayasanLogo,
             ]);
     }
 
     /**
-     * Daftar unit untuk header email: nama unit + logo yayasan (inline base64
-     * agar selalu tampil tanpa perlu Gmail memuat gambar eksternal).
+     * Daftar unit untuk header email: nama unit + logo publik ber-URL absolut.
      *
      * @return array<int, array{nama: string, logo: string}>
      */
     private function unitLogos(): array
     {
-        static $logoDataUri = null;
-
-        if ($logoDataUri === null) {
-            $path = resource_path('views/emails/yayasan-logo.png');
-            $logoDataUri = 'data:image/png;base64,'.base64_encode((string) file_get_contents($path));
-        }
+        $fallback = url('logo.png');
 
         return UnitSekolah::query()
             ->orderBy('id')
-            ->get(['nama'])
+            ->get(['nama', 'logo'])
             ->map(fn (UnitSekolah $unit) => [
                 'nama' => $unit->nama,
-                'logo' => $logoDataUri,
+                'logo' => $this->publicLogoUrl($unit->logo) ?: $fallback,
             ])
             ->all();
+    }
+
+    private function publicLogoUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        $path = ltrim($path, '/');
+
+        return url(str_starts_with($path, 'storage/') ? '/'.$path : '/storage/'.$path);
     }
 }
