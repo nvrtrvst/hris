@@ -56,19 +56,17 @@ export default function AuthShell({
                     </div>
 
                     {lembaga?.length > 0 && (
-                        <div className="mt-8">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">Lembaga Binaan</p>
-                            <ul className="mt-3 flex flex-wrap gap-2">
+                        <div className="mt-8 border-t border-white/10 pt-5">
+                            <p className="text-xs font-medium text-emerald-100/75">Lembaga</p>
+                            <ul className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2.5">
                                 {lembaga.map((unit) => (
-                                    <li key={unit.nama} className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-2.5 py-1.5 ring-1 ring-white/15">
+                                    <li key={unit.nama} className="inline-flex items-center gap-2 text-xs font-medium text-emerald-50/90">
                                         {unit.logo ? (
-                                            <img src={unit.logo} alt={`Logo ${unit.nama}`} className="h-6 w-6 shrink-0 object-contain" />
+                                            <img src={unit.logo} alt={`Logo ${unit.nama}`} className="h-5 w-5 shrink-0 object-contain" />
                                         ) : unit.singkatan && unit.singkatan !== unit.nama ? (
-                                            <span className="flex h-6 shrink-0 items-center justify-center rounded bg-white/20 px-1 text-[10px] font-bold text-white">
-                                                {unit.singkatan}
-                                            </span>
+                                            <span className="text-[10px] font-bold tracking-wide text-emerald-100/80">{unit.singkatan}</span>
                                         ) : null}
-                                        <span className="text-xs font-semibold text-white">{unit.nama}</span>
+                                        <span>{unit.nama}</span>
                                     </li>
                                 ))}
                             </ul>

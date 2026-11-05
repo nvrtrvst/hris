@@ -1,14 +1,8 @@
 import AuthField from '@/Components/Auth/AuthField';
 import AuthShell from '@/Components/Auth/AuthShell';
 import { Link, useForm } from '@inertiajs/react';
-import { ArrowRight, CalendarClock, Eye, EyeOff, Lock, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
-
-const TRUST_ITEMS = [
-    { icon: ShieldCheck, text: 'Enkripsi data sensitif', desc: 'NIK, rekening, NPWP, dan BPJS tersimpan terenkripsi.' },
-    { icon: CalendarClock, text: 'Penjadwalan anti-bentrok', desc: 'Satu papan mingguan lintas unit, tanpa tabrakan jadwal.' },
-    { icon: Lock, text: 'Session terisolasi per portal', desc: 'Sesi admin dan pegawai dipisahkan secara aman.' },
-];
 
 export default function Login({ status, canResetPassword, lembaga }) {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -31,43 +25,10 @@ export default function Login({ status, canResetPassword, lembaga }) {
             portal="Portal Admin"
             lembaga={lembaga}
             heading="Kelola SDM terpusat & terstruktur."
-            description="Presensi geofencing, penjadwalan, payroll dinamis, dan self-service untuk seluruh unit Yayasan."
-            heroContent={
-                <ul className="space-y-5">
-                    {TRUST_ITEMS.map((item) => (
-                        <li key={item.text} className="flex items-start gap-3.5">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
-                                <item.icon className="h-5 w-5 text-emerald-200" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-white">{item.text}</p>
-                                <p className="mt-0.5 text-xs leading-relaxed text-emerald-50/70">{item.desc}</p>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            }
             heroFooter={
-                <>
-                    <div className="flex items-center gap-5 border-t border-white/10 pt-5 text-[11px] font-semibold text-emerald-100/70">
-                        <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-200" /> Geofence</span>
-                        <span className="inline-flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-emerald-200" /> Payroll dinamis</span>
-                        <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 text-emerald-200" /> Aman</span>
-                    </div>
-                    <p className="mt-5 text-[11px] text-emerald-100/60">&copy; {new Date().getFullYear()} Yayasan. Sistem internal.</p>
-                </>
-            }
-            cardBelow={
-                <div className="mt-4 rounded-xl border border-slate-200 bg-white/70 px-4 py-3.5 md:hidden">
-                    <div className="flex items-center gap-3">
-                        <ShieldCheck className="h-5 w-5 shrink-0 text-primary" />
-                        <p className="text-xs font-bold text-slate-800">Akses internal admin</p>
-                    </div>
-                    <div className="mt-3 flex items-center gap-4 border-t border-slate-100 pt-3 text-[11px] font-semibold text-slate-500">
-                        <span className="inline-flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-primary" /> Anti-bentrok</span>
-                        <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> Terenkripsi</span>
-                    </div>
-                </div>
+                <p className="border-t border-white/10 pt-5 text-[11px] text-emerald-100/60">
+                    &copy; {new Date().getFullYear()} Yayasan. Sistem internal.
+                </p>
             }
         >
             <div className="mb-5">
