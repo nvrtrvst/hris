@@ -185,7 +185,7 @@ export default function AdminShell({ user: userProp, header, children }) {
                 )}
             </nav>
 
-            <div className="border-t border-white/10 p-3">
+            {/* <div className="border-t border-white/10 p-3">
                 <Link href={route('profile.edit')} className={cn('flex items-center gap-3 rounded-xl p-2 hover:bg-white/5', collapsed && !drawer ? 'justify-center' : '')}>
                     <Avatar src={user.pegawai?.foto_url} name={user.name} className="h-8 w-8" textClassName="text-[10px]" />
                     {(!collapsed || drawer) && (
@@ -195,7 +195,7 @@ export default function AdminShell({ user: userProp, header, children }) {
                         </span>
                     )}
                 </Link>
-            </div>
+            </div> */}
         </>
     );
 
