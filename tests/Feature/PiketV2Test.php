@@ -956,6 +956,124 @@ class PiketV2Test extends TestCase
         $this->assertSame(2, PiketPetugasKelas::where('sesi_id', $sesi->id)->where('petugas_id', $c->id)->count());
     }
 
+    public function test_fase_dibagi_round_robin_dan_berotasi_harian(): void
+    {
+        Carbon::setTestNow('2026-10-26 07:00:00');
+        $a = $this->pegawai('Petugas A');
+        $b = $this->pegawai('Petugas B');
+        $c = $this->pegawai('Petugas C');
+
+        foreach ([$a, $b, $c] as $petugas) {
+            PiketPenugasan::create([
+                'unit_sekolah_id' => $this->unit->id,
+                'tahun_ajaran' => '2026/2027',
+                'semester' => 1,
+                'pegawai_id' => $petugas->id,
+                'area_id' => $this->area->id,
+                'peran' => 'area',
+                'aktif' => true,
+            ]);
+        }
+
+        $slot = $this->jadwal($a);
+        $sesiHariIni = PiketService::sessionFor($a, $slot);
+        PiketService::ensureRounds($sesiHariIni, $slot);
+
+        $roundsHariIni = PiketRound::where('sesi_id', $sesiHariIni->id)->orderBy('putaran')->pluck('petugas_id')->all();
+        $this->assertCount(2, $roundsHariIni);
+        $this->assertNotSame($roundsHariIni[0], $roundsHariIni[1]);
+
+        Carbon::setTestNow('2026-10-27 07:00:00');
+        $slotBesok = $this->jadwal($a);
+        $sesiBesok = PiketService::sessionFor($a, $slotBesok);
+        PiketService::ensureRounds($sesiBesok, $slotBesok);
+
+        $roundsBesok = PiketRound::where('sesi_id', $sesiBesok->id)->orderBy('putaran')->pluck('petugas_id')->all();
+        $this->assertCount(2, $roundsBesok);
+        $this->assertNotSame($roundsBesok[0], $roundsBesok[1]);
+        $this->assertNotSame($roundsHariIni, $roundsBesok);
+    }
+
+    public function test_pos_dibagi_round_robin_dan_sisa_petugas_menjadi_backup(): void
+    {
+        Carbon::setTestNow('2026-10-26 07:00:00');
+        $a = $this->pegawai('Petugas A');
+        $b = $this->pegawai('Petugas B');
+        $c = $this->pegawai('Petugas C');
+
+        foreach ([$a, $b, $c] as $petugas) {
+            PiketPenugasan::create([
+                'unit_sekolah_id' => $this->unit->id,
+                'tahun_ajaran' => '2026/2027',
+                'semester' => 1,
+                'pegawai_id' => $petugas->id,
+                'area_id' => $this->area->id,
+                'peran' => 'area',
+                'aktif' => true,
+            ]);
+        }
+
+        PiketPos::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'area_id' => $this->area->id,
+            'nama' => 'Parkir Kampus 1',
+            'jam_mulai' => '06:30',
+            'jam_selesai' => '07:15',
+            'is_wajib' => true,
+            'aktif' => true,
+        ]);
+
+        $sesi = PiketService::sessionFor($a, $this->jadwal($a));
+        $petugas = PiketPetugas::where('sesi_id', $sesi->id)->orderBy('id')->get();
+        $assigned = $petugas->whereNotNull('pos_id');
+        $backup = $petugas->firstWhere('pos_id', null);
+
+        $this->assertCount(2, $assigned);
+        $this->assertNotNull($backup);
+        $this->assertCount(1, PiketService::posFor($this->unit, $assigned->first()));
+        $this->assertCount(2, PiketService::posFor($this->unit, $backup));
+    }
+
+    public function test_blocker_fase_hanya_milik_petugas_sendiri(): void
+    {
+        Carbon::setTestNow('2026-10-26 07:00:00');
+        $a = $this->pegawai('Petugas A');
+        $b = $this->pegawai('Petugas B');
+        $c = $this->pegawai('Petugas C');
+
+        foreach ([$a, $b, $c] as $petugas) {
+            PiketPenugasan::create([
+                'unit_sekolah_id' => $this->unit->id,
+                'tahun_ajaran' => '2026/2027',
+                'semester' => 1,
+                'pegawai_id' => $petugas->id,
+                'area_id' => $this->area->id,
+                'peran' => 'area',
+                'aktif' => true,
+            ]);
+        }
+
+        $slot = $this->jadwal($a);
+        $sesi = PiketService::sessionFor($a, $slot);
+        PiketService::ensureRounds($sesi, $slot);
+
+        $round = PiketRound::where('sesi_id', $sesi->id)->firstOrFail();
+        $owners = PiketRound::where('sesi_id', $sesi->id)->pluck('petugas_id')->all();
+        $nonOwner = collect([$a, $b, $c])->first(fn (Pegawai $p) => ! in_array($p->id, $owners, true));
+
+        $this->assertNotNull($nonOwner);
+
+        $laporanPemilik = LaporanPiket::where('sesi_id', $sesi->id)
+            ->where('pegawai_id', $round->petugas_id)
+            ->firstOrFail();
+        $laporanLain = LaporanPiket::where('sesi_id', $sesi->id)
+            ->where('pegawai_id', $nonOwner->id)
+            ->firstOrFail();
+
+        $this->assertStringContainsString('Fase', (string) PiketService::roundBlockReason($laporanPemilik));
+        $this->assertNull(PiketService::roundBlockReason($laporanLain));
+    }
+
     public function test_kelas_petugas_tidak_hadir_dialihkan_ke_petugas_hadir(): void
     {
         Carbon::setTestNow('2026-10-26 09:00:00');

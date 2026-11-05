@@ -2022,13 +2022,14 @@ class MobileController extends Controller
             ->map(fn ($kode) => ['kode' => $kode, 'label' => LaporanPiket::ITEM_LABEL[$kode] ?? $kode])
             ->values()
             ->all();
-        $pendingRounds = $v2 && $sesi
-            ? collect(PiketService::rounds($sesi))
-                ->filter(fn ($row) => $row['selesai_at'] === null)
-                ->map(fn ($row) => ['putaran' => $row['putaran'], 'area' => $row['area'], 'jendela_mulai' => $row['jendela_mulai'], 'jendela_selesai' => $row['jendela_selesai']])
-                ->values()
-                ->all()
-            : [];
+        $myRounds = $v2 && $sesi
+            ? collect(PiketService::rounds($sesi))->where('petugas_id', $pegawai->id)->values()
+            : collect();
+        $pendingRounds = $myRounds
+            ->filter(fn ($row) => $row['selesai_at'] === null)
+            ->map(fn ($row) => ['putaran' => $row['putaran'], 'area' => $row['area'], 'jendela_mulai' => $row['jendela_mulai'], 'jendela_selesai' => $row['jendela_selesai']])
+            ->values()
+            ->all();
         $blockers = [
             'items' => $missingItems,
             'absen_missing' => $absenCoverage['missing'],
@@ -2070,6 +2071,7 @@ class MobileController extends Controller
                 'area' => $area ? ['id' => $area->id, 'nama' => $area->nama] : null,
                 'pos' => $pos,
                 'pos_logs' => $posLogs,
+                'rounds' => $myRounds->all(),
                 'team' => $team,
                 'templates' => $templates,
                 'block_reason' => $blockReason,
