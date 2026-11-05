@@ -1435,7 +1435,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         <span className="text-[10px] text-text-muted">Angka mengikuti filter aktif</span>
                     </div>
                     <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 lg:grid-cols-5">
-                        {statsCards.map((card) => <div key={card.label} className="min-h-[88px] w-[168px] shrink-0 snap-start md:w-auto md:min-w-0"><StatCard {...card} onClick={() => applyStatFilter(card.filter)} /></div>)}
+                        {statsCards.map(({ key, ...card }) => <div key={key || card.label} className="min-h-[88px] w-[168px] shrink-0 snap-start md:w-auto md:min-w-0"><StatCard {...card} onClick={() => applyStatFilter(card.filter)} /></div>)}
                     </div>
 
                     {is_personal && (

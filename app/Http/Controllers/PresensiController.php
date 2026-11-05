@@ -152,7 +152,9 @@ class PresensiController extends Controller
             return $this->handleBelumPresensi($request, $user, $stats, $isPersonal, $isPimpinan);
         }
 
-        if ($request->status_filter) {
+        $isRingkas = $request->input('display_mode') === 'ringkas';
+
+        if ($request->status_filter && ! $isRingkas) {
             $query->where('status', $request->status_filter);
         }
 
@@ -184,17 +186,21 @@ class PresensiController extends Controller
         // Sort: tanggal DESC, lalu jam_masuk ASC untuk kronologis harian,
         // lalu id ASC tie-breaker supaya baris jam_masuk sama (NULL/pulang tanpa masuk) deterministik.
         // Hindari join jadwal (jam_mulai) — tambah N+1 + lockForUpdate tidak relevan di index read-only.
-        if ($request->input('display_mode') === 'ringkas') {
+        if ($isRingkas) {
             // View ringkas mengelompokkan baris per pegawai+tanggal (buildGroups di Index.jsx).
             // Pagination dihitung per KELOMPOK, bukan per baris, supaya ringkasan satu orang
             // tidak terbelah antar halaman. `per_page` di mode ini = jumlah kelompok.
             $perPageGrup = min(max((int) $request->input('per_page', 25), 1), 100);
             $pageGrup = max((int) $request->input('page', 1), 1);
 
-            $totalGrup = DB::query()->fromSub(
-                (clone $query)->select('pegawai_id', 'tanggal')->groupBy('pegawai_id', 'tanggal'),
-                'grup'
-            )->count();
+            $groupQuery = (clone $query)
+                ->select('pegawai_id', 'tanggal')
+                ->groupBy('pegawai_id', 'tanggal');
+            if ($request->status_filter) {
+                $groupQuery->havingRaw($this->effectiveStatusSql().' = ?', [$request->status_filter]);
+            }
+
+            $totalGrup = DB::query()->fromSub($groupQuery, 'grup')->count();
 
             // Urutan kelompok: NAMA pegawai ASC, baru kronologis. Dulu kuncinya jam masuk
             // terawal sehingga halaman awal hanya berisi yang absen pagi — yang telat selalu
@@ -206,6 +212,7 @@ class PresensiController extends Controller
                 ->selectRaw('MIN(presensi.jam_masuk) as jam_pertama')
                 ->selectRaw('MIN(presensi.id) as id_pertama')
                 ->groupBy('presensi.pegawai_id', 'presensi.tanggal', 'p.nama_lengkap')
+                ->when($request->status_filter, fn ($q) => $q->havingRaw($this->effectiveStatusSql().' = ?', [$request->status_filter]))
                 ->orderBy('p.nama_lengkap', 'asc')
                 ->orderBy('presensi.pegawai_id', 'asc')
                 ->orderBy('presensi.tanggal', 'desc')
@@ -585,6 +592,18 @@ class PresensiController extends Controller
         return back()->with('message', 'Absen siswa dikoreksi dan riwayat tersimpan.');
     }
 
+    private function effectiveStatusSql(): string
+    {
+        return "CASE
+            WHEN SUM(CASE WHEN status = 'hadir' THEN 1 ELSE 0 END) > 0 THEN 'hadir'
+            WHEN SUM(CASE WHEN status = 'telat' THEN 1 ELSE 0 END) > 0 THEN 'telat'
+            WHEN SUM(CASE WHEN status = 'sakit' THEN 1 ELSE 0 END) > 0 THEN 'sakit'
+            WHEN SUM(CASE WHEN status = 'izin' THEN 1 ELSE 0 END) > 0 THEN 'izin'
+            WHEN SUM(CASE WHEN status = 'cuti' THEN 1 ELSE 0 END) > 0 THEN 'cuti'
+            ELSE 'alpa'
+        END";
+    }
+
     /**
      * Ringkasan presensi untuk kartu statistik halaman index.
      * Satu query agregat (group by status) + dua count ringan.
@@ -598,14 +617,7 @@ class PresensiController extends Controller
             ->select(
                 'pegawai_id',
                 'tanggal',
-                DB::raw("CASE
-                    WHEN SUM(CASE WHEN status = 'hadir' THEN 1 ELSE 0 END) > 0 THEN 'hadir'
-                    WHEN SUM(CASE WHEN status = 'telat' THEN 1 ELSE 0 END) > 0 THEN 'telat'
-                    WHEN SUM(CASE WHEN status = 'sakit' THEN 1 ELSE 0 END) > 0 THEN 'sakit'
-                    WHEN SUM(CASE WHEN status = 'izin' THEN 1 ELSE 0 END) > 0 THEN 'izin'
-                    WHEN SUM(CASE WHEN status = 'cuti' THEN 1 ELSE 0 END) > 0 THEN 'cuti'
-                    ELSE 'alpa'
-                END AS effective_status")
+                DB::raw($this->effectiveStatusSql().' AS effective_status')
             )
             ->groupBy('pegawai_id', 'tanggal');
 
