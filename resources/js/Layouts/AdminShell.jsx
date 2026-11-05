@@ -68,6 +68,9 @@ export default function AdminShell({ user: userProp, header, children }) {
             : auth.roles?.includes('pimpinan')
                 ? 'Pimpinan'
                 : 'Pegawai';
+    const jabatan = user.pegawai?.jabatans?.find((j) => j.pivot?.is_primary)?.nama
+        || user.pegawai?.jabatans?.[0]?.nama
+        || role;
     const permissions = auth.permissions || [];
     const canSeeAnnouncements = permissions.includes('view_dashboard')
         || permissions.includes('manage_master_data')
@@ -188,7 +191,7 @@ export default function AdminShell({ user: userProp, header, children }) {
                     {(!collapsed || drawer) && (
                         <span className="min-w-0 flex-1">
                             <span className="block truncate text-xs font-bold text-white">{user.name}</span>
-                            <span className="block truncate text-[10px] text-white/45">{role}</span>
+                            <span className="block truncate text-[10px] text-white/45">{jabatan}</span>
                         </span>
                     )}
                 </Link>
@@ -266,7 +269,7 @@ export default function AdminShell({ user: userProp, header, children }) {
                                 <Avatar src={user.pegawai?.foto_url} name={user.name} className="h-8 w-8" textClassName="text-[10px]" />
                                 <span className="hidden text-left sm:block">
                                     <span className="block text-[11px] font-bold leading-tight text-primary">{user.name}</span>
-                                    <span className="block text-[9px] leading-tight text-text-muted">{role}</span>
+                                    <span className="block text-[9px] leading-tight text-text-muted">{jabatan}</span>
                                 </span>
                                 <ChevronDown className="hidden h-3 w-3 text-text-muted sm:block" />
                             </button>
