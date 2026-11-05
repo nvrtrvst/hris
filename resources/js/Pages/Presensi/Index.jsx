@@ -1377,12 +1377,14 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
         { key: 'alpa', label: 'Alpa', value: s.alpa, Icon: UserX, iconBg: 'bg-rose-100', iconCls: 'text-rose-600', filter: { status_filter: 'alpa', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'alpa' },
     ];
 
-    const adminSummaryCards = adminStatsCards.filter((card) => ['hadir', 'telat', 'sakit', 'izin', 'alpa'].includes(card.key));
+    const adminSummaryCards = adminStatsCards.filter((card) => ['hadir', 'telat', 'sakit', 'izin', 'alpa', 'belum_presensi'].includes(card.key));
     const statsCards = is_personal ? personalStatsCards : adminSummaryCards;
+    const summaryGridClass = is_personal
+        ? 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-7'
+        : 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6';
     const attentionCards = [
         { key: 'perlu_review', label: 'Perlu review', value: s.perlu_review, Icon: ShieldAlert, iconBg: 'bg-amber-50 text-amber-600', filter: { status_filter: '', lembur_filter: '', lokasi_filter: 'perlu_review', suspicious_filter: '' }, active: lokasiFilter === 'perlu_review' },
         { key: 'lembur_pending', label: 'Lembur pending', value: s.lembur_pending, Icon: AlarmClock, iconBg: 'bg-sky-50 text-sky-600', filter: { status_filter: '', lembur_filter: 'lembur_pending', lokasi_filter: '', suspicious_filter: '' }, active: lemburFilter === 'lembur_pending' },
-        { key: 'belum_presensi', label: 'Belum presensi', value: s.belum_presensi, Icon: UserRoundX, iconBg: 'bg-slate-100 text-slate-600', filter: { status_filter: 'belum_presensi', lembur_filter: '', lokasi_filter: '', suspicious_filter: '' }, active: statusFilter === 'belum_presensi' },
     ];
     const personalExportStatus = ['hadir', 'telat', 'sakit', 'izin', 'cuti', 'alpa'].includes(statusFilter) ? statusFilter : undefined;
     const personalExportParams = {
@@ -1411,7 +1413,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                 </div>
                                 <span className="text-[10px] font-semibold text-text-muted">Filter cepat</span>
                             </div>
-                            <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="grid gap-3 sm:grid-cols-2">
                                 {attentionCards.map((card) => (
                                     <button key={card.key} type="button" onClick={() => applyStatFilter(card.filter)} className="w-full text-left" aria-pressed={card.active}>
                                         <Card className={`flex items-center gap-3 p-4 transition-colors hover:border-primary/30 hover:bg-surface/50 ${card.active ? 'border-primary/40 bg-primary-50/40' : ''}`}>
@@ -1434,8 +1436,8 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         <h2 className="text-sm font-bold text-primary">{is_personal ? 'Ringkasan saya' : 'Ringkasan kehadiran'}</h2>
                         <span className="text-[10px] text-text-muted">Angka mengikuti filter aktif</span>
                     </div>
-                    <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 lg:grid-cols-5">
-                        {statsCards.map(({ key, ...card }) => <div key={key || card.label} className="min-h-[88px] w-[168px] shrink-0 snap-start md:w-auto md:min-w-0"><StatCard {...card} onClick={() => applyStatFilter(card.filter)} /></div>)}
+                    <div className={summaryGridClass}>
+                        {statsCards.map(({ key, ...card }) => <StatCard key={key || card.label} compact {...card} onClick={() => applyStatFilter(card.filter)} />)}
                     </div>
 
                     {is_personal && (

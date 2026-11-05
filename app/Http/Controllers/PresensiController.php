@@ -660,28 +660,36 @@ class PresensiController extends Controller
     }
 
     /**
-     * Hitung total pegawai aktif yang termasuk dalam scope query presensi.
-     * Mengekstrak scope unit/jenis dari query builder untuk diterapkan ke model Pegawai.
+     * Hitung total pegawai aktif dalam scope presensi (unit/bawahan, search, jenis).
      */
     private function countActivePegawaiInScope($presensiQuery, ?Request $request = null): int
     {
         $user = auth()->user();
         $pegawais = Pegawai::where('status_aktif', 'aktif');
-
-        // Terapkan scope unit yang sama dengan index() + filter unit dari request
         $request = $request ?? request();
-        if ($request && $request->unit_id && $user->can('view_all_units')) {
-            $pegawais->forUnit($request->unit_id);
+
+        if ($this->isPimpinanReadOnly($user)) {
+            if ($this->isKepsek($user)) {
+                $unitId = $user->unit_sekolah_id ?? $user->pegawai?->units->first()?->id;
+                $unitId ? $pegawais->forUnit($unitId) : $pegawais->whereRaw('1 = 0');
+            } else {
+                $pegawais->where('atasan_langsung_id', $user->pegawai?->id ?? -1);
+            }
         } elseif ($user->can('view_all_units')) {
-            // Semua unit — tidak perlu filter
+            if ($request->unit_id) {
+                $pegawais->forUnit($request->unit_id);
+            }
         } elseif ($user->unit_sekolah_id) {
             $pegawais->forUnit($user->unit_sekolah_id);
         }
 
-        // Terapkan filter jenis juga agar stats konsisten
-        if ($request && $request->jenis_filter === 'pendidik') {
+        if ($request->search) {
+            $pegawais->where('nama_lengkap', 'like', '%'.$request->search.'%');
+        }
+
+        if ($request->jenis_filter === 'pendidik') {
             $pegawais->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
-        } elseif ($request && $request->jenis_filter === 'kependidikan') {
+        } elseif ($request->jenis_filter === 'kependidikan') {
             $pegawais->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
         }
 
@@ -890,7 +898,12 @@ class PresensiController extends Controller
                 $pegawais->where('id', -1);
             }
         } elseif ($isPimpinan) {
-            $this->scopePimpinanBawahan($pegawais, $user);
+            if ($this->isKepsek($user)) {
+                $unitId = $user->unit_sekolah_id ?? $user->pegawai?->units->first()?->id;
+                $unitId ? $pegawais->forUnit($unitId) : $pegawais->whereRaw('1 = 0');
+            } else {
+                $pegawais->where('atasan_langsung_id', $user->pegawai?->id ?? -1);
+            }
         } elseif ($user->can('view_all_units')) {
             // Semua unit
         } elseif ($user->unit_sekolah_id) {
