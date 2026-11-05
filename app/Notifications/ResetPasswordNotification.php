@@ -50,21 +50,24 @@ class ResetPasswordNotification extends Notification
     }
 
     /**
-     * Daftar unit untuk header email: nama unit + logo publik ber-URL absolut.
+     * Daftar unit untuk header email: nama, singkatan monogram, dan logo publik.
+     * Unit induk "Yayasan" tidak ikut karena sudah diwakili logo header.
      *
-     * @return array<int, array{nama: string, logo: string}>
+     * @return array<int, array{nama: string, singkatan: string, logo: ?string}>
      */
     private function unitLogos(): array
     {
-        $fallback = url('logo.png');
-
         return UnitSekolah::query()
             ->orderBy('id')
-            ->get(['nama', 'logo'])
+            ->get(['nama', 'singkatan', 'logo'])
+            ->reject(fn (UnitSekolah $unit) => mb_strtolower(trim((string) $unit->singkatan)) === 'yayasan'
+                || str_starts_with(mb_strtolower(trim((string) $unit->nama)), 'yayasan'))
             ->map(fn (UnitSekolah $unit) => [
                 'nama' => $unit->nama,
-                'logo' => $this->publicLogoUrl($unit->logo) ?: $fallback,
+                'singkatan' => $unit->singkatan ?: $unit->nama,
+                'logo' => $this->publicLogoUrl($unit->logo),
             ])
+            ->values()
             ->all();
     }
 

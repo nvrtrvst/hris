@@ -18,7 +18,7 @@
 
                     {{-- Header utama --}}
                     <tr>
-                        <td style="background-color:#0F3D3E;padding:26px 36px 0;">
+                        <td style="background-color:#0F3D3E;padding:28px 36px 0;">
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td valign="top">
@@ -36,47 +36,44 @@
                                         </table>
                                     </td>
                                     <td align="right" valign="top">
-                                        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
+                                        <table role="presentation" cellpadding="0" cellspacing="0">
                                             <tr>
-                                                <td align="center" valign="middle" style="width:118px;height:118px;border-radius:59px;background-color:#ffffff;border:1px solid #C9A227;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
-                                                    <img src="{{ $yayasanLogo }}" alt="Yayasan Nuurul Muttaqiin" width="92" height="83" style="display:block;width:92px;height:83px;">
+                                                <td align="center" valign="middle" style="width:96px;height:96px;border-radius:48px;background-color:#ffffff;border:1px solid #C9A227;">
+                                                    <img src="{{ $yayasanLogo }}" alt="Yayasan Nuurul Muttaqiin" width="76" height="68" style="display:block;width:76px;height:68px;">
                                                 </td>
                                             </tr>
                                         </table>
-                                        <p style="margin:0;color:#C9A227;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;">
-                                            HRIS Portal
-                                        </p>
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
 
-                    {{-- Band unit (sedikit lebih gelap untuk kesan kedalaman) --}}
+                    {{-- Band unit --}}
                     <tr>
-                        <td style="background-color:#0B3334;padding:6px 36px 26px;">
-                            {{-- Divider berlian emas --}}
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+                        <td style="background-color:#0B3334;padding:20px 36px 28px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;">
                                 <tr>
-                                    <td style="border-bottom:1px solid #1C5455;line-height:0;font-size:0;">&nbsp;</td>
-                                    <td width="36" align="center" style="color:#C9A227;font-size:9px;line-height:9px;padding:0 6px;">&#9670;</td>
                                     <td style="border-bottom:1px solid #1C5455;line-height:0;font-size:0;">&nbsp;</td>
                                 </tr>
                             </table>
 
-                            {{-- Logo unit --}}
-                            <table role="presentation" cellpadding="0" cellspacing="0">
+                            <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
                                 <tr>
                                     @foreach ($unitLogos as $unit)
-                                        <td align="center" style="padding:0 6px;">
-                                            <table role="presentation" cellpadding="0" cellspacing="0">
+                                        <td width="96" align="center" valign="top" style="padding:0 4px;">
+                                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                                                 <tr>
-                                                    <td align="center" style="background-color:#ffffff;border-radius:10px;border:1px solid #DCEAE7;padding:6px 8px;box-shadow:0 3px 10px rgba(0,0,0,0.18);">
-                                                        <img src="{{ $unit['logo'] }}" alt="{{ $unit['nama'] }}" width="44" height="40" style="display:block;width:44px;height:40px;">
+                                                    <td align="center" valign="middle" style="width:44px;height:44px;background-color:#ffffff;border-radius:9px;border:1px solid #DCEAE7;padding:5px;">
+                                                        @if ($unit['logo'])
+                                                            <img src="{{ $unit['logo'] }}" alt="{{ $unit['nama'] }}" width="32" height="32" style="display:block;width:32px;height:32px;">
+                                                        @else
+                                                            <span style="display:block;color:#0F3D3E;font-size:10px;font-weight:700;line-height:1;letter-spacing:0.3px;">{{ $unit['singkatan'] }}</span>
+                                                        @endif
                                                     </td>
                                                 </tr>
                                                 <tr>
-                                                    <td align="center" style="padding-top:7px;color:#9CC9C3;font-size:9.5px;font-weight:700;letter-spacing:1.5px;">
+                                                    <td align="center" valign="top" height="28" style="padding-top:8px;color:#D7E8E5;font-size:10px;font-weight:600;line-height:1.35;">
                                                         {{ $unit['nama'] }}
                                                     </td>
                                                 </tr>
