@@ -7,7 +7,7 @@ import UnitForm from './UnitForm';
 import LeafletPicker from '@/Components/LeafletPicker';
 
 export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = [] }) {
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, post, transform, processing, errors } = useForm({
         nama: unit.nama,
         singkatan: unit.singkatan,
         latitude: String(unit.latitude),
@@ -39,6 +39,10 @@ export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = []
         bobot_cuti: unit.bobot_cuti ?? '',
         bobot_alpa: unit.bobot_alpa ?? '',
     });
+
+    // PHP tidak parse multipart body pada HTTP PUT, jadi upload logo lewat PUT
+    // membuat semua field kosong. POST + _method=PUT agar multipart terbaca.
+    transform((request) => ({ ...request, _method: 'PUT' }));
 
     const [showLokasiForm, setShowLokasiForm] = React.useState(false);
     const [editLokasi, setEditLokasi] = React.useState(null);
@@ -75,7 +79,7 @@ export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = []
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(route('unit-sekolah.update', unit.id));
+        post(route('unit-sekolah.update', unit.id), { forceFormData: true });
     };
 
     return (
