@@ -32,6 +32,7 @@ class KepalaSekolahSnapshotService
 
         $jpTotal = (float) ($jpSummary['jp_total'] ?? 0);
         $jpKosong = (float) ($jpSummary['jp_kosong'] ?? 0);
+        $jpPenugasan = (float) ($jpSummary['jp_penugasan'] ?? 0);
 
         return [
             'unit_nama' => $unitNama,
@@ -48,6 +49,8 @@ class KepalaSekolahSnapshotService
                 'total' => $jpTotal,
                 'tercatat' => max(0, $jpTotal - $jpKosong),
                 'kosong' => $jpKosong,
+                'penugasan' => $jpPenugasan,
+                'kelas_kosong' => $jpKosong + $jpPenugasan,
                 'lewat' => (float) ($jpSummary['jp_lewat'] ?? 0),
                 'berjalan' => (float) ($jpSummary['jp_berjalan'] ?? 0),
                 'belum_mulai' => (float) ($jpSummary['jp_belum_mulai'] ?? 0),

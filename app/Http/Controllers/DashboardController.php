@@ -584,7 +584,7 @@ class DashboardController extends Controller
         // 7. Presensi Hari Ini
         $presensiQuery = Presensi::with('pegawai:id,nama_lengkap')
             ->where('tanggal', $today->toDateString())
-            ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status', 'lokasi_perlu_review', 'is_lembur', 'tipe_presensi']);
+            ->select(['pegawai_id', 'jadwal_id', 'jam_masuk', 'jam_keluar', 'status', 'lokasi_perlu_review', 'is_lembur', 'tipe_presensi', 'is_tugas_luar', 'tugas_luar_id', 'tujuan']);
 
         if ($bawahanIds !== null) {
             $presensiQuery->whereIn('pegawai_id', $bawahanIds);
@@ -603,7 +603,19 @@ class DashboardController extends Controller
             ->toArray();
 
         // Kelas kosong & piket — terpisah mengajar vs piket
-        $presensiJadwalIds = Presensi::where('tanggal', $today->toDateString())->whereNotNull('jadwal_id')->pluck('jadwal_id')->toArray();
+        $presensiJadwalIds = Presensi::where('tanggal', $today->toDateString())
+            ->whereNotNull('jadwal_id')
+            ->where(function ($query) {
+                $query->whereNull('tugas_luar_id')
+                    ->orWhereNotIn('status', ['hadir', 'telat']);
+            })
+            ->pluck('jadwal_id')
+            ->toArray();
+        $penugasanByJadwal = collect($presensiHariIni)
+            ->filter(fn ($presensi) => ! empty($presensi['jadwal_id'])
+                && ! empty($presensi['tugas_luar_id'])
+                && in_array($presensi['status'], ['hadir', 'telat'], true))
+            ->keyBy('jadwal_id');
         $baseKelasKosong = Jadwal::with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama', 'unitSekolah:id,nama,singkatan,durasi_jp'])
             ->where('hari', $hariIniIndo)->whereNotIn('id', $presensiJadwalIds);
         if ($bawahanIds !== null) {
@@ -626,21 +638,32 @@ class DashboardController extends Controller
             ->whereNotNull('jam_masuk')
             ->pluck('pegawai_id')
             ->flip();
-        $kelasKosongMengajar = $kelasKosongMengajarModels->map(function (Jadwal $j) use ($nowH, $hadirHarianIds) {
+        $kelasKosongMengajar = $kelasKosongMengajarModels->map(function (Jadwal $j) use ($nowH, $hadirHarianIds, $penugasanByJadwal) {
+            $penugasan = $penugasanByJadwal->get($j->id);
+
             return array_merge($j->toArray(), [
                 'jp' => JpCalculator::weightFromJadwal($j),
                 'status_waktu' => $j->jam_mulai > $nowH ? 'belum_mulai' : ($j->jam_selesai <= $nowH ? 'lewat' : 'berjalan'),
                 'guru_hadir' => $hadirHarianIds->has($j->pegawai_id),
+                'penugasan' => $penugasan !== null,
+                'tujuan_penugasan' => $penugasan['tujuan'] ?? null,
             ]);
         })->values();
 
+        $kelasKosongTanpaPenugasan = $kelasKosongMengajar->where('penugasan', false);
+        $kelasKosongPenugasan = $kelasKosongMengajar->where('penugasan', true);
+        $jpKosong = round($kelasKosongTanpaPenugasan->sum('jp'), 2);
+        $jpPenugasan = round($kelasKosongPenugasan->sum('jp'), 2);
+
         $kelasKosongSummary = [
             'jp_total' => round(collect($jadwalHariIni)->where('jenis_jadwal', 'mengajar')->sum('jp'), 2),
-            'jp_kosong' => round($kelasKosongMengajar->sum('jp'), 2),
-            'jp_lewat' => round($kelasKosongMengajar->where('status_waktu', 'lewat')->sum('jp'), 2),
-            'jp_berjalan' => round($kelasKosongMengajar->where('status_waktu', 'berjalan')->sum('jp'), 2),
-            'jp_belum_mulai' => round($kelasKosongMengajar->where('status_waktu', 'belum_mulai')->sum('jp'), 2),
-            'jp_guru_hadir' => round($kelasKosongMengajar->where('guru_hadir', true)->sum('jp'), 2),
+            'jp_kosong' => $jpKosong,
+            'jp_penugasan' => $jpPenugasan,
+            'jp_kelas_kosong' => round($jpKosong + $jpPenugasan, 2),
+            'jp_lewat' => round($kelasKosongTanpaPenugasan->where('status_waktu', 'lewat')->sum('jp'), 2),
+            'jp_berjalan' => round($kelasKosongTanpaPenugasan->where('status_waktu', 'berjalan')->sum('jp'), 2),
+            'jp_belum_mulai' => round($kelasKosongTanpaPenugasan->where('status_waktu', 'belum_mulai')->sum('jp'), 2),
+            'jp_guru_hadir' => round($kelasKosongTanpaPenugasan->where('guru_hadir', true)->sum('jp'), 2),
             'per_unit' => $kelasKosongMengajar->groupBy('unit_sekolah_id')->map(function ($rows, $unitId) {
                 $unit = $rows->first()['unit_sekolah'] ?? [];
 

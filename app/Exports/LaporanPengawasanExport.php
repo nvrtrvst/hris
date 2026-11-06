@@ -163,6 +163,7 @@ class LaporanPengawasanExport implements FromArray, WithColumnWidths, WithStyles
             'kelas_kosong' => 'Kelas kosong',
             'perlu_cek' => 'Perlu cek',
             'digantikan' => 'Digantikan',
+            'penugasan' => 'Penugasan',
             default => ucfirst(str_replace('_', ' ', $status)),
         };
     }

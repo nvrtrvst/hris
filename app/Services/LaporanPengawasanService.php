@@ -59,6 +59,7 @@ class LaporanPengawasanService
         $schedules = $this->schedules($employeeIds, $unitIds, $tahunAjaran, $semester);
         $schedulesByEmployeeDay = $schedules->groupBy(fn (Jadwal $jadwal) => $jadwal->pegawai_id.'|'.$jadwal->hari);
         $actualBySlot = $this->actualBySlot($presensiMap);
+        $coverageBySlot = $this->coverageBySlot($presensiMap);
         $piket = $this->piketEntries($unitIds, $from, $to);
 
         $alpaRows = [];
@@ -180,6 +181,7 @@ class LaporanPengawasanService
 
                 foreach ($scheduledSlots as $slot) {
                     $actual = $actualBySlot[$date.'|'.$slot->id] ?? null;
+                    $coverage = $coverageBySlot[$date.'|'.$slot->id] ?? null;
                     $piketEntry = $this->piketForSlot($piket, $date, $unit->id, $slot);
                     $classStatus = 'belum_terpantau';
                     $source = 'Jadwal + Presensi';
@@ -190,6 +192,9 @@ class LaporanPengawasanService
                     } elseif ($actual) {
                         $classStatus = (int) $actual->pegawai_id !== (int) $slot->pegawai_id ? 'digantikan' : 'terisi';
                         $source = 'Presensi';
+                    } elseif ($coverage) {
+                        $classStatus = 'penugasan';
+                        $source = 'Penugasan';
                     } elseif ($piketEntry) {
                         $classStatus = ($piketEntry['validasi'] ?? null) === 'perlu_cek' ? 'perlu_cek' : 'kelas_kosong';
                         $source = 'Piket';
@@ -209,7 +214,7 @@ class LaporanPengawasanService
                         'unit' => $unit->nama,
                         'status' => $classStatus,
                         'sumber' => $source,
-                        'catatan' => $piketEntry['detail_amanat'] ?? $piketEntry['validasi_catatan'] ?? null,
+                        'catatan' => $coverage?->tujuan ? 'Penugasan: '.$coverage->tujuan : ($piketEntry['detail_amanat'] ?? $piketEntry['validasi_catatan'] ?? null),
                     ];
                     $classIssues[] = $issue;
 
@@ -463,7 +468,7 @@ class LaporanPengawasanService
             ->whereBetween('tanggal', [$from->toDateString(), $to->toDateString()])
             ->where('is_lembur', false)
             ->with('pegawai:id,nama_lengkap')
-            ->get(['id', 'pegawai_id', 'jadwal_id', 'tanggal', 'status', 'is_tugas_luar', 'tugas_luar_status'])
+            ->get(['id', 'pegawai_id', 'jadwal_id', 'tanggal', 'status', 'is_tugas_luar', 'tugas_luar_status', 'tugas_luar_id', 'tujuan'])
             ->groupBy(fn (Presensi $presensi) => $presensi->pegawai_id.'|'.Carbon::parse($presensi->tanggal)->toDateString());
     }
 
@@ -485,7 +490,25 @@ class LaporanPengawasanService
 
         foreach ($presensiMap as $rows) {
             foreach ($rows as $presensi) {
-                if (! $presensi->jadwal_id || ! in_array($presensi->status, ['hadir', 'telat'], true)) {
+                if (! $presensi->jadwal_id || $presensi->tugas_luar_id || ! in_array($presensi->status, ['hadir', 'telat'], true)) {
+                    continue;
+                }
+
+                $key = Carbon::parse($presensi->tanggal)->toDateString().'|'.$presensi->jadwal_id;
+                $result[$key] ??= $presensi;
+            }
+        }
+
+        return $result;
+    }
+
+    private function coverageBySlot(Collection $presensiMap): array
+    {
+        $result = [];
+
+        foreach ($presensiMap as $rows) {
+            foreach ($rows as $presensi) {
+                if (! $presensi->jadwal_id || ! $presensi->tugas_luar_id || ! in_array($presensi->status, ['hadir', 'telat'], true)) {
                     continue;
                 }
 

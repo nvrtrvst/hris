@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\PayrollLockHelper;
 use App\Models\Pegawai;
 use App\Models\TugasLuar;
 use App\Models\UnitSekolah;
+use App\Services\TugasLuarCoverageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class TugasLuarController extends Controller
 {
@@ -90,6 +93,12 @@ class TugasLuarController extends Controller
             if ($user->unit_sekolah_id && ! $user->can('view_all_units') && ! $tugasLuar->pegawai->belongsToUnit($user->unit_sekolah_id)) {
                 abort(403, 'Akses ditolak.');
             }
+
+            if (PayrollLockHelper::isPeriodLocked($tugasLuar->pegawai_id, $tugasLuar->tanggal)) {
+                throw ValidationException::withMessages(['error' => 'Periode penggajian sudah dikunci. Tidak bisa menghapus penugasan.']);
+            }
+
+            app(TugasLuarCoverageService::class)->clear($tugasLuar);
 
             // Hapus relasi dari presensi agar tidak muncul sebagai disetujui.
             $tugasLuar->presensis()->update(['tugas_luar_id' => null, 'tugas_luar_status' => 'pending']);

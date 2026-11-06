@@ -101,11 +101,15 @@ function KelasKosongRow({ row, unit }) {
             {row.jp > 1 && <span className="badge badge-neutral">{formatJp(row.jp)} JP</span>}
             <span className="ml-auto flex flex-wrap items-center gap-1.5">
                 {unit && <span className="hidden text-xs text-text-secondary sm:inline">{unit.singkatan || unit.nama}</span>}
-                {row.guru_hadir
-                    ? <span className="badge badge-info">Guru sudah di unit</span>
-                    : <span className="badge badge-danger">Guru belum hadir</span>}
-                {row.status_waktu === 'lewat' && <span className="badge badge-danger">Terlewat</span>}
-                {row.status_waktu === 'berjalan' && <span className="badge badge-warning">Berjalan</span>}
+                {row.penugasan ? (
+                    <span className="badge badge-info" title={row.tujuan_penugasan || undefined}>Penugasan</span>
+                ) : row.guru_hadir ? (
+                    <span className="badge badge-info">Guru sudah di unit</span>
+                ) : (
+                    <span className="badge badge-danger">Guru belum hadir</span>
+                )}
+                {!row.penugasan && row.status_waktu === 'lewat' && <span className="badge badge-danger">Terlewat</span>}
+                {!row.penugasan && row.status_waktu === 'berjalan' && <span className="badge badge-warning">Berjalan</span>}
             </span>
         </li>
     );
@@ -121,15 +125,21 @@ function KelasKosongCard({ rows = [], summary = {} }) {
 
     const jpTotal = summary.jp_total || 0;
     const jpKosong = summary.jp_kosong || 0;
+    const jpPenugasan = summary.jp_penugasan || 0;
+    const jpKelasKosong = summary.jp_kelas_kosong ?? (jpKosong + jpPenugasan);
     const jpTercatat = Math.max(0, jpTotal - jpKosong);
     const persen = jpTotal > 0 ? Math.round((jpTercatat / jpTotal) * 100) : 0;
     const perUnit = summary.per_unit || [];
 
     const mendesak = React.useMemo(() => rows
-        .filter((r) => r.status_waktu !== 'belum_mulai')
+        .filter((r) => !r.penugasan && r.status_waktu !== 'belum_mulai')
         .sort((a, b) => (a.status_waktu === b.status_waktu
             ? (a.jam_mulai || '').localeCompare(b.jam_mulai || '')
             : (a.status_waktu === 'lewat' ? -1 : 1))), [rows]);
+
+    const penugasanRows = React.useMemo(() => rows
+        .filter((r) => r.penugasan)
+        .sort((a, b) => (a.jam_mulai || '').localeCompare(b.jam_mulai || '')), [rows]);
 
     const daftar = React.useMemo(() => rows
         .filter((r) => !unitId || r.unit_sekolah_id === unitId)
@@ -155,7 +165,7 @@ function KelasKosongCard({ rows = [], summary = {} }) {
         );
     }
 
-    if (jpKosong <= 0) {
+    if (jpKelasKosong <= 0) {
         return (
             <section className="card border-l-4 border-success px-5 py-4">
                 <h3 className="flex items-center gap-2 text-sm font-bold text-text-primary">
@@ -167,20 +177,27 @@ function KelasKosongCard({ rows = [], summary = {} }) {
     }
 
     const unitTampil = unitId ? [unitId] : perUnit.map((u) => u.id);
+    const adaKosong = jpKosong > 0;
+    const jumlahUtama = adaKosong ? jpKosong : jpPenugasan;
 
     return (
-        <section aria-labelledby="kelas-kosong-title" className="card border-l-4 border-warning px-5 py-4">
+        <section aria-labelledby="kelas-kosong-title" className={`card border-l-4 px-5 py-4 ${adaKosong ? 'border-warning' : 'border-info'}`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                     <h3 id="kelas-kosong-title" className="flex items-center gap-2 text-sm font-bold text-text-primary">
-                        <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" /> JP Belum Diabsen
+                        {adaKosong
+                            ? <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
+                            : <CalendarDays className="h-4 w-4 text-info" aria-hidden="true" />}
+                        {adaKosong ? 'JP Belum Diabsen' : 'JP Penugasan'}
                     </h3>
                     <p className="mt-1 text-xs text-text-secondary">
-                        dari {formatJp(jpTotal)} JP terjadwal hari ini · {formatJp(jpTercatat)} JP sudah tercatat
+                        {adaKosong
+                            ? `dari ${formatJp(jpTotal)} JP terjadwal hari ini · ${formatJp(jpTercatat)} JP sudah tercatat`
+                            : `${formatJp(jpPenugasan)} JP kelas kosong tercatat sebagai penugasan.`}
                     </p>
                 </div>
                 <p className="shrink-0 text-2xl font-extrabold leading-none tabular-nums text-text-primary">
-                    {formatJp(jpKosong)} <span className="text-xs font-semibold text-text-secondary">JP</span>
+                    {formatJp(jumlahUtama)} <span className="text-xs font-semibold text-text-secondary">JP</span>
                 </p>
             </div>
 
@@ -192,14 +209,22 @@ function KelasKosongCard({ rows = [], summary = {} }) {
                 aria-valuemax={100}
                 aria-label={`JP tercatat ${persen} persen`}
             >
-                <div className="h-full rounded-full bg-warning motion-safe:transition-all motion-safe:duration-500" style={{ width: `${persen}%` }} />
+                <div className={`h-full rounded-full motion-safe:transition-all motion-safe:duration-500 ${adaKosong ? 'bg-warning' : 'bg-info'}`} style={{ width: `${persen}%` }} />
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-1.5">
-                <span className="badge badge-danger">Terlewat {formatJp(summary.jp_lewat)} JP</span>
-                <span className="badge badge-warning">Berjalan {formatJp(summary.jp_berjalan)} JP</span>
-                <span className="badge badge-neutral">Belum mulai {formatJp(summary.jp_belum_mulai)} JP</span>
-            </div>
+            {adaKosong && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                    <span className="badge badge-danger">Terlewat {formatJp(summary.jp_lewat)} JP</span>
+                    <span className="badge badge-warning">Berjalan {formatJp(summary.jp_berjalan)} JP</span>
+                    <span className="badge badge-neutral">Belum mulai {formatJp(summary.jp_belum_mulai)} JP</span>
+                </div>
+            )}
+
+            {adaKosong && jpPenugasan > 0 && (
+                <p className="mt-2 text-xs text-text-secondary">
+                    {formatJp(jpPenugasan)} JP tercatat sebagai penugasan.
+                </p>
+            )}
 
             {summary.jp_guru_hadir > 0 && (
                 <p className="mt-2 text-xs text-text-secondary">
@@ -221,10 +246,19 @@ function KelasKosongCard({ rows = [], summary = {} }) {
                         <p className="text-xs text-text-secondary">+{mendesak.length - 5} JP lagi di daftar lengkap.</p>
                     )}
                 </div>
-            ) : (
+            ) : adaKosong ? (
                 <p className="mt-4 text-xs text-text-secondary">
                     Belum ada JP yang terlewat. {formatJp(jpKosong)} JP mulai nanti.
                 </p>
+            ) : (
+                <ul className="mt-4 divide-y divide-border/60">
+                    {penugasanRows.slice(0, 5).map((row) => (
+                        <KelasKosongRow key={row.id} row={row} unit={unitDari(row.unit_sekolah_id)} />
+                    ))}
+                    {penugasanRows.length > 5 && (
+                        <p className="pt-2 text-xs text-text-secondary">+{penugasanRows.length - 5} JP lagi di daftar lengkap.</p>
+                    )}
+                </ul>
             )}
 
             <button
@@ -234,7 +268,7 @@ function KelasKosongCard({ rows = [], summary = {} }) {
                 aria-controls="kelas-kosong-daftar"
                 className="mt-3 inline-flex items-center gap-1.5 rounded-button px-2 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 active:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
-                {terbuka ? 'Tutup daftar' : `Lihat semua ${formatJp(jpKosong)} JP`}
+                {terbuka ? 'Tutup daftar' : `Lihat semua ${formatJp(jpKelasKosong)} JP`}
                 <ChevronDown className={`h-4 w-4 transition-transform motion-reduce:transition-none ${terbuka ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
 
@@ -247,7 +281,7 @@ function KelasKosongCard({ rows = [], summary = {} }) {
                             aria-pressed={unitId === null}
                             className={`badge cursor-pointer border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${unitId === null ? 'border-primary bg-primary text-white' : 'border-border bg-white text-text-secondary hover:bg-surface'}`}
                         >
-                            Semua {formatJp(jpKosong)} JP
+                            Semua {formatJp(jpKelasKosong)} JP
                         </button>
                         {perUnit.map((u) => (
                             <button
