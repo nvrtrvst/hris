@@ -336,7 +336,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
         if (!currentPosition) { setError('Lokasi belum tersedia. Pastikan GPS aktif.'); return; }
         if (isDinasLuarFlow && !tugasLuarRecord && !tujuan.trim()) {
             setTujuanKosong(true);
-            setError('Tujuan tugas luar wajib diisi.');
+            setError('Tujuan penugasan wajib diisi.');
             // Scroll otomatis ke kolom wajib yang kosong + langsung fokus.
             tujuanRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             setTimeout(() => tujuanRef.current?.focus({ preventScroll: true }), 350);
@@ -594,15 +594,15 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             {libur && (
                 <div role="note" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-                    <span>{alasanLibur || 'Hari ini unit tidak beroperasi.'} Presensi kantor dinonaktifkan; mode tugas luar dan lembur tetap dapat digunakan.</span>
+                    <span>{alasanLibur || 'Hari ini unit tidak beroperasi.'} Presensi kantor dinonaktifkan; mode penugasan dan lembur tetap dapat digunakan.</span>
                 </div>
             )}
 
             {tugasLuarRecord ? (
                 <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
                     <div>
-                        <p className="text-sm font-bold text-slate-900">{tugasLuarDone ? 'Tugas luar selesai' : 'Tugas luar berlangsung'}</p>
-                        <p className="mt-0.5 text-xs text-slate-500">{tugasLuarDone ? 'Presensi dinas luar sudah lengkap.' : 'Dikecualikan dari cek radius, perlu tujuan'}</p>
+                        <p className="text-sm font-bold text-slate-900">{tugasLuarDone ? 'Penugasan selesai' : 'Penugasan berlangsung'}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{tugasLuarDone ? 'Presensi penugasan sudah lengkap.' : 'Digunakan untuk penugasan atau kegiatan, baik di dalam maupun di luar sekolah.'}</p>
                     </div>
                     <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${tugasLuarDone ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'}`}>
                         {tugasLuarDone ? 'Selesai' : 'Aktif'}
@@ -612,8 +612,8 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 !lemburAktif && (
                     <Card press={false} className="mb-4 flex items-center justify-between py-3.5">
                         <div>
-                            <p className="text-sm font-bold text-slate-900">Mode tugas luar</p>
-                            <p className="mt-0.5 text-xs text-slate-500">Dikecualikan dari cek radius, perlu tujuan</p>
+                            <p className="text-sm font-bold text-slate-900">Mode penugasan</p>
+                            <p className="mt-0.5 text-xs text-slate-500">Digunakan untuk penugasan atau kegiatan, baik di dalam maupun di luar sekolah.</p>
                         </div>
                         <Toggle checked={isTugasLuar} onChange={() => { setIsTugasLuar((prev) => !prev); setIsLembur(false); }} tone="sky" />
                     </Card>
@@ -637,7 +637,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>
-                        Tugas luar aktif di tengah jam mengajar. JP yang belum di-slide tidak akan tercatat hadir. Presensi mengajar tersimpan sampai terakhir di-slide.
+                        Penugasan aktif di tengah jam mengajar. JP yang belum di-slide tidak akan tercatat hadir. Presensi mengajar tersimpan sampai terakhir di-slide.
                     </span>
                 </div>
             )}
@@ -653,7 +653,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
 
             {tugasLuarRecord ? (
                 <div className="mb-4">
-                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tujuan tugas luar</label>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tujuan penugasan</label>
                     <input
                         type="text"
                         value={tugasLuarRecord.tujuan || tujuan}
@@ -665,7 +665,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 isTugasLuar && (
                     <div className="mb-4">
                         <label htmlFor="tujuan" className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-                            Tujuan tugas luar <span className="text-rose-500" aria-hidden="true">*</span>
+                            Tujuan penugasan <span className="text-rose-500" aria-hidden="true">*</span>
                             <span className="sr-only">(wajib diisi)</span>
                         </label>
                         <input
@@ -973,7 +973,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 disabled={isSubmitting || !capturedPhoto || !currentPosition || (lemburAktif ? !geofence?.inside : (!geofence?.inside && !isDinasLuarFlow)) || (isDinasLuarFlow && !lemburAktif && !tugasLuarRecord && !tujuan.trim()) || (allRecordsComplete && !lemburAktif) || (piketBlokir && phase === FOTO_SORE)}
                 className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${lemburAktif ? 'bg-amber-500' : isDinasLuarFlow ? 'bg-sky-500' : 'bg-primary'}`}
             >
-                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : lemburAktif ? `Kirim presensi ${lemburOpen ? 'keluar lembur' : 'masuk lembur'}` : isDinasLuarFlow ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : `Kirim ${phase === FOTO_PAGI ? 'foto pagi' : 'foto sore'}`}
+                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : lemburAktif ? `Kirim presensi ${lemburOpen ? 'keluar lembur' : 'masuk lembur'}` : isDinasLuarFlow ? (tugasLuarOpen ? 'Kirim presensi keluar penugasan' : 'Kirim presensi masuk penugasan') : `Kirim ${phase === FOTO_PAGI ? 'foto pagi' : 'foto sore'}`}
                     </button>
                 </>
             )}
@@ -1012,7 +1012,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                         <CheckCircle className="h-8 w-8" />
                     </div>
                     <h2 className="text-lg font-bold text-slate-900">Presensi hari ini selesai</h2>
-                    <p className="mt-1 text-sm text-slate-500">{tugasLuarDone ? 'Presensi dinas luar tercatat lengkap.' : 'Foto pagi, slide jadwal, dan foto sore sudah lengkap.'}</p>
+                    <p className="mt-1 text-sm text-slate-500">{tugasLuarDone ? 'Presensi penugasan tercatat lengkap.' : 'Foto pagi, slide jadwal, dan foto sore sudah lengkap.'}</p>
                 </div>
             )}
 

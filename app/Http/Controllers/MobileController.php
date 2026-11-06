@@ -619,13 +619,13 @@ class MobileController extends Controller
             throw ValidationException::withMessages(['jadwal_id' => 'Jadwal tidak boleh dipilih saat mode lembur.']);
         }
         if ($isTugasLuar && $isLembur) {
-            throw ValidationException::withMessages(['is_tugas_luar' => 'Tidak bisa menggabung mode tugas luar dan lembur.']);
+            throw ValidationException::withMessages(['is_tugas_luar' => 'Tidak bisa menggabung mode penugasan dan lembur.']);
         }
         if ($isTugasLuar && $request->filled('jadwal_id')) {
-            throw ValidationException::withMessages(['jadwal_id' => 'Jadwal tidak boleh dipilih saat mode tugas luar.']);
+            throw ValidationException::withMessages(['jadwal_id' => 'Jadwal tidak boleh dipilih saat mode penugasan.']);
         }
         if ($isTugasLuar && ! $request->filled('tujuan')) {
-            throw ValidationException::withMessages(['tujuan' => 'Tujuan tugas luar wajib diisi.']);
+            throw ValidationException::withMessages(['tujuan' => 'Tujuan penugasan wajib diisi.']);
         }
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIni = $hariMap[Carbon::now()->format('l')];
@@ -779,7 +779,7 @@ class MobileController extends Controller
         $now = Carbon::now();
         $unitFullName = $unit instanceof UnitLokasi ? (($unitSekolah?->nama ?? '').' '.$unit->nama) : $unit->nama;
         $overlayData = [
-            'label' => $isLembur ? 'BUKTI LEMBUR' : ($isTugasLuar ? 'TUGAS LUAR' : 'BUKTI PRESENSI'),
+            'label' => $isLembur ? 'BUKTI LEMBUR' : ($isTugasLuar ? 'PENUGASAN' : 'BUKTI PRESENSI'),
             'is_lembur' => $isLembur,
             'pegawai' => $pegawai->nama_lengkap,
             'unit' => trim($unitFullName),
@@ -1294,7 +1294,7 @@ class MobileController extends Controller
             }
         }
         if ($isTugasLuar && ! $request->filled('tujuan')) {
-            return response()->json(['success' => false, 'message' => 'Tujuan tugas luar wajib diisi.', 'errors' => ['tujuan' => 'Tujuan tugas luar wajib diisi.']], 422);
+            return response()->json(['success' => false, 'message' => 'Tujuan penugasan wajib diisi.', 'errors' => ['tujuan' => 'Tujuan penugasan wajib diisi.']], 422);
         }
         if ($request->tipe === 'keluar' && ! $isTugasLuar && ! $isLembur) {
             $tahanPiket = $this->pesanPiketBelumBeres($pegawai);
@@ -1384,7 +1384,7 @@ class MobileController extends Controller
         $now = Carbon::now();
 
         $overlayData = [
-            'label' => $isLembur ? 'BUKTI LEMBUR' : ($isTugasLuar ? 'TUGAS LUAR' : 'ABSEN TETAP'),
+            'label' => $isLembur ? 'BUKTI LEMBUR' : ($isTugasLuar ? 'PENUGASAN' : 'ABSEN TETAP'),
             'is_lembur' => $isLembur,
             'pegawai' => $pegawai->nama_lengkap,
             'unit' => $unit->nama,

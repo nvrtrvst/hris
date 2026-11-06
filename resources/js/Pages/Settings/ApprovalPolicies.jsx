@@ -10,7 +10,7 @@ const LABELS = {
     koreksi: 'Koreksi Presensi',
     pulang_cepat: 'Pulang Cepat',
     lembur: 'Lembur',
-    tugas_luar: 'Tugas Luar',
+    tugas_luar: 'Penugasan',
 };
 
 export default function ApprovalPolicies({ auth, policies }) {

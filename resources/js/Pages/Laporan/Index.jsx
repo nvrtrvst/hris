@@ -58,6 +58,7 @@ const TIPE_STYLES = {
     kantor: 'bg-info-light text-info ring-info/30',
     lembur: 'bg-warning-light text-warning ring-warning/30',
     'tugas luar': 'bg-accent-100 text-accent-700 ring-accent-500/30',
+    penugasan: 'bg-accent-100 text-accent-700 ring-accent-500/30',
 };
 
 const TipeBadge = ({ tipe }) => {

@@ -42,22 +42,22 @@ export default function Index({ auth, tugasLuar, units, pegawais, filters = {} }
     };
 
     const hapus = (id) => {
-        if (!confirm('Hapus jadwal tugas luar ini?')) return;
+        if (!confirm('Hapus penugasan ini?')) return;
         router.delete(route('tugas-luar.destroy', id), { preserveScroll: true });
     };
 
     return (
-        <AdminShell user={auth.user} header={<h2 className="page-title">Kelola Tugas Luar</h2>}>
-            <Head title="Tugas Luar" />
+        <AdminShell user={auth.user} header={<h2 className="page-title">Kelola Penugasan</h2>}>
+            <Head title="Penugasan" />
             <div className="mx-auto w-full max-w-7xl space-y-5">
                     <PageHeader
                         eyebrow="Operasional"
-                        title="Tugas Luar"
-                        description="Catat penugasan pegawai di luar unit pada tanggal dan jam tertentu."
+                        title="Penugasan"
+                        description="Digunakan untuk penugasan atau kegiatan, baik di dalam maupun di luar sekolah."
                     />
 
                     <Card className="p-5">
-                        <h3 className="text-sm font-bold text-primary mb-3 flex items-center gap-2"><Plus className="h-4 w-4" /> Tambah Jadwal Tugas Luar</h3>
+                        <h3 className="text-sm font-bold text-primary mb-3 flex items-center gap-2"><Plus className="h-4 w-4" /> Tambah Penugasan</h3>
                         <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             <select className="input-field text-xs h-9" value={pegawaiId} onChange={(e) => setPegawaiId(e.target.value)} required>
                                 <option value="">Pilih Pegawai</option>
@@ -70,11 +70,11 @@ export default function Index({ auth, tugasLuar, units, pegawais, filters = {} }
                             <input type="date" className="input-field text-xs h-9" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required />
                             <input type="time" className="input-field text-xs h-9" value={jamMulai} onChange={(e) => setJamMulai(e.target.value)} placeholder="Jam mulai" />
                             <input type="time" className="input-field text-xs h-9" value={jamSelesai} onChange={(e) => setJamSelesai(e.target.value)} placeholder="Jam selesai" />
-                            <input type="text" className="input-field text-xs h-9" value={tujuan} onChange={(e) => setTujuan(e.target.value)} placeholder="Tujuan" required />
+                            <input type="text" className="input-field text-xs h-9" value={tujuan} onChange={(e) => setTujuan(e.target.value)} placeholder="Tujuan/kegiatan" required />
                             <textarea className="input-field text-xs h-9 py-2 sm:col-span-2 lg:col-span-3" value={keterangan} onChange={(e) => setKeterangan(e.target.value)} placeholder="Keterangan (opsional)" />
                             {error && <p className="text-xs font-semibold text-rose-600 sm:col-span-3">{error}</p>}
                             <Button type="submit" size="sm" disabled={processing} className="w-fit sm:col-span-3">
-                                {processing ? 'Menyimpan...' : <><Plus className="h-3.5 w-3.5" /> Simpan Jadwal</>}
+                                {processing ? 'Menyimpan...' : <><Plus className="h-3.5 w-3.5" /> Simpan Penugasan</>}
                             </Button>
                         </form>
                     </Card>
@@ -125,8 +125,8 @@ export default function Index({ auth, tugasLuar, units, pegawais, filters = {} }
                                                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface">
                                                         <CalendarDays className="h-8 w-8 text-border" />
                                                     </div>
-                                                    <p className="mt-4 text-base font-bold text-primary">Belum ada jadwal tugas luar</p>
-                                                    <p className="mt-1 text-xs text-text-secondary">Klik Tambah Jadwal Tugas Luar untuk membuat jadwal baru.</p>
+                                                    <p className="mt-4 text-base font-bold text-primary">Belum ada penugasan</p>
+                                                    <p className="mt-1 text-xs text-text-secondary">Klik Tambah Penugasan untuk membuat penugasan baru.</p>
                                                 </div>
                                             </td>
                                         </tr>

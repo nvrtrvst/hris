@@ -275,7 +275,7 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
 
                             <p className="text-xs text-text-muted">
                                 PH = persentase kehadiran harian berbobot unit. M = persentase kehadiran mingguan. B = persentase kehadiran bulanan. JP tetap dihitung dari presensi per jadwal.
-                                TUGAS = amanat dari Piket Kelas Kosong; TUGAS! = belum tersampaikan. Sumber TUGAS terlihat saat kursor diarahkan ke sel. TL = tugas luar resmi.
+                                TUGAS = amanat dari Piket Kelas Kosong; TUGAS! = belum tersampaikan. Sumber TUGAS terlihat saat kursor diarahkan ke sel. TL = penugasan resmi.
                             </p>
                         </div>
                     )}

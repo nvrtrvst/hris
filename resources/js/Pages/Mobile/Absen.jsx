@@ -289,7 +289,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             return;
         }
         if (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) {
-            setError('Tujuan tugas luar wajib diisi.');
+            setError('Tujuan penugasan wajib diisi.');
             return;
         }
         if (!currentPosition && !lemburAktif && !isTugasLuar) {
@@ -480,7 +480,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
             {alasanLibur && (
                 <div role="note" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
                     <Lock className="mt-0.5 h-5 w-5 shrink-0" />
-                    <span>{alasanLibur} Presensi kantor dinonaktifkan; lembur, tugas luar, dan presensi sesuai jadwal tetap dapat digunakan.</span>
+                    <span>{alasanLibur} Presensi kantor dinonaktifkan; lembur, penugasan, dan presensi sesuai jadwal tetap dapat digunakan.</span>
                 </div>
             )}
 
@@ -637,7 +637,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                     )}
 
                     {isTugasLuar && !capturedPhoto && (
-                        <span className="absolute right-3 top-3 rounded-lg bg-sky-500 px-2.5 py-1.5 text-xs font-bold text-sky-950">TUGAS LUAR</span>
+                        <span className="absolute right-3 top-3 rounded-lg bg-sky-500 px-2.5 py-1.5 text-xs font-bold text-sky-950">PENUGASAN</span>
                     )}
 
                     {currentPosition && !capturedPhoto && (
@@ -799,21 +799,21 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
 
             <Card press={false} className="mt-3 flex items-center justify-between py-3.5">
                 <div>
-                    <p className="text-sm font-bold text-slate-900">Mode tugas luar</p>
-                    <p className="mt-0.5 text-xs text-slate-500">Dikecualikan dari cek radius, perlu tujuan</p>
+                    <p className="text-sm font-bold text-slate-900">Mode penugasan</p>
+                    <p className="mt-0.5 text-xs text-slate-500">Digunakan untuk penugasan atau kegiatan, baik di dalam maupun di luar sekolah.</p>
                 </div>
                 <Toggle checked={isTugasLuar} onChange={toggleTugasLuar} tone="sky" />
             </Card>
 
             {isTugasLuar && (
                 <div className="mt-3">
-                    <label htmlFor="tujuan" className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tujuan tugas luar</label>
+                    <label htmlFor="tujuan" className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tujuan penugasan</label>
                     <input
                         id="tujuan"
                         type="text"
                         value={tujuan}
                         onChange={(e) => setTujuan(e.target.value)}
-                        placeholder="Contoh: Rapat dinas di Dinas Pendidikan"
+                        placeholder="Contoh: Rapat dinas atau kegiatan sekolah"
                         className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-200"
                     />
                 </div>
@@ -838,7 +838,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 disabled={isSubmitting || !capturedPhoto || !currentPosition || geoBlocked || (isTugasLuar && !tugasLuarOpen && !tujuan.trim()) || (!lemburAktif && !isTugasLuar && !officeAttendance && !jadwals.length) || presensiComplete || (!lemburAktif && !isTugasLuar && piketGate?.blokir && ((officeAttendance && kantorOpen) || (isTeaching && teachingOpen)))}
                 className={`mt-4 flex min-h-14 w-full items-center justify-center rounded-xl px-5 py-4 text-sm font-bold transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 ${isTugasLuar ? 'bg-sky-500 text-sky-950' : lemburAktif ? 'bg-amber-500 text-amber-950' : 'bg-primary text-white'}`}
             >
-                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : lemburAktif ? (lemburOpen ? 'Kirim presensi keluar lembur' : 'Kirim bukti lembur') : isTugasLuar ? (tugasLuarOpen ? 'Kirim presensi keluar tugas luar' : 'Kirim presensi masuk tugas luar') : isTeaching ? (teachingOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}
+                {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Memproses...</> : lemburAktif ? (lemburOpen ? 'Kirim presensi keluar lembur' : 'Kirim bukti lembur') : isTugasLuar ? (tugasLuarOpen ? 'Kirim presensi keluar penugasan' : 'Kirim presensi masuk penugasan') : isTeaching ? (teachingOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk') : (kantorOpen ? 'Konfirmasi presensi keluar' : 'Konfirmasi presensi masuk')}
             </button>
             )}
 
