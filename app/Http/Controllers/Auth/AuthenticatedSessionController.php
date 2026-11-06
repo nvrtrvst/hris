@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,14 +20,36 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): Response
     {
+        $units = UnitSekolah::orderBy('nama')->get(['id', 'nama', 'singkatan', 'logo']);
+        $yayasan = $units->first(fn (UnitSekolah $unit) => $this->isYayasan($unit));
+        $lembagaOrder = ['LPQ' => 0, 'TK' => 1, 'SD' => 2, 'SMP' => 3, 'SMK' => 4];
+
+        $lembaga = $units
+            ->reject(fn (UnitSekolah $unit) => $yayasan && $unit->id === $yayasan->id)
+            ->sortBy(fn (UnitSekolah $unit) => sprintf(
+                '%02d-%s',
+                $lembagaOrder[strtoupper((string) $unit->singkatan)] ?? 99,
+                $unit->nama,
+            ))
+            ->values()
+            ->map(fn (UnitSekolah $unit) => [
+                'nama' => $unit->nama,
+                'singkatan' => $unit->singkatan,
+                'logo' => $unit->logo_url,
+            ]);
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
-            'lembaga' => UnitSekolah::orderBy('nama')
-                ->get(['id', 'nama', 'singkatan', 'logo'])
-                ->map(fn ($u) => ['nama' => $u->nama, 'singkatan' => $u->singkatan, 'logo' => $u->logo_url])
-                ->values(),
+            'brandLogo' => $yayasan?->logo_url,
+            'lembaga' => $lembaga,
         ]);
+    }
+
+    private function isYayasan(UnitSekolah $unit): bool
+    {
+        return strtoupper((string) $unit->singkatan) === 'YAYASAN'
+            || Str::startsWith(Str::lower((string) $unit->nama), 'yayasan');
     }
 
     /**

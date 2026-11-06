@@ -4,7 +4,7 @@ import { Link, useForm } from '@inertiajs/react';
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
-export default function Login({ status, canResetPassword, lembaga }) {
+export default function Login({ status, canResetPassword, lembaga, brandLogo }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -22,7 +22,8 @@ export default function Login({ status, canResetPassword, lembaga }) {
     return (
         <AuthShell
             title="Masuk"
-            portal="Portal Kepegawaian"
+            portal="Portal Kepegawaian Yasayan Nuurul Muttaqiin"
+            logo={brandLogo}
             lembaga={lembaga}
             heading="Kelola SDM terpusat & terstruktur."
             heroFooter={
