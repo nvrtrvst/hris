@@ -7,6 +7,7 @@ use App\Models\AbsenSiswaSesi;
 use App\Models\Pegawai;
 use App\Models\UnitSekolah;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AbsenSiswaService
 {
@@ -64,6 +65,47 @@ class AbsenSiswaService
                 'alasan' => $alasan,
             ]);
         });
+    }
+
+    /**
+     * Ganti nama dari client dengan nama kanonik roster sim-keu.
+     *
+     * @param  array<int, array{nis:string,status:string,keterangan?:?string}>  $submitted
+     * @param  array<int, array<string, mixed>>  $students
+     * @return array<int, array{nis:string,nama:string,status:string,keterangan:?string}>
+     */
+    public static function canonicalRows(array $submitted, array $students): array
+    {
+        $roster = collect($students)->keyBy(fn (array $row) => (string) ($row['nis'] ?? ''));
+        $rows = [];
+        $missing = [];
+
+        foreach ($submitted as $row) {
+            $nis = (string) ($row['nis'] ?? '');
+            $student = $roster->get($nis);
+            $nama = trim((string) ($student['nama'] ?? $student['name'] ?? ''));
+
+            if (! $student || $nama === '') {
+                $missing[] = $nis;
+
+                continue;
+            }
+
+            $rows[] = [
+                'nis' => $nis,
+                'nama' => $nama,
+                'status' => (string) ($row['status'] ?? ''),
+                'keterangan' => $row['keterangan'] ?? null,
+            ];
+        }
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages([
+                'siswa' => 'Siswa tidak ditemukan di kelas tersebut: '.implode(', ', $missing).'.',
+            ]);
+        }
+
+        return $rows;
     }
 
     public static function normalizeLabel(string $label): string

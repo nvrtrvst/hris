@@ -77,4 +77,45 @@ class KeuanganClient
 
         return $response->json('data.classes') ?? [];
     }
+
+    public static function studentsByClass(string $unitNama, array $classPayload): ?array
+    {
+        $response = self::request('siswa-by-class', [
+            'unit' => $unitNama,
+            ...$classPayload,
+        ]);
+
+        if (! $response?->successful()) {
+            return null;
+        }
+
+        return $response->json('data') ?? [];
+    }
+
+    public static function classPayloadById(string $unitNama, ?string $classId): ?array
+    {
+        if (! $classId) {
+            return null;
+        }
+
+        $classes = self::kelasByUnit($unitNama);
+        if ($classes === null) {
+            return null;
+        }
+
+        $class = collect($classes)->first(
+            fn (array $row) => (string) ($row['id'] ?? '') === (string) $classId,
+        );
+
+        if (! $class) {
+            return null;
+        }
+
+        return [
+            'tingkat' => trim((string) ($class['grade'] ?? '')),
+            'kelas' => trim((string) ($class['name'] ?? '')),
+            'jurusan' => trim((string) ($class['major_name'] ?? '')),
+            'class_id' => (string) ($class['id'] ?? $classId),
+        ];
+    }
 }

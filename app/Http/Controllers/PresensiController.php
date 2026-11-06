@@ -574,7 +574,6 @@ class PresensiController extends Controller
             'alasan' => 'required|string|min:5|max:255',
             'siswa' => 'required|array|min:1|max:200',
             'siswa.*.nis' => 'required|string|max:30|distinct',
-            'siswa.*.nama' => 'required|string|max:150',
             'siswa.*.status' => 'required|in:hadir,telat,izin,sakit,alpa',
             'siswa.*.keterangan' => 'nullable|string|max:255',
         ]);
@@ -587,7 +586,27 @@ class PresensiController extends Controller
             }
         }
 
-        AbsenSiswaService::simpan($sesi, $validated['siswa'], $user->id, 'admin', $validated['alasan']);
+        $unit = $sesi->unitSekolah;
+        $unitName = (string) ($unit?->nama ?: $unit?->singkatan);
+        $classPayload = KeuanganClient::classPayloadById($unitName, (string) $sesi->class_id);
+
+        if ($classPayload === null) {
+            throw ValidationException::withMessages([
+                'siswa' => 'Kelas tidak ditemukan di SIM-Keu. Koreksi tidak bisa diverifikasi.',
+            ]);
+        }
+
+        $roster = KeuanganClient::studentsByClass($unitName, $classPayload);
+
+        if ($roster === null) {
+            throw ValidationException::withMessages([
+                'siswa' => 'Data siswa belum tersedia dari SIM-Keu. Coba lagi.',
+            ]);
+        }
+
+        $rows = AbsenSiswaService::canonicalRows($validated['siswa'], $roster['students'] ?? []);
+
+        AbsenSiswaService::simpan($sesi, $rows, $user->id, 'admin', $validated['alasan']);
 
         return back()->with('message', 'Absen siswa dikoreksi dan riwayat tersimpan.');
     }

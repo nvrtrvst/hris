@@ -2585,7 +2585,6 @@ class MobileController extends Controller
             'accuracy' => 'required|numeric|min:0',
             'siswa' => 'required|array|min:1|max:200',
             'siswa.*.nis' => 'required|string|max:30|distinct',
-            'siswa.*.nama' => 'required|string|max:150',
             'siswa.*.status' => 'required|in:hadir,telat,izin,sakit,alpa',
             'siswa.*.keterangan' => 'nullable|string|max:255',
             'alasan' => 'nullable|string|max:255',
@@ -2631,7 +2630,30 @@ class MobileController extends Controller
             }
         }
 
-        DB::transaction(function () use ($pegawai, $slot, $sesiPiket, $today, $validated) {
+        $unitName = $unit->nama ?: $unit->singkatan;
+        $classPayload = KeuanganClient::classPayloadById($unitName, (string) $validated['class_id']);
+
+        if ($classPayload === null) {
+            throw ValidationException::withMessages([
+                'kelas' => 'Kelas tidak ditemukan di SIM-Keu. Coba lagi.',
+            ]);
+        }
+
+        $roster = KeuanganClient::studentsByClass($unitName, $classPayload);
+
+        if ($roster === null) {
+            throw ValidationException::withMessages([
+                'siswa' => 'Data siswa belum tersedia dari SIM-Keu. Coba lagi.',
+            ]);
+        }
+
+        $rows = AbsenSiswaService::canonicalRows($validated['siswa'], $roster['students'] ?? []);
+        $classLabel = data_get($roster, 'classLabels.0');
+        $canonicalLabel = is_string($classLabel) && trim($classLabel) !== ''
+            ? trim($classLabel)
+            : $validated['class_label'];
+
+        DB::transaction(function () use ($pegawai, $slot, $sesiPiket, $today, $validated, $rows, $canonicalLabel) {
             $laporan = LaporanPiket::where('sesi_id', $sesiPiket->id)
                 ->where('pegawai_id', $pegawai->id)
                 ->lockForUpdate()
@@ -2663,12 +2685,12 @@ class MobileController extends Controller
 
             $sesi->forceFill([
                 'pegawai_id' => $pegawai->id,
-                'class_label' => $validated['class_label'],
+                'class_label' => $canonicalLabel,
             ])->save();
 
             AbsenSiswaService::simpan(
                 $sesi,
-                $validated['siswa'],
+                $rows,
                 auth()->id(),
                 'petugas',
                 $validated['alasan'] ?? null,
