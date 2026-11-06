@@ -71,6 +71,14 @@ export default function AdminShell({ user: userProp, header, children }) {
     const jabatan = user.pegawai?.jabatans?.find((j) => j.pivot?.is_primary)?.nama
         || user.pegawai?.jabatans?.[0]?.nama
         || role;
+    const primaryUnit = user.pegawai?.units?.find((unit) => unit.pivot?.is_primary)
+        || user.pegawai?.units?.[0];
+    const sidebarUnit = role === 'Superadmin'
+        ? null
+        : (user.unit_sekolah ?? user.unitSekolah ?? primaryUnit);
+    const sidebarName = sidebarUnit?.nama || 'Nuurul Muttaqiin';
+    const sidebarLogo = sidebarUnit?.logo_url || '/logo.png';
+    const sidebarSubtitle = role;
     const permissions = auth.permissions || [];
     const canSeeAnnouncements = permissions.includes('view_dashboard')
         || permissions.includes('manage_master_data')
@@ -139,24 +147,28 @@ export default function AdminShell({ user: userProp, header, children }) {
 
     const sidebarContent = (drawer = false) => (
         <>
-            <div className={cn('flex h-16 shrink-0 items-center border-b border-white/10 px-4', collapsed && !drawer ? 'justify-center px-2' : '')}>
-                <Link href={route('dashboard')} className="flex min-w-0 items-center gap-3" aria-label="Beranda Nuurul Muttaqiin">
+            <div className={cn('flex min-h-16 shrink-0 items-center border-b border-white/10 px-4 py-3', collapsed && !drawer ? 'justify-center px-2' : '')}>
+                <Link
+                    href={route('dashboard')}
+                    className={cn('flex min-w-0 items-center gap-3', collapsed && !drawer ? '' : 'flex-1')}
+                    aria-label={`Beranda ${sidebarName}`}
+                >
                     <img
-                        src="/logo.png"
-                        alt=""
+                        src={sidebarLogo}
+                        alt={`Logo ${sidebarName}`}
                         className="h-10 w-10 shrink-0 rounded-xl bg-white object-contain p-1 ring-1 ring-white/15"
                     />
                     {(!collapsed || drawer) && (
-                        <span className="min-w-0">
-                            <span className="block truncate text-sm font-bold text-white">Nuurul Muttaqiin</span>
-                            <span className="block text-[9px] font-bold uppercase tracking-[0.18em] text-white/45">HRIS Admin</span>
+                        <span className="min-w-0 flex-1">
+                            <span className="block whitespace-normal break-words text-sm font-bold leading-snug text-white">{sidebarName}</span>
+                            <span className="mt-0.5 block text-[9px] font-bold uppercase tracking-[0.18em] text-white/45">{sidebarSubtitle}</span>
                         </span>
                     )}
                 </Link>
                 <button
                     type="button"
                     onClick={() => setMobileOpen(false)}
-                    className="ml-auto flex h-9 w-9 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white lg:hidden"
+                    className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white lg:hidden"
                     aria-label="Tutup menu"
                 >
                     <X className="h-4 w-4" />
