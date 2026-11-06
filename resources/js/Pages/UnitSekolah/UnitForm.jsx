@@ -57,9 +57,9 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
                         <Field label="Logo Unit" error={logoError || errors.logo} hint="JPEG, PNG, atau WebP. Maksimum 1 MB. Rasio persegi disarankan.">
                         <div className="flex items-center gap-3">
                             {(isEdit && !data.logo) && (
-                                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white">
+                                <div className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl ${unitLogoUrl ? '' : 'border border-border bg-white'}`}>
                                     {unitLogoUrl ? (
-                                        <img src={unitLogoUrl} alt={`Logo ${unitName}`} className="h-full w-full object-contain p-1" />
+                                        <img src={unitLogoUrl} alt={`Logo ${unitName}`} className="h-full w-full object-contain" />
                                     ) : unitName ? (
                                         <span className="text-sm font-bold text-primary">{unitName.slice(0, 3).toUpperCase()}</span>
                                     ) : (
