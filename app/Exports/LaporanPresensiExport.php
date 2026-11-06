@@ -158,7 +158,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
                 return 'Lembur';
             }
             if ($presensi->is_tugas_luar) {
-                return 'Tugas Luar';
+                return 'Penugasan';
             }
 
             return $presensi->jadwal_id ? 'Mengajar' : 'Kantor';
@@ -166,6 +166,10 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
         if ($tipe === 'mengajar' && $presensi->jadwal_id) {
             return 'Mengajar';
+        }
+
+        if ($tipe === 'tugas_luar') {
+            return 'Penugasan';
         }
 
         return ucfirst(str_replace('_', ' ', $tipe));

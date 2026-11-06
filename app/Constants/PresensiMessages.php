@@ -99,12 +99,12 @@ class PresensiMessages
     /** Toggle unit wajib_pulang_mengajar: tombol keluar hanya >= sesiEnd - N menit. */
     public const PULANG_BELUM_WAKTUNYA = 'Tombol pulang tersedia pukul %s.';
 
-    // Tugas Luar
-    public const LABEL_TUGAS_LUAR = 'Tugas Luar';
+    // Penugasan
+    public const LABEL_TUGAS_LUAR = 'Penugasan';
 
-    public const TUJUAN_REQUIRED = 'Tujuan tugas luar wajib diisi.';
+    public const TUJUAN_REQUIRED = 'Tujuan penugasan wajib diisi.';
 
-    public const TUJUAN_LUAR_RADIUS = 'Tugas luar dikecualikan dari cek radius. Pastikan foto & akurasi valid.';
+    public const TUJUAN_LUAR_RADIUS = 'Penugasan dikecualikan dari cek radius. Pastikan foto & akurasi valid.';
 
     // Pulang kantor
     public const PULANG_SEBELUM_JAM_KANTOR = 'Anda belum bisa pulang. Jam pulang kantor: %s.';

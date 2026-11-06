@@ -1974,7 +1974,7 @@ class PresensiController extends Controller
                 ->findOrFail($id);
 
             if (! $presensi->is_tugas_luar || $presensi->tugas_luar_status !== 'pending') {
-                throw ValidationException::withMessages(['error' => 'Hanya tugas luar dengan status pending yang bisa disetujui.']);
+                throw ValidationException::withMessages(['error' => 'Hanya penugasan dengan status pending yang bisa disetujui.']);
             }
 
             if ($user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
@@ -1990,7 +1990,7 @@ class PresensiController extends Controller
             AuditPresensi::log($presensi->id, 'approve_tugas_luar', 'tugas_luar_status', 'pending', 'disetujui');
         });
 
-        return redirect()->back()->with('message', 'Tugas luar berhasil disetujui.');
+        return redirect()->back()->with('message', 'Penugasan berhasil disetujui.');
     }
 
     public function rejectTugasLuar($id)
@@ -2006,7 +2006,7 @@ class PresensiController extends Controller
                 ->findOrFail($id);
 
             if (! $presensi->is_tugas_luar || $presensi->tugas_luar_status !== 'pending') {
-                throw ValidationException::withMessages(['error' => 'Hanya tugas luar dengan status pending yang bisa ditolak.']);
+                throw ValidationException::withMessages(['error' => 'Hanya penugasan dengan status pending yang bisa ditolak.']);
             }
 
             if ($user->unit_sekolah_id && ! $user->can('view_all_units') && ! $presensi->pegawai->belongsToUnit($user->unit_sekolah_id)) {
@@ -2026,7 +2026,7 @@ class PresensiController extends Controller
             AuditPresensi::log($presensi->id, 'reject_tugas_luar', 'status', 'hadir', 'alpa');
         });
 
-        return redirect()->back()->with('message', 'Tugas luar ditolak.');
+        return redirect()->back()->with('message', 'Penugasan ditolak.');
     }
 
     /**

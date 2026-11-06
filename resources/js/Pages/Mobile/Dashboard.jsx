@@ -185,7 +185,7 @@ export default function Dashboard({ auth, pegawai, presensi, izinHariIni = null,
                     >
                         {piketGate?.blokir && !isMengajar && primary?.jam_masuk && !primary?.jam_keluar
                             ? `Selesaikan laporan piket dulu${piketGate?.progress ? ` (${piketGate.progress})` : ''}`
-                            : (alasanLibur ? 'Presensi libur: lembur/tugas luar' : (!isMengajar && primary?.jam_masuk && !primary?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi'))}
+                            : (alasanLibur ? 'Presensi libur: lembur/penugasan' : (!isMengajar && primary?.jam_masuk && !primary?.jam_keluar ? 'Lakukan presensi keluar' : 'Buka presensi'))}
                         <ArrowRight className="h-5 w-5" />
                     </Link>
                 )}

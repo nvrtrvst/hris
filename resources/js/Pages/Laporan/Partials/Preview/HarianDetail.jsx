@@ -49,7 +49,7 @@ const pulangLabel = (row) => {
     return '-';
 };
 
-const jenisLabel = { mengajar: 'Mengajar', piket: 'Piket', lembur: 'Lembur', tugas_luar: 'Tugas Luar' };
+const jenisLabel = { mengajar: 'Mengajar', piket: 'Piket', lembur: 'Lembur', tugas_luar: 'Penugasan' };
 
 const chipLabel = (c) => (jenisLabel[c.jenis] || c.label) + (c.jam ? ' ' + c.jam : '');
 

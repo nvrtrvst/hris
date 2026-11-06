@@ -75,7 +75,7 @@ export default function BuktiKegiatan({ presensiId, initialUrls = [], currentPos
 
     return (
         <div className="mb-4 rounded-2xl border border-sky-200 bg-sky-50 p-4">
-            <p className="text-sm font-bold text-sky-900">Foto Kegiatan Tugas Luar</p>
+            <p className="text-sm font-bold text-sky-900">Foto Kegiatan Penugasan</p>
             <p className="mt-0.5 text-xs text-sky-700">Ambil bukti kegiatan (mis. saat rapat). Opsional, bisa beberapa foto.</p>
 
             {urls.length > 0 && (

@@ -212,7 +212,7 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
                 foreach ($tugasLuar as $tl) {
                     $aktivitas[] = [
                         'jenis' => 'tugas_luar',
-                        'label' => 'Tugas Luar',
+                        'label' => 'Penugasan',
                         'jam' => $tl->jam_masuk ? substr($tl->jam_masuk, 0, 5) : null,
                         'state' => $tl->tugas_luar_status === 'disetujui' ? 'ok' : ($tl->tugas_luar_status === 'ditolak' ? 'miss' : 'late'),
                     ];
@@ -422,7 +422,7 @@ class LaporanDetailHarianExport implements FromCollection, ShouldAutoSize, WithC
     {
         return [
             'Nama Pegawai', 'Unit', 'Tanggal', 'Hari',
-            'Jam Masuk & Status', 'Pulang Kantor', 'Aktivitas (Mengajar/Piket/Lembur/Tugas Luar)',
+            'Jam Masuk & Status', 'Pulang Kantor', 'Aktivitas (Mengajar/Piket/Lembur/Penugasan)',
         ];
     }
 

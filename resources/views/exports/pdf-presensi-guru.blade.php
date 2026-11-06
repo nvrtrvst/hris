@@ -158,7 +158,7 @@
     <div class="note">
         PH = persentase kehadiran harian berbobot unit. M = persentase kehadiran mingguan.
         B = persentase kehadiran bulanan. JP tetap dihitung dari presensi per jadwal. TK = tidak ada keterangan.
-        TUGAS = amanat/tugas dari piket; tanda ! berarti belum tersampaikan; tanda * berarti override operator. TL = tugas luar resmi.
+        TUGAS = amanat/tugas dari piket; tanda ! berarti belum tersampaikan; tanda * berarti override operator. TL = penugasan resmi.
     </div>
 
     <table class="signature-table">

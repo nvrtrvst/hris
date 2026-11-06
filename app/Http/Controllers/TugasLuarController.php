@@ -74,7 +74,7 @@ class TugasLuarController extends Controller
         // Jadwal dari admin/atasan otomatis disetujui.
         TugasLuar::create($data);
 
-        return redirect()->back()->with('message', 'Jadwal tugas luar berhasil dibuat.');
+        return redirect()->back()->with('message', 'Penugasan berhasil dibuat.');
     }
 
     public function destroy($id)
@@ -96,6 +96,6 @@ class TugasLuarController extends Controller
             $tugasLuar->delete();
         });
 
-        return redirect()->back()->with('message', 'Jadwal tugas luar berhasil dihapus.');
+        return redirect()->back()->with('message', 'Penugasan berhasil dihapus.');
     }
 }

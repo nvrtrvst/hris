@@ -129,7 +129,7 @@ class PhotoOverlayServiceTest extends TestCase
         ]);
 
         $data = [
-            'label' => 'TUGAS LUAR',
+            'label' => 'PENUGASAN',
             'is_tugas_luar' => true,
             'pegawai' => 'Ahmad',
             'unit' => 'SMK',

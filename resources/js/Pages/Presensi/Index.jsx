@@ -352,7 +352,7 @@ const TugasLuarBadge = ({ status, onClick }) => {
             onClick={onClick}
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border transition-opacity hover:opacity-80 cursor-pointer ${map[status] || map.pending}`}
         >
-            Tugas Luar {status || 'Pending'}
+            Penugasan {status || 'Pending'}
         </button>
     );
 };
@@ -424,13 +424,13 @@ const RingkasChildren = React.memo(({ items, groupKey, auth, now, openReview, op
         rows.push(
             <tr key={c.id} className={`bg-surface/40 ${isLast ? 'border-b-2 border-border' : ''}`}>
                 <td className="px-4 py-3 whitespace-nowrap pl-12">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">{c.is_tugas_luar ? 'Tugas Luar' : 'Mengajar'}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">{c.is_tugas_luar ? 'Penugasan' : 'Mengajar'}</span>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap"></td>
                 <td className="px-4 py-3 whitespace-nowrap">
                     {c.is_tugas_luar ? (
                         <div className="text-xs leading-tight">
-                            <div className="font-semibold text-primary">{c.tujuan || 'Tugas Luar'}</div>
+                            <div className="font-semibold text-primary">{c.tujuan || 'Penugasan'}</div>
                             <div className="text-text-secondary">{c.keterangan || '—'}</div>
                         </div>
                     ) : c.jadwal ? (
@@ -664,7 +664,7 @@ const buildRingkasLabel = ({ hasKantor, hasMengajar, hasPiket, hasTugasLuar, has
     if (hasPiket) parts.push('Piket');
 
     if (parts.length === 0) {
-        if (hasTugasLuar) return 'Tugas Luar';
+        if (hasTugasLuar) return 'Penugasan';
         if (hasLembur) return 'Lembur';
         return '';
     }
@@ -951,7 +951,7 @@ const RingkasCards = ({ data, auth, expanded, setExpanded, openTugasLuar, setCon
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="min-w-0">
                                                         <p className="truncate text-xs font-bold text-text-primary">
-                                                            {c.is_tugas_luar ? 'Tugas Luar' : (c.jadwal?.mata_pelajaran?.nama || 'Mengajar')}
+                                                            {c.is_tugas_luar ? 'Penugasan' : (c.jadwal?.mata_pelajaran?.nama || 'Mengajar')}
                                                         </p>
                                                         <p className="truncate text-[11px] text-text-secondary">
                                                             {c.is_tugas_luar ? (c.tujuan || c.keterangan || '—') : (c.jadwal?.kelas_label || '—')}
@@ -1685,7 +1685,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         </div>
                     </div>
 
-                    {/* View mode + periode + Tugas Luar */}
+                    {/* View mode + periode + Penugasan */}
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
                             {!is_personal && (
@@ -1754,7 +1754,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         </div>
                         {canManage && (
                             <Link href={route('tugas-luar.index')} className="btn-secondary flex min-h-11 items-center gap-1.5 md:min-h-0 md:py-1.5 md:text-xs">
-                                <CalendarDays className="h-3.5 w-3.5" /> Kelola Tugas Luar
+                                <CalendarDays className="h-3.5 w-3.5" /> Kelola Penugasan
                             </Link>
                         )}
                     </div>
@@ -1815,7 +1815,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                             <th scope="col" onClick={() => toggleSort('keluar')} tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleSort('keluar')} className="px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Keluar <SortIcon col="keluar" /></th>
                                             <th scope="col" className="hidden md:table-cell px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider">Foto</th>
                                             <th scope="col" className="hidden lg:table-cell px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider">Lembur</th>
-                                            <th scope="col" className="hidden lg:table-cell px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider">Tugas Luar</th>
+                                            <th scope="col" className="hidden lg:table-cell px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider">Penugasan</th>
                                             <th scope="col" onClick={() => toggleSort('status')} tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleSort('status')} className="px-4 py-3.5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-primary">Status <SortIcon col="status" /></th>
                                             {auth.permissions?.includes('manage_master_data') && <th scope="col" className="px-4 py-3.5 text-right text-[10px] font-bold text-text-secondary uppercase tracking-wider">Lokasi</th>}
                                         </tr>
@@ -2397,7 +2397,7 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                         </div>
                     </Modal>
 
-                    {/* ─── MODAL: Detail Dinas Luar ─── */}
+                    {/* Modal detail penugasan */}
                     <Modal show={tugasLuarModal.show} onClose={() => setTugasLuarModal({ show: false, loading: false, data: null })} maxWidth="3xl">
                         <div className="p-5 sm:p-6">
                             <div className="mb-5 flex items-center justify-between border-b border-border pb-4">
@@ -2406,11 +2406,11 @@ export default function Index({ auth, presensis, pegawai, filters = {}, units, s
                                         <MapPin className="h-5 w-5" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-primary">Detail Dinas Luar</h3>
+                                        <h3 className="text-lg font-bold text-primary">Detail Penugasan</h3>
                                         {tugasLuarModal.data && <p className="mt-0.5 text-sm text-text-secondary">{tugasLuarModal.data.pegawai_nama} · {tugasLuarModal.data.tanggal}</p>}
                                     </div>
                                 </div>
-                                <button onClick={() => setTugasLuarModal({ show: false, loading: false, data: null })} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5" aria-label="Tutup detail dinas luar">
+                                <button onClick={() => setTugasLuarModal({ show: false, loading: false, data: null })} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface hover:text-primary md:min-h-0 md:min-w-0 md:p-1.5" aria-label="Tutup detail penugasan">
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
