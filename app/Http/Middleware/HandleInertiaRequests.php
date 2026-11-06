@@ -52,6 +52,7 @@ class HandleInertiaRequests extends Middleware
             // dibutuhkan halaman profil web & mobile.
             $relations = [
                 'pegawai',
+                'unitSekolah' => fn ($query) => $query->select('id', 'nama', 'singkatan', 'logo'),
                 'pegawai.units' => fn ($query) => $query->select('unit_sekolah.id', 'nama', 'singkatan', 'logo'),
                 'pegawai.jabatans' => fn ($query) => $query->select('jabatan.id', 'nama'),
                 'pegawai.statusRef' => fn ($query) => $query->select('kode', 'label', 'is_tetap'),
