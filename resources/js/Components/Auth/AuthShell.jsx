@@ -60,11 +60,11 @@ export default function AuthShell({
                             <p className="text-xs font-medium text-emerald-100/75">Lembaga</p>
                             <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-3 lg:gap-x-5">
                                 {lembaga.map((unit) => (
-                                    <li key={unit.nama} className="flex min-w-0 items-center gap-2.5 text-xs font-medium leading-snug text-emerald-50/90">
+                                    <li key={unit.nama} className="flex min-w-0 items-center gap-3 text-xs font-medium leading-snug text-emerald-50/90">
                                         {unit.logo ? (
-                                            <img src={unit.logo} alt={`Logo ${unit.nama}`} className="h-9 w-9 shrink-0 object-contain" />
+                                            <img src={unit.logo} alt={`Logo ${unit.nama}`} className="h-12 w-12 shrink-0 object-contain" />
                                         ) : unit.singkatan && unit.singkatan !== unit.nama ? (
-                                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-[10px] font-bold tracking-wide text-emerald-100/80">{unit.singkatan}</span>
+                                            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white/10 text-[10px] font-bold tracking-wide text-emerald-100/80">{unit.singkatan}</span>
                                         ) : null}
                                         <span className="min-w-0 break-words">{unit.nama}</span>
                                     </li>
