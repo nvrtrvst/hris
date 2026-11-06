@@ -637,7 +637,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                 <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>
-                        Penugasan aktif di tengah jam mengajar. JP yang belum di-slide tidak akan tercatat hadir. Presensi mengajar tersimpan sampai terakhir di-slide.
+                        Penugasan aktif di tengah jam mengajar. Setelah disetujui, JP yang overlap akan dicatat hadir otomatis. Jika masih pending, JP belum ter-cover.
                     </span>
                 </div>
             )}

@@ -69,12 +69,16 @@ export default function KepalaSekolahOverview({ auth, roleType, kepsekDaily, pen
     const guru = kepsekDaily?.guru || {};
     const piket = kepsekDaily?.piket || {};
     const siswa = kepsekDaily?.siswa;
+    const jpKosong = jp.kosong || 0;
+    const jpPenugasan = jp.penugasan || 0;
+    const jpKelasKosong = jp.kelas_kosong ?? (jpKosong + jpPenugasan);
+    const adaKosong = jpKosong > 0;
     const permissions = auth.permissions || [];
     const can = (permission) => permissions.includes(permission);
 
     const jpRows = [...(jp.rows || [])]
         .sort((a, b) => {
-            const rank = (row) => (row.status_waktu === 'lewat' ? 0 : row.status_waktu === 'berjalan' ? 1 : 2);
+            const rank = (row) => (row.penugasan ? 3 : row.status_waktu === 'lewat' ? 0 : row.status_waktu === 'berjalan' ? 1 : 2);
 
             return rank(a) - rank(b) || (a.jam_mulai || '').localeCompare(b.jam_mulai || '');
         })
@@ -108,20 +112,24 @@ export default function KepalaSekolahOverview({ auth, roleType, kepsekDaily, pen
                                 </h3>
                                 <p className="mt-1 text-sm text-text-secondary">Tidak ada KBM, jadi JP hari ini tidak dihitung kosong.</p>
                             </Card>
-                        ) : jp.kosong > 0 ? (
-                            <Card className="border-l-4 border-warning p-5">
+                        ) : jpKelasKosong > 0 ? (
+                            <Card className={`border-l-4 p-5 ${adaKosong ? 'border-warning' : 'border-info'}`}>
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <h3 className="flex items-center gap-2 text-base font-extrabold text-text-primary">
-                                            <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
-                                            JP Belum Diabsen
+                                            {adaKosong
+                                                ? <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
+                                                : <CalendarDays className="h-4 w-4 text-info" aria-hidden="true" />}
+                                            {adaKosong ? 'JP Belum Diabsen' : 'JP Penugasan'}
                                         </h3>
                                         <p className="mt-1 text-sm text-text-secondary">
-                                            {formatJp(jp.tercatat)} dari {formatJp(jp.total)} JP tercatat hari ini.
+                                            {adaKosong
+                                                ? `${formatJp(jp.tercatat)} dari ${formatJp(jp.total)} JP tercatat hari ini.`
+                                                : `${formatJp(jpPenugasan)} JP kelas kosong tercatat sebagai penugasan.`}
                                         </p>
                                     </div>
-                                    <p className="text-3xl font-extrabold leading-none tabular-nums text-warning">
-                                        {formatJp(jp.kosong)} <span className="text-sm font-semibold text-text-secondary">JP</span>
+                                    <p className={`text-3xl font-extrabold leading-none tabular-nums ${adaKosong ? 'text-warning' : 'text-info'}`}>
+                                        {formatJp(adaKosong ? jpKosong : jpPenugasan)} <span className="text-sm font-semibold text-text-secondary">JP</span>
                                     </p>
                                 </div>
 
@@ -133,14 +141,20 @@ export default function KepalaSekolahOverview({ auth, roleType, kepsekDaily, pen
                                     aria-valuemax={100}
                                     aria-label={`JP tercatat ${jpProgress} persen`}
                                 >
-                                    <div className="h-full rounded-full bg-warning" style={{ width: `${jpProgress}%` }} />
+                                    <div className={`h-full rounded-full ${adaKosong ? 'bg-warning' : 'bg-info'}`} style={{ width: `${jpProgress}%` }} />
                                 </div>
 
-                                <div className="mt-3 flex flex-wrap gap-1.5">
-                                    {jp.lewat > 0 && <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700">Lewat {formatJp(jp.lewat)} JP</span>}
-                                    {jp.berjalan > 0 && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">Berjalan {formatJp(jp.berjalan)} JP</span>}
-                                    {jp.belum_mulai > 0 && <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600">Belum mulai {formatJp(jp.belum_mulai)} JP</span>}
-                                </div>
+                                {adaKosong && (
+                                    <div className="mt-3 flex flex-wrap gap-1.5">
+                                        {jp.lewat > 0 && <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700">Lewat {formatJp(jp.lewat)} JP</span>}
+                                        {jp.berjalan > 0 && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">Berjalan {formatJp(jp.berjalan)} JP</span>}
+                                        {jp.belum_mulai > 0 && <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600">Belum mulai {formatJp(jp.belum_mulai)} JP</span>}
+                                    </div>
+                                )}
+
+                                {adaKosong && jpPenugasan > 0 && (
+                                    <p className="mt-2 text-xs text-text-secondary">{formatJp(jpPenugasan)} JP tercatat sebagai penugasan.</p>
+                                )}
 
                                 <ul className="mt-4 divide-y divide-border/60 border-t border-border/60">
                                     {jpRows.map((row) => (
@@ -150,12 +164,14 @@ export default function KepalaSekolahOverview({ auth, roleType, kepsekDaily, pen
                                             <span className="text-text-secondary">{row.mata_pelajaran?.nama || row.pegawaiMapel?.mataPelajaran?.nama || row.jenis_jadwal || '-'}</span>
                                             <span className="max-w-[12rem] truncate text-text-secondary">{row.pegawai?.nama_lengkap || '-'}</span>
                                             <span className="ml-auto flex flex-wrap items-center gap-1.5">
-                                                {row.guru_hadir ? (
+                                                {row.penugasan ? (
+                                                    <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700" title={row.tujuan_penugasan || undefined}>Penugasan</span>
+                                                ) : row.guru_hadir ? (
                                                     <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">Guru di unit</span>
                                                 ) : (
                                                     <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">Guru belum hadir</span>
                                                 )}
-                                                {waktuLabel[row.status_waktu] && (
+                                                {!row.penugasan && waktuLabel[row.status_waktu] && (
                                                     <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${waktuClass[row.status_waktu]}`}>
                                                         {waktuLabel[row.status_waktu]}
                                                     </span>
@@ -167,7 +183,9 @@ export default function KepalaSekolahOverview({ auth, roleType, kepsekDaily, pen
 
                                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                                     <p className="text-xs text-text-secondary">
-                                        {jp.guru_hadir > 0 ? `${formatJp(jp.guru_hadir)} JP di antaranya guru sudah absen harian.` : 'Perlu tindak lanjut guru terkait.'}
+                                        {jp.guru_hadir > 0
+                                            ? `${formatJp(jp.guru_hadir)} JP di antaranya guru sudah absen harian.`
+                                            : (jpPenugasan > 0 ? `${formatJp(jpPenugasan)} JP tercatat sebagai penugasan.` : 'Perlu tindak lanjut guru terkait.')}
                                     </p>
                                     {jpHref && (
                                         <Link href={jpHref} className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline">

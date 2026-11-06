@@ -8,9 +8,11 @@ use App\Models\LaporanPiket;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
+use App\Models\TugasLuar;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Services\LaporanPengawasanService;
+use App\Services\TugasLuarCoverageService;
 use Carbon\Carbon;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -143,6 +145,53 @@ class LaporanPengawasanTest extends TestCase
 
         $row = collect($data['matrix'])->firstWhere('pegawai_id', $guru->id);
         $this->assertSame('1 hari JP kurang', $row['temuan']);
+    }
+
+    public function test_kelas_penugasan_tetap_muncul_tanpa_menghitung_kelas_belum(): void
+    {
+        $guru = $this->pegawai('Guru Penugasan', true);
+        $jadwal = $this->jadwal($guru, 'Kelas Penugasan');
+
+        $tugas = TugasLuar::create([
+            'pegawai_id' => $guru->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => $this->date,
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '07:45:00',
+            'tujuan' => 'Kegiatan sekolah',
+            'created_by' => $this->admin->id,
+        ]);
+
+        $day = Presensi::create([
+            'pegawai_id' => $guru->id,
+            'jadwal_id' => null,
+            'unit_sekolah_id' => $this->unit->id,
+            'tipe_presensi' => 'tugas_luar',
+            'tanggal' => $this->date,
+            'jam_masuk' => '07:00:00',
+            'is_tugas_luar' => true,
+            'tugas_luar_status' => 'disetujui',
+            'tugas_luar_id' => $tugas->id,
+            'tujuan' => $tugas->tujuan,
+        ]);
+        $day->status = 'hadir';
+        $day->save();
+
+        app(TugasLuarCoverageService::class)->cover($day);
+
+        $data = app(LaporanPengawasanService::class)->build([
+            'from' => $this->date,
+            'to' => $this->date,
+            'unit_sekolah_id' => $this->unit->id,
+            'jenis_pegawai' => 'all',
+        ], $this->admin);
+
+        $this->assertEquals(1, $data['summary']['actual_jp']);
+        $this->assertSame(0, $data['summary']['kelas_belum']);
+        $this->assertCount(1, $data['class_issues']);
+        $this->assertSame('penugasan', $data['class_issues'][0]['status']);
+        $this->assertSame('Penugasan', $data['class_issues'][0]['sumber']);
+        $this->assertSame($jadwal->kelas_label, $data['class_issues'][0]['kelas']);
     }
 
     public function test_halaman_preview_pdf_dan_excel_bisa_diakses(): void

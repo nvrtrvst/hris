@@ -30,6 +30,7 @@ use App\Services\PiketPresensiService;
 use App\Services\PiketService;
 use App\Services\PiketSiswaTerlambatService;
 use App\Services\SpoofDetector;
+use App\Services\TugasLuarCoverageService;
 use App\Support\HariKerja;
 use App\Traits\CalculatesDistance;
 use App\Traits\ResolvesPegawai;
@@ -1147,6 +1148,10 @@ class MobileController extends Controller
             // UniqueConstraintViolationException per-JP (tidak rollback anchor).
             if ($request->tipe === 'masuk' && $jadwal && ! $isLembur && ! $isTugasLuar && $tipePresensi === 'mengajar') {
                 $this->coverSesiMengajar($pegawai, $jadwal, $hariIni, Carbon::now()->format('H:i:s'));
+            }
+
+            if ($request->tipe === 'masuk' && $isTugasLuar && $presensi->tugas_luar_status === 'disetujui') {
+                app(TugasLuarCoverageService::class)->cover($presensi);
             }
 
             return $presensi;

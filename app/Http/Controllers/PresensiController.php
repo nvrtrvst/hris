@@ -27,6 +27,7 @@ use App\Services\ImageUploadService;
 use App\Services\KeuanganClient;
 use App\Services\LaporanPdfService;
 use App\Services\PresensiPersonalReportService;
+use App\Services\TugasLuarCoverageService;
 use App\Traits\CalculatesDistance;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -1986,6 +1987,7 @@ class PresensiController extends Controller
             }
 
             $presensi->update(['tugas_luar_status' => 'disetujui']);
+            app(TugasLuarCoverageService::class)->cover($presensi);
 
             AuditPresensi::log($presensi->id, 'approve_tugas_luar', 'tugas_luar_status', 'pending', 'disetujui');
         });

@@ -72,6 +72,7 @@ const statusClass = {
     kelas_kosong: 'badge-warning',
     perlu_cek: 'badge-info',
     digantikan: 'badge-info',
+    penugasan: 'badge-info',
 };
 
 const statusLabel = {
@@ -79,6 +80,7 @@ const statusLabel = {
     kelas_kosong: 'Kelas kosong',
     perlu_cek: 'Perlu cek',
     digantikan: 'Digantikan',
+    penugasan: 'Penugasan',
 };
 
 const DetailTable = ({ metric, rows }) => {
@@ -393,7 +395,7 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                             <Card className="overflow-hidden">
                                 <div className="border-b border-border bg-surface px-4 py-3">
                                     <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary">Kelas &amp; Mengajar</h3>
-                                    <p className="text-xs text-text-muted">Hanya jadwal yang bermasalah</p>
+                                    <p className="text-xs text-text-muted">Jadwal kosong, perlu cek, atau tercatat sebagai Penugasan</p>
                                 </div>
                                 {preview.class_issues.length === 0 ? (
                                     <div className="p-6 text-center text-xs text-text-muted">Tidak ada kelas bermasalah pada filter ini.</div>
