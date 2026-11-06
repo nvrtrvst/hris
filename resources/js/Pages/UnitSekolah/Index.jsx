@@ -63,7 +63,7 @@ export default function Index({ auth, units, stats }) {
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 {unit.logo_url ? (
-                                                    <img src={unit.logo_url} alt={`Logo ${unit.nama}`} className="h-10 w-10 shrink-0 rounded-xl border border-border bg-white object-contain p-0.5" />
+                                                    <img src={unit.logo_url} alt={`Logo ${unit.nama}`} className="h-10 w-10 shrink-0 object-contain" />
                                                 ) : (
                                                     <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${avatarTone(unit.nama)}`}>
                                                         {initials(unit.nama)}
@@ -114,7 +114,7 @@ export default function Index({ auth, units, stats }) {
                                 <div key={unit.id} className="p-4">
                                     <div className="flex items-start gap-3">
                                         {unit.logo_url ? (
-                                            <img src={unit.logo_url} alt={`Logo ${unit.nama}`} className="h-10 w-10 shrink-0 rounded-xl border border-border bg-white object-contain p-0.5" />
+                                            <img src={unit.logo_url} alt={`Logo ${unit.nama}`} className="h-10 w-10 shrink-0 object-contain" />
                                         ) : (
                                             <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${avatarTone(unit.nama)}`}>
                                                 {initials(unit.nama)}

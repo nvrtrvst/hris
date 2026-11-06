@@ -156,7 +156,7 @@ export default function AdminShell({ user: userProp, header, children }) {
                     <img
                         src={sidebarLogo}
                         alt={`Logo ${sidebarName}`}
-                        className="h-10 w-10 shrink-0 rounded-xl bg-white object-contain p-1 ring-1 ring-white/15"
+                        className="h-10 w-10 shrink-0 object-contain"
                     />
                     {(!collapsed || drawer) && (
                         <span className="min-w-0 flex-1">
