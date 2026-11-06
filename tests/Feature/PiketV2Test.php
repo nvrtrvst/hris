@@ -480,8 +480,36 @@ class PiketV2Test extends TestCase
         return $jadwal;
     }
 
+    private function fakeKeuanganAbsen(): void
+    {
+        config(['keuangan.url' => 'http://keuangan.test', 'keuangan.key' => 'test-key']);
+
+        Http::fake([
+            '*/api/integration/kelas-by-unit*' => Http::response([
+                'data' => [
+                    'classes' => [
+                        ['id' => '101', 'grade' => 'X', 'name' => 'A', 'major_name' => ''],
+                        ['id' => 'cls-simple', 'grade' => '7', 'name' => 'Ahmad', 'major_name' => ''],
+                        ['id' => 'K1', 'grade' => 'K1', 'name' => '', 'major_name' => ''],
+                        ['id' => 'K2', 'grade' => 'K2', 'name' => '', 'major_name' => ''],
+                    ],
+                ],
+            ]),
+            '*/api/integration/siswa-by-class*' => Http::response([
+                'data' => [
+                    'students' => [
+                        ['nis' => '001', 'nama' => 'Siswa Satu'],
+                        ['nis' => '002', 'nama' => 'Siswa Dua'],
+                    ],
+                ],
+            ]),
+        ]);
+    }
+
     private function payloadAbsen(array $overrides = []): array
     {
+        $this->fakeKeuanganAbsen();
+
         return array_merge([
             'class_id' => '101',
             'class_label' => 'X A',
@@ -525,6 +553,7 @@ class PiketV2Test extends TestCase
     public function test_admin_bisa_koreksi_absen_siswa_setelah_laporan_dikirim(): void
     {
         Carbon::setTestNow('2026-10-26 16:00:00');
+        $this->fakeKeuanganAbsen();
         $a = $this->pegawai('Petugas A');
         $jadwal = $this->siapkanAbsenArea($a);
 
@@ -550,12 +579,14 @@ class PiketV2Test extends TestCase
             ->post(route('absen-siswa.koreksi', $sesi->id), [
                 'alasan' => 'Surat dokter masuk setelah laporan dikirim',
                 'siswa' => [
-                    ['nis' => '001', 'nama' => 'Siswa Satu', 'status' => 'sakit', 'keterangan' => 'Demam'],
+                    ['nis' => '001', 'nama' => 'Nama Palsu', 'status' => 'sakit', 'keterangan' => 'Demam'],
                 ],
             ])
             ->assertRedirect();
 
-        $this->assertSame('sakit', $sesi->details()->first()->status);
+        $detail = $sesi->details()->first();
+        $this->assertSame('sakit', $detail->status);
+        $this->assertSame('Siswa Satu', $detail->nama_snapshot);
         $this->assertDatabaseHas('absen_siswa_revisi', [
             'absen_siswa_sesi_id' => $sesi->id,
             'peran' => 'admin',
@@ -1121,6 +1152,7 @@ class PiketV2Test extends TestCase
     public function test_absen_siswa_baru_selesai_setelah_semua_kelas_tersimpan(): void
     {
         Carbon::setTestNow('2026-10-26 10:00:00');
+        $this->fakeKeuanganAbsen();
         $piket = $this->pegawai('Petugas Piket');
         $this->masuk($piket);
         $jadwal = $this->jadwal($piket);
@@ -1452,6 +1484,7 @@ class PiketV2Test extends TestCase
     public function test_absen_siswa_mode_simple_menandai_item_piket(): void
     {
         Carbon::setTestNow('2026-10-26 07:00:00');
+        $this->fakeKeuanganAbsen();
         $this->unit->forceFill(['piket_mode' => 'simple'])->save();
 
         $piket = $this->pegawai('Petugas Simple');

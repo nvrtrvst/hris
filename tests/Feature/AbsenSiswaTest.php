@@ -36,6 +36,30 @@ class AbsenSiswaTest extends TestCase
             'latitude' => -6.2, 'longitude' => 106.8,
             'radius_meter' => 100, 'durasi_jp' => 45, 'toleransi_menit' => 0,
         ]);
+
+    }
+
+    private function fakeKeuangan(): void
+    {
+        config(['keuangan.url' => 'http://keuangan.test', 'keuangan.key' => 'test-key']);
+
+        Http::fake([
+            '*/api/integration/kelas-by-unit*' => Http::response([
+                'data' => [
+                    'classes' => [
+                        ['id' => '77', 'grade' => 'VII', 'name' => 'A', 'major_name' => ''],
+                    ],
+                ],
+            ]),
+            '*/api/integration/siswa-by-class*' => Http::response([
+                'data' => [
+                    'students' => [
+                        ['nis' => '001', 'nama' => 'Ani'],
+                        ['nis' => '002', 'nama' => 'Budi'],
+                    ],
+                ],
+            ]),
+        ]);
     }
 
     private function makePegawai(): Pegawai
@@ -82,6 +106,8 @@ class AbsenSiswaTest extends TestCase
 
     private function payload(array $siswa = []): array
     {
+        $this->fakeKeuangan();
+
         return [
             'class_id' => '77',
             'class_label' => 'VII A',
@@ -114,6 +140,70 @@ class AbsenSiswaTest extends TestCase
         $this->assertDatabaseHas('absen_siswa_detail', [
             'nis' => '002', 'status' => 'izin', 'keterangan' => 'Acara keluarga',
         ]);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_nama_siswa_dari_client_diabaikan(): void
+    {
+        $pegawai = $this->makePegawai();
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->post(route('presensi.piket.absen-siswa'), $this->payload([
+                ['nis' => '001', 'nama' => 'Nama Palsu', 'status' => 'hadir'],
+            ]))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('absen_siswa_detail', [
+            'nis' => '001',
+            'nama_snapshot' => 'Ani',
+        ]);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_nis_di_luar_roster_ditolak(): void
+    {
+        $pegawai = $this->makePegawai();
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.absen-siswa'), $this->payload([
+                ['nis' => '999', 'status' => 'hadir'],
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('siswa');
+
+        $this->assertSame(0, AbsenSiswaSesi::count());
+
+        Carbon::setTestNow();
+    }
+
+    public function test_integrasi_siswa_gagal_tidak_menyimpan_absen(): void
+    {
+        $pegawai = $this->makePegawai();
+        config(['keuangan.url' => 'http://keuangan.test', 'keuangan.key' => 'test-key']);
+
+        Http::fake([
+            '*/api/integration/kelas-by-unit*' => Http::response([
+                'data' => ['classes' => [['id' => '77', 'grade' => 'VII', 'name' => 'A', 'major_name' => '']]],
+            ]),
+            '*/api/integration/siswa-by-class*' => Http::response([], 500),
+        ]);
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.piket.absen-siswa'), [
+                'class_id' => '77',
+                'class_label' => 'VII A',
+                'latitude' => -6.2,
+                'longitude' => 106.8,
+                'accuracy' => 15,
+                'siswa' => [['nis' => '001', 'status' => 'hadir']],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('siswa');
+
+        $this->assertSame(0, AbsenSiswaSesi::count());
 
         Carbon::setTestNow();
     }
