@@ -61,37 +61,45 @@ class PhotoOverlayService
         $height = imagesy($img);
 
         $pad = max(12, (int) round($width * 0.030));
-        $titleSz = max(14, (int) round($width * 0.032));
-        $bodySz = max(11, (int) round($width * 0.024));
-        $smallSz = max(9, (int) round($width * 0.020));
+        $titleSz = max(16, (int) round($width * 0.038));
+        $nameSz = max(14, (int) round($width * 0.030));
+        $unitSz = max(12, (int) round($width * 0.026));
+        $metaSz = max(11, (int) round($width * 0.022));
 
         $white = imagecolorallocate($img, 255, 255, 255);
         $gray = imagecolorallocate($img, 200, 212, 220);
         $emerald = imagecolorallocate($img, 110, 231, 183);
         $amber = imagecolorallocate($img, 252, 211, 77);
-        $badgeText = imagecolorallocate($img, 17, 24, 39);
 
         $isLembur = ! empty($data['is_lembur']);
         $labelColor = $isLembur ? $amber : $emerald;
 
-        // ── Panel bawah: label + waktu + info ──
+        $hasMap = ! empty($data['latitude']) && ! empty($data['longitude']);
+        $cardSize = $this->mapCardSize($width);
+        $mapGap = max(8, (int) round($width * 0.02));
+        // Map card memakai area kanan; teks harus wrap di sisa lebar agar tidak tertimpa.
+        $textMaxWidth = max(120, $width - ($pad * 2) - ($hasMap ? $cardSize + $mapGap : 0));
+
         $lines = [];
-        $labelText = $data['label'] ?? 'BUKTI PRESENSI';
-        $timeText = ! empty($data['time']) ? '  |  '.$data['time'] : '';
-        $lines[] = [$titleSz, $labelText.$timeText, $labelColor, true];
-        $nameUnit = '';
+        $labelText = trim((string) ($data['label'] ?? ''));
+        $timeText = trim((string) ($data['time'] ?? ''));
+        $headline = $labelText;
+        if ($timeText !== '') {
+            $headline = $labelText !== '' ? $labelText.'  |  '.$timeText : $timeText;
+        }
+        if ($headline !== '') {
+            $this->addWrappedLines($lines, $titleSz, $headline, $labelColor, true, $textMaxWidth);
+        }
         if (! empty($data['pegawai'])) {
-            $nameUnit .= $data['pegawai'];
+            $this->addWrappedLines($lines, $nameSz, (string) $data['pegawai'], $white, true, $textMaxWidth);
         }
         if (! empty($data['unit'])) {
-            $nameUnit .= ' - '.$data['unit'];
-        }
-        if ($nameUnit) {
-            $lines[] = [$bodySz, $nameUnit, $white, true];
+            $this->addWrappedLines($lines, $unitSz, (string) $data['unit'], $gray, false, $textMaxWidth);
         }
         if (! empty($data['date'])) {
-            $lines[] = [$smallSz, $data['date'], $gray, false];
+            $this->addWrappedLines($lines, $metaSz, (string) $data['date'], $gray, false, $textMaxWidth);
         }
+
         $coordLine = '';
         if (! empty($data['coordinates'])) {
             $coordLine .= $data['coordinates'];
@@ -99,28 +107,27 @@ class PhotoOverlayService
         if (! empty($data['accuracy'])) {
             $coordLine .= ($coordLine ? ' | ' : '').'Akurasi: '.$data['accuracy'];
         }
-        if ($coordLine) {
-            $lines[] = [$smallSz, $coordLine, $white, false];
+        if ($coordLine !== '') {
+            $this->addWrappedLines($lines, $metaSz, $coordLine, $gray, false, $textMaxWidth);
         }
+
         $alamat = $this->buildAlamat($data);
         if ($alamat) {
-            $lines[] = [$smallSz, $alamat, $white, false];
+            $this->addWrappedLines($lines, $metaSz, $alamat, $gray, false, $textMaxWidth);
         }
 
-        $gap = 4;
+        $gap = max(4, (int) round($width * 0.008));
         $panelH = $pad * 2;
-        foreach ($lines as [$sz, $txt, $col, $bold]) {
+        foreach ($lines as [$sz]) {
             $panelH += $sz + $gap;
         }
-        $panelH = min($panelH, (int) round($height * 0.42));
-
-        $estCardSize = max(80, min((int) round($width * 0.30), 180));
-        $panelH = max($panelH, $estCardSize + $pad);
         $panelH = min($panelH, (int) round($height * 0.55));
+
+        $panelH = max($panelH, $cardSize + $pad);
 
         $panelTop = $height - $panelH;
 
-        $panel = imagecolorallocatealpha($img, 0, 0, 0, 80);
+        $panel = imagecolorallocatealpha($img, 0, 0, 0, 92);
         imagefilledrectangle($img, 0, $panelTop, $width, $height, $panel);
 
         $y = $panelTop + $pad + $titleSz;
@@ -130,27 +137,11 @@ class PhotoOverlayService
             $y += $sz + $gap;
         }
 
-        // Map thumbnail di pojok kanan panel
         $this->renderMap($img, $data, $panelTop, $panelH);
     }
 
     /**
-     * Mini Location Card: map sebagai background, marker sebagai focal point,
-     * info panel integrated di bagian bawah card.
-     *
-     * Struktur (180×180 px example):
-     * ┌──────────────────────────────┐
-     * │  card shadow + white border  │
-     * │ ┌──────────────────────────┐ │
-     * │ │  dimmed map background   │ │
-     * │ │          ●               │ │
-     * │ │  ┌────────────────────┐  │ │
-     * │ │  │ LOKASI PRESENSI    │  │ │
-     * │ │  │ -7.197, 107.895    │  │ │
-     * │ │  │ ✓ Dalam radius     │  │ │
-     * │ │  └────────────────────┘  │ │
-     * │ └──────────────────────────┘ │
-     * └──────────────────────────────┘
+     * Mini location card: map thumbnail, marker, dan panel lokasi.
      */
     private function renderMap($img, array $data, int $panelTop, int $panelH): void
     {
@@ -173,9 +164,7 @@ class PhotoOverlayService
         $fx = ($xt - $tileX) * $tileSize;
         $fy = ($yt - $tileY) * $tileSize;
 
-        // Ukuran map container TETAP (30% lebar image, max 180px)
-        $cardSize = (int) round(imagesx($img) * 0.30);
-        $cardSize = max(80, min($cardSize, 180));
+        $cardSize = $this->mapCardSize(imagesx($img));
 
         // Fetch 4 tiles (2x2 grid) supaya GPS selalu dekat tengah
         $t0x = $fx < 128 ? $tileX - 1 : $tileX;
@@ -233,7 +222,6 @@ class PhotoOverlayService
         imagecopyresampled($finalMap, $mapImg, 0, 0, 0, 0, $cardSize, $cardSize, $cropW, $cropH);
         imagedestroy($mapImg);
 
-        // ── CARD COMPOSITION ──
         $width = imagesx($img);
         $cardX = $width - $cardSize;
         $cardY = $panelTop + (int) round(($panelH - $cardSize) / 2);
@@ -487,6 +475,86 @@ class PhotoOverlayService
         }
 
         return implode(' | ', $parts);
+    }
+
+    private function mapCardSize(int $width): int
+    {
+        return max(80, min((int) round($width * 0.30), 180));
+    }
+
+    private function addWrappedLines(array &$lines, float $size, string $text, int $color, bool $bold, int $maxWidth): void
+    {
+        $font = $bold ? $this->fontBold : $this->fontRegular;
+
+        foreach ($this->wrapText($size, $text, $font, $maxWidth) as $line) {
+            if (trim($line) !== '') {
+                $lines[] = [$size, $line, $color, $bold];
+            }
+        }
+    }
+
+    /** @return list<string> */
+    private function wrapText(float $size, string $text, string $font, int $maxWidth): array
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
+        if ($text === '') {
+            return [];
+        }
+
+        $lines = [];
+        $current = '';
+        foreach (explode(' ', $text) as $word) {
+            $candidate = $current === '' ? $word : $current.' '.$word;
+            if ($this->textWidth($size, $candidate, $font) <= $maxWidth) {
+                $current = $candidate;
+
+                continue;
+            }
+
+            if ($current !== '') {
+                $lines[] = $current;
+                $current = '';
+            }
+
+            $chunks = $this->splitWord($size, $word, $font, $maxWidth);
+            $current = array_pop($chunks) ?? '';
+            foreach ($chunks as $chunk) {
+                $lines[] = $chunk;
+            }
+        }
+
+        if ($current !== '') {
+            $lines[] = $current;
+        }
+
+        return $lines;
+    }
+
+    /** @return list<string> */
+    private function splitWord(float $size, string $word, string $font, int $maxWidth): array
+    {
+        if ($this->textWidth($size, $word, $font) <= $maxWidth) {
+            return [$word];
+        }
+
+        $chars = preg_split('//u', $word, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $chunks = [];
+        $current = '';
+        foreach ($chars as $char) {
+            $candidate = $current.$char;
+            if ($current !== '' && $this->textWidth($size, $candidate, $font) > $maxWidth) {
+                $chunks[] = $current;
+                $current = $char;
+            } else {
+                $current = $candidate;
+            }
+        }
+
+        if ($current !== '') {
+            $chunks[] = $current;
+        }
+
+        return $chunks;
     }
 
     private function textRight($img, float $size, int $rightX, int $y, $color, string $font, string $text): void

@@ -1389,7 +1389,7 @@ class MobileController extends Controller
         $now = Carbon::now();
 
         $overlayData = [
-            'label' => $isLembur ? 'BUKTI LEMBUR' : ($isTugasLuar ? 'PENUGASAN' : 'ABSEN TETAP'),
+            'label' => $isLembur ? 'BUKTI LEMBUR' : ($isTugasLuar ? 'PENUGASAN' : ''),
             'is_lembur' => $isLembur,
             'pegawai' => $pegawai->nama_lengkap,
             'unit' => $unit->nama,

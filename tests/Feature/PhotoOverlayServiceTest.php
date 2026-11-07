@@ -8,9 +8,9 @@ use Tests\TestCase;
 
 class PhotoOverlayServiceTest extends TestCase
 {
-    private function sampleBinary(): string
+    private function sampleBinary(int $width = 40, int $height = 40): string
     {
-        $img = imagecreatetruecolor(40, 40);
+        $img = imagecreatetruecolor($width, $height);
         $red = imagecolorallocate($img, 200, 50, 50);
         imagefill($img, 0, 0, $red);
         ob_start();
@@ -42,6 +42,36 @@ class PhotoOverlayServiceTest extends TestCase
         $out = app(PhotoOverlayService::class)->applyToImage($this->sampleBinary(), $data);
 
         $this->assertStringStartsWith('RIFF', $out); // magic webp
+    }
+
+    public function test_renders_label_kosong_dengan_nama_panjang_dan_map(): void
+    {
+        if (! function_exists('imagewebp')) {
+            $this->markTestSkipped('GD webp support required');
+        }
+
+        Http::fake([
+            '*basemaps.cartocdn.com*' => Http::response('', 500),
+            '*tile.openstreetmap.org*' => Http::response('', 500),
+        ]);
+
+        $data = [
+            'label' => '',
+            'pegawai' => 'Sahrul Sidiq, S.Pd., M.Pd.',
+            'unit' => 'SMP Plus Nuurul Muttaqiin Cisarupan Garut',
+            'time' => '07:33:18 WIB',
+            'date' => 'Sabtu, 7 November 2026',
+            'coordinates' => '-7.312029, 107.792123',
+            'accuracy' => '21m',
+            'kecamatan' => 'Cisurupan',
+            'kelurahan' => 'Cisurupan',
+            'latitude' => -7.312029,
+            'longitude' => 107.792123,
+        ];
+
+        $out = app(PhotoOverlayService::class)->applyToImage($this->sampleBinary(640, 480), $data);
+
+        $this->assertStringStartsWith('RIFF', $out);
     }
 
     public function test_renders_without_alamat(): void
