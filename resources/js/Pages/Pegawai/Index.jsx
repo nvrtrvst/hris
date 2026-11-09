@@ -44,7 +44,7 @@ import {
     X,
 } from 'lucide-react';
 
-export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSekolahs, mataPelajarans, jabatans, isPimpinan = false, perluPilihUnit = false }) {
+export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSekolahs, mataPelajarans, jabatans, isPimpinan = false, perluPilihUnit = false, exportColumns = [], defaultExportColumns = [] }) {
     const isAdminUnit = auth.roles?.includes('admin_unit');
     const [processing, setProcessing] = useState(false);
 
@@ -59,6 +59,29 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
     const [jabatanId, setJabatanId] = useState(filters.jabatan_id || '');
     const [jenisFilter, setJenisFilter] = useState(filters.jenis_filter || '');
     const [showImportModal, setShowImportModal] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [exportScope, setExportScope] = useState('filtered');
+
+    const initialExportColumns = React.useMemo(
+        () => (defaultExportColumns.length > 0 ? defaultExportColumns : exportColumns.map((column) => column.key)),
+        [defaultExportColumns, exportColumns],
+    );
+    const [selectedColumns, setSelectedColumns] = useState(initialExportColumns);
+    const exportGroups = React.useMemo(() => {
+        const groups = [];
+        const index = new Map();
+
+        exportColumns.forEach((column) => {
+            if (!index.has(column.group)) {
+                const group = { name: column.group, columns: [] };
+                index.set(column.group, group);
+                groups.push(group);
+            }
+            index.get(column.group).columns.push(column);
+        });
+
+        return groups;
+    }, [exportColumns]);
 
     const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
         file: null,
@@ -69,6 +92,45 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
     const hasFilter = Boolean(search || unitSekolahId || mataPelajaranId || jabatanId || jenisFilter);
     const [filterSheetOpen, setFilterSheetOpen] = useState(false);
     const activeFilterCount = [unitSekolahId, mataPelajaranId, jabatanId, jenisFilter].filter(Boolean).length;
+
+    const toggleExportColumn = (key) => {
+        setSelectedColumns((current) => (
+            current.includes(key) ? current.filter((item) => item !== key) : [...current, key]
+        ));
+    };
+
+    const selectAllExportColumns = () => {
+        setSelectedColumns(exportColumns.map((column) => column.key));
+    };
+
+    const resetExportColumns = () => {
+        setSelectedColumns(initialExportColumns);
+    };
+
+    const openExportModal = () => {
+        setExportScope(hasFilter ? 'filtered' : 'all');
+        setShowExportModal(true);
+    };
+
+    const downloadExport = () => {
+        if (selectedColumns.length === 0) return;
+
+        const params = new URLSearchParams();
+        params.set('scope', exportScope);
+        selectedColumns.forEach((column) => params.append('columns[]', column));
+
+        if (exportScope === 'filtered') {
+            if (search) params.set('search', search);
+            if (unitSekolahId) params.set('unit_sekolah_id', unitSekolahId);
+            if (mataPelajaranId) params.set('mata_pelajaran_id', mataPelajaranId);
+            if (jabatanId) params.set('jabatan_id', jabatanId);
+            if (jenisFilter) params.set('jenis_filter', jenisFilter);
+        }
+
+        // Response file tidak lewat Inertia; gunakan navigasi browser.
+        window.location.href = `${route('pegawai.export')}?${params.toString()}`;
+        setShowExportModal(false);
+    };
 
     const buildParams = (overrides = {}) => ({
         search,
@@ -145,21 +207,12 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                     description="Kelola data seluruh pegawai di lingkungan yayasan."
                     actions={
                         <>
-                            <Link href={route('pegawai.template')} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary shadow-card hover:border-primary/30 hover:text-primary">
+                            <a href={route('pegawai.template')} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary shadow-card hover:border-primary/30 hover:text-primary">
                                 <Download className="h-3.5 w-3.5" /> Template
-                            </Link>
-                            <Link
-                                href={route('pegawai.export', {
-                                    search,
-                                    unit_sekolah_id: unitSekolahId,
-                                    mata_pelajaran_id: mataPelajaranId,
-                                    jabatan_id: jabatanId,
-                                    jenis_filter: jenisFilter,
-                                })}
-                                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-bold text-text-secondary shadow-card hover:border-primary/30 hover:text-primary"
-                            >
+                            </a>
+                            <Button variant="secondary" size="sm" onClick={openExportModal}>
                                 <FileSpreadsheet className="h-3.5 w-3.5" /> Export
-                            </Link>
+                            </Button>
                             <Button variant="secondary" size="sm" onClick={() => setShowImportModal(true)}>
                                 <Upload className="h-3.5 w-3.5" /> Import
                             </Button>
@@ -546,6 +599,102 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                         </div>
                     </div>
                 </form>
+            </Modal>
+
+            <Modal show={showExportModal} onClose={() => setShowExportModal(false)} maxWidth="3xl">
+                <div className="p-6">
+                    <div className="mb-5 flex items-start justify-between gap-3">
+                        <div>
+                            <h3 className="text-lg font-bold text-primary">Export Data Pegawai</h3>
+                            <p className="mt-1 text-sm text-text-secondary">Pilih cakupan dan kolom yang ingin diunduh.</p>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setShowExportModal(false)} aria-label="Tutup">
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+
+                    {hasFilter && (
+                        <fieldset className="mb-5">
+                            <legend className="text-xs font-bold text-text-primary">Cakupan data</legend>
+                            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <label className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border border-border px-3 text-sm hover:bg-surface">
+                                    <input
+                                        type="radio"
+                                        name="export-scope"
+                                        value="filtered"
+                                        checked={exportScope === 'filtered'}
+                                        onChange={() => setExportScope('filtered')}
+                                        className="h-4 w-4 text-primary focus:ring-primary/25"
+                                    />
+                                    <span>Sesuai filter saat ini</span>
+                                </label>
+                                <label className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border border-border px-3 text-sm hover:bg-surface">
+                                    <input
+                                        type="radio"
+                                        name="export-scope"
+                                        value="all"
+                                        checked={exportScope === 'all'}
+                                        onChange={() => setExportScope('all')}
+                                        className="h-4 w-4 text-primary focus:ring-primary/25"
+                                    />
+                                    <span>Semua pegawai dalam akses saya</span>
+                                </label>
+                            </div>
+                        </fieldset>
+                    )}
+
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-bold text-text-primary" aria-live="polite">{selectedColumns.length} kolom dipilih</p>
+                        <div className="flex items-center gap-3">
+                            <button type="button" onClick={selectAllExportColumns} className="text-xs font-bold text-primary hover:underline">
+                                Pilih semua
+                            </button>
+                            <button type="button" onClick={resetExportColumns} className="inline-flex items-center gap-1 text-xs font-bold text-text-secondary hover:text-primary">
+                                <RotateCcw className="h-3.5 w-3.5" /> Reset default
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="max-h-[55vh] space-y-5 overflow-y-auto pr-1">
+                        {exportGroups.map((group) => (
+                            <fieldset key={group.name}>
+                                <legend className="text-xs font-bold text-text-primary">{group.name}</legend>
+                                {group.name === 'Data Sensitif' && (
+                                    <p className="mt-0.5 text-xs text-text-secondary">Kolom sensitif hanya tersedia untuk pengguna berwenang.</p>
+                                )}
+                                <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                                    {group.columns.map((column) => (
+                                        <label
+                                            key={column.key}
+                                            htmlFor={`export-col-${column.key}`}
+                                            className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2 text-sm text-text-primary hover:bg-surface"
+                                        >
+                                            <input
+                                                id={`export-col-${column.key}`}
+                                                type="checkbox"
+                                                checked={selectedColumns.includes(column.key)}
+                                                onChange={() => toggleExportColumn(column.key)}
+                                                className="h-4 w-4 rounded border-border text-primary focus:ring-primary/25"
+                                            />
+                                            <span>{column.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </fieldset>
+                        ))}
+                    </div>
+
+                    {selectedColumns.length === 0 && <p className="mt-2 text-xs font-semibold text-rose-600">Pilih minimal satu kolom.</p>}
+
+                    <div className="sticky bottom-0 -mx-6 -mb-6 mt-5 flex items-center justify-end gap-2 border-t border-border bg-white px-6 py-4">
+                        <Button type="button" variant="secondary" onClick={() => setShowExportModal(false)}>
+                            Batal
+                        </Button>
+                        <Button type="button" onClick={downloadExport} disabled={selectedColumns.length === 0}>
+                            <Download className="h-4 w-4" /> Download Excel
+                        </Button>
+                    </div>
+                </div>
             </Modal>
         </AdminShell>
     );
