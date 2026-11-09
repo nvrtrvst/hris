@@ -80,6 +80,8 @@ class PegawaiIndexTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('perluPilihUnit', false)
                 ->has('pegawais.data', 2)
+                ->where('stats.total', 2)
+                ->where('stats.aktif', 2)
             );
     }
 
@@ -93,6 +95,9 @@ class PegawaiIndexTest extends TestCase
                 ->where('perluPilihUnit', false)
                 ->has('pegawais.data', 1)
                 ->where('pegawais.data.0.nama_lengkap', 'Guru Unit B')
+                ->where('stats.total', 1)
+                ->where('stats.aktif', 1)
+                ->where('stats.nonaktif', 0)
             );
     }
 
@@ -105,6 +110,8 @@ class PegawaiIndexTest extends TestCase
                 ->where('perluPilihUnit', false)
                 ->has('pegawais.data', 1)
                 ->where('pegawais.data.0.nama_lengkap', 'Guru Unit A')
+                ->where('stats.total', 1)
+                ->where('stats.aktif', 1)
             );
     }
 
