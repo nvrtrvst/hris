@@ -280,10 +280,9 @@ class PegawaiController extends Controller
         $user = auth()->user();
         $isPimpinan = $this->isPimpinanReadOnly($user);
 
-        // Stats ringkasan: 1 query agregat + 1 count ringan (kontrak berakhir).
-        // Dihitung TANPA filter unit agar kartu statistik tetap menggambarkan
-        // seluruh yayasan (sesuai scope role) walau daftar pegawai belum difilter unit.
-        $statsQuery = $this->pegawaiQuery($request, [], applyUnitFilter: false);
+        // Stats ringkasan mengikuti filter aktif agar kartu "Data saat ini"
+        // konsisten dengan daftar pegawai yang sedang ditampilkan.
+        $statsQuery = $this->pegawaiQuery($request, []);
         $agg = (clone $statsQuery)->selectRaw("COUNT(*) as total, SUM(CASE WHEN status_aktif = 'aktif' THEN 1 ELSE 0 END) as aktif")->first();
         $kontrakEnd = now()->addDays(30)->format('Y-m-d');
         $kontrakBerakhir = (clone $statsQuery)
