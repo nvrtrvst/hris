@@ -19,8 +19,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 /**
- * Render PDF laporan (DomPDF). Satu-satunya sumber logika render PDF laporan
- * (dipakai LaporanController::exportPdf).
+ * Render PDF laporan dan export data pegawai (DomPDF).
  */
 class LaporanPdfService
 {
@@ -87,6 +86,45 @@ class LaporanPdfService
         };
 
         return $this->renderDocument($validated, $unitId, $headings, $rows, $title, $filename, $type);
+    }
+
+    public function generatePegawai(array $headings, array $rows, string $scopeLabel, string $filename): array
+    {
+        if (count($rows) > self::MAX_ROWS) {
+            throw new PdfTooLargeException(
+                'Data terlalu banyak untuk PDF ('.count($rows).' baris, maksimal '.self::MAX_ROWS.'). Gunakan cakupan lebih sempit atau export ke Excel.'
+            );
+        }
+
+        set_time_limit(900);
+        ini_set('memory_limit', '1G');
+
+        $kopUnit = UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
+        $logoPath = $this->resolveUnitLogoPath($kopUnit) ?? $this->resolveYayasanLogoPath();
+        $kop = [
+            'name' => $kopUnit?->nama ? strtoupper($kopUnit->nama) : config('yayasan.name'),
+            'tagline' => config('yayasan.tagline'),
+            'address' => $kopUnit?->alamat ?: config('yayasan.address'),
+            'phone' => $kopUnit?->telepon ?: config('yayasan.phone'),
+            'email' => config('yayasan.email'),
+            'website' => $kopUnit?->web ?: config('yayasan.website'),
+        ];
+
+        $pdf = Pdf::loadView('exports.pdf-pegawai', [
+            'title' => 'DATA PEGAWAI',
+            'headings' => $headings,
+            'rows' => $rows,
+            'scopeLabel' => $scopeLabel,
+            'generatedAt' => now()->format('d/m/Y H:i'),
+            'totalRows' => count($rows),
+            'logoPath' => $logoPath,
+            'kop' => $kop,
+        ])->setPaper(count($headings) > 12 ? 'A3' : 'A4', 'landscape');
+
+        return [
+            'filename' => $filename,
+            'content' => $pdf->output(),
+        ];
     }
 
     public function generatePresensiPribadi(array $validated, Pegawai $pegawai, array $summary): array

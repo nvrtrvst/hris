@@ -29,6 +29,7 @@ import {
     Download,
     Eye,
     FileSpreadsheet,
+    FileText,
     GraduationCap,
     Loader2,
     Mail,
@@ -103,6 +104,10 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
         setSelectedColumns(exportColumns.map((column) => column.key));
     };
 
+    const clearExportColumns = () => {
+        setSelectedColumns([]);
+    };
+
     const resetExportColumns = () => {
         setSelectedColumns(initialExportColumns);
     };
@@ -112,7 +117,7 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
         setShowExportModal(true);
     };
 
-    const downloadExport = () => {
+    const downloadExport = (format) => {
         if (selectedColumns.length === 0) return;
 
         const params = new URLSearchParams();
@@ -128,7 +133,8 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
         }
 
         // Response file tidak lewat Inertia; gunakan navigasi browser.
-        window.location.href = `${route('pegawai.export')}?${params.toString()}`;
+        const exportRoute = format === 'pdf' ? 'pegawai.export-pdf' : 'pegawai.export';
+        window.location.href = `${route(exportRoute)}?${params.toString()}`;
         setShowExportModal(false);
     };
 
@@ -649,6 +655,9 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                             <button type="button" onClick={selectAllExportColumns} className="text-xs font-bold text-primary hover:underline">
                                 Pilih semua
                             </button>
+                            <button type="button" onClick={clearExportColumns} className="text-xs font-bold text-text-secondary hover:text-primary">
+                                Kosongkan
+                            </button>
                             <button type="button" onClick={resetExportColumns} className="inline-flex items-center gap-1 text-xs font-bold text-text-secondary hover:text-primary">
                                 <RotateCcw className="h-3.5 w-3.5" /> Reset default
                             </button>
@@ -685,14 +694,21 @@ export default function Index({ auth, pegawais, stats = {}, filters = {}, unitSe
                     </div>
 
                     {selectedColumns.length === 0 && <p className="mt-2 text-xs font-semibold text-rose-600">Pilih minimal satu kolom.</p>}
+                    {selectedColumns.length > 12 && <p className="mt-2 text-[11px] text-text-secondary">PDF dengan banyak kolom akan kecil. Excel lebih nyaman.</p>}
 
-                    <div className="sticky bottom-0 -mx-6 -mb-6 mt-5 flex items-center justify-end gap-2 border-t border-border bg-white px-6 py-4">
-                        <Button type="button" variant="secondary" onClick={() => setShowExportModal(false)}>
-                            Batal
-                        </Button>
-                        <Button type="button" onClick={downloadExport} disabled={selectedColumns.length === 0}>
-                            <Download className="h-4 w-4" /> Download Excel
-                        </Button>
+                    <div className="sticky bottom-0 -mx-6 -mb-6 mt-5 flex flex-col gap-3 border-t border-border bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-[11px] text-text-secondary">PDF maksimal 2000 baris. Untuk data besar gunakan Excel.</p>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                            <Button type="button" variant="secondary" onClick={() => setShowExportModal(false)} className="w-full sm:w-auto">
+                                Batal
+                            </Button>
+                            <Button type="button" variant="secondary" onClick={() => downloadExport('pdf')} disabled={selectedColumns.length === 0} className="w-full sm:w-auto">
+                                <FileText className="h-4 w-4" /> Download PDF
+                            </Button>
+                            <Button type="button" onClick={() => downloadExport('xlsx')} disabled={selectedColumns.length === 0} className="w-full sm:w-auto">
+                                <FileSpreadsheet className="h-4 w-4" /> Download Excel
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </Modal>

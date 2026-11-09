@@ -136,6 +136,25 @@ class PegawaiExportTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_export_pdf_mengikuti_kolom_dan_scope(): void
+    {
+        $response = $this->actingAs($this->superadmin, 'web_admin')->get(route('pegawai.export-pdf', [
+            'scope' => 'all',
+            'columns' => ['nama_lengkap'],
+        ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', $response->headers->get('content-type'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_admin_unit_tidak_bisa_export_pdf_kolom_sensitif(): void
+    {
+        $this->actingAs($this->adminUnit, 'web_admin')
+            ->get(route('pegawai.export-pdf', ['columns' => ['nama_lengkap', 'nama_bank']]))
+            ->assertForbidden();
+    }
+
     private function loadSheet($response)
     {
         $file = $response->baseResponse->getFile();

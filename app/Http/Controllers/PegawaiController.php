@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Constants\PegawaiConstants;
+use App\Exceptions\PdfTooLargeException;
 use App\Exports\PegawaiExport;
 use App\Exports\PegawaiTemplateExport;
 use App\Http\Controllers\Concerns\ScopesPimpinan;
@@ -15,6 +16,7 @@ use App\Models\StatusKepegawaian;
 use App\Models\UnitLokasi;
 use App\Models\UnitSekolah;
 use App\Models\User;
+use App\Services\LaporanPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -171,11 +173,55 @@ class PegawaiController extends Controller
     }
 
     /**
-     * Export data pegawai (backup/analisis) — mengikuti filter index saat ini.
-     * NIK plaintext hanya untuk pemegang permission view_sensitive_data (superadmin);
-     * selain itu NIK ter-mask (keamanan).
+     * Export data pegawai. Default mengikuti filter index; scope=all mengabaikan
+     * filter tampilan, tetapi tetap dalam batas akses user.
      */
     public function export(Request $request)
+    {
+        [$pegawais, $columns, $withNik] = $this->exportPayload($request);
+
+        return Excel::download(
+            new PegawaiExport($pegawais, $columns, $withNik),
+            'data_pegawai_'.now()->format('Ymd_His').'.xlsx'
+        );
+    }
+
+    public function exportPdf(Request $request)
+    {
+        [$pegawais, $columns, $withNik, $scope] = $this->exportPayload($request);
+
+        if ($pegawais->count() > LaporanPdfService::MAX_ROWS) {
+            abort(422, 'Data terlalu banyak untuk PDF. Gunakan cakupan lebih sempit atau export ke Excel.');
+        }
+
+        $export = new PegawaiExport($pegawais, $columns, $withNik);
+        $scopeLabel = $scope === 'all' ? 'Semua pegawai dalam akses pengguna' : 'Sesuai filter aktif';
+
+        try {
+            $result = app(LaporanPdfService::class)->generatePegawai(
+                $export->headings(),
+                $export->collection()->all(),
+                $scopeLabel,
+                'data_pegawai_'.now()->format('Ymd_His').'.pdf',
+            );
+        } catch (PdfTooLargeException $e) {
+            abort(422, $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('PDF pegawai gagal', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile().':'.$e->getLine(),
+            ]);
+            abort(500, 'Gagal membuat PDF.');
+        }
+
+        return response($result['content'], 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$result['filename'].'"',
+            'Content-Length' => strlen($result['content']),
+        ]);
+    }
+
+    private function exportPayload(Request $request): array
     {
         Gate::authorize('view_pegawai');
 
@@ -222,10 +268,7 @@ class PegawaiController extends Controller
             ]);
         }
 
-        return Excel::download(
-            new PegawaiExport($pegawais, $columns, $withNik),
-            'data_pegawai_'.now()->format('Ymd_His').'.xlsx'
-        );
+        return [$pegawais, $columns, $withNik, $scope];
     }
 
     /**
