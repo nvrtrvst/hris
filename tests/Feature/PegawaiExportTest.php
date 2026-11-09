@@ -102,6 +102,40 @@ class PegawaiExportTest extends TestCase
         $this->assertNotContains('Guru Pendidik', $names);
     }
 
+    public function test_export_hanya_kolom_terpilih(): void
+    {
+        $response = $this->actingAs($this->superadmin, 'web_admin')->get(route('pegawai.export', [
+            'columns' => ['nama_lengkap', 'units'],
+        ]));
+
+        $sheet = $this->loadSheet($response);
+        $this->assertSame('Nama Lengkap', $sheet->getCell('A1')->getValue());
+        $this->assertSame('Unit', $sheet->getCell('B1')->getValue());
+        $this->assertNull($sheet->getCell('C1')->getValue());
+        $this->assertContains('Guru Pendidik', $this->columnValues($sheet, 1));
+    }
+
+    public function test_export_scope_all_mengabaikan_filter_unit(): void
+    {
+        $response = $this->actingAs($this->superadmin, 'web_admin')->get(route('pegawai.export', [
+            'scope' => 'all',
+            'unit_sekolah_id' => $this->unitB->id,
+        ]));
+
+        $sheet = $this->loadSheet($response);
+        $names = $this->columnValues($sheet, 3);
+
+        $this->assertContains('Guru Pendidik', $names);
+        $this->assertContains('Staf Tendik', $names);
+    }
+
+    public function test_admin_unit_tidak_bisa_export_kolom_sensitif(): void
+    {
+        $this->actingAs($this->adminUnit, 'web_admin')
+            ->get(route('pegawai.export', ['columns' => ['nama_lengkap', 'nama_bank']]))
+            ->assertForbidden();
+    }
+
     private function loadSheet($response)
     {
         $file = $response->baseResponse->getFile();

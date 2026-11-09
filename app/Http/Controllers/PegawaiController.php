@@ -102,7 +102,7 @@ class PegawaiController extends Controller
      * Query pegawai dengan semua filter index (search, unit, mapel, jabatan, jenis).
      * Dipakai index() dan export() agar hasil export selalu sama dengan yang terlihat.
      */
-    private function pegawaiQuery(Request $request, array $with = ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'statusRef:kode,label,is_tetap', 'lokasis:id,nama,unit_sekolah_id'], bool $applyUnitFilter = true)
+    private function pegawaiQuery(Request $request, array $with = ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'statusRef:kode,label,is_tetap', 'lokasis:id,nama,unit_sekolah_id'], bool $applyUnitFilter = true, bool $applyFilters = true)
     {
         // Sentinel: '' = belum memilih unit, 'all' = sengaja memilih "Semua Unit".
         $unitFilter = $request->input('unit_sekolah_id');
@@ -130,13 +130,13 @@ class PegawaiController extends Controller
             $query->whereHas('units', function ($q) use ($user) {
                 $q->where('unit_sekolah.id', $user->unit_sekolah_id);
             });
-        } elseif ($applyUnitFilter && ! $semuaUnit && $request->filled('unit_sekolah_id')) {
+        } elseif ($applyFilters && $applyUnitFilter && ! $semuaUnit && $request->filled('unit_sekolah_id')) {
             $query->whereHas('units', function ($q) use ($request) {
                 $q->where('unit_sekolah.id', $request->unit_sekolah_id);
             });
         }
 
-        if ($request->filled('search')) {
+        if ($applyFilters && $request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('nama_lengkap', 'like', '%'.$search.'%')
@@ -145,13 +145,13 @@ class PegawaiController extends Controller
             });
         }
 
-        if ($request->filled('mata_pelajaran_id')) {
+        if ($applyFilters && $request->filled('mata_pelajaran_id')) {
             $query->whereHas('mapels', function ($q) use ($request) {
                 $q->where('mata_pelajaran.id', $request->mata_pelajaran_id);
             });
         }
 
-        if ($request->filled('jabatan_id')) {
+        if ($applyFilters && $request->filled('jabatan_id')) {
             $query->whereHas('jabatans', function ($q) use ($request) {
                 $q->where('jabatan.id', $request->jabatan_id);
             });
@@ -159,9 +159,9 @@ class PegawaiController extends Controller
 
         // Filter jenis pegawai (Dapodik-style): pendidik = punya jabatan guru,
         // kependidikan = tidak punya jabatan guru sama sekali
-        if ($request->jenis_filter === 'pendidik') {
+        if ($applyFilters && $request->jenis_filter === 'pendidik') {
             $query->whereHas('jabatans', fn ($q) => $q->where('is_guru', true));
-        } elseif ($request->jenis_filter === 'kependidikan') {
+        } elseif ($applyFilters && $request->jenis_filter === 'kependidikan') {
             $query->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
         }
 
@@ -179,21 +179,51 @@ class PegawaiController extends Controller
     {
         Gate::authorize('view_pegawai');
 
-        $query = $this->pegawaiQuery($request, ['units:id,nama', 'jabatans:id,nama', 'user:id,email', 'statusRef:kode,label,is_tetap']);
+        $validated = $request->validate([
+            'scope' => 'nullable|in:filtered,all',
+            'columns' => 'nullable|array|min:1',
+            'columns.*' => 'string',
+        ]);
 
-        $withNik = (bool) (auth()->user()?->can('view_sensitive_data'));
+        $user = auth()->user();
+        $withNik = (bool) $user?->can('view_sensitive_data');
+        $availableKeys = array_column(PegawaiExport::availableColumns($withNik), 'key');
+        $requested = $validated['columns'] ?? PegawaiExport::defaultColumnsFor($withNik);
+
+        $invalid = array_values(array_diff($requested, PegawaiExport::allColumnKeys()));
+        if ($invalid !== []) {
+            throw ValidationException::withMessages(['columns' => 'Kolom tidak dikenal: '.implode(', ', $invalid).'.']);
+        }
+
+        // UI hanya menyembunyikan kolom sensitif; otorisasi tetap di server.
+        $forbidden = array_values(array_diff($requested, $availableKeys));
+        if ($forbidden !== []) {
+            abort(403, 'Kolom sensitif tidak diizinkan.');
+        }
+
+        $columns = array_values(array_unique($requested));
+        $scope = $validated['scope'] ?? 'filtered';
+        // scope=all mengabaikan filter tampilan, bukan batas akses user.
+        $query = $this->pegawaiQuery(
+            $request,
+            ['units:id,nama', 'jabatans:id,nama', 'mapels:id,nama', 'lokasis:id,nama,unit_sekolah_id', 'atasanLangsung:id,nama_lengkap', 'user:id,email,username', 'statusRef:kode,label,is_tetap'],
+            applyFilters: $scope !== 'all',
+        );
+
         $pegawais = $query->get();
+        $sensitiveColumns = array_values(array_intersect($columns, PegawaiExport::sensitiveColumnKeys()));
 
-        if ($withNik) {
+        if ($withNik || $sensitiveColumns !== []) {
             Log::warning('Sensitive data export', [
-                'user_id' => auth()->id(),
+                'user_id' => $user?->id,
                 'rows' => $pegawais->count(),
-                'field' => 'nik',
+                'columns' => $columns,
+                'sensitive_columns' => $sensitiveColumns,
             ]);
         }
 
         return Excel::download(
-            new PegawaiExport($pegawais, $withNik),
+            new PegawaiExport($pegawais, $columns, $withNik),
             'data_pegawai_'.now()->format('Ymd_His').'.xlsx'
         );
     }
@@ -269,6 +299,7 @@ class PegawaiController extends Controller
             $unitSekolahs->where('id', $user->unit_sekolah_id);
         }
         $mataPelajarans = MataPelajaran::select('id', 'nama')->orderBy('nama')->get();
+        $canViewSensitive = (bool) $user?->can('view_sensitive_data');
 
         return inertia('Pegawai/Index', [
             'pegawais' => $pegawais,
@@ -281,6 +312,8 @@ class PegawaiController extends Controller
             'unitSekolahs' => $unitSekolahs,
             'mataPelajarans' => $mataPelajarans,
             'jabatans' => $jabatans,
+            'exportColumns' => PegawaiExport::availableColumns($canViewSensitive),
+            'defaultExportColumns' => PegawaiExport::defaultColumnsFor($canViewSensitive),
         ]);
     }
 
