@@ -22,6 +22,7 @@ class PresensiGuruReportService
     {
         $start = Carbon::createFromFormat('Y-m', $periode)->startOfMonth();
         $end = $start->copy()->endOfMonth();
+        $pegawai->loadMissing(['jadwals', 'jabatans', 'mapels', 'units.presensiModeHistories']);
 
         $jadwals = Jadwal::query()
             ->where('pegawai_id', $pegawai->id)
@@ -74,13 +75,22 @@ class PresensiGuruReportService
 
             $date = $cursor->toDateString();
             $dayName = $cursor->locale('id')->translatedFormat('l');
+            $modeHanyaJadwal = $pegawai->presensiHanyaJadwalPada($cursor);
+            $scheduled = $jadwals->where('hari', $dayName);
 
-            if (! in_array($dayName, $workingDays, true) || in_array($date, $holidays, true)) {
+            if ($modeHanyaJadwal && $scheduled->isEmpty()) {
+                continue;
+            }
+
+            if (! $modeHanyaJadwal && ! in_array($dayName, $workingDays, true)) {
+                continue;
+            }
+
+            if (in_array($date, $holidays, true)) {
                 continue;
             }
 
             $dayRows = $presensis->get($date, collect());
-            $scheduled = $jadwals->where('hari', $dayName);
             $scheduledIds = $scheduled->pluck('id')->unique()->values();
             $actual = $dayRows->filter(fn (Presensi $row) => $row->jadwal_id
                 && in_array($row->status, ['hadir', 'telat'], true));

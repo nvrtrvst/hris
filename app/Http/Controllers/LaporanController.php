@@ -305,7 +305,7 @@ class LaporanController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
         ]);
 
-        $pegawai = Pegawai::with(['jabatans', 'units'])->findOrFail($request->pegawai_id);
+        $pegawai = Pegawai::with(['jabatans', 'mapels', 'jadwals', 'units.presensiModeHistories'])->findOrFail($request->pegawai_id);
 
         $rows = Presensi::with(['jadwal', 'unitSekolah'])
             ->where('pegawai_id', $pegawai->id)
@@ -348,13 +348,15 @@ class LaporanController extends Controller
         $end = Carbon::parse($request->end_date);
         $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap($unitIds, $start, $end);
         $unitUtama = $pegawai->unitUtama();
-        $hariKerja = LaporanRekapKehadiranExport::computeUniformWorkingDays(
-            $start,
-            $end,
-            $holidayMap,
-            $unitId ? (int) $unitId : null,
-            $unitUtama ? Pegawai::hariKerjaUnit($unitUtama) : null,
-        );
+        $hariKerja = $unitUtama
+            ? LaporanRekapKehadiranExport::hariKerjaByMode($pegawai, $unitUtama, $start, $end, $holidayMap)
+            : LaporanRekapKehadiranExport::computeUniformWorkingDays(
+                $start,
+                $end,
+                $holidayMap,
+                $unitId ? (int) $unitId : null,
+                null,
+            );
 
         $summary['alpa'] = max(0, $hariKerja - $summary['hadir'] - $summary['telat'] - $summary['sakit'] - $summary['izin'] - $summary['cuti']);
         $summary['hariKerja'] = $hariKerja;

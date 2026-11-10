@@ -4,10 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Jabatan;
 use App\Models\UnitLokasi;
+use App\Models\UnitPresensiModeHistory;
 use App\Models\UnitSekolah;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UnitSekolahController extends Controller
 {
@@ -108,6 +112,7 @@ class UnitSekolahController extends Controller
             'lokalis' => $unit_sekolah->lokalis,
             'jabatans' => Jabatan::orderBy('nama')->get(['id', 'nama']),
             'tembusan' => DB::table('unit_tembusan')->where('unit_sekolah_id', $unit_sekolah->id)->pluck('jabatan_id')->all(),
+            ...$this->presensiModePayload($unit_sekolah),
         ]);
     }
 
@@ -198,6 +203,113 @@ class UnitSekolahController extends Controller
         }
 
         return redirect()->route('unit-sekolah.index')->with('message', 'Unit Sekolah berhasil diperbarui.');
+    }
+
+    public function storePresensiMode(Request $request, UnitSekolah $unit_sekolah)
+    {
+        $validated = $request->validate([
+            'mode' => ['required', Rule::in(array_keys(UnitPresensiModeHistory::modes()))],
+            'berlaku_mulai' => ['required', 'date', 'after_or_equal:today'],
+        ]);
+
+        $this->assertTanggalModeBelumDipakai($unit_sekolah, $validated['berlaku_mulai']);
+
+        $unit_sekolah->presensiModeHistories()->create([
+            ...$validated,
+            'created_by' => $request->user()?->id,
+        ]);
+
+        return back()->with('message', 'Mode presensi unit berhasil dicatat.');
+    }
+
+    public function updatePresensiMode(
+        Request $request,
+        UnitSekolah $unit_sekolah,
+        UnitPresensiModeHistory $presensi_mode_history
+    ) {
+        abort_unless($presensi_mode_history->unit_sekolah_id === $unit_sekolah->id, 404);
+        abort_unless($presensi_mode_history->berlaku_mulai->gte(Carbon::today()), 422, 'Riwayat mode yang sudah lampau tidak dapat diubah.');
+
+        $validated = $request->validate([
+            'mode' => ['required', Rule::in(array_keys(UnitPresensiModeHistory::modes()))],
+            'berlaku_mulai' => ['required', 'date', 'after_or_equal:today'],
+        ]);
+
+        $this->assertTanggalModeBelumDipakai($unit_sekolah, $validated['berlaku_mulai'], $presensi_mode_history->id);
+
+        $presensi_mode_history->update($validated);
+
+        return back()->with('message', 'Riwayat mode presensi unit berhasil diperbarui.');
+    }
+
+    public function destroyPresensiMode(UnitSekolah $unit_sekolah, UnitPresensiModeHistory $presensi_mode_history)
+    {
+        abort_unless($presensi_mode_history->unit_sekolah_id === $unit_sekolah->id, 404);
+        abort_unless($presensi_mode_history->berlaku_mulai->gte(Carbon::today()), 422, 'Riwayat mode yang sudah lampau tidak dapat dihapus.');
+
+        $presensi_mode_history->delete();
+
+        return back()->with('message', 'Riwayat mode presensi unit berhasil dihapus.');
+    }
+
+    private function assertTanggalModeBelumDipakai(UnitSekolah $unit_sekolah, string $tanggal, ?int $ignoreId = null): void
+    {
+        $exists = $unit_sekolah->presensiModeHistories()
+            ->whereDate('berlaku_mulai', $tanggal)
+            ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages([
+                'berlaku_mulai' => 'Tanggal berlaku sudah dipakai. Ubah entri pada tanggal tersebut.',
+            ]);
+        }
+    }
+
+    private function presensiModePayload(UnitSekolah $unit_sekolah): array
+    {
+        $today = Carbon::today();
+        $histories = $unit_sekolah->presensiModeHistories()
+            ->with('createdBy:id,name')
+            ->get()
+            ->sortByDesc('berlaku_mulai')
+            ->values();
+
+        $active = $histories->first(fn (UnitPresensiModeHistory $history) => $history->berlaku_mulai->lte($today));
+        $next = $histories
+            ->filter(fn (UnitPresensiModeHistory $history) => $history->berlaku_mulai->gt($today))
+            ->sortBy('berlaku_mulai')
+            ->first();
+
+        return [
+            'mode_options' => collect(UnitPresensiModeHistory::modes())
+                ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+                ->values(),
+            'presensi_mode_histories' => $histories->map(function (UnitPresensiModeHistory $history) use ($active, $today) {
+                $status = $history->berlaku_mulai->gt($today)
+                    ? 'akan_berlaku'
+                    : ($active?->id === $history->id ? 'aktif' : 'lampau');
+
+                return [
+                    'id' => $history->id,
+                    'mode' => $history->mode,
+                    'mode_label' => $history->label(),
+                    'berlaku_mulai' => $history->berlaku_mulai->toDateString(),
+                    'status' => $status,
+                    'created_by' => $history->createdBy?->name,
+                    'created_at' => $history->created_at?->toDateTimeString(),
+                    'can_change' => $history->berlaku_mulai->gte($today),
+                ];
+            })->values(),
+            'mode_aktif' => $active?->mode ?? UnitPresensiModeHistory::MODE_KANTOR,
+            'mode_aktif_label' => $active?->label() ?? UnitPresensiModeHistory::modes()[UnitPresensiModeHistory::MODE_KANTOR],
+            'mode_aktif_sejak' => $active?->berlaku_mulai->toDateString(),
+            'mode_berikutnya' => $next ? [
+                'mode' => $next->mode,
+                'mode_label' => $next->label(),
+                'berlaku_mulai' => $next->berlaku_mulai->toDateString(),
+            ] : null,
+        ];
     }
 
     public function storeLokasi(Request $request, UnitSekolah $unit_sekolah)

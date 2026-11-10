@@ -19,6 +19,7 @@ use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\PiketSiswaTerlambat;
 use App\Models\Presensi;
+use App\Models\UnitPresensiModeHistory;
 use App\Models\UnitSekolah;
 use App\Notifications\StatusLembur;
 use App\Services\AbsenSiswaService;
@@ -685,7 +686,8 @@ class PresensiController extends Controller
     private function countActivePegawaiInScope($presensiQuery, ?Request $request = null): int
     {
         $user = auth()->user();
-        $pegawais = Pegawai::where('status_aktif', 'aktif');
+        $pegawais = Pegawai::where('status_aktif', 'aktif')
+            ->with(['units.presensiModeHistories', 'jabatans', 'mapels', 'jadwals']);
         $request = $request ?? request();
 
         if ($this->isPimpinanReadOnly($user)) {
@@ -713,7 +715,14 @@ class PresensiController extends Controller
             $pegawais->whereDoesntHave('jabatans', fn ($q) => $q->where('is_guru', true));
         }
 
-        return $pegawais->count();
+        $startDate = $request->start_date ?? Carbon::today()->toDateString();
+        $endDate = $request->end_date ?? $startDate;
+        $start = Carbon::parse($startDate);
+        $end = Carbon::parse($endDate);
+
+        return $pegawais->get()
+            ->filter(fn (Pegawai $pegawai) => $this->pegawaiWajibPresensi($pegawai, $start, $end))
+            ->count();
     }
 
     /**
@@ -895,6 +904,33 @@ class PresensiController extends Controller
         return $tanggal instanceof \DateTimeInterface ? $tanggal->format('Y-m-d') : (string) $tanggal;
     }
 
+    private function pegawaiWajibPresensi(Pegawai $pegawai, Carbon $start, Carbon $end): bool
+    {
+        if (! $pegawai->isPendidik()) {
+            return true;
+        }
+
+        $unit = $pegawai->unitUtama();
+        if (! $unit) {
+            return true;
+        }
+
+        foreach ($unit->modeSegments($start, $end) as $segment) {
+            if ($segment['mode'] !== UnitPresensiModeHistory::MODE_HANYA_JADWAL) {
+                return true;
+            }
+
+            $hariMengajar = $pegawai->hariJadwalMengajar();
+            for ($cursor = $segment['from']->copy(); $cursor->lte($segment['to']); $cursor->addDay()) {
+                if (in_array($cursor->locale('id')->translatedFormat('l'), $hariMengajar, true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private function handleBelumPresensi(Request $request, $user, array $stats, bool $isPersonal = false, bool $isPimpinan = false): Response
     {
         $startDate = $request->start_date ?? Carbon::today()->toDateString();
@@ -904,7 +940,7 @@ class PresensiController extends Controller
             ->distinct()->pluck('pegawai_id');
 
         $pegawais = Pegawai::where('status_aktif', 'aktif')
-            ->with(['units', 'jabatans'])
+            ->with(['units.presensiModeHistories', 'jabatans', 'mapels', 'jadwals'])
             ->whereNotIn('id', $pegawaisWithPresensi);
 
         $selfPegawai = $isPersonal ? Pegawai::where('user_id', auth()->id())->first() : null;
@@ -948,6 +984,11 @@ class PresensiController extends Controller
         }
 
         $pegawaiList = $pegawais->orderBy('nama_lengkap')->get();
+        $rangeStart = Carbon::parse($startDate);
+        $rangeEnd = Carbon::parse($endDate);
+        $pegawaiList = $pegawaiList
+            ->filter(fn (Pegawai $pegawai) => $this->pegawaiWajibPresensi($pegawai, $rangeStart, $rangeEnd))
+            ->values();
 
         // Buat virtual presensi records supaya frontend bisa render.
         // Unit di-resolve primary-aware (pivot is_primary → pertama → user.unit_sekolah_id)
@@ -1030,7 +1071,7 @@ class PresensiController extends Controller
             ->distinct()->pluck('pegawai_id');
 
         $pegawais = Pegawai::where('status_aktif', 'aktif')
-            ->with(['units', 'jabatans'])
+            ->with(['units.presensiModeHistories', 'jabatans', 'mapels', 'jadwals'])
             ->whereNotIn('id', $pegawaisWithPresensi);
 
         // Scope unit sama dengan handleBelumPresensi()
@@ -1055,6 +1096,11 @@ class PresensiController extends Controller
         }
 
         $pegawaiList = $pegawais->orderBy('nama_lengkap')->get();
+        $rangeStart = Carbon::parse($startDate);
+        $rangeEnd = Carbon::parse($endDate);
+        $pegawaiList = $pegawaiList
+            ->filter(fn (Pegawai $pegawai) => $this->pegawaiWajibPresensi($pegawai, $rangeStart, $rangeEnd))
+            ->values();
 
         // Kop surat: unit terpilih (atau auto-resolved dari scope user) → data unit itu;
         // semua unit (superadmin) → unit induk "Yayasan"; fallback terakhir → config env.

@@ -485,6 +485,9 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::post('unit-sekolah/{unit_sekolah}/lokasi', [UnitSekolahController::class, 'storeLokasi'])->name('unit-sekolah.store-lokasi')->middleware('throttle:30,1');
         Route::put('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'updateLokasi'])->name('unit-sekolah.update-lokasi')->middleware('throttle:30,1');
         Route::delete('unit-sekolah/{unit_sekolah}/lokasi/{lokasi}', [UnitSekolahController::class, 'destroyLokasi'])->name('unit-sekolah.destroy-lokasi')->middleware('throttle:30,1');
+        Route::post('unit-sekolah/{unit_sekolah}/presensi-mode', [UnitSekolahController::class, 'storePresensiMode'])->name('unit-sekolah.store-presensi-mode')->middleware('throttle:30,1');
+        Route::put('unit-sekolah/{unit_sekolah}/presensi-mode/{presensi_mode_history}', [UnitSekolahController::class, 'updatePresensiMode'])->name('unit-sekolah.update-presensi-mode')->middleware('throttle:30,1');
+        Route::delete('unit-sekolah/{unit_sekolah}/presensi-mode/{presensi_mode_history}', [UnitSekolahController::class, 'destroyPresensiMode'])->name('unit-sekolah.destroy-presensi-mode')->middleware('throttle:30,1');
 
         // Aturan persetujuan: jumlah tahap, ambang cuti, batas waktu.
         Route::get('pengaturan/persetujuan', [ApprovalPolicyController::class, 'index'])->name('approval-policies.index');

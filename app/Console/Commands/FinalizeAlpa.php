@@ -26,7 +26,9 @@ class FinalizeAlpa extends Command
     public function handle(): int
     {
         $targets = $this->resolveTargets();
-        $pegawais = Pegawai::with(['jadwals', 'units'])->where('status_aktif', 'aktif')->get();
+        $pegawais = Pegawai::with(['jadwals', 'units.presensiModeHistories', 'jabatans', 'mapels'])
+            ->where('status_aktif', 'aktif')
+            ->get();
         $hariIndo = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa',
             'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
 
@@ -88,7 +90,22 @@ class FinalizeAlpa extends Command
 
                 // Slot piket bukan sesi presensi: lewati (akuntabilitas via
                 // laporan piket). Piket-only ikut logika kantor di bawah.
-                $jadwalsHari = $pegawai->jadwals->filter(fn ($j) => $j->hari === $hariTarget && $j->jenis_jadwal !== 'piket');
+                $modeHanyaJadwal = $pegawai->presensiHanyaJadwalPada($target);
+                if ($modeHanyaJadwal) {
+                    $adaJadwalWajib = $pegawai->jadwals->contains(
+                        fn ($j) => $j->hari === $hariTarget
+                            && in_array($j->jenis_jadwal, ['mengajar', 'piket'], true)
+                    );
+                    if (! $adaJadwalWajib) {
+                        $skipped++;
+
+                        continue;
+                    }
+                }
+
+                $jadwalsHari = $pegawai->jadwals
+                    ->filter(fn ($j) => $j->hari === $hariTarget && $j->jenis_jadwal !== 'piket')
+                    ->when($modeHanyaJadwal, fn ($items) => $items->where('jenis_jadwal', 'mengajar'));
 
                 // Per-jadwal alpa-mengajar: jalan untuk SEMUA pegawai yang punya jadwal hari itu,
                 // baik sudah hadir sebagian maupun tidak hadir sama sekali.
@@ -116,6 +133,13 @@ class FinalizeAlpa extends Command
                 }
 
                 if ($jadwalsHari->isNotEmpty()) {
+                    continue;
+                }
+
+                // Piket-only pada mode hanya-jadwal tidak membuat alpa kantor.
+                if ($modeHanyaJadwal) {
+                    $skipped++;
+
                     continue;
                 }
 

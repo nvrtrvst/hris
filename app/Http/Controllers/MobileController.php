@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Constants\PresensiMessages;
+use App\Exports\LaporanRekapKehadiranExport;
 use App\Jobs\ProcessPresensiFoto;
 use App\Models\AbsenSiswaSesi;
 use App\Models\Announcement;
@@ -22,6 +23,7 @@ use App\Models\PiketSiswaTerlambat;
 use App\Models\Presensi;
 use App\Models\TugasLuar;
 use App\Models\UnitLokasi;
+use App\Models\UnitPresensiModeHistory;
 use App\Services\AbsenSiswaService;
 use App\Services\AttestationService;
 use App\Services\GeocodingService;
@@ -124,6 +126,7 @@ class MobileController extends Controller
             'tahun' => 'nullable|integer|between:2020,2100',
         ]);
         $pegawai = $this->getPegawai();
+        $pegawai->loadMissing(['units.presensiModeHistories', 'jabatans', 'mapels', 'jadwals']);
 
         $bulan = (int) ($validated['bulan'] ?? Carbon::now()->month);
         $tahun = (int) ($validated['tahun'] ?? Carbon::now()->year);
@@ -137,8 +140,30 @@ class MobileController extends Controller
             ->orderBy('tanggal', 'desc')
             ->get();
 
-        // Ringkasan kehadiran bulan ini (F5) — hanya presensi harian (jadwal_id=null)
-        $countsCount = $presensi->filter(fn ($p) => ! $p->is_lembur && ! $p->jadwal_id)->groupBy('status')->map->count();
+        $statusPriority = ['hadir' => 0, 'telat' => 1, 'sakit' => 2, 'izin' => 3, 'cuti' => 4, 'alpa' => 5];
+        $countsCount = $presensi
+            ->filter(function (Presensi $p) use ($pegawai) {
+                if ($p->is_lembur) {
+                    return false;
+                }
+
+                $tanggal = Carbon::parse($p->tanggal);
+                if (! $pegawai->presensiHanyaJadwalPada($tanggal)) {
+                    return ! $p->jadwal_id;
+                }
+
+                return in_array(
+                    $tanggal->locale('id')->translatedFormat('l'),
+                    $pegawai->hariJadwalMengajar(),
+                    true
+                );
+            })
+            ->groupBy(fn (Presensi $p) => Carbon::parse($p->tanggal)->toDateString())
+            ->map(fn (Collection $rows) => $rows
+                ->sortBy(fn (Presensi $p) => $statusPriority[$p->status] ?? 9)
+                ->first()?->status)
+            ->filter()
+            ->countBy();
         $hadir = (int) ($countsCount['hadir'] ?? 0);
         $telat = (int) ($countsCount['telat'] ?? 0);
         $sakit = (int) ($countsCount['sakit'] ?? 0);
@@ -162,11 +187,8 @@ class MobileController extends Controller
         }
 
         $unitIds = $pegawai->units->pluck('id')->filter()->unique()->toArray();
-        $holidayKehadiran = $this->holidayCount($startBulan, $endKehadiran, $unitIds);
-        $holidayAlpa = $this->holidayCount($startBulan, $endAlpa, $unitIds);
-
-        $workingDays = $this->countWeekdaysInRange($startBulan, $endKehadiran, $holidayKehadiran);
-        $workingDaysAlpa = $this->countWeekdaysInRange($startBulan, $endAlpa, $holidayAlpa);
+        $workingDays = $this->riwayatWorkingDays($pegawai, $startBulan, $endKehadiran, $unitIds);
+        $workingDaysAlpa = $this->riwayatWorkingDays($pegawai, $startBulan, $endAlpa, $unitIds);
         $totalHadir = $hadir + $telat + $izin + $sakit + $cuti + $alpa;
         $alphaTerisi = max(0, $workingDaysAlpa - $totalHadir);
         $alpa = $alpa + $alphaTerisi;
@@ -191,6 +213,46 @@ class MobileController extends Controller
             'summary' => $summary,
             'filters' => ['bulan' => $bulan, 'tahun' => $tahun],
         ]);
+    }
+
+    private function riwayatWorkingDays(Pegawai $pegawai, Carbon $start, Carbon $end, array $unitIds): int
+    {
+        $unit = $pegawai->unitUtama();
+        if (! $pegawai->isPendidik() || ! $unit) {
+            return $this->countWeekdaysInRange(
+                $start,
+                $end,
+                $this->holidayCount($start, $end, $unitIds),
+            );
+        }
+
+        $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap($unitIds, $start, $end);
+        $total = 0;
+        foreach ($unit->modeSegments($start, $end) as $segment) {
+            if ($segment['mode'] === UnitPresensiModeHistory::MODE_HANYA_JADWAL) {
+                $hariMengajar = $pegawai->hariJadwalMengajar();
+                if ($hariMengajar === []) {
+                    continue;
+                }
+                $total += LaporanRekapKehadiranExport::computeUniformWorkingDays(
+                    $segment['from'],
+                    $segment['to'],
+                    $holidayMap,
+                    (int) $unit->id,
+                    $hariMengajar,
+                );
+
+                continue;
+            }
+
+            $total += $this->countWeekdaysInRange(
+                $segment['from'],
+                $segment['to'],
+                $this->holidayCount($segment['from'], $segment['to'], $unitIds),
+            );
+        }
+
+        return $total;
     }
 
     /**
@@ -471,7 +533,7 @@ class MobileController extends Controller
     public function absen()
     {
         $pegawai = $this->getPegawai();
-        $pegawai->load(['units', 'statusRef', 'lokasis' => function ($q) {
+        $pegawai->load(['units.presensiModeHistories', 'jabatans', 'mapels', 'statusRef', 'lokasis' => function ($q) {
             $q->where('is_active', true);
         }]);
         $pegawai->append('is_tetap');
@@ -512,7 +574,8 @@ class MobileController extends Controller
             return $jenis !== 'piket';
         });
         $piketSaja = $adaJadwal && ! $adaNonPiket;
-        $kantorAktif = ($pegawai->wajib_kantor && ! $adaJadwal) || $piketSaja;
+        $modeHanyaJadwal = $pegawai->presensiHanyaJadwalPada(Carbon::today());
+        $kantorAktif = $piketSaja || (! $modeHanyaJadwal && $pegawai->wajib_kantor && ! $adaJadwal);
         // Alasan libur non-null = hari libur nasional/unit → kantor mati.
         if (! $hariIniBuka || $alasanLibur !== null) {
             $kantorAktif = false;
@@ -597,6 +660,7 @@ class MobileController extends Controller
         ]);
 
         $pegawai = $this->getPegawai();
+        $pegawai->loadMissing(['units.presensiModeHistories', 'jabatans', 'mapels']);
         $this->assertTidakSedangIzin($pegawai);
         $isLembur = (bool) $request->input('is_lembur', false);
         $isTugasLuar = (bool) $request->input('is_tugas_luar', false);
@@ -2972,17 +3036,16 @@ class MobileController extends Controller
     private function bolehMasukKantor(Pegawai $pegawai, string $hariIni): bool
     {
         $adaJadwal = Jadwal::where('pegawai_id', $pegawai->id)->where('hari', $hariIni)->exists();
-        if ($pegawai->wajib_kantor && ! $adaJadwal) {
-            return true;
-        }
         if (! $adaJadwal) {
-            return false;
+            return ! $pegawai->presensiHanyaJadwalPada(Carbon::today()) && $pegawai->wajib_kantor;
         }
 
-        return ! Jadwal::where('pegawai_id', $pegawai->id)
+        $piketSaja = ! Jadwal::where('pegawai_id', $pegawai->id)
             ->where('hari', $hariIni)
             ->where('jenis_jadwal', '!=', 'piket')
             ->exists();
+
+        return $piketSaja;
     }
 
     private function attestationErrorResponse(array $attestation)

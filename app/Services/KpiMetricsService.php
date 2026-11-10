@@ -29,6 +29,7 @@ class KpiMetricsService
 
         $pegawaiIds = $assignments->pluck('pegawai.id')->filter()->unique()->values();
         $units = $assignments->pluck('unitSekolah')->filter()->unique('id')->keyBy('id');
+        $units->each(fn (UnitSekolah $unit) => $unit->loadMissing('presensiModeHistories'));
         $unitIds = $units->keys();
         $dates = [];
         for ($date = $start->copy()->startOfDay(); $date->lte($end); $date->addDay()) {
@@ -94,6 +95,7 @@ class KpiMetricsService
                 continue;
             }
 
+            $pegawai->loadMissing(['jabatans', 'mapels', 'units.presensiModeHistories']);
             $key = $pegawai->id.'|'.$unit->id;
             $allowedDays = Pegawai::hariKerjaUnit($unit);
             $validDates = [];
@@ -122,16 +124,34 @@ class KpiMetricsService
                 ->all();
             $schedulesForAssignment = $schedules->get($key, collect());
             $scheduledDates = [];
+            $scheduledMengajarDates = [];
             foreach ($schedulesForAssignment as $schedule) {
                 foreach ($datesByDay->get($schedule->hari, []) as $date) {
                     if (in_array($date, $validDates, true)) {
                         $scheduledDates[$date] = true;
+                        if ($schedule->jenis_jadwal === 'mengajar') {
+                            $scheduledMengajarDates[$date] = true;
+                        }
                     }
                 }
             }
-            $expectedDates = $pegawai->wajib_kantor
-                ? array_values(array_unique(array_merge($unitWorkingDates, array_keys($scheduledDates))))
-                : array_keys($scheduledDates);
+            $unitWorkingSet = array_flip($unitWorkingDates);
+            $expected = [];
+            foreach ($validDates as $date) {
+                $hanyaJadwal = $pegawai->presensiHanyaJadwalPada($date);
+                if ($hanyaJadwal) {
+                    if (isset($scheduledMengajarDates[$date])) {
+                        $expected[$date] = true;
+                    }
+
+                    continue;
+                }
+
+                if (isset($scheduledDates[$date]) || ($pegawai->wajib_kantor && isset($unitWorkingSet[$date]))) {
+                    $expected[$date] = true;
+                }
+            }
+            $expectedDates = array_keys($expected);
             $attendanceRate = $expectedDates !== []
                 ? round(count(array_intersect($expectedDates, $hadirDates)) * 100 / count($expectedDates), 2)
                 : null;
