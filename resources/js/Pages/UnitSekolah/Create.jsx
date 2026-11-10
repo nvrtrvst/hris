@@ -14,6 +14,7 @@ export default function Create({ auth }) {
         radius_meter: 50,
         durasi_jp: 45,
         toleransi_menit: 0,
+        toleransi_mengajar_menit: 0,
         toleransi_slide_menit: 15,
         max_jeda_sesi_menit: 120,
         wajib_pulang_mengajar: 0,

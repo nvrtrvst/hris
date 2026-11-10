@@ -1385,14 +1385,14 @@ class PenggajianController extends Controller
 
     /**
      * Jumlah JP terbayar untuk aturan hadir harian. Mode pagi mewajibkan
-     * presensi sebelum JP pertama (plus toleransi unit); mode biasa cukup
-     * ada presensi hadir/telat pada tanggal tersebut.
+     * presensi sebelum JP pertama (plus toleransi mengajar unit); mode biasa
+     * cukup ada presensi hadir/telat pada tanggal tersebut.
      */
     protected function countHarianPaid(Jadwal $jadwal, array $harianPagi, array $firstStartByHari, Carbon $start, Carbon $end, array $holidayMap, bool $sebelumJpPertama): int
     {
         $count = 0;
         $firstStart = $firstStartByHari[$jadwal->hari] ?? null;
-        $toleransi = (int) ($jadwal->unitSekolah?->toleransi_menit ?? 0);
+        $toleransi = $jadwal->unitSekolah?->toleransiMengajarMenit() ?? 0;
 
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
             if ($date->locale('id')->translatedFormat('l') !== $jadwal->hari) {

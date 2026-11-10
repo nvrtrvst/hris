@@ -136,6 +136,45 @@ class MobileSlideGeofenceTest extends TestCase
         $this->assertContains($record->status, ['hadir', 'telat']);
     }
 
+    public function test_slide_memakai_toleransi_mengajar_bukan_toleransi_kantor(): void
+    {
+        $this->unit->update([
+            'toleransi_menit' => 0,
+            'toleransi_mengajar_menit' => 1,
+        ]);
+
+        Carbon::setTestNow(Carbon::today()->setTime(7, 40, 33));
+        $pegawai = $this->makePegawaiTetap();
+        $jadwal = Jadwal::create([
+            'pegawai_id' => $pegawai->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'hari' => $this->hariIniIndo(),
+            'jam_mulai' => '07:40:00',
+            'jam_selesai' => '08:20:00',
+            'jenis_jadwal' => 'mengajar',
+            'tahun_ajaran' => '2026/2027',
+            'semester' => 1,
+        ]);
+
+        $this->actingAs($pegawai->user, 'web_mobile')
+            ->postJson(route('presensi.absen.slide'), [
+                'jadwal_id' => $jadwal->id,
+                'latitude' => -6.2,
+                'longitude' => 106.8,
+                'accuracy' => 15,
+            ])
+            ->assertOk();
+
+        $record = Presensi::where('pegawai_id', $pegawai->id)
+            ->where('jadwal_id', $jadwal->id)
+            ->first();
+
+        $this->assertSame('07:40:33', $record->jam_masuk);
+        $this->assertSame('hadir', $record->status);
+
+        Carbon::setTestNow();
+    }
+
     public function test_slide_jadwal_ditolak_di_luar_radius(): void
     {
         // Dalam jendela slide — supaya yang ditolak adalah geofence, bukan waktu.

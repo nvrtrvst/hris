@@ -15,6 +15,7 @@ export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = []
         radius_meter: unit.radius_meter,
         durasi_jp: unit.durasi_jp || 45,
         toleransi_menit: unit.toleransi_menit ?? 0,
+        toleransi_mengajar_menit: unit.toleransi_mengajar_menit ?? unit.toleransi_menit ?? 0,
         toleransi_slide_menit: unit.toleransi_slide_menit ?? 15,
         max_jeda_sesi_menit: unit.max_jeda_sesi_menit ?? 120,
         wajib_pulang_mengajar: unit.wajib_pulang_mengajar ? 1 : 0,
