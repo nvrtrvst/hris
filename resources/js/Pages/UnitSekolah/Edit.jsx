@@ -2,10 +2,12 @@ import React from 'react';
 import AdminShell from '@/Layouts/AdminShell';
 import { Button, Card, FormField, Input, PageHeader, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/AdminUI';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { ArrowLeft, MapPin, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, MapPin, Plus, Save, Trash2 } from 'lucide-react';
 import UnitForm from './UnitForm';
 import LeafletPicker from '@/Components/LeafletPicker';
 import ModePresensiSection from './Partials/ModePresensiSection';
+import SettingsNav from './Partials/SettingsNav';
+import UnitSummaryCard from './Partials/UnitSummaryCard';
 
 export default function Edit({
     auth,
@@ -20,7 +22,7 @@ export default function Edit({
     mode_aktif_sejak = null,
     mode_berikutnya = null,
 }) {
-    const { data, setData, post, transform, processing, errors } = useForm({
+    const { data, setData, post, transform, processing, errors, isDirty } = useForm({
         nama: unit.nama,
         singkatan: unit.singkatan,
         latitude: String(unit.latitude),
@@ -96,168 +98,199 @@ export default function Edit({
         post(route('unit-sekolah.update', unit.id), { forceFormData: true });
     };
 
+    const hasErrors = Object.keys(errors).length > 0;
+    const lokasiCount = (lokalis || []).length;
+    const tembusanCount = (tembusan || []).length;
+
     return (
         <AdminShell
             user={auth.user}
-            header={<h2 className="page-title">Edit Unit: {unit.nama}</h2>}
+            header={<h2 className="page-title">Pengaturan Unit</h2>}
         >
             <Head title={`Edit Unit - ${unit.nama}`} />
-            <div className="mx-auto max-w-5xl space-y-5">
-                <Link href={route('unit-sekolah.index')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
-                    <ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Unit
-                </Link>
+            <div className="mx-auto max-w-7xl space-y-5">
                 <PageHeader
                     eyebrow="Pengaturan"
-                    title={`Edit Unit: ${unit.nama}`}
-                    description="Perbarui identitas, geofence, dan pengaturan presensi unit."
-                />
-                <UnitForm
-                    data={data}
-                    setData={setData}
-                    errors={errors}
-                    processing={processing}
-                    onSubmit={handleSubmit}
-                    isEdit={true}
-                    unitName={unit.nama}
-                    unitLogoUrl={unit.logo_url}
+                    title={unit.nama}
+                    description="Kelola identitas, operasional, dan aturan presensi unit."
+                    actions={(
+                        <Link href={route('unit-sekolah.index')} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                            <ArrowLeft className="h-4 w-4" /> Kembali
+                        </Link>
+                    )}
                 />
 
-                <ModePresensiSection
-                    unit={unit}
-                    histories={presensi_mode_histories}
-                    modeOptions={mode_options}
-                    modeAktif={mode_aktif}
-                    modeAktifLabel={mode_aktif_label}
-                    modeAktifSejak={mode_aktif_sejak}
-                    modeBerikutnya={mode_berikutnya}
-                />
+                <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+                    <aside className="order-first space-y-4 xl:sticky xl:top-24 xl:order-2 xl:self-start">
+                        <UnitSummaryCard unit={unit} lokasiCount={lokasiCount} tembusanCount={tembusanCount} />
+                        <ModePresensiSection
+                            unit={unit}
+                            histories={presensi_mode_histories}
+                            modeOptions={mode_options}
+                            modeAktif={mode_aktif}
+                            modeAktifLabel={mode_aktif_label}
+                            modeAktifSejak={mode_aktif_sejak}
+                            modeBerikutnya={mode_berikutnya}
+                        />
+                    </aside>
 
-                <Card className="p-5 sm:p-6">
-                    <h3 className="text-sm font-bold text-primary">Tembusan Pengajuan Izin</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-text-secondary">
-                        Jabatan yang otomatis menerima tembusan notifikasi setiap ada pengajuan izin di unit ini.
-                    </p>
-                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        {jabatans.map((j) => {
-                            const checked = (data.tembusan_jabatan_ids || []).map(String).includes(String(j.id));
+                    <div className="order-2 space-y-5 xl:order-1">
+                        <SettingsNav
+                            items={[
+                                { href: '#unit-identitas', label: 'Identitas' },
+                                { href: '#unit-geofence', label: 'Geofence' },
+                                { href: '#unit-jam', label: 'Jam Kerja' },
+                                { href: '#unit-presensi', label: 'Presensi' },
+                                { href: '#unit-tembusan', label: 'Tembusan', count: tembusanCount },
+                                { href: '#unit-bobot', label: 'Bobot' },
+                                { href: '#unit-kop', label: 'Kop Surat' },
+                                { href: '#unit-lokasi', label: 'Lokasi', count: lokasiCount },
+                                { href: '#unit-mode-presensi', label: 'Mode' },
+                            ]}
+                        />
 
-                            return (
-                                <label key={j.id} className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border px-3 py-2.5 text-sm hover:border-primary/50">
-                                    <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        onChange={(e) => {
-                                            const cur = (data.tembusan_jabatan_ids || []).map(String);
-                                            setData('tembusan_jabatan_ids', e.target.checked ? [...cur, String(j.id)] : cur.filter((x) => x !== String(j.id)));
-                                        }}
-                                        className="h-5 w-5 rounded border-border text-primary focus:ring-primary/25"
-                                    />
-                                    <span className="font-medium text-primary">{j.nama}</span>
-                                </label>
-                            );
-                        })}
-                    </div>
-                    {errors.tembusan_jabatan_ids && <p className="mt-2 text-xs font-semibold text-rose-600">{errors.tembusan_jabatan_ids}</p>}
-                </Card>
+                        <UnitForm
+                            data={data}
+                            setData={setData}
+                            errors={errors}
+                            processing={processing}
+                            onSubmit={handleSubmit}
+                            isEdit={true}
+                            unitName={unit.nama}
+                            unitLogoUrl={unit.logo_url}
+                            jabatans={jabatans}
+                            showTembusan={true}
+                            showActions={false}
+                            formId="unit-form"
+                        />
 
-                <Card className="p-5 sm:p-6">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                            <h3 className="flex items-center gap-2 text-sm font-bold text-primary">
-                                <MapPin className="h-4 w-4" /> Lokasi / Kampus
-                            </h3>
-                            <p className="mt-1 text-xs text-text-secondary">Titik geofence tambahan untuk unit ini.</p>
-                        </div>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => { setShowLokasiForm(!showLokasiForm); setEditLokasi(null); lokasiForm.reset(); }}
-                        >
-                            <Plus className="h-4 w-4" /> Tambah Lokasi
-                        </Button>
-                    </div>
-
-                    {showLokasiForm && (
-                        <form onSubmit={handleSubmitLokasi} className="mt-4 space-y-4 rounded-xl border border-primary/10 bg-primary/5 p-4">
-                            <h4 className="text-sm font-bold text-primary">{editLokasi ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}</h4>
-                            <FormField label="Nama Lokasi" htmlFor="lokasi-nama" error={lokasiForm.errors.nama}>
-                                <Input
-                                    id="lokasi-nama"
-                                    type="text"
-                                    value={lokasiForm.data.nama}
-                                    onChange={(e) => lokasiForm.setData('nama', e.target.value)}
-                                    placeholder="Kampus 2 / Wilayah B"
-                                    required
-                                />
-                            </FormField>
-                            <LeafletPicker
-                                lat={lokasiForm.data.latitude}
-                                lng={lokasiForm.data.longitude}
-                                radius={lokasiForm.data.radius_meter}
-                                onChange={(la, ln) => {
-                                    lokasiForm.setData('latitude', la);
-                                    lokasiForm.setData('longitude', ln);
-                                }}
-                            />
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                <FormField label="Latitude" htmlFor="lokasi-latitude">
-                                    <Input id="lokasi-latitude" type="number" step="any" value={lokasiForm.data.latitude} onChange={(e) => lokasiForm.setData('latitude', e.target.value)} className="font-mono" required />
-                                </FormField>
-                                <FormField label="Longitude" htmlFor="lokasi-longitude">
-                                    <Input id="lokasi-longitude" type="number" step="any" value={lokasiForm.data.longitude} onChange={(e) => lokasiForm.setData('longitude', e.target.value)} className="font-mono" required />
-                                </FormField>
-                            </div>
-                            <div>
-                                <label className="mb-1.5 block text-[11px] font-bold text-text-secondary">Radius Toleransi Absen (Meter)</label>
-                                <div className="flex items-center gap-3">
-                                    <input type="range" min="10" max="10000" value={lokasiForm.data.radius_meter} onChange={(e) => lokasiForm.setData('radius_meter', Number(e.target.value))} className="flex-1 accent-primary" />
-                                    <Input type="number" min="10" max="100000" value={lokasiForm.data.radius_meter} onChange={(e) => lokasiForm.setData('radius_meter', Number(e.target.value))} className="w-28" />
+                        <Card id="unit-lokasi" className="scroll-mt-32 p-5 sm:p-6">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="flex items-center gap-2 text-sm font-bold text-primary">
+                                        <MapPin className="h-4 w-4" /> Lokasi Tambahan
+                                        <span className="text-xs font-semibold text-text-muted">{lokasiCount}</span>
+                                    </h3>
+                                    <p className="mt-1 text-xs text-text-secondary">Titik geofence tambahan untuk kampus atau lokasi lain.</p>
                                 </div>
-                                <p className="mt-1 text-[10px] text-text-muted">Pegawai hanya bisa absen jika jarak GPS mereka di dalam radius ini.</p>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => { setShowLokasiForm(!showLokasiForm); setEditLokasi(null); lokasiForm.reset(); }}
+                                >
+                                    <Plus className="h-4 w-4" /> Tambah Lokasi
+                                </Button>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                <Button type="submit" disabled={lokasiForm.processing}>{lokasiForm.processing ? 'Menyimpan...' : 'Simpan'}</Button>
-                                <Button type="button" variant="secondary" onClick={() => { setShowLokasiForm(false); setEditLokasi(null); lokasiForm.reset(); }}>Batal</Button>
-                            </div>
-                        </form>
-                    )}
 
-                    {(lokalis || []).length === 0 ? (
-                        <p className="mt-4 text-sm text-text-secondary">Belum ada lokasi tambahan.</p>
-                    ) : (
-                        <div className="mt-4 overflow-hidden rounded-xl border border-border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableHead>Nama</TableHead>
-                                        <TableHead>Latitude</TableHead>
-                                        <TableHead>Longitude</TableHead>
-                                        <TableHead>Radius</TableHead>
-                                        <TableHead className="text-right">Aksi</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {lokalis.map((l) => (
-                                        <TableRow key={l.id}>
-                                            <TableCell className="font-medium">{l.nama}</TableCell>
-                                            <TableCell className="font-mono text-xs">{l.latitude}</TableCell>
-                                            <TableCell className="font-mono text-xs">{l.longitude}</TableCell>
-                                            <TableCell>{l.radius_meter}m</TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="inline-flex items-center gap-2">
-                                                    <Button type="button" variant="secondary" size="sm" onClick={() => startEditLokasi(l)}>Edit</Button>
-                                                    <Button type="button" variant="secondary" size="sm" onClick={() => handleDeleteLokasi(l.id)} className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800">
-                                                        <Trash2 className="h-3.5 w-3.5" /> Hapus
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
-                </Card>
+                            {showLokasiForm && (
+                                <form onSubmit={handleSubmitLokasi} className="mt-4 space-y-4 rounded-xl border border-primary/10 bg-primary/5 p-4">
+                                    <h4 className="text-sm font-bold text-primary">{editLokasi ? 'Edit Lokasi' : 'Tambah Lokasi Baru'}</h4>
+                                    <FormField label="Nama Lokasi" htmlFor="lokasi-nama" error={lokasiForm.errors.nama}>
+                                        <Input
+                                            id="lokasi-nama"
+                                            type="text"
+                                            value={lokasiForm.data.nama}
+                                            onChange={(e) => lokasiForm.setData('nama', e.target.value)}
+                                            placeholder="Kampus 2 / Wilayah B"
+                                            required
+                                        />
+                                    </FormField>
+                                    <LeafletPicker
+                                        lat={lokasiForm.data.latitude}
+                                        lng={lokasiForm.data.longitude}
+                                        radius={lokasiForm.data.radius_meter}
+                                        onChange={(la, ln) => {
+                                            lokasiForm.setData('latitude', la);
+                                            lokasiForm.setData('longitude', ln);
+                                        }}
+                                    />
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                        <FormField label="Latitude" htmlFor="lokasi-latitude">
+                                            <Input id="lokasi-latitude" type="number" step="any" value={lokasiForm.data.latitude} onChange={(e) => lokasiForm.setData('latitude', e.target.value)} className="font-mono" required />
+                                        </FormField>
+                                        <FormField label="Longitude" htmlFor="lokasi-longitude">
+                                            <Input id="lokasi-longitude" type="number" step="any" value={lokasiForm.data.longitude} onChange={(e) => lokasiForm.setData('longitude', e.target.value)} className="font-mono" required />
+                                        </FormField>
+                                    </div>
+                                    <div>
+                                        <label className="mb-1.5 block text-[11px] font-bold text-text-secondary">Radius Toleransi Absen (Meter)</label>
+                                        <div className="flex items-center gap-3">
+                                            <input type="range" min="10" max="10000" value={lokasiForm.data.radius_meter} onChange={(e) => lokasiForm.setData('radius_meter', Number(e.target.value))} className="flex-1 accent-primary" />
+                                            <Input type="number" min="10" max="100000" value={lokasiForm.data.radius_meter} onChange={(e) => lokasiForm.setData('radius_meter', Number(e.target.value))} className="w-28" />
+                                        </div>
+                                        <p className="mt-1 text-[10px] text-text-muted">Pegawai hanya bisa absen jika jarak GPS mereka di dalam radius ini.</p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button type="submit" disabled={lokasiForm.processing}>{lokasiForm.processing ? 'Menyimpan...' : 'Simpan'}</Button>
+                                        <Button type="button" variant="secondary" onClick={() => { setShowLokasiForm(false); setEditLokasi(null); lokasiForm.reset(); }}>Batal</Button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {lokasiCount === 0 ? (
+                                <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+                                    <p className="text-sm font-semibold text-text-primary">Belum ada lokasi tambahan.</p>
+                                    <p className="mt-1 text-xs text-text-secondary">Tambah lokasi jika unit punya kampus atau titik absen lain.</p>
+                                </div>
+                            ) : (
+                                <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="hover:bg-transparent">
+                                                <TableHead>Nama</TableHead>
+                                                <TableHead>Koordinat</TableHead>
+                                                <TableHead>Radius</TableHead>
+                                                <TableHead className="text-right">Aksi</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {lokalis.map((l) => (
+                                                <TableRow key={l.id}>
+                                                    <TableCell className="font-medium">{l.nama}</TableCell>
+                                                    <TableCell className="font-mono text-xs">{l.latitude}, {l.longitude}</TableCell>
+                                                    <TableCell>{l.radius_meter} m</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="inline-flex items-center gap-2">
+                                                            <Button type="button" variant="secondary" size="sm" onClick={() => startEditLokasi(l)}>Edit</Button>
+                                                            <Button type="button" variant="secondary" size="sm" onClick={() => handleDeleteLokasi(l.id)} className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800">
+                                                                <Trash2 className="h-3.5 w-3.5" /> Hapus
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
+                        </Card>
+
+                        <Card className="sticky bottom-20 z-20 p-3 shadow-sm lg:bottom-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <p className={`text-xs ${hasErrors ? 'font-semibold text-rose-600' : 'text-text-secondary'}`}>
+                                    {hasErrors
+                                        ? 'Ada input yang perlu diperiksa.'
+                                        : isDirty
+                                            ? 'Ada perubahan belum disimpan.'
+                                            : 'Perubahan utama sudah tersimpan.'}
+                                </p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Link href={route('unit-sekolah.index')} className="inline-flex h-10 items-center rounded-lg border border-border bg-white px-4 text-sm font-bold text-text-secondary transition-colors hover:border-primary/30 hover:text-primary">
+                                        Batal
+                                    </Link>
+                                    <Button type="submit" form="unit-form" disabled={processing}>
+                                        {processing
+                                            ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan...</>
+                                            : <><Save className="h-4 w-4" /> Simpan Perubahan</>}
+                                    </Button>
+                                </div>
+                            </div>
+                            <p className="mt-2 text-[10px] text-text-muted">
+                                Mode presensi dan lokasi tambahan disimpan dari kartunya masing-masing.
+                            </p>
+                        </Card>
+                    </div>
+                </div>
             </div>
         </AdminShell>
     );
