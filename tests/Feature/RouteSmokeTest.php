@@ -32,6 +32,7 @@ use App\Models\Reminder;
 use App\Models\SkalaMasaBakti;
 use App\Models\TugasLuar;
 use App\Models\UnitLokasi;
+use App\Models\UnitPresensiModeHistory;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Database\Seeders\KpiTemplateSeeder;
@@ -559,6 +560,8 @@ class RouteSmokeTest extends TestCase
 
     private UnitLokasi $lokasi;
 
+    private UnitPresensiModeHistory $presensiModeHistory;
+
     private PengajuanIzin $pengajuanApprove;
 
     private PengajuanIzin $pengajuanReject;
@@ -594,6 +597,12 @@ class RouteSmokeTest extends TestCase
             'jam_pulang_kantor' => '16:00',
             'max_jam_minggu' => 30,
             'toleransi_slide_menit' => 15,
+        ]);
+
+        $this->presensiModeHistory = UnitPresensiModeHistory::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'mode' => UnitPresensiModeHistory::MODE_HANYA_JADWAL,
+            'berlaku_mulai' => now()->addDay()->toDateString(),
         ]);
 
         $this->jabatan = Jabatan::create(['nama' => 'Guru', 'is_guru' => true]);
@@ -1781,6 +1790,7 @@ class RouteSmokeTest extends TestCase
             'late' => $this->piketSiswaTerlambat->id,
             'reminder' => in_array($routeName, ['reminders.destroy', 'reminders.send'], true) ? $this->disposableReminder->id : $this->reminder->id,
             'lokasi' => $this->lokasi->id,
+            'presensi_mode_history' => $this->presensiModeHistory->id,
             'koreksi' => $this->koreksi->id,
             'assignment' => PegawaiUnit::where('pegawai_id', $this->pegawai->id)->firstOrFail()->id,
             'evaluation' => $this->kpiEvaluation->id,

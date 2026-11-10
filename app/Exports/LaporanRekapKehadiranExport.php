@@ -6,6 +6,7 @@ use App\Constants\BobotKehadiran;
 use App\Models\HariLibur;
 use App\Models\Pegawai;
 use App\Models\Presensi;
+use App\Models\UnitPresensiModeHistory;
 use App\Models\UnitSekolah;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -104,7 +105,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
         // 3. Build pegawai map (eager-load info).
         $pegawaiIds = $byPegawai->keys()->all();
         $pegawaiMap = Pegawai::whereIn('id', $pegawaiIds)
-            ->with(['jabatans', 'units'])
+            ->with(['jabatans', 'mapels', 'jadwals', 'units.presensiModeHistories'])
             ->get()
             ->keyBy('id');
 
@@ -123,9 +124,13 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             $unit = $this->unit_id ? $pegawai?->units->firstWhere('id', $this->unit_id) : $pegawai?->unitUtama();
             $workingDays = $unit ? Pegawai::hariKerjaUnit($unit) : ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
 
-            return $deduped->filter(function ($presensi) use ($workingDays) {
+            return $deduped->filter(function ($presensi) use ($workingDays, $pegawai) {
                 $date = Carbon::parse($presensi->tanggal);
                 $day = $date->locale('id')->translatedFormat('l');
+
+                if ($pegawai?->presensiHanyaJadwalPada($date)) {
+                    return in_array($day, $pegawai->hariJadwalMengajar(), true);
+                }
 
                 return in_array($day, $workingDays, true);
             })->values();
@@ -150,13 +155,15 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
                 ? $pegawai?->units->firstWhere('id', $this->unit_id)
                 : $pegawai?->unitUtama();
             $split = BobotKehadiran::splitSakit($sakitDates, $sakitRanges->get($pegawaiId, []), $unit?->sakitWajibTugas() ?? false);
-            $hariKerja = self::computeUniformWorkingDays(
-                $start,
-                $end,
-                $holidayMap,
-                $unit?->id ? (int) $unit->id : null,
-                $unit ? Pegawai::hariKerjaUnit($unit) : null,
-            );
+            $hariKerja = $pegawai && $unit
+                ? self::hariKerjaByMode($pegawai, $unit, $start, $end, $holidayMap)
+                : self::computeUniformWorkingDays(
+                    $start,
+                    $end,
+                    $holidayMap,
+                    $unit?->id ? (int) $unit->id : null,
+                    $unit ? Pegawai::hariKerjaUnit($unit) : null,
+                );
             $bobot = $unit?->bobotHadiran() ?? BobotKehadiran::DEFAULTS;
             $hadirEq = BobotKehadiran::hadirEq($hadir, $telat, $split['surat'], $split['tanpa'], $izin, 0, $cuti, $bobot);
 
@@ -214,6 +221,40 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
     /**
      * Working days sesuai hari operasi unit (default Senin–Jumat), dikurangi libur nasional/unit.
      */
+    public static function hariKerjaByMode(Pegawai $pegawai, UnitSekolah $unit, Carbon $start, Carbon $end, array $holidayMap): int
+    {
+        if (! $pegawai->isPendidik()) {
+            return self::computeUniformWorkingDays(
+                $start,
+                $end,
+                $holidayMap,
+                (int) $unit->id,
+                Pegawai::hariKerjaUnit($unit),
+            );
+        }
+
+        $total = 0;
+        foreach ($unit->modeSegments($start, $end) as $segment) {
+            $workingDays = $segment['mode'] === UnitPresensiModeHistory::MODE_HANYA_JADWAL
+                ? $pegawai->hariJadwalMengajar()
+                : Pegawai::hariKerjaUnit($unit);
+
+            if ($workingDays === []) {
+                continue;
+            }
+
+            $total += self::computeUniformWorkingDays(
+                $segment['from'],
+                $segment['to'],
+                $holidayMap,
+                (int) $unit->id,
+                $workingDays,
+            );
+        }
+
+        return $total;
+    }
+
     public static function computeUniformWorkingDays(Carbon $start, Carbon $end, array $holidayMap, ?int $unitId = null, ?array $workingDays = null): int
     {
         $hariMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];

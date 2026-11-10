@@ -40,6 +40,7 @@ class PresensiAggregator
      *     lembur: Collection,
      *     attended_jadwal: Collection,
      *     harian_pagi: Collection,
+     *     alpa_dates: Collection,
      * }
      */
     public function aggregate(Collection $pegawaiIds, Carbon $periodeStart, Carbon $periodeEnd, Carbon $attendanceCutoff, ?int $unitScope = null): array
@@ -61,6 +62,7 @@ class PresensiAggregator
             'lembur' => $this->lemburByPegawai($presensiRows, $attendanceCutoff),
             'attended_jadwal' => $this->attendedJadwalByPegawai($presensiRows, $attendanceCutoff),
             'harian_pagi' => $this->harianPagiByPegawai($presensiRows, $attendanceCutoff),
+            'alpa_dates' => $this->alpaDatesByPegawai($presensiRows, $unitScope),
         ];
     }
 
@@ -97,6 +99,27 @@ class PresensiAggregator
      * Dedup yang sama diterapkan: record sakit yang tanggalnya sudah punya hadir/telat
      * tidak ikut diprorata (konsisten dengan attendanceByPegawai).
      */
+    /**
+     * Baris alpa per tanggal, setelah dedup pasif-vs-aktif dan scope unit.
+     * Dipakai payroll untuk membedakan alpa kantor lama dari alpa hari mengajar.
+     */
+    private function alpaDatesByPegawai(Collection $rows, ?int $unitScope): Collection
+    {
+        return $rows
+            ->filter(fn ($p) => ! $p->is_lembur
+                && $p->status === 'alpa'
+                && ($unitScope === null || $p->unit_sekolah_id == $unitScope || $p->unit_sekolah_id === null))
+            ->groupBy('pegawai_id')
+            ->map(fn ($pegawaiRows) => $this->dedupPassiveByActiveDate($pegawaiRows)
+                ->where('status', 'alpa')
+                ->map(fn ($p) => [
+                    'tanggal' => $p->tanggal->format('Y-m-d'),
+                    'jadwal_id' => $p->jadwal_id,
+                    'tipe_presensi' => $p->tipe_presensi,
+                ])
+                ->values());
+    }
+
     private function sakitProrata(Collection $rows): Collection
     {
         return $rows

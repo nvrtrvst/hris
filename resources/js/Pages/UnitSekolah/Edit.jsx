@@ -5,8 +5,21 @@ import { Head, Link, useForm, router } from '@inertiajs/react';
 import { ArrowLeft, MapPin, Plus, Trash2 } from 'lucide-react';
 import UnitForm from './UnitForm';
 import LeafletPicker from '@/Components/LeafletPicker';
+import ModePresensiSection from './Partials/ModePresensiSection';
 
-export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = [] }) {
+export default function Edit({
+    auth,
+    unit,
+    lokalis,
+    jabatans = [],
+    tembusan = [],
+    presensi_mode_histories = [],
+    mode_options = [],
+    mode_aktif = 'kantor',
+    mode_aktif_label = 'Kantor',
+    mode_aktif_sejak = null,
+    mode_berikutnya = null,
+}) {
     const { data, setData, post, transform, processing, errors } = useForm({
         nama: unit.nama,
         singkatan: unit.singkatan,
@@ -107,6 +120,16 @@ export default function Edit({ auth, unit, lokalis, jabatans = [], tembusan = []
                     isEdit={true}
                     unitName={unit.nama}
                     unitLogoUrl={unit.logo_url}
+                />
+
+                <ModePresensiSection
+                    unit={unit}
+                    histories={presensi_mode_histories}
+                    modeOptions={mode_options}
+                    modeAktif={mode_aktif}
+                    modeAktifLabel={mode_aktif_label}
+                    modeAktifSejak={mode_aktif_sejak}
+                    modeBerikutnya={mode_berikutnya}
                 />
 
                 <Card className="p-5 sm:p-6">

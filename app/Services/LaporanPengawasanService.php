@@ -113,10 +113,14 @@ class LaporanPengawasanService
 
             foreach ($workdays as $date) {
                 $dayName = Carbon::parse($date)->locale('id')->translatedFormat('l');
+                $scheduledSlots = $schedulesByEmployeeDay->get($pegawai->id.'|'.$dayName, collect());
+                if ($pegawai->presensiHanyaJadwalPada($date) && $scheduledSlots->isEmpty()) {
+                    continue;
+                }
+
                 $rows = $presensiMap[$pegawai->id.'|'.$date] ?? collect();
                 $leave = $leaveMap[$pegawai->id][$date] ?? null;
                 $status = $this->dayStatus($rows, $leave);
-                $scheduledSlots = $schedulesByEmployeeDay->get($pegawai->id.'|'.$dayName, collect());
                 $scheduledJp = round($scheduledSlots->sum(fn (Jadwal $slot) => JpCalculator::weightFromJadwal($slot)), 2);
                 $actualJadwalIds = $rows
                     ->filter(fn (Presensi $presensi) => $presensi->jadwal_id && in_array($presensi->status, ['hadir', 'telat'], true))
@@ -323,7 +327,7 @@ class LaporanPengawasanService
 
     private function visibleUnits(?User $user, ?int $selectedUnitId): Collection
     {
-        $query = UnitSekolah::query()->orderBy('nama');
+        $query = UnitSekolah::query()->with('presensiModeHistories')->orderBy('nama');
 
         if ($selectedUnitId) {
             $query->whereKey($selectedUnitId);
@@ -352,7 +356,7 @@ class LaporanPengawasanService
         $query = Pegawai::query()
             ->where('status_aktif', 'aktif')
             ->whereHas('units', fn ($q) => $q->whereIn('unit_sekolah.id', $unitIds))
-            ->with(['units:id,nama,singkatan', 'jabatans:id,nama,is_guru'])
+            ->with(['units:id,nama,singkatan', 'units.presensiModeHistories', 'jabatans:id,nama,is_guru', 'mapels'])
             ->orderBy('nama_lengkap')
             ->select(['id', 'nama_lengkap', 'atasan_langsung_id']);
 

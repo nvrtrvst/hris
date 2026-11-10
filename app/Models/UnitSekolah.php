@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Constants\BobotKehadiran;
 use App\Helpers\FileHelper;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -41,6 +42,85 @@ class UnitSekolah extends Model
     public function toleransiMengajarMenit(): int
     {
         return (int) ($this->toleransi_mengajar_menit ?? $this->toleransi_menit ?? 0);
+    }
+
+    public function presensiModeHistories(): HasMany
+    {
+        return $this->hasMany(UnitPresensiModeHistory::class, 'unit_sekolah_id')
+            ->orderBy('berlaku_mulai');
+    }
+
+    public function modePresensiPada(Carbon|string|null $date = null): string
+    {
+        $tanggal = $date ? Carbon::parse($date)->toDateString() : Carbon::today()->toDateString();
+
+        if ($this->relationLoaded('presensiModeHistories')) {
+            $history = $this->presensiModeHistories
+                ->filter(fn (UnitPresensiModeHistory $row) => $row->berlaku_mulai->toDateString() <= $tanggal)
+                ->sortByDesc('berlaku_mulai')
+                ->first();
+
+            return $history?->mode ?? UnitPresensiModeHistory::MODE_KANTOR;
+        }
+
+        return $this->presensiModeHistories()
+            ->whereDate('berlaku_mulai', '<=', $tanggal)
+            ->orderByDesc('berlaku_mulai')
+            ->value('mode') ?? UnitPresensiModeHistory::MODE_KANTOR;
+    }
+
+    public function modePresensiAktif(): string
+    {
+        return $this->modePresensiPada(Carbon::today());
+    }
+
+    /**
+     * Pecah rentang menjadi segmen mode agar perubahan di tengah bulan
+     * dihitung dengan aturan yang berlaku pada tanggal masing-masing.
+     *
+     * @return list<array{from: Carbon, to: Carbon, mode: string}>
+     */
+    public function modeSegments(Carbon $start, Carbon $end): array
+    {
+        $start = $start->copy()->startOfDay();
+        $end = $end->copy()->startOfDay();
+        if ($start->gt($end)) {
+            return [];
+        }
+
+        $histories = $this->relationLoaded('presensiModeHistories')
+            ? $this->presensiModeHistories
+            : $this->presensiModeHistories()->whereDate('berlaku_mulai', '<=', $end)->get();
+
+        $mode = UnitPresensiModeHistory::MODE_KANTOR;
+        $changes = [];
+        foreach ($histories as $history) {
+            $tanggal = $history->berlaku_mulai->copy()->startOfDay();
+            if ($tanggal->lte($start)) {
+                $mode = $history->mode;
+            } elseif ($tanggal->lte($end)) {
+                $changes[] = ['date' => $tanggal, 'mode' => $history->mode];
+            }
+        }
+
+        usort($changes, fn (array $a, array $b) => $a['date']->timestamp <=> $b['date']->timestamp);
+
+        $segments = [];
+        $cursor = $start->copy();
+        foreach ($changes as $change) {
+            $segmentEnd = $change['date']->copy()->subDay();
+            if ($cursor->lte($segmentEnd)) {
+                $segments[] = ['from' => $cursor->copy(), 'to' => $segmentEnd, 'mode' => $mode];
+            }
+            $cursor = $change['date']->copy();
+            $mode = $change['mode'];
+        }
+
+        if ($cursor->lte($end)) {
+            $segments[] = ['from' => $cursor, 'to' => $end, 'mode' => $mode];
+        }
+
+        return $segments;
     }
 
     public function getLogoUrlAttribute(): ?string

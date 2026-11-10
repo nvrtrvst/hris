@@ -253,6 +253,72 @@ class Pegawai extends Model
         return $hari;
     }
 
+    public function isPendidik(): bool
+    {
+        $this->loadMissing(['jabatans', 'mapels']);
+
+        return $this->jabatans->contains(fn (Jabatan $jabatan) => (bool) $jabatan->is_guru)
+            || $this->mapels->isNotEmpty();
+    }
+
+    public function modePresensiPada(Carbon|string|null $date = null): string
+    {
+        if (! $this->isPendidik()) {
+            return UnitPresensiModeHistory::MODE_KANTOR;
+        }
+
+        return $this->unitUtama()?->modePresensiPada($date)
+            ?? UnitPresensiModeHistory::MODE_KANTOR;
+    }
+
+    public function presensiHanyaJadwalPada(Carbon|string|null $date = null): bool
+    {
+        return $this->modePresensiPada($date) === UnitPresensiModeHistory::MODE_HANYA_JADWAL;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function hariJadwalWajib(): array
+    {
+        $this->loadMissing('jadwals');
+
+        return $this->jadwals
+            ->filter(fn (Jadwal $jadwal) => in_array($jadwal->jenis_jadwal, ['mengajar', 'piket'], true))
+            ->pluck('hari')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Hari yang dihitung sebagai working day pada mode hanya-jadwal.
+     * Piket punya laporan sendiri dan tidak masuk denominator gaji pokok.
+     *
+     * @return list<string>
+     */
+    public function hariJadwalMengajar(): array
+    {
+        $this->loadMissing('jadwals');
+
+        return $this->jadwals
+            ->filter(fn (Jadwal $jadwal) => $jadwal->jenis_jadwal === 'mengajar')
+            ->pluck('hari')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function adaJadwalWajibPada(string $hari): bool
+    {
+        $this->loadMissing('jadwals');
+
+        return $this->jadwals->contains(
+            fn (Jadwal $jadwal) => $jadwal->hari === $hari
+                && in_array($jadwal->jenis_jadwal, ['mengajar', 'piket'], true)
+        );
+    }
+
     /** Unit utama pegawai (pivot is_primary menang, else baris pertama). */
     public function unitUtama(): ?UnitSekolah
     {

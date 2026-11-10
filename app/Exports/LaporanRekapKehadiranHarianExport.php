@@ -127,7 +127,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         }
 
         $pegawaiMap = Pegawai::whereIn('id', $byPegawai->keys()->all())
-            ->with(['jabatans', 'units'])
+            ->with(['jabatans', 'mapels', 'jadwals', 'units.presensiModeHistories'])
             ->get()
             ->keyBy('id');
 
@@ -150,21 +150,27 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
             $holidayDates = array_flip($unitId !== null
                 ? ($holidayMap['unit_holiday_dates'][$unitId] ?? array_keys($holidayMap['national_dates'] ?? []))
                 : array_keys($holidayMap['national_dates'] ?? []));
-            $hariKerja = LaporanRekapKehadiranExport::computeUniformWorkingDays(
-                $start,
-                $end,
-                $holidayMap,
-                $unitId ? (int) $unitId : null,
-                $workingDays,
-            );
+            $hariKerja = $pegawai && $unit
+                ? LaporanRekapKehadiranExport::hariKerjaByMode($pegawai, $unit, $start, $end, $holidayMap)
+                : LaporanRekapKehadiranExport::computeUniformWorkingDays(
+                    $start,
+                    $end,
+                    $holidayMap,
+                    $unitId ? (int) $unitId : null,
+                    $workingDays,
+                );
+            $jadwalMengajarDays = $pegawai?->hariJadwalMengajar() ?? [];
             $workDateSet = [];
             $recordDateSet = [];
             foreach ($dates as $date) {
                 $dayName = Carbon::parse($date)->locale('id')->translatedFormat('l');
-                if (in_array($dayName, $workingDays, true)) {
+                $modeHanyaJadwal = $pegawai?->presensiHanyaJadwalPada($date) ?? false;
+                $allowedDays = $modeHanyaJadwal ? $jadwalMengajarDays : $workingDays;
+
+                if (in_array($dayName, $allowedDays, true)) {
                     $recordDateSet[$date] = true;
                 }
-                if (in_array($dayName, $workingDays, true) && ! isset($holidayDates[$date])) {
+                if (in_array($dayName, $allowedDays, true) && ! isset($holidayDates[$date])) {
                     $workDateSet[$date] = true;
                 }
             }
