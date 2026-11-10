@@ -1511,7 +1511,7 @@ class PresensiController extends Controller
         Storage::disk('local')->put($tempPath, base64_decode(explode(',', $base64Data, 2)[1] ?? ''));
 
         try {
-            $presensi = DB::transaction(function () use ($request, $unit, $distance) {
+            $presensi = DB::transaction(function () use ($request, $distance) {
                 $presensi = Presensi::where('pegawai_id', $request->pegawai_id)
                     ->where('jadwal_id', $request->jadwal_id)
                     ->where('tanggal', Carbon::today()->toDateString())
@@ -1540,7 +1540,7 @@ class PresensiController extends Controller
                     $presensi->foto_masuk_status = 'pending';
                     $presensi->jarak_masuk_meter = $distance;
 
-                    $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $unit->toleransi_menit);
+                    $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, $jadwal->unitSekolah->toleransiMengajarMenit());
                 } else {
                     if (! $presensi->exists || ! $presensi->jam_masuk) {
                         throw ValidationException::withMessages(['conflict' => PresensiMessages::BELUM_ABSEN_MASUK]);
@@ -1805,7 +1805,7 @@ class PresensiController extends Controller
         }
 
         $hari = Carbon::parse($presensi->tanggal)->locale('id')->translatedFormat('l');
-        $jadwals = Jadwal::with('unitSekolah:id,toleransi_menit,wajib_pulang_mengajar')
+        $jadwals = Jadwal::with('unitSekolah:id,toleransi_menit,toleransi_mengajar_menit,wajib_pulang_mengajar')
             ->whereIn('id', $jadwalIds)
             ->where('pegawai_id', $presensi->pegawai_id)
             ->where('hari', $hari)
@@ -1850,7 +1850,7 @@ class PresensiController extends Controller
                 'status' => Presensi::statusAt(
                     (string) $presensi->jam_masuk,
                     (string) $jadwal->jam_mulai,
-                    (int) ($unit?->toleransi_menit ?? 0)
+                    $unit?->toleransiMengajarMenit() ?? 0
                 ),
                 'latitude_masuk' => $presensi->latitude_masuk,
                 'longitude_masuk' => $presensi->longitude_masuk,

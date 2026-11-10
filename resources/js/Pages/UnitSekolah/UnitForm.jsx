@@ -150,19 +150,24 @@ export default function UnitForm({ data, setData, errors, processing, onSubmit, 
             {/* Aturan Presensi */}
             <SectionCard Icon={Settings2} title="Aturan Presensi">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Field label="Toleransi Keterlambatan (Menit)" error={errors.toleransi_menit}
-                        hint="Batas toleransi sebelum dianggap telat (0-60). Default 0.">
+                    <Field label="Toleransi Keterlambatan Kantor (Menit)" error={errors.toleransi_menit}
+                        hint="Batas keterlambatan absen kantor, piket, dan pulang awal. Default 0.">
                         <input type="number" min="0" max="60" value={data.toleransi_menit ?? 0}
                             onChange={(e) => setData('toleransi_menit', e.target.value)} className={inputClass} />
                     </Field>
+                    <Field label="Toleransi Keterlambatan Mengajar (Menit)" error={errors.toleransi_mengajar_menit}
+                        hint="Batas keterlambatan JP mengajar. Gaji JP pertama mengikuti nilai ini. Default 0.">
+                        <input type="number" min="0" max="60" value={data.toleransi_mengajar_menit ?? 0}
+                            onChange={(e) => setData('toleransi_mengajar_menit', e.target.value)} className={inputClass} />
+                    </Field>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Field label="Batas Slide Jadwal (Menit)" error={errors.toleransi_slide_menit}
                         hint="Slide jadwal mengajar hanya bisa sampai X menit setelah jam selesai (0-60). Default 15.">
                         <input type="number" min="0" max="60" value={data.toleransi_slide_menit ?? 15}
                             onChange={(e) => setData('toleransi_slide_menit', e.target.value)} className={inputClass} />
                     </Field>
-                </div>
-
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Field label="Jeda Sesi Maksimum (Menit)" error={errors.max_jeda_sesi_menit}
                         hint="Jarak maksimal antar JP dalam satu sesi mengajar, termasuk istirahat. Default 120.">
                         <input type="number" min="0" max="240" value={data.max_jeda_sesi_menit ?? 120}

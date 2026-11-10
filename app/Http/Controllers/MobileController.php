@@ -838,8 +838,7 @@ class MobileController extends Controller
     }
 
     /**
-     * Batas hadir = jadwal.jam_mulai + toleransi_menit unit — mirror persis dari
-     * statusAt() di storeAbsenTransaction (hanya untuk menampilkan alasan "telat").
+     * Batas hadir = jadwal.jam_mulai + toleransi mengajar unit.
      */
     private function batasHadirFor(Request $request, ?Jadwal $jadwal, $unit, bool $isLembur, bool $isTugasLuar): ?string
     {
@@ -848,7 +847,7 @@ class MobileController extends Controller
         }
 
         return Carbon::parse($jadwal->jam_mulai)
-            ->addMinutes((int) $unit->toleransi_menit)
+            ->addMinutes($jadwal->unitSekolah?->toleransiMengajarMenit() ?? (int) $unit->toleransi_menit)
             ->format('H:i:s');
     }
 
@@ -985,7 +984,10 @@ class MobileController extends Controller
                     } else {
                         $jamMulai = $jadwal->jam_mulai;
                     }
-                    $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jamMulai, (int) $timeUnit->toleransi_menit);
+                    $toleransi = $tipePresensi === 'mengajar'
+                        ? ($jadwal?->unitSekolah?->toleransiMengajarMenit() ?? (int) $timeUnit->toleransi_menit)
+                        : (int) $timeUnit->toleransi_menit;
+                    $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jamMulai, $toleransi);
                 }
 
                 // JP lanjutan (mapel+kelas+unit sama, gap ≤ GAP_SESI_MENIT): jam
@@ -1639,7 +1641,7 @@ class MobileController extends Controller
                 ]);
                 $presensi->is_lembur = false;
                 $presensi->lokasi_perlu_review = (bool) $request->input('mock_suspect', false) || $accuracy < 5;
-                $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, (int) $jadwal->unitSekolah->toleransi_menit);
+                $presensi->status = Presensi::statusAt(Carbon::now()->format('H:i:s'), $jadwal->jam_mulai, $jadwal->unitSekolah->toleransiMengajarMenit());
                 // Jam keluar mengajar final dari jadwal — tidak perlu slide pulang per JP.
                 // Flag wajib_pulang_mengajar ON: pre-fill dimatikan; keluar dikunci via
                 // tombol Selesai Mengajar (slide keluar) pada row JP terakhir sesi.
@@ -1672,7 +1674,7 @@ class MobileController extends Controller
             'status' => $result['status'],
             'jam_masuk' => $tipe === 'masuk' ? $result['jam_masuk'] : null,
             'batas' => $tipe === 'masuk'
-                ? Carbon::parse($jadwal->jam_mulai)->addMinutes((int) $jadwal->unitSekolah->toleransi_menit)->format('H:i:s')
+                ? Carbon::parse($jadwal->jam_mulai)->addMinutes($jadwal->unitSekolah->toleransiMengajarMenit())->format('H:i:s')
                 : null,
             'cover_count' => count($result['covered']),
             'covered_jadwal_ids' => $result['covered'],
