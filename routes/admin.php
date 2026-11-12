@@ -4,6 +4,7 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\ApprovalPolicyController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DokumenController;
 use App\Http\Controllers\HariLiburController;
 use App\Http\Controllers\JabatanController;
 use App\Http\Controllers\JadwalController;
@@ -135,6 +136,23 @@ Route::middleware('auth:web_admin')->group(function () {
     Route::delete('pegawai/{pegawai}/dokumen/{dokumen}', [PegawaiDokumenController::class, 'destroy'])
         ->middleware('throttle:30,1')
         ->name('pegawai.dokumen.destroy');
+
+    // Dokumen yayasan/unit (file private, unduh terproteksi)
+    Route::get('dokumen', [DokumenController::class, 'index'])
+        ->middleware('can:view_dokumen')
+        ->name('dokumen.index');
+    Route::post('dokumen', [DokumenController::class, 'store'])
+        ->middleware(['can:manage_dokumen', 'throttle:30,1'])
+        ->name('dokumen.store');
+    Route::put('dokumen/{dokumen}', [DokumenController::class, 'update'])
+        ->middleware(['can:manage_dokumen', 'throttle:30,1'])
+        ->name('dokumen.update');
+    Route::get('dokumen/{dokumen}/download', [DokumenController::class, 'download'])
+        ->middleware('can:view_dokumen')
+        ->name('dokumen.download');
+    Route::delete('dokumen/{dokumen}', [DokumenController::class, 'destroy'])
+        ->middleware(['can:manage_dokumen', 'throttle:30,1'])
+        ->name('dokumen.destroy');
 
     // Jadwal — create/store/generate/swap/destroy hanya admin
     Route::get('jadwal/create', [JadwalController::class, 'create'])->name('jadwal.create');

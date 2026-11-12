@@ -19,6 +19,8 @@ return [
 
     'presensi_disk' => env('FILESYSTEM_PRESENSI_DISK', 'presensi'),
 
+    'dokumen_disk' => env('FILESYSTEM_DOKUMEN_DISK', 'local'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks

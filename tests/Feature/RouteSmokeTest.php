@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Announcement;
+use App\Models\Dokumen;
 use App\Models\HariLibur;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
@@ -136,6 +137,7 @@ class RouteSmokeTest extends TestCase
         'pegawai.show' => 'Pegawai/Show',
         'pegawai.edit' => 'Pegawai/Edit',
         'pegawai.keuangan' => 'Pegawai/Keuangan',
+        'dokumen.index' => 'Dokumen/Index',
         'jadwal.index' => 'Jadwal/Index',
         'jadwal.create' => 'Jadwal/Create',
         'jadwal.edit' => 'Jadwal/Edit',
@@ -263,6 +265,13 @@ class RouteSmokeTest extends TestCase
         'pegawai.show' => ['pegawai' => true],
         'pegawai.edit' => ['pegawai' => true, 'unitSekolahs' => true, 'jabatans' => true, 'mapels' => true],
         'pegawai.keuangan' => ['pegawai' => true, 'komponens' => true],
+        'dokumen.index' => [
+            'dokumens' => true,
+            'units' => true,
+            'kategoris' => true,
+            'stats' => true,
+            'filters' => false,
+        ],
         'jadwal.index' => [
             'jadwals' => true,
             'pegawais' => true,
@@ -520,6 +529,8 @@ class RouteSmokeTest extends TestCase
     private Penggajian $penggajianPaid;
 
     private PegawaiDokumen $dokumen;
+
+    private Dokumen $dokumenYayasan;
 
     private Announcement $announcement;
 
@@ -865,6 +876,15 @@ class RouteSmokeTest extends TestCase
             'file_path' => 'smoke-dokumen.txt',
         ]);
         Storage::disk('local')->put('smoke-dokumen.txt', 'dummy');
+
+        $this->dokumenYayasan = Dokumen::create([
+            'unit_sekolah_id' => null,
+            'judul' => 'Dokumen Smoke Yayasan',
+            'kategori' => 'legal',
+            'file_path' => 'smoke-dokumen-yayasan.pdf',
+            'file_name' => 'smoke-yayasan.pdf',
+        ]);
+        Storage::disk('local')->put('smoke-dokumen-yayasan.pdf', 'dummy');
 
         // File foto dummy untuk route presensi.photo (path menyertakan /{pegawai_id}_ agar
         // pemilik (non-admin) juga lolos scope).
@@ -1484,6 +1504,14 @@ class RouteSmokeTest extends TestCase
                 'nama_dokumen' => 'Ijazah S1',
                 'jenis' => 'ijazah',
             ],
+            'dokumen.store' => [
+                'judul' => 'Dokumen Smoke Baru',
+                'kategori' => 'legal',
+            ],
+            'dokumen.update' => [
+                'judul' => 'Dokumen Smoke Diperbarui',
+                'kategori' => 'legal',
+            ],
             'unit-sekolah.store' => [
                 'nama' => 'SD Smoke',
                 'singkatan' => 'SD',
@@ -1710,6 +1738,12 @@ class RouteSmokeTest extends TestCase
             ];
         }
 
+        if ($name === 'dokumen.store') {
+            return [
+                'file' => UploadedFile::fake()->create('dokumen.pdf', 100, 'application/pdf'),
+            ];
+        }
+
         return [];
     }
 
@@ -1765,7 +1799,9 @@ class RouteSmokeTest extends TestCase
             'jabatan' => $routeName === 'jabatan.destroy' ? $this->disposableJabatan->id : $this->jabatan->id,
             'role' => in_array($routeName, ['roles.update', 'roles.destroy'], true) ? $this->disposableRole->id : Role::query()->where('name', 'pegawai')->value('id'),
             'announcement' => $this->announcement->id,
-            'dokumen' => $this->dokumen->id,
+            'dokumen' => str_starts_with($routeName, 'dokumen.')
+                ? $this->dokumenYayasan->id
+                : $this->dokumen->id,
             'pengajuan' => $this->pengajuanApprove->id,
             'month' => now()->format('m'),
             'year' => now()->format('Y'),
