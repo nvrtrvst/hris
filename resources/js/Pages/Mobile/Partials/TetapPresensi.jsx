@@ -55,7 +55,8 @@ function groupConsecutiveJadwals(jadwals) {
     for (const j of sorted) {
         const sameClass = j.kelas_label === cur?.kelas_label;
         const gap = cur ? toMin(j.jam_mulai) - toMin(cur.jamSelesaiLast) : 0;
-        if (cur && sameClass && j.pegawai_mapel_id === cur.pegMapelId && gap >= 0 && gap <= GAP_SESI_MENIT) {
+        const bisaDigabung = j.jenis_jadwal === 'mengajar' && cur?.jenis_jadwal === 'mengajar';
+        if (cur && bisaDigabung && sameClass && j.pegawai_mapel_id === cur.pegMapelId && gap >= 0 && gap <= GAP_SESI_MENIT) {
             cur.allIds.push(j.id);
             cur.jadwals.push(j);
             cur.jamSelesaiLast = j.jam_selesai;
@@ -64,6 +65,7 @@ function groupConsecutiveJadwals(jadwals) {
             cur = {
                 id: j.id,
                 pegMapelId: j.pegawai_mapel_id,
+                jenis_jadwal: j.jenis_jadwal,
                 allIds: [j.id],
                 jadwals: [j],
                 mata_pelajaran: j.mata_pelajaran,
@@ -698,7 +700,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
             {slideJadwals.length > 0 && (
                 <section aria-labelledby="jadwal-heading" className="mb-4">
                     <div className="mb-2 flex items-center justify-between">
-                        <h2 id="jadwal-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Agenda Mengajar</h2>
+                        <h2 id="jadwal-heading" className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Agenda Hari Ini</h2>
                         <span className="text-xs text-slate-500">{activeGroups.filter(isGroupSlid).length} dari {activeGroups.length} sudah di-slide</span>
                     </div>
                     {phase === SLIDE_JADWAL && adaBerlangsung && !masihBisaSlide && (
@@ -716,7 +718,9 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                 <div key={g.id} className={`rounded-xl border p-3 ${done ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
                                     <div className="mb-2 flex items-start justify-between gap-2">
                                         <div className="min-w-0">
-                                            <p className="text-sm font-bold text-slate-900">{g.mata_pelajaran?.nama || 'Jadwal'}</p>
+                                            <p className="text-sm font-bold text-slate-900">
+                                                {g.mata_pelajaran?.nama || (g.jenis_jadwal === 'pengawas_ujian' ? 'Pengawas UAS' : 'Jadwal')}
+                                            </p>
                                             <p className="mt-0.5 text-xs text-slate-500">
                                                 {g.kelas_label || ''}
                                                 {count > 1 && <span className="ml-1 font-semibold text-primary">· {count} jam berturut</span>}
@@ -730,7 +734,7 @@ export default function TetapPresensi({ pegawai, jadwals, presensiHariIni, attes
                                                 onConfirm={() => handleSlideGroup(g)}
                                                 disabled={slideLoading !== null || !geofence?.inside}
                                                 confirmed={false}
-                                                label={`Slide ${g.mata_pelajaran?.nama || 'jadwal'}${count > 1 ? ` (${count} jam)` : ''}`}
+                                                label={`Slide ${g.mata_pelajaran?.nama || (g.jenis_jadwal === 'pengawas_ujian' ? 'Pengawas UAS' : 'jadwal')}${count > 1 ? ` (${count} jam)` : ''}`}
                                             />
                                             {!geofence?.inside && (
                                                 <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-600">

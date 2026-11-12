@@ -602,6 +602,7 @@ export default function LaporanIndex({ auth, units }) {
                                         >
                                             <option value="">-- Semua Jenis --</option>
                                             <option value="mengajar">Mengajar</option>
+                                            <option value="pengawas_ujian">Pengawas UAS</option>
                                             <option value="piket">Piket</option>
                                             <option value="ekskul">Ekstrakurikuler</option>
                                             <option value="shift_satpam">Shift Satpam</option>

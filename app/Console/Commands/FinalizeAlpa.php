@@ -26,7 +26,7 @@ class FinalizeAlpa extends Command
     public function handle(): int
     {
         $targets = $this->resolveTargets();
-        $pegawais = Pegawai::with(['jadwals', 'units.presensiModeHistories', 'jabatans', 'mapels'])
+        $pegawais = Pegawai::with(['jadwals.pekanUjian', 'units.presensiModeHistories', 'jabatans', 'mapels'])
             ->where('status_aktif', 'aktif')
             ->get();
         $hariIndo = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa',
@@ -43,7 +43,8 @@ class FinalizeAlpa extends Command
                 // Hanya hari kerja unit (Senin–Jumat, + Sabtu/Minggu bila unit
                 // beroperasi) yang bisa alpa; kecuali pegawai punya jadwal di
                 // hari itu (mis. jadwal tetap berjalan walau unit libur).
-                $punyaJadwalHari = $pegawai->jadwals->contains(fn ($j) => $j->hari === $hariTarget);
+                $jadwalsEfektif = $pegawai->jadwalsEfektifPada($target);
+                $punyaJadwalHari = $jadwalsEfektif->contains(fn ($j) => $j->hari === $hariTarget);
                 if (! $punyaJadwalHari && ! in_array($hariTarget, Pegawai::hariKerjaUnit($pegawai->unitUtama()), true)) {
                     continue;
                 }
@@ -92,9 +93,9 @@ class FinalizeAlpa extends Command
                 // laporan piket). Piket-only ikut logika kantor di bawah.
                 $modeHanyaJadwal = $pegawai->presensiHanyaJadwalPada($target);
                 if ($modeHanyaJadwal) {
-                    $adaJadwalWajib = $pegawai->jadwals->contains(
+                    $adaJadwalWajib = $jadwalsEfektif->contains(
                         fn ($j) => $j->hari === $hariTarget
-                            && in_array($j->jenis_jadwal, ['mengajar', 'piket'], true)
+                            && in_array($j->jenis_jadwal, ['mengajar', 'piket', 'pengawas_ujian'], true)
                     );
                     if (! $adaJadwalWajib) {
                         $skipped++;
@@ -103,9 +104,9 @@ class FinalizeAlpa extends Command
                     }
                 }
 
-                $jadwalsHari = $pegawai->jadwals
+                $jadwalsHari = $jadwalsEfektif
                     ->filter(fn ($j) => $j->hari === $hariTarget && $j->jenis_jadwal !== 'piket')
-                    ->when($modeHanyaJadwal, fn ($items) => $items->where('jenis_jadwal', 'mengajar'));
+                    ->when($modeHanyaJadwal, fn ($items) => $items->whereIn('jenis_jadwal', ['mengajar', 'pengawas_ujian']));
 
                 // Per-jadwal alpa-mengajar: jalan untuk SEMUA pegawai yang punya jadwal hari itu,
                 // baik sudah hadir sebagian maupun tidak hadir sama sekali.

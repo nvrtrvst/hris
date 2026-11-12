@@ -22,6 +22,7 @@ use App\Http\Controllers\PayrollReferenceValueController;
 use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\PegawaiDokumenController;
 use App\Http\Controllers\PegawaiKomponenController;
+use App\Http\Controllers\PekanUjianController;
 use App\Http\Controllers\PengajuanIzinController;
 use App\Http\Controllers\PengajuanKoreksiController;
 use App\Http\Controllers\PengajuanPulangCepatController;
@@ -492,6 +493,9 @@ Route::middleware('auth:web_admin')->group(function () {
         Route::resource('mata-pelajaran', MataPelajaranController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('throttle:60,1');
         Route::resource('jabatan', JabatanController::class)->except(['show', 'create', 'edit'])->middleware('throttle:60,1');
         Route::resource('hari-libur', HariLiburController::class)->except(['show', 'create', 'edit'])->middleware('throttle:60,1');
+        Route::resource('pekan-ujian', PekanUjianController::class)
+            ->only(['index', 'store', 'update', 'destroy'])
+            ->middleware(['throttle:60,1', 'can:view_jadwal']);
         Route::post('hari-libur/import', [HariLiburController::class, 'importLokal'])
             ->middleware('throttle:10,1')
             ->name('hari-libur.import');

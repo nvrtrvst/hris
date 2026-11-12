@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { checkGeofence } from '@/Utils/geo';
 import { fmtDetik, batasHadir } from '@/Utils/waktuPresensi';
+import { jenisLabel } from '@/Pages/Jadwal/Partials/jadwalMeta';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '@/Constants/AppConstants';
 import { Head, Link, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
@@ -536,7 +537,7 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                                 className={`min-h-[76px] min-w-[172px] shrink-0 snap-start rounded-xl border p-3 text-left transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15 ${jadwalId === j.id ? 'border-primary bg-emerald-50 ring-1 ring-primary' : 'border-slate-200 bg-white'}`}
                             >
                                 <div className="flex items-start justify-between gap-2">
-                                    <p className="line-clamp-1 text-sm font-bold text-slate-900">{j.mata_pelajaran?.nama || 'Jadwal'}</p>
+                                    <p className="line-clamp-1 text-sm font-bold text-slate-900">{j.mata_pelajaran?.nama || jenisLabel(j.jenis_jadwal)}</p>
                                     {jadwalId === j.id && <CheckCircle className="h-4 w-4 shrink-0 text-primary" />}
                                 </div>
                                 <p className="mt-1 text-xs text-slate-500">{j.kelas_label || (j.hari || '')}</p>

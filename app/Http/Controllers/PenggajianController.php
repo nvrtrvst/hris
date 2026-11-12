@@ -1235,6 +1235,24 @@ class PenggajianController extends Controller
             }
 
             $nominal = min($rate * $pertemuan, self::EKSKUL_CAP_NOMINAL);
+        } elseif ($komponen->jenis === 'dinamis_pengawasan') {
+            $rate = $this->resolveFixedNominal($komponen, $pegawaiKomponens);
+            $attendedJadwalIds = $attendedJadwalByPegawai && isset($attendedJadwalByPegawai[$pegawai->id])
+                ? $attendedJadwalByPegawai[$pegawai->id]
+                : collect();
+
+            $sesiHadir = 0;
+            foreach ($pegawai->jadwals as $jadwal) {
+                if ($jadwal->jenis_jadwal !== 'pengawas_ujian') {
+                    continue;
+                }
+                if ($komponen->unit_sekolah_id && (int) $jadwal->unit_sekolah_id !== (int) $komponen->unit_sekolah_id) {
+                    continue;
+                }
+                $sesiHadir += (int) ($attendedJadwalIds[$jadwal->id] ?? 0);
+            }
+
+            $nominal = $rate * $sesiHadir;
         } elseif ($komponen->jenis === 'lookup_reference') {
             $refType = $komponen->payrollReferenceType;
             if (! $refType) {

@@ -62,11 +62,15 @@ const JadwalLiveBadge = ({ jadwal, presensi, now }) => {
     );
 };
 
-export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, stats = {}, filters = {}, presensiHariIni = [], canMutateJadwal = false, needsUnitFilter = false, jpMinggu = {}, targetJpMinggu = 24 }) {
+export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabels, stats = {}, filters = {}, presensiHariIni = [], canMutateJadwal = false, needsUnitFilter = false, jpMinggu = {}, targetJpMinggu = 24, pekanUjianByUnit = {} }) {
     const isAdmin = auth.permissions?.includes('view_jadwal') || auth.permissions?.includes('manage_jadwal');
     const { errors = {} } = usePage().props;
     const [processing, setProcessing] = useState(false);
     const now = useNowEveryMinute();
+
+    const dormantPeriod = (jadwal) => (
+        jadwal.jenis_jadwal === 'mengajar' ? pekanUjianByUnit[jadwal.unit_sekolah_id] : null
+    );
 
     // Badge beban mengajar mingguan (JP) vs target 24 JP/minggu.
     const jpBadge = (pegawaiId) => {
@@ -542,6 +546,19 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                         />
                     )}
 
+                    {Object.keys(pekanUjianByUnit).length > 0 && (
+                        <Card className="flex items-start gap-3 border-primary/20 bg-primary-50 px-4 py-3">
+                            <CalendarRange className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-primary">Pekan UAS aktif</p>
+                                <p className="mt-0.5 text-xs text-text-secondary">
+                                    {Object.values(pekanUjianByUnit).map((p) => p.nama).join(', ')}
+                                    {' '}· Jadwal mengajar dinonaktifkan sampai periode selesai.
+                                </p>
+                            </div>
+                        </Card>
+                    )}
+
                     {isAdmin && (
                         <>
                             <Card className="px-4 py-3">
@@ -752,6 +769,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                         <div className="flex flex-wrap gap-1.5">
                                                             {dayJadwals.map((jadwal) => {
                                                                 const meta = jenisBadge(jadwal.jenis_jadwal);
+                                                                const dormant = dormantPeriod(jadwal);
 
                                                                 return (
                                                                     <div key={jadwal.id} className="flex min-w-[148px] flex-col items-center text-center bg-white p-2 rounded-lg shadow-sm border border-gray-200">
@@ -767,6 +785,11 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                         <span className={`mt-1 text-[11px] font-bold px-1.5 py-0.5 rounded ${meta.badge}`}>
                                                                             {meta.label}
                                                                         </span>
+                                                                        {dormant && (
+                                                                            <span className="mt-1 rounded-full bg-surface px-1.5 py-0.5 text-[10px] font-bold text-text-secondary">
+                                                                                Tidak aktif · Pekan UAS
+                                                                            </span>
+                                                                        )}
                                                                         <JadwalLiveBadge
                                                                             jadwal={jadwal}
                                                                             presensi={presensiByJadwal.get(jadwal.id)}
@@ -850,6 +873,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                             <div className="flex flex-col gap-1.5">
                                                                 {pJadwals.length > 0 ? pJadwals.map((jadwal) => {
                                                                     const meta = jenisBadge(jadwal.jenis_jadwal);
+                                                                    const dormant = dormantPeriod(jadwal);
 
                                                                     return (
                                                                         <div key={jadwal.id} className="group/card relative flex flex-col items-center rounded-lg border border-gray-200 bg-white p-2 text-center transition-colors hover:border-primary/50 print:border-gray-300">
@@ -865,6 +889,11 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                                             <span className={`mt-1 text-[11px] font-bold px-1.5 py-0.5 rounded ${meta.badge}`}>
                                                                                 {meta.label}
                                                                             </span>
+                                                                            {dormant && (
+                                                                                <span className="mt-1 rounded-full bg-surface px-1.5 py-0.5 text-[10px] font-bold text-text-secondary">
+                                                                                    Tidak aktif · Pekan UAS
+                                                                                </span>
+                                                                            )}
                                                                             <JadwalLiveBadge
                                                                                 jadwal={jadwal}
                                                                                 presensi={presensiByJadwal.get(jadwal.id)}
@@ -977,6 +1006,7 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     {jadwals.map((j) => {
                                         const meta = jenisBadge(j.jenis_jadwal);
+                                        const dormant = dormantPeriod(j);
 
                                         return (
                                             <div key={j.id} className="card p-4 flex items-center gap-4 transition-colors hover:border-primary/30">
@@ -988,6 +1018,9 @@ export default function Index({ auth, jadwals, pegawais, units, mapel, kelasLabe
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold text-primary truncate">{j.mata_pelajaran?.nama || j.jenis_jadwal}</span>
                                                         <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${meta.badge}`}>{meta.label}</span>
+                                                        {dormant && (
+                                                            <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[11px] font-bold text-text-secondary">Tidak aktif</span>
+                                                        )}
                                                     </div>
                                                     <div className="mt-0.5 text-xs text-text-secondary">
                                                         {j.jam_mulai?.substring(0, 5)} – {j.jam_selesai?.substring(0, 5)}

@@ -4,7 +4,7 @@ import { Button, Card, PageHeader } from '@/Components/AdminUI';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 
-export default function Edit({ auth, jadwal, pegawais, units, mapel, lokalis }) {
+export default function Edit({ auth, jadwal, pegawais, units, mapel, lokalis, pekanUjians = [] }) {
     const calcJp = (mulai, selesai, durasi) => {
         if (!mulai || !selesai || !durasi) return 1;
         const [h1, m1] = mulai.split(':').map(Number);
@@ -24,6 +24,7 @@ export default function Edit({ auth, jadwal, pegawais, units, mapel, lokalis }) 
         jam_mulai: String(jadwal.jam_mulai || '').slice(0, 5),
         jam_selesai: String(jadwal.jam_selesai || '').slice(0, 5),
         jenis_jadwal: jadwal.jenis_jadwal || 'mengajar',
+        pekan_ujian_id: jadwal.pekan_ujian_id || '',
         tahun_ajaran: jadwal.tahun_ajaran || '2026/2027',
         semester: String(jadwal.semester || '1'),
     });
@@ -36,6 +37,11 @@ export default function Edit({ auth, jadwal, pegawais, units, mapel, lokalis }) 
         return (pegawais || []).filter(p => (p.units || []).some(u => u.id == data.unit_sekolah_id));
     }, [data.unit_sekolah_id, pegawais]);
     const currentPegawai = (pegawais || []).find(p => p.id == data.pegawai_id);
+
+    const filteredPekanUjians = React.useMemo(() => {
+        if (!data.unit_sekolah_id) return [];
+        return (pekanUjians || []).filter((p) => p.unit_sekolah_id == data.unit_sekolah_id);
+    }, [data.unit_sekolah_id, pekanUjians]);
 
     const prevUnit = React.useRef(data.unit_sekolah_id);
     React.useEffect(() => {
@@ -152,6 +158,7 @@ export default function Edit({ auth, jadwal, pegawais, units, mapel, lokalis }) 
                                             <select value={data.jenis_jadwal} onChange={e => setData('jenis_jadwal', e.target.value)} className="select-field">
                                                 <option value="mengajar">Mengajar</option>
                                                 <option value="piket">Piket</option>
+                                                <option value="pengawas_ujian">Pengawas UAS</option>
                                                 <option value="ekskul">Ekstrakurikuler</option>
                                                 <option value="shift_satpam">Shift Satpam</option>
                                                 <option value="shift_kebersihan">Shift Kebersihan</option>
@@ -159,6 +166,21 @@ export default function Edit({ auth, jadwal, pegawais, units, mapel, lokalis }) 
                                             </select>
                                             {errors.jenis_jadwal && <p className="form-error">{errors.jenis_jadwal}</p>}
                                         </div>
+                                        {data.jenis_jadwal === 'pengawas_ujian' && (
+                                            <div className="md:col-span-2">
+                                                <label className="form-label">Pekan UAS <span className="text-red-500">*</span></label>
+                                                <select value={data.pekan_ujian_id} onChange={e => setData('pekan_ujian_id', e.target.value)} className={`select-field ${errors.pekan_ujian_id ? 'input-error' : ''}`}>
+                                                    <option value="">Pilih Pekan UAS</option>
+                                                    {filteredPekanUjians.map((p) => (
+                                                        <option key={p.id} value={p.id}>{p.nama} ({String(p.tanggal_mulai).slice(0, 10)} - {String(p.tanggal_selesai).slice(0, 10)})</option>
+                                                    ))}
+                                                </select>
+                                                {errors.pekan_ujian_id && <p className="form-error">{errors.pekan_ujian_id}</p>}
+                                                {filteredPekanUjians.length === 0 && (
+                                                    <p className="form-hint text-warning mt-1">Belum ada Pekan UAS untuk unit ini. <a href={route('pekan-ujian.index')} className="font-bold underline">Tambah periode dulu</a>.</p>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -187,6 +209,30 @@ export default function Edit({ auth, jadwal, pegawais, units, mapel, lokalis }) 
                                                     ))}
                                                 </select>
                                                 {errors.mata_pelajaran_id && <p className="form-error">{errors.mata_pelajaran_id}</p>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {data.jenis_jadwal !== 'mengajar' && (
+                                    <div className="bg-surface p-4 rounded-card border border-border">
+                                        <h3 className="section-title text-text-primary mb-4">
+                                            {data.jenis_jadwal === 'pengawas_ujian' ? 'Detail Pengawasan' : 'Detail Kegiatan'}
+                                        </h3>
+                                        <div className="form-grid">
+                                            <div className="md:col-span-2">
+                                                <label className="form-label">
+                                                    {data.jenis_jadwal === 'pengawas_ujian' ? 'Ruang' : 'Kelas / Keterangan'}
+                                                    {data.jenis_jadwal === 'pengawas_ujian' && <span className="text-red-500"> *</span>}
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={data.kelas_label}
+                                                    onChange={e => setData('kelas_label', e.target.value)}
+                                                    placeholder={data.jenis_jadwal === 'pengawas_ujian' ? 'Contoh: Ruang 1 / Aula' : 'Opsional'}
+                                                    className={`input-field ${errors.kelas_label ? 'input-error' : ''}`}
+                                                />
+                                                {errors.kelas_label && <p className="form-error">{errors.kelas_label}</p>}
                                             </div>
                                         </div>
                                     </div>

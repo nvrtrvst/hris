@@ -18,6 +18,7 @@ use App\Models\Pegawai;
 use App\Models\PegawaiDokumen;
 use App\Models\PegawaiMapel;
 use App\Models\PegawaiUnit;
+use App\Models\PekanUjian;
 use App\Models\PengajuanIzin;
 use App\Models\PengajuanKoreksi;
 use App\Models\PengajuanPulangCepat;
@@ -141,6 +142,7 @@ class RouteSmokeTest extends TestCase
         'jadwal.index' => 'Jadwal/Index',
         'jadwal.create' => 'Jadwal/Create',
         'jadwal.edit' => 'Jadwal/Edit',
+        'pekan-ujian.index' => 'PekanUjian/Index',
         'presensi.index' => 'Presensi/Index',
         'lembur.index' => 'Lembur/Index',
         'absen-siswa.index' => 'AbsenSiswa/Index',
@@ -283,6 +285,7 @@ class RouteSmokeTest extends TestCase
         ],
         'jadwal.create' => ['pegawais' => true, 'units' => true, 'mapel' => true],
         'jadwal.edit' => ['jadwal' => true, 'pegawais' => true, 'units' => true, 'mapel' => true],
+        'pekan-ujian.index' => ['periods' => true, 'units' => true],
         'presensi.index' => [
             'presensis' => true,
             // Admin → pegawai null oleh desain (hanya untuk non-admin).
@@ -511,6 +514,8 @@ class RouteSmokeTest extends TestCase
     private Jadwal $jadwal;
 
     private Jadwal $jadwal2;
+
+    private PekanUjian $pekanUjian;
 
     private Presensi $presensi;
 
@@ -758,6 +763,13 @@ class RouteSmokeTest extends TestCase
             'jenis_jadwal' => 'mengajar',
             'tahun_ajaran' => '2026/2027',
             'semester' => 1,
+        ]);
+
+        $this->pekanUjian = PekanUjian::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'nama' => 'Pekan UAS Smoke',
+            'tanggal_mulai' => now()->addMonths(2)->startOfMonth()->toDateString(),
+            'tanggal_selesai' => now()->addMonths(2)->startOfMonth()->addDays(4)->toDateString(),
         ]);
 
         $this->presensi = Presensi::create([
@@ -1786,6 +1798,7 @@ class RouteSmokeTest extends TestCase
             'user' => $this->adminUnit->id,
             'unit_sekolah' => $this->unit->id,
             'jadwal' => $routeName === 'jadwal.destroy' ? $this->jadwal2->id : $this->jadwal->id,
+            'pekan_ujian' => $this->pekanUjian->id,
             'presensi' => match ($routeName) {
                 'presensi.approveLembur' => $this->presensiLembur->id,
                 'presensi.rejectLembur' => $this->presensiLembur2->id,
