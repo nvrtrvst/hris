@@ -51,6 +51,7 @@ const JENIS_META = {
     dinamis_masa_bakti: { label: 'Masa Bakti', desc: 'Otomatis dari skala' },
     dinamis_lembur: { label: 'Lembur', desc: 'Dihitung dari jam lembur' },
     dinamis_jabatan: { label: 'Tunjangan Jabatan', desc: 'Jumlah nominal semua jabatan pegawai' },
+    dinamis_pengawasan: { label: 'Honor Pengawas UAS', desc: 'Rate x sesi pengawas yang dihadiri' },
 };
 
 export default function Komponen({ auth, komponens, units, jabatans = [], jabatanMappings = {} }) {
@@ -236,6 +237,7 @@ export default function Komponen({ auth, komponens, units, jabatans = [], jabata
                                             <option value="dinamis_masa_bakti">Dinamis Masa Bakti (Otomatis dari Skala)</option>
                                             <option value="dinamis_lembur">Dinamis Lembur (Dihitung dari Jam Lembur)</option>
                                             <option value="dinamis_jabatan">Dinamis Jabatan (Tunjangan per Jabatan)</option>
+                                            <option value="dinamis_pengawasan">Dinamis Pengawasan (Honor Pengawas UAS)</option>
                                         </select>
                                         {JENIS_META[data.jenis] && (
                                             <p className="mt-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-medium text-text-secondary">

@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Empty, LemburStatusBadge } from '@/Components/MobileUI';
 import { fmtDetik, batasHadir } from '@/Utils/waktuPresensi';
+import { jenisLabel } from '@/Pages/Jadwal/Partials/jadwalMeta';
 import { ArrowRight, Calendar, Clock3, WifiOff, X, CheckCircle, XCircle, AlertTriangle, Users, MapPin } from 'lucide-react';
 
 const hariUrut = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -143,7 +144,7 @@ function PresensiSelfCard({ presensiHariIni, jadwalHariIni, jadwalPerHari, today
                 <div className="space-y-2">
                     {selectedItems.map((j) => {
                         const rec = isToday ? presensiByJadwal[j.id] : null;
-                        const mapel = j.mata_pelajaran?.nama || (j.jenis_jadwal === 'lembur' ? 'Lembur' : 'Jadwal');
+                        const mapel = j.mata_pelajaran?.nama || (j.jenis_jadwal === 'lembur' ? 'Lembur' : jenisLabel(j.jenis_jadwal));
                         const kelas = j.kelas_label || null;
                         const unit = j.unit_sekolah?.singkatan || j.unit_sekolah?.nama || null;
                         const isLembur = j.jenis_jadwal === 'lembur';

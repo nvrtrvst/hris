@@ -7,6 +7,7 @@ use App\Observers\PegawaiObserver;
 use Carbon\Carbon;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -315,8 +316,23 @@ class Pegawai extends Model
 
         return $this->jadwals->contains(
             fn (Jadwal $jadwal) => $jadwal->hari === $hari
-                && in_array($jadwal->jenis_jadwal, ['mengajar', 'piket'], true)
+                && in_array($jadwal->jenis_jadwal, ['mengajar', 'piket', 'pengawas_ujian'], true)
         );
+    }
+
+    /**
+     * Jadwal yang benar-benar berlaku pada satu tanggal.
+     * Baris mengajar disembunyikan saat unit punya pekan ujian aktif;
+     * baris pengawas hanya muncul di rentang periodenya.
+     *
+     * @return Collection<int, Jadwal>
+     */
+    public function jadwalsEfektifPada(Carbon|string $tanggal): Collection
+    {
+        return $this->jadwals()
+            ->efektifPada($tanggal)
+            ->orderBy('jam_mulai')
+            ->get();
     }
 
     /** Unit utama pegawai (pivot is_primary menang, else baris pertama). */

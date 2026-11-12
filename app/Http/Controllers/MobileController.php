@@ -12,6 +12,7 @@ use App\Models\Jadwal;
 use App\Models\LaporanPiket;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
+use App\Models\PekanUjian;
 use App\Models\PengajuanIzin;
 use App\Models\PengajuanPulangCepat;
 use App\Models\PiketArea;
@@ -544,6 +545,7 @@ class MobileController extends Controller
             return Jadwal::with(['unitSekolah', 'pegawaiMapel.mataPelajaran'])
                 ->where('pegawai_id', $pegawai->id)
                 ->where('hari', $hariIniIndo)
+                ->efektifPada(Carbon::today())
                 ->orderBy('jam_mulai')
                 ->get();
         });
@@ -581,9 +583,12 @@ class MobileController extends Controller
             $kantorAktif = false;
         }
 
+        $pekanUjianAktif = PekanUjian::mapAktifPada(Carbon::today(), $pegawai->units->pluck('id')->all());
+
         return inertia('Mobile/Absen', [
             'pegawai' => $pegawai,
             'jadwals' => $jadwalHariIni,
+            'pekanUjianAktif' => array_values($pekanUjianAktif),
             'presensiHariIni' => $presensiHariIni,
             'izinHariIni' => $izinHariIni,
             'piketGate' => [
@@ -708,6 +713,7 @@ class MobileController extends Controller
             if ($jadwal->jenis_jadwal === 'piket') {
                 throw ValidationException::withMessages(['jadwal_id' => PresensiMessages::PIKET_TANPA_SLIDE]);
             }
+            $this->assertJadwalAktifPada($jadwal);
             $geo = $this->resolveGeofenceLocation($pegawai);
             if (! $geo['unit']) {
                 $message = PresensiMessages::PEGAWAI_TIDAK_PUNYA_UNIT;
@@ -1058,7 +1064,7 @@ class MobileController extends Controller
                 // dari jadwal. JP pertama yang hadir memakai jam aktual user
                 // (untuk status hadir/telat); JP sebelumnya yang alpa/izin tidak
                 // dihitung hadir → JP ini menjadi "pertama" (jam aktual user).
-                if ($jadwal && ! $isLembur && ! $isTugasLuar) {
+                if ($jadwal && ! $isLembur && ! $isTugasLuar && $jadwal->jenis_jadwal === 'mengajar') {
                     $isJpContinuation = Presensi::where('pegawai_id', $pegawai->id)
                         ->where('tanggal', $tanggal)
                         ->whereNotNull('jadwal_id')
@@ -1565,6 +1571,7 @@ class MobileController extends Controller
         if ($jadwal->jenis_jadwal === 'piket') {
             return response()->json(['success' => false, 'message' => PresensiMessages::PIKET_TANPA_SLIDE, 'errors' => ['jadwal_id' => PresensiMessages::PIKET_TANPA_SLIDE]], 422);
         }
+        $this->assertJadwalAktifPada($jadwal);
 
         // Slide diblokir bila unit jadwal tidak beroperasi hari ini / hari libur.
         $alasanTidakAktif = HariKerja::alasanTidakBisaPresensi($pegawai, Carbon::now(), $jadwal->unitSekolah, true);
@@ -3074,6 +3081,27 @@ class MobileController extends Controller
             'action' => $action,
             'errors' => ['attestation' => [$message]],
         ], 422);
+    }
+
+    /**
+     * Baris mengajar dorman selama pekan UAS; baris pengawas hanya hidup
+     * di rentang periodenya. Dicek di server agar halaman cache lama tak lolos.
+     */
+    private function assertJadwalAktifPada(Jadwal $jadwal): void
+    {
+        $pekan = PekanUjian::aktifPada((int) $jadwal->unit_sekolah_id, Carbon::today());
+
+        if ($jadwal->jenis_jadwal === 'pengawas_ujian' && ! $pekan) {
+            throw ValidationException::withMessages([
+                'jadwal_id' => 'Jadwal pengawas hanya aktif pada pekan UAS.',
+            ]);
+        }
+
+        if ($jadwal->jenis_jadwal === 'mengajar' && $pekan) {
+            throw ValidationException::withMessages([
+                'jadwal_id' => 'Jadwal mengajar tidak aktif selama Pekan UAS.',
+            ]);
+        }
     }
 
     private function hariIniIndo(): string

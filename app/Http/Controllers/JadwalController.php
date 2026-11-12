@@ -9,6 +9,7 @@ use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\Pegawai;
 use App\Models\PegawaiMapel;
+use App\Models\PekanUjian;
 use App\Models\Presensi;
 use App\Models\UnitLokasi;
 use App\Models\UnitSekolah;
@@ -177,6 +178,19 @@ class JadwalController extends Controller
         // Frontend hanya membaca jadwal_id + jam_masuk — tanpa eager-load ekstra.
         $presensiHariIni = $this->presensiHariIniData($request, $unitId, $needsUnitFilter);
 
+        $pekanUjianByUnit = PekanUjian::query()
+            ->when($unitId, fn ($q) => $q->where('unit_sekolah_id', $unitId))
+            ->get()
+            ->filter(fn (PekanUjian $pekan) => $pekan->statusPada() === 'aktif')
+            ->keyBy('unit_sekolah_id')
+            ->map(fn (PekanUjian $pekan) => [
+                'id' => $pekan->id,
+                'nama' => $pekan->nama,
+                'tanggal_mulai' => $pekan->tanggal_mulai->toDateString(),
+                'tanggal_selesai' => $pekan->tanggal_selesai->toDateString(),
+            ])
+            ->all();
+
         return inertia('Jadwal/Index', [
             'jadwals' => $jadwals,
             'pegawais' => $pegawais,
@@ -193,6 +207,7 @@ class JadwalController extends Controller
             ),
             'canMutateJadwal' => (bool) $user?->can('manage_jadwal'),
             'needsUnitFilter' => $needsUnitFilter,
+            'pekanUjianByUnit' => $pekanUjianByUnit,
         ]);
     }
 
@@ -239,11 +254,18 @@ class JadwalController extends Controller
             $pegawais->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $user->unit_sekolah_id));
         }
 
+        $pekanUjians = PekanUjian::query()
+            ->select(['id', 'unit_sekolah_id', 'nama', 'tanggal_mulai', 'tanggal_selesai'])
+            ->when($user->unit_sekolah_id && ! $user->can('view_all_units'), fn ($q) => $q->where('unit_sekolah_id', $user->unit_sekolah_id))
+            ->orderByDesc('tanggal_mulai')
+            ->get();
+
         return inertia('Jadwal/Create', [
             'pegawais' => $pegawais->orderBy('nama_lengkap')->get(),
             'units' => $units->get(),
             'mapel' => MataPelajaran::all(['id', 'nama']),
             'lokalis' => UnitLokasi::where('is_active', true)->get(['id', 'unit_sekolah_id', 'nama']),
+            'pekanUjians' => $pekanUjians,
         ]);
     }
 
@@ -269,10 +291,13 @@ class JadwalController extends Controller
             'hari.*' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu|distinct',
             'jam_mulai' => 'required|date_format:H:i',
             'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
-            'jenis_jadwal' => 'required|in:mengajar,piket,ekskul,shift_satpam,shift_kebersihan,lainnya',
+            'jenis_jadwal' => 'required|in:mengajar,piket,ekskul,shift_satpam,shift_kebersihan,pengawas_ujian,lainnya',
+            'pekan_ujian_id' => 'nullable|exists:pekan_ujian,id',
             'tahun_ajaran' => 'required|string|max:10',
             'semester' => 'required|integer|in:1,2',
         ]);
+
+        $this->assertPengawasPeriod($validated);
 
         // Validasi lokasi harus milik unit yang dipilih
         if (! empty($validated['unit_lokasi_id']) && $validated['unit_lokasi_id'] != null) {
@@ -363,12 +388,19 @@ class JadwalController extends Controller
             $pegawais->whereHas('units', fn ($q) => $q->where('unit_sekolah.id', $user->unit_sekolah_id));
         }
 
+        $pekanUjians = PekanUjian::query()
+            ->select(['id', 'unit_sekolah_id', 'nama', 'tanggal_mulai', 'tanggal_selesai'])
+            ->when($user->unit_sekolah_id && ! $user->can('view_all_units'), fn ($q) => $q->where('unit_sekolah_id', $user->unit_sekolah_id))
+            ->orderByDesc('tanggal_mulai')
+            ->get();
+
         return inertia('Jadwal/Edit', [
             'jadwal' => $jadwal,
             'pegawais' => $pegawais->orderBy('nama_lengkap')->get(),
             'units' => $units->get(),
             'mapel' => MataPelajaran::all(['id', 'nama']),
             'lokalis' => UnitLokasi::where('is_active', true)->get(['id', 'unit_sekolah_id', 'nama']),
+            'pekanUjians' => $pekanUjians,
         ]);
     }
 
@@ -395,10 +427,13 @@ class JadwalController extends Controller
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu',
             'jam_mulai' => 'required|date_format:H:i',
             'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
-            'jenis_jadwal' => 'required|in:mengajar,piket,ekskul,shift_satpam,shift_kebersihan,lainnya',
+            'jenis_jadwal' => 'required|in:mengajar,piket,ekskul,shift_satpam,shift_kebersihan,pengawas_ujian,lainnya',
+            'pekan_ujian_id' => 'nullable|exists:pekan_ujian,id',
             'tahun_ajaran' => 'required|string|max:10',
             'semester' => 'required|integer|in:1,2',
         ]);
+
+        $this->assertPengawasPeriod($validated);
 
         // Validasi lokasi harus milik unit yang dipilih
         if (! empty($validated['unit_lokasi_id']) && $validated['unit_lokasi_id'] != null) {
@@ -1065,6 +1100,32 @@ class JadwalController extends Controller
     }
 
     /**
+     * Pengawas UAS wajib terikat pekan ujian unit yang sama dan punya ruang.
+     * Jenis lain tidak boleh membawa pekan_ujian_id agar tidak ikut dorman.
+     */
+    private function assertPengawasPeriod(array &$validated): void
+    {
+        if ($validated['jenis_jadwal'] !== 'pengawas_ujian') {
+            $validated['pekan_ujian_id'] = null;
+
+            return;
+        }
+
+        $pekan = PekanUjian::find($validated['pekan_ujian_id'] ?? null);
+        if (! $pekan || (int) $pekan->unit_sekolah_id !== (int) $validated['unit_sekolah_id']) {
+            throw ValidationException::withMessages([
+                'pekan_ujian_id' => 'Pekan UAS wajib dipilih dan harus milik unit yang sama.',
+            ]);
+        }
+
+        if (empty($validated['kelas_label'])) {
+            throw ValidationException::withMessages([
+                'kelas_label' => 'Ruang pengawas wajib diisi.',
+            ]);
+        }
+    }
+
+    /**
      * Resolve pegawai_mapel_id from validated jadwal data.
      * findOrCreate with lockForUpdate inside transaction for race condition safety.
      * Returns null for non-mengajar types.
@@ -1104,7 +1165,12 @@ class JadwalController extends Controller
         $pasangan = [$jenisA, $jenisB];
         sort($pasangan);
 
-        return $pasangan !== ['mengajar', 'piket'];
+        // Piket berjalan berdampingan dengan mengajar. Pengawas UAS juga
+        // dibolehkan overlap karena baris mengajar dorman di periode UAS.
+        return ! in_array($pasangan, [
+            ['mengajar', 'piket'],
+            ['mengajar', 'pengawas_ujian'],
+        ], true);
     }
 
     private function pegawaiBelongsToUnit(int $pegawaiId, int $unitId): bool

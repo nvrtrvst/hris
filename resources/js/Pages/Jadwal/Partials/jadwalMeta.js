@@ -6,10 +6,13 @@ export const JENIS_META = {
     ekskul: { badge: 'bg-purple-50 text-purple-700', label: 'Ekskul' },
     shift_satpam: { badge: 'bg-slate-100 text-slate-700', label: 'Shift Satpam' },
     shift_kebersihan: { badge: 'bg-emerald-50 text-emerald-700', label: 'Shift Kebersihan' },
+    pengawas_ujian: { badge: 'bg-primary-50 text-primary-700', label: 'Pengawas UAS' },
     lainnya: { badge: 'bg-gray-100 text-gray-600', label: 'Lainnya' },
 };
 
 export const jenisBadge = (jenis) => JENIS_META[jenis] || JENIS_META.lainnya;
+
+export const jenisLabel = (jenis) => (JENIS_META[jenis] || JENIS_META.lainnya).label;
 
 export const durasiMenit = (mulai, selesai) => {
     const [h1, m1] = String(mulai || '0:0').split(':').map(Number);

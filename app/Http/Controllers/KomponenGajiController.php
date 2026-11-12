@@ -33,7 +33,7 @@ class KomponenGajiController extends Controller
             'nama' => 'required|string',
             'kode' => 'nullable|string|max:50',
             'tipe' => 'required|in:pendapatan,potongan',
-            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,dinamis_jabatan,dinamis_piket,dinamis_ekskul,lookup_reference',
+            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,dinamis_jabatan,dinamis_piket,dinamis_ekskul,dinamis_pengawasan,lookup_reference',
             'payroll_reference_type_id' => [
                 'nullable',
                 'exists:payroll_reference_types,id',
@@ -89,7 +89,7 @@ class KomponenGajiController extends Controller
             'nama' => 'required|string',
             'kode' => 'nullable|string|max:50',
             'tipe' => 'required|in:pendapatan,potongan',
-            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,dinamis_jabatan,dinamis_piket,dinamis_ekskul,lookup_reference',
+            'jenis' => 'required|in:fixed,persentase,dinamis_kehadiran,dinamis_jam_mengajar,dinamis_masa_bakti,dinamis_lembur,dinamis_jabatan,dinamis_piket,dinamis_ekskul,dinamis_pengawasan,lookup_reference',
             'payroll_reference_type_id' => [
                 'nullable',
                 'exists:payroll_reference_types,id',
