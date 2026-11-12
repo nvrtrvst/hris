@@ -26,6 +26,8 @@ class RolePermissionSeeder extends Seeder
 
             // Pegawai
             'view_pegawai',
+            'view_dokumen',
+            'manage_dokumen',
             'view_jadwal',
             'manage_jadwal', // tambah/edit/generate/hapus jadwal (admin_unit & staf yang ditunjuk)
             'view_presensi',
@@ -63,6 +65,8 @@ class RolePermissionSeeder extends Seeder
         $roleAdminUnit->syncPermissions([
             'view_dashboard',
             'view_pegawai',
+            'view_dokumen',
+            'manage_dokumen',
             'view_jadwal',
             'manage_jadwal',
             'view_presensi',
@@ -101,6 +105,7 @@ class RolePermissionSeeder extends Seeder
         $rolePimpinan->syncPermissions([
             'view_dashboard',
             'view_pegawai',
+            'view_dokumen',
             // Presensi & jadwal bawahan (pengawasan) — scope di controller via
             // trait ScopesPimpinan (hanya bawahan langsung, bukan semua unit).
             'view_presensi',
