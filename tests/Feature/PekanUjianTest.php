@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exports\LaporanPresensiExport;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\KomponenGaji;
@@ -174,6 +175,42 @@ class PekanUjianTest extends TestCase
         $detail = $penggajian->details()->where('komponen_gaji_id', $komponen->id)->firstOrFail();
 
         $this->assertSame(50000.0, (float) $detail->nominal);
+    }
+
+    public function test_laporan_presensi_melabeli_pengawas_ujian(): void
+    {
+        $pekan = PekanUjian::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'nama' => 'UAS Ganjil',
+            'tanggal_mulai' => '2026-11-02',
+            'tanggal_selesai' => '2026-11-06',
+        ]);
+
+        $pengawas = $this->jadwal('Senin', '12:00:00', '13:30:00', 'pengawas_ujian', $pekan->id);
+
+        $presensi = Presensi::create([
+            'pegawai_id' => $this->guru->id,
+            'jadwal_id' => $pengawas->id,
+            'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => '2026-11-02',
+            'jam_masuk' => '12:38:19',
+            'tipe_presensi' => 'mengajar',
+        ]);
+        $presensi->status = 'hadir';
+        $presensi->save();
+
+        $export = new LaporanPresensiExport(
+            '2026-11-02', '2026-11-02',
+            null, null, null, null, null, 'pengawas_ujian'
+        );
+
+        $heads = $export->headings();
+        $this->assertContains('Kelas / Ruang', $heads);
+
+        $row = $export->map($export->collection()->firstOrFail());
+        $this->assertSame('Pengawasan', $row[4]);
+        $this->assertSame('Pengawas UAS', $row[5]);
+        $this->assertSame('Ruang 1', $row[7]);
     }
 
     public function test_pekan_ujian_menolak_rentang_yang_overlap(): void
