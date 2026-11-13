@@ -103,18 +103,43 @@ const TemuanCell = ({ row }) => {
     const findings = row.temuan_detail || [];
 
     if (findings.length === 0) {
+        const legacyLines = (row.temuan || '')
+            .split('; ')
+            .filter((line) => line && line !== 'Tidak ada temuan');
+
+        if (legacyLines.length > 0) {
+            return (
+                <ul className="min-w-[280px] max-w-[440px] space-y-1">
+                    {legacyLines.map((line) => (
+                        <li key={line} className="leading-snug text-text-muted">{line}</li>
+                    ))}
+                </ul>
+            );
+        }
+
         return <span className="badge badge-success">Tidak ada temuan</span>;
     }
 
     return (
-        <ul className="space-y-1">
+        <div className="min-w-[280px] max-w-[440px] space-y-2">
             {findings.map((finding) => (
-                <li key={finding.key} className="leading-snug">
-                    <span className="font-bold text-text-primary">{finding.label} {finding.count} hari</span>
-                    <span className="text-text-muted">: {finding.items.map((item) => findingItemText(finding, item)).join(', ')}</span>
-                </li>
+                <div key={finding.key}>
+                    <p className="font-bold leading-snug text-text-primary">
+                        {finding.label} {finding.count} hari
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                        {finding.items.map((item, index) => (
+                            <span
+                                key={`${finding.key}-${item.tanggal}-${index}`}
+                                className="rounded-md border border-border bg-surface px-1.5 py-0.5 text-[10px] leading-snug text-text-secondary"
+                            >
+                                {findingItemText(finding, item)}
+                            </span>
+                        ))}
+                    </div>
+                </div>
             ))}
-        </ul>
+        </div>
     );
 };
 
@@ -403,7 +428,7 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                                 <th className="px-3 py-2 text-center font-bold text-text-muted">Izin/Sakit/Cuti (hari)</th>
                                                 <th className="px-3 py-2 text-center font-bold text-text-muted">Alpa (hari)</th>
                                                 <th className="px-3 py-2 text-center font-bold text-text-muted">JP (aktual/terjadwal)</th>
-                                                <th className="px-3 py-2 text-left font-bold text-text-muted">Temuan (tanggal)</th>
+                                                <th className="min-w-[280px] px-3 py-2 text-left font-bold text-text-muted">Temuan (tanggal)</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-border">
@@ -416,7 +441,7 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                                     <td className="px-3 py-2 text-center">{row.izin + row.sakit + row.cuti}</td>
                                                     <td className="px-3 py-2 text-center">{row.alpa}</td>
                                                     <td className="px-3 py-2 text-center">{row.is_guru ? `${fmtJp(row.actual_jp)} dari ${fmtJp(row.scheduled_jp)}` : '-'}</td>
-                                                    <td className="px-3 py-2 text-text-secondary"><TemuanCell row={row} /></td>
+                                                    <td className="min-w-[280px] px-3 py-2 align-top text-text-secondary"><TemuanCell row={row} /></td>
                                                 </tr>
                                             ))}
                                         </tbody>
