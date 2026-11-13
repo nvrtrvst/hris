@@ -11,8 +11,10 @@ use App\Models\Penggajian;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
 use App\Models\User;
+use Carbon\Carbon;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class PekanUjianTest extends TestCase
@@ -63,6 +65,42 @@ class PekanUjianTest extends TestCase
         $this->assertTrue($efektifPegawai->contains('id', $pengawas->id));
         $this->assertTrue($efektifPegawai->contains('id', $piket->id));
         $this->assertFalse($efektifPegawai->contains('id', $mengajar->id));
+    }
+
+    public function test_mobile_dashboard_jadwal_dan_absen_memakai_jadwal_efektif(): void
+    {
+        Carbon::setTestNow('2026-11-02 07:00:00');
+        Cache::flush();
+
+        $pekan = PekanUjian::create([
+            'unit_sekolah_id' => $this->unit->id,
+            'nama' => 'UAS Ganjil',
+            'tanggal_mulai' => '2026-11-02',
+            'tanggal_selesai' => '2026-11-06',
+        ]);
+
+        $this->jadwal('Senin', '07:00:00', '07:45:00', 'mengajar');
+        $pengawas = $this->jadwal('Senin', '07:00:00', '08:30:00', 'pengawas_ujian', $pekan->id);
+
+        $this->actingAs($this->guru->user, 'web_mobile')
+            ->get(route('presensi.dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/Dashboard')
+                ->where('jadwalsHariIni', fn ($rows) => collect($rows)->pluck('id')->all() === [$pengawas->id]));
+
+        $this->actingAs($this->guru->user, 'web_mobile')
+            ->get(route('presensi.jadwal'))
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/Jadwal')
+                ->where('jadwalPerHari.Senin', fn ($rows) => collect($rows)->pluck('id')->all() === [$pengawas->id]));
+
+        $this->actingAs($this->guru->user, 'web_mobile')
+            ->get(route('presensi.absen'))
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/Absen')
+                ->where('jadwals', fn ($rows) => collect($rows)->pluck('id')->all() === [$pengawas->id]));
+
+        Carbon::setTestNow();
     }
 
     public function test_finalize_alpa_hanya_menandai_pengawas_di_pekan_ujian(): void

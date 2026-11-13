@@ -96,10 +96,11 @@ class MobileController extends Controller
             ->orderBy('tanggal', 'desc')
             ->get();
 
-        $jadwalsHariIni = $this->rememberJadwal('mobile.jadwal.'.$pegawai->id.'.'.$hariIniIndo, 900, function () use ($pegawai, $hariIniIndo) {
+        $jadwalsHariIni = $this->rememberJadwal(Jadwal::CACHE_PREFIX.$pegawai->id.'.'.$hariIniIndo, 900, function () use ($pegawai, $hariIniIndo) {
             return Jadwal::with(['unitSekolah', 'pegawaiMapel.mataPelajaran'])
                 ->where('pegawai_id', $pegawai->id)
                 ->where('hari', $hariIniIndo)
+                ->efektifPada(Carbon::today())
                 ->orderBy('jam_mulai', 'asc')
                 ->get();
         });
@@ -333,13 +334,24 @@ class MobileController extends Controller
         $pegawai = $this->getPegawai();
         $pegawai->load('units');
 
-        $jadwals = $this->rememberJadwal('mobile.jadwal.'.$pegawai->id, 900, function () use ($pegawai) {
-            return Jadwal::with(['unitSekolah', 'pegawaiMapel.mataPelajaran'])
-                ->where('pegawai_id', $pegawai->id)
-                ->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 WHEN 'Minggu' THEN 7 END")
-                ->orderBy('jam_mulai', 'asc')
-                ->get()
-                ->groupBy('hari');
+        $jadwals = $this->rememberJadwal(Jadwal::CACHE_PREFIX.$pegawai->id, 900, function () use ($pegawai) {
+            // Jadwal mingguan tetap bisa menampilkan pengawas di hari lain dalam
+            // periode UAS, jadi filter efektif dihitung per tanggal minggu ini.
+            $weekStart = Carbon::now()->startOfWeek(Carbon::MONDAY);
+            $hasil = collect();
+
+            foreach (['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as $index => $hari) {
+                $hasil = $hasil->merge(
+                    Jadwal::with(['unitSekolah', 'pegawaiMapel.mataPelajaran'])
+                        ->where('pegawai_id', $pegawai->id)
+                        ->where('hari', $hari)
+                        ->efektifPada($weekStart->copy()->addDays($index))
+                        ->orderBy('jam_mulai', 'asc')
+                        ->get()
+                );
+            }
+
+            return $hasil->groupBy('hari');
         });
 
         // Presensi hari ini untuk status ringkasan
@@ -541,7 +553,7 @@ class MobileController extends Controller
         $hariMap = ['Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu', 'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu'];
         $hariIniIndo = $hariMap[Carbon::now()->format('l')];
 
-        $jadwalHariIni = $this->rememberJadwal('mobile.jadwal.'.$pegawai->id.'.'.$hariIniIndo, 900, function () use ($pegawai, $hariIniIndo) {
+        $jadwalHariIni = $this->rememberJadwal(Jadwal::CACHE_PREFIX.$pegawai->id.'.'.$hariIniIndo, 900, function () use ($pegawai, $hariIniIndo) {
             return Jadwal::with(['unitSekolah', 'pegawaiMapel.mataPelajaran'])
                 ->where('pegawai_id', $pegawai->id)
                 ->where('hari', $hariIniIndo)
