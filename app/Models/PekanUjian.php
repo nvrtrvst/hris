@@ -122,9 +122,9 @@ class PekanUjian extends Model
             ->unique();
 
         foreach ($pegawaiIds as $pegawaiId) {
-            Cache::forget('mobile.jadwal.'.$pegawaiId);
+            Cache::forget(Jadwal::CACHE_PREFIX.$pegawaiId);
             foreach (['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as $hari) {
-                Cache::forget('mobile.jadwal.'.$pegawaiId.'.'.$hari);
+                Cache::forget(Jadwal::CACHE_PREFIX.$pegawaiId.'.'.$hari);
             }
         }
     }

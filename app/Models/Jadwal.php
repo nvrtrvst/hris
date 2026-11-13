@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Jadwal extends Model
 {
+    /** Prefix cache jadwal mobile; naikkan versi saat isi cache berubah bentuk. */
+    public const CACHE_PREFIX = 'mobile.jadwal.v2.';
+
     protected $table = 'jadwal';
 
     protected $fillable = [
