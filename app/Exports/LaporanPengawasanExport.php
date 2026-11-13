@@ -46,7 +46,7 @@ class LaporanPengawasanExport implements FromArray, WithColumnWidths, WithStyles
         $rows[] = ['Kelas belum terpantau', $summary['kelas_belum']];
         $rows[] = [];
         $rows[] = ['MATRIKS PEGAWAI'];
-        $rows[] = ['Pegawai', 'Unit', 'Hadir (hari)', 'Telat (hari)', 'Izin (hari)', 'Sakit (hari)', 'Cuti (hari)', 'Alpa (hari)', 'JP Aktual', 'JP Terjadwal', 'Temuan'];
+        $rows[] = ['Pegawai', 'Unit', 'Hadir (hari)', 'Telat (hari)', 'Izin (hari)', 'Sakit (hari)', 'Cuti (hari)', 'Alpa (hari)', 'JP Aktual', 'JP Terjadwal', 'Temuan (tanggal)'];
 
         foreach ($this->data['matrix'] as $employee) {
             $rows[] = [
@@ -144,7 +144,7 @@ class LaporanPengawasanExport implements FromArray, WithColumnWidths, WithStyles
             'H' => 16,
             'I' => 12,
             'J' => 12,
-            'K' => 32,
+            'K' => 60,
             'L' => 24,
         ];
     }

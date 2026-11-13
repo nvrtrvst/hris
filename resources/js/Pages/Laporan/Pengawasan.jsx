@@ -83,6 +83,41 @@ const statusLabel = {
     penugasan: 'Penugasan',
 };
 
+const findingItemText = (finding, item) => {
+    const date = fmtDate(item.tanggal);
+
+    if (finding.key === 'jp_kurang') {
+        return `${date} (${fmtJp(item.actual_jp)}/${fmtJp(item.scheduled_jp)} JP)`;
+    }
+    if (finding.key === 'hadir_tanpa_jp') {
+        return `${date} (0/${fmtJp(item.scheduled_jp)} JP)`;
+    }
+    if (finding.key === 'izin_mengajar') {
+        return `${date} (${item.izin}, ${item.realisasi})`;
+    }
+
+    return date;
+};
+
+const TemuanCell = ({ row }) => {
+    const findings = row.temuan_detail || [];
+
+    if (findings.length === 0) {
+        return <span className="badge badge-success">Tidak ada temuan</span>;
+    }
+
+    return (
+        <ul className="space-y-1">
+            {findings.map((finding) => (
+                <li key={finding.key} className="leading-snug">
+                    <span className="font-bold text-text-primary">{finding.label} {finding.count} hari</span>
+                    <span className="text-text-muted">: {finding.items.map((item) => findingItemText(finding, item)).join(', ')}</span>
+                </li>
+            ))}
+        </ul>
+    );
+};
+
 const DetailTable = ({ metric, rows }) => {
     if (metric === 'kelas_belum') {
         return (
@@ -368,7 +403,7 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                                 <th className="px-3 py-2 text-center font-bold text-text-muted">Izin/Sakit/Cuti (hari)</th>
                                                 <th className="px-3 py-2 text-center font-bold text-text-muted">Alpa (hari)</th>
                                                 <th className="px-3 py-2 text-center font-bold text-text-muted">JP (aktual/terjadwal)</th>
-                                                <th className="px-3 py-2 text-left font-bold text-text-muted">Temuan</th>
+                                                <th className="px-3 py-2 text-left font-bold text-text-muted">Temuan (tanggal)</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-border">
@@ -381,7 +416,7 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                                     <td className="px-3 py-2 text-center">{row.izin + row.sakit + row.cuti}</td>
                                                     <td className="px-3 py-2 text-center">{row.alpa}</td>
                                                     <td className="px-3 py-2 text-center">{row.is_guru ? `${fmtJp(row.actual_jp)} dari ${fmtJp(row.scheduled_jp)}` : '-'}</td>
-                                                    <td className="px-3 py-2 text-text-secondary">{row.temuan}</td>
+                                                    <td className="px-3 py-2 text-text-secondary"><TemuanCell row={row} /></td>
                                                 </tr>
                                             ))}
                                         </tbody>

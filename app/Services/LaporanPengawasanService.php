@@ -110,6 +110,12 @@ class LaporanPengawasanService
                 'jp_kurang' => 0,
                 'izin_mengajar' => 0,
             ];
+            $findingDetails = [
+                'alpa' => [],
+                'hadir_tanpa_jp' => [],
+                'jp_kurang' => [],
+                'izin_mengajar' => [],
+            ];
 
             foreach ($workdays as $date) {
                 $dayName = Carbon::parse($date)->locale('id')->translatedFormat('l');
@@ -137,6 +143,7 @@ class LaporanPengawasanService
                 $stats['scheduled_jp'] += $scheduledJp;
 
                 if ($status === 'alpa') {
+                    $findingDetails['alpa'][] = ['tanggal' => $date];
                     $alpaRows[] = [
                         'pegawai_id' => $pegawai->id,
                         'pegawai' => $pegawai->nama_lengkap,
@@ -148,6 +155,11 @@ class LaporanPengawasanService
 
                 if ($leave && $actualPresence) {
                     $stats['izin_mengajar']++;
+                    $findingDetails['izin_mengajar'][] = [
+                        'tanggal' => $date,
+                        'izin' => $leave,
+                        'realisasi' => $this->formatJp($actualJp).' JP',
+                    ];
                     $izinMengajarRows[] = [
                         'pegawai_id' => $pegawai->id,
                         'pegawai' => $pegawai->nama_lengkap,
@@ -160,6 +172,11 @@ class LaporanPengawasanService
 
                 if ($isGuru && $actualPresence && $scheduledJp > 0 && $actualJp <= 0) {
                     $stats['hadir_tanpa_jp']++;
+                    $findingDetails['hadir_tanpa_jp'][] = [
+                        'tanggal' => $date,
+                        'scheduled_jp' => $scheduledJp,
+                        'actual_jp' => $actualJp,
+                    ];
                     $hadirTanpaJpRows[] = [
                         'pegawai_id' => $pegawai->id,
                         'pegawai' => $pegawai->nama_lengkap,
@@ -172,6 +189,12 @@ class LaporanPengawasanService
 
                 if ($isGuru && $actualJp > 0 && $actualJp < $scheduledJp) {
                     $stats['jp_kurang']++;
+                    $findingDetails['jp_kurang'][] = [
+                        'tanggal' => $date,
+                        'scheduled_jp' => $scheduledJp,
+                        'actual_jp' => $actualJp,
+                        'kurang' => round($scheduledJp - $actualJp, 2),
+                    ];
                     $jpKurangRows[] = [
                         'pegawai_id' => $pegawai->id,
                         'pegawai' => $pegawai->nama_lengkap,
@@ -228,19 +251,7 @@ class LaporanPengawasanService
                 }
             }
 
-            $findings = [];
-            if ($stats['alpa'] > 0) {
-                $findings[] = $stats['alpa'].' hari alpa';
-            }
-            if ($stats['hadir_tanpa_jp'] > 0) {
-                $findings[] = $stats['hadir_tanpa_jp'].' hari hadir tanpa JP';
-            }
-            if ($stats['jp_kurang'] > 0) {
-                $findings[] = $stats['jp_kurang'].' hari JP kurang';
-            }
-            if ($stats['izin_mengajar'] > 0) {
-                $findings[] = $stats['izin_mengajar'].' hari izin tetapi mengajar';
-            }
+            $findings = $this->buildFindings($findingDetails);
 
             $matrix[] = [
                 'pegawai_id' => $pegawai->id,
@@ -249,7 +260,8 @@ class LaporanPengawasanService
                 'unit_id' => $unit->id,
                 'is_guru' => $isGuru,
                 ...$stats,
-                'temuan' => $findings ? implode(' · ', $findings) : 'Sesuai',
+                'temuan' => $findings ? $this->formatFindings($findings) : 'Tidak ada temuan',
+                'temuan_detail' => $findings,
             ];
 
             if (isset($unitSummary[$unit->id])) {
@@ -585,6 +597,50 @@ class LaporanPengawasanService
         return $date->month >= 7
             ? $date->year.'/'.($date->year + 1)
             : ($date->year - 1).'/'.$date->year;
+    }
+
+    private function buildFindings(array $details): array
+    {
+        $labels = [
+            'alpa' => 'Alpa',
+            'hadir_tanpa_jp' => 'Hadir tanpa JP',
+            'jp_kurang' => 'JP kurang',
+            'izin_mengajar' => 'Izin tetapi mengajar',
+        ];
+
+        $findings = [];
+        foreach ($labels as $key => $label) {
+            if ($details[$key] === []) {
+                continue;
+            }
+
+            $findings[] = [
+                'key' => $key,
+                'label' => $label,
+                'count' => count($details[$key]),
+                'items' => $details[$key],
+            ];
+        }
+
+        return $findings;
+    }
+
+    private function formatFindings(array $findings): string
+    {
+        return collect($findings)->map(function (array $finding) {
+            $items = collect($finding['items'])->map(function (array $item) use ($finding) {
+                $date = Carbon::parse($item['tanggal'])->format('d/m/Y');
+
+                return match ($finding['key']) {
+                    'hadir_tanpa_jp' => $date.' (0/'.$this->formatJp($item['scheduled_jp']).' JP)',
+                    'jp_kurang' => $date.' ('.$this->formatJp($item['actual_jp']).'/'.$this->formatJp($item['scheduled_jp']).' JP)',
+                    'izin_mengajar' => $date.' ('.$item['izin'].', '.$item['realisasi'].')',
+                    default => $date,
+                };
+            })->implode(', ');
+
+            return $finding['label'].' '.$finding['count'].' hari: '.$items;
+        })->implode('; ');
     }
 
     private function formatJp(float $value): string
