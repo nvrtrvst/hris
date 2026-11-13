@@ -147,6 +147,10 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
      */
     protected function tipePresensiLabel($presensi): string
     {
+        if ($presensi->jadwal?->jenis_jadwal === 'pengawas_ujian') {
+            return 'Pengawasan';
+        }
+
         if ($this->tipe === 'kantor' && $presensi->status === 'alpa') {
             return 'Kantor';
         }
@@ -175,6 +179,17 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
         return ucfirst(str_replace('_', ' ', $tipe));
     }
 
+    protected function jenisJadwalLabel(?string $jenis): string
+    {
+        if (! $jenis) {
+            return '-';
+        }
+
+        return $jenis === 'pengawas_ujian'
+            ? 'Pengawas UAS'
+            : ucfirst(str_replace('_', ' ', $jenis));
+    }
+
     public function map($presensi): array
     {
         $pegawai = $presensi->pegawai;
@@ -187,7 +202,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
             $pegawai?->nuptk ?? '-',
             $pegawai ? $pegawai->jenisPegawaiLabel() : '-',
             $tipeLabel,
-            $presensi->jadwal?->jenis_jadwal ? ucfirst(str_replace('_', ' ', $presensi->jadwal->jenis_jadwal)) : '-',
+            $this->jenisJadwalLabel($presensi->jadwal?->jenis_jadwal),
         ];
 
         // Kolom Mapel/Kelas hanya relevan untuk presensi mengajar —
@@ -225,7 +240,7 @@ class LaporanPresensiExport implements FromCollection, ShouldAutoSize, WithCusto
 
         if ($this->tipe !== 'kantor') {
             $heads[] = 'Mata Pelajaran';
-            $heads[] = 'Kelas';
+            $heads[] = 'Kelas / Ruang';
         }
 
         $heads[] = 'Unit Sekolah';
