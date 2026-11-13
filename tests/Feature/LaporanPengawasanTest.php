@@ -121,6 +121,11 @@ class LaporanPengawasanTest extends TestCase
         $this->assertEquals(5, $data['summary']['scheduled_jp']);
         $this->assertCount(3, $data['details']['alpa']);
         $this->assertCount(4, $data['class_issues']);
+
+        $alpaRow = collect($data['matrix'])->firstWhere('pegawai_id', $guruAlpa->id);
+        $this->assertSame('Alpa 1 hari: 03/11/2026', $alpaRow['temuan']);
+        $this->assertSame('alpa', $alpaRow['temuan_detail'][0]['key']);
+        $this->assertSame('2026-11-03', $alpaRow['temuan_detail'][0]['items'][0]['tanggal']);
     }
 
     public function test_jp_blok_dan_bahasa_temuan_memakai_hari(): void
@@ -144,7 +149,9 @@ class LaporanPengawasanTest extends TestCase
         $this->assertSame(1, $data['summary']['jp_kurang']);
 
         $row = collect($data['matrix'])->firstWhere('pegawai_id', $guru->id);
-        $this->assertSame('1 hari JP kurang', $row['temuan']);
+        $this->assertSame('JP kurang 1 hari: 03/11/2026 (1/3 JP)', $row['temuan']);
+        $this->assertSame('jp_kurang', $row['temuan_detail'][0]['key']);
+        $this->assertSame('2026-11-03', $row['temuan_detail'][0]['items'][0]['tanggal']);
     }
 
     public function test_kelas_penugasan_tetap_muncul_tanpa_menghitung_kelas_belum(): void
