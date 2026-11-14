@@ -509,7 +509,12 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                         <tbody className="divide-y divide-border">
                                             {sortedMatrix.map((row) => (
                                                 <tr key={row.pegawai_id}>
-                                                    <td className="px-3 py-2 font-semibold text-text-primary">{row.pegawai}</td>
+                                                    <td className="px-3 py-2 font-semibold text-text-primary">
+                                                        <div>{row.pegawai}</div>
+                                                        {row.jabatan && (
+                                                            <div className="text-[11px] font-normal text-text-muted">{row.jabatan}</div>
+                                                        )}
+                                                    </td>
                                                     <td className="px-3 py-2 text-text-secondary">{row.unit}</td>
                                                     <td className="px-3 py-2 text-center">{row.hadir}</td>
                                                     <td className="px-3 py-2 text-center">{row.telat}</td>
