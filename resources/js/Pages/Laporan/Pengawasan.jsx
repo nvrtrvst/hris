@@ -222,6 +222,7 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [metric, setMetric] = useState(null);
+    const [matrixSort, setMatrixSort] = useState({ key: 'pegawai', dir: 'asc' });
 
     const params = useMemo(() => {
         const query = { from, to, jenis_pegawai: jenisPegawai };
@@ -231,6 +232,48 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
     }, [unitId, from, to, jenisPegawai]);
 
     const detailRows = metric ? preview?.details?.[metric] || [] : [];
+
+    const sortedMatrix = useMemo(() => {
+        const rows = [...(preview?.matrix || [])];
+        const getValue = (row, key) => {
+            if (key === 'izin') return row.izin + row.sakit + row.cuti;
+            if (key === 'jp') return row.actual_jp;
+            if (key === 'temuan') return row.temuan || '';
+
+            return row[key];
+        };
+
+        rows.sort((a, b) => {
+            const aValue = getValue(a, matrixSort.key);
+            const bValue = getValue(b, matrixSort.key);
+            const isText = typeof aValue === 'string' || typeof bValue === 'string';
+            let result = 0;
+
+            if (isText) {
+                result = String(aValue ?? '').localeCompare(String(bValue ?? ''), 'id', { sensitivity: 'base' });
+            } else {
+                result = (Number(aValue) || 0) - (Number(bValue) || 0);
+            }
+
+            return matrixSort.dir === 'asc' ? result : -result;
+        });
+
+        return rows;
+    }, [preview?.matrix, matrixSort]);
+
+    const toggleMatrixSort = (key) => {
+        setMatrixSort((current) => {
+            if (current.key !== key) return { key, dir: 'asc' };
+
+            return { key, dir: current.dir === 'asc' ? 'desc' : 'asc' };
+        });
+    };
+
+    const sortIndicator = (key) => {
+        if (matrixSort.key !== key) return '';
+
+        return matrixSort.dir === 'asc' ? ' ↑' : ' ↓';
+    };
 
     const loadPreview = async (query = params) => {
         setLoading(true);
@@ -421,18 +464,50 @@ export default function Pengawasan({ auth, units = [], defaults = {} }) {
                                     <table className="min-w-full divide-y divide-border text-xs">
                                         <thead className="bg-surface">
                                             <tr>
-                                                <th className="px-3 py-2 text-left font-bold text-text-muted">Pegawai</th>
-                                                <th className="px-3 py-2 text-left font-bold text-text-muted">Unit</th>
-                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Hadir (hari)</th>
-                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Telat (hari)</th>
-                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Izin/Sakit/Cuti (hari)</th>
-                                                <th className="px-3 py-2 text-center font-bold text-text-muted">Alpa (hari)</th>
-                                                <th className="px-3 py-2 text-center font-bold text-text-muted">JP (aktual/terjadwal)</th>
-                                                <th className="min-w-[280px] px-3 py-2 text-left font-bold text-text-muted">Temuan (tanggal)</th>
+                                                <th className="px-3 py-2 text-left font-bold text-text-muted">
+                                                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleMatrixSort('pegawai')} aria-sort={matrixSort.key === 'pegawai' ? (matrixSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                                        Pegawai{sortIndicator('pegawai')}
+                                                    </button>
+                                                </th>
+                                                <th className="px-3 py-2 text-left font-bold text-text-muted">
+                                                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleMatrixSort('unit')} aria-sort={matrixSort.key === 'unit' ? (matrixSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                                        Unit{sortIndicator('unit')}
+                                                    </button>
+                                                </th>
+                                                <th className="px-3 py-2 text-center font-bold text-text-muted">
+                                                    <button type="button" className="inline-flex w-full items-center justify-center gap-1" onClick={() => toggleMatrixSort('hadir')} aria-sort={matrixSort.key === 'hadir' ? (matrixSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                                        Hadir (hari){sortIndicator('hadir')}
+                                                    </button>
+                                                </th>
+                                                <th className="px-3 py-2 text-center font-bold text-text-muted">
+                                                    <button type="button" className="inline-flex w-full items-center justify-center gap-1" onClick={() => toggleMatrixSort('telat')} aria-sort={matrixSort.key === 'telat' ? (matrixSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                                        Telat (hari){sortIndicator('telat')}
+                                                    </button>
+                                                </th>
+                                                <th className="px-3 py-2 text-center font-bold text-text-muted">
+                                                    <button type="button" className="inline-flex w-full items-center justify-center gap-1" onClick={() => toggleMatrixSort('izin')} aria-sort={matrixSort.key === 'izin' ? (matrixSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                                        Izin/Sakit/Cuti (hari){sortIndicator('izin')}
+                                                    </button>
+                                                </th>
+                                                <th className="px-3 py-2 text-center font-bold text-text-muted">
+                                                    <button type="button" className="inline-flex w-full items-center justify-center gap-1" onClick={() => toggleMatrixSort('alpa')} aria-sort={matrixSort.key === 'alpa' ? (matrixSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                                        Alpa (hari){sortIndicator('alpa')}
+                                                    </button>
+                                                </th>
+                                                <th className="px-3 py-2 text-center font-bold text-text-muted">
+                                                    <button type="button" className="inline-flex w-full items-center justify-center gap-1" onClick={() => toggleMatrixSort('jp')} aria-sort={matrixSort.key === 'jp' ? (matrixSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                                        JP (aktual/terjadwal){sortIndicator('jp')}
+                                                    </button>
+                                                </th>
+                                                <th className="min-w-[280px] px-3 py-2 text-left font-bold text-text-muted">
+                                                    <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleMatrixSort('temuan')} aria-sort={matrixSort.key === 'temuan' ? (matrixSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                                        Temuan (tanggal){sortIndicator('temuan')}
+                                                    </button>
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-border">
-                                            {preview.matrix.map((row) => (
+                                            {sortedMatrix.map((row) => (
                                                 <tr key={row.pegawai_id}>
                                                     <td className="px-3 py-2 font-semibold text-text-primary">{row.pegawai}</td>
                                                     <td className="px-3 py-2 text-text-secondary">{row.unit}</td>
