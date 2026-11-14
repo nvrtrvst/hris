@@ -256,6 +256,10 @@ class LaporanPengawasanService
             $matrix[] = [
                 'pegawai_id' => $pegawai->id,
                 'pegawai' => $pegawai->nama_lengkap,
+                'jabatan' => $pegawai->jabatans
+                    ->firstWhere('pivot.unit_sekolah_id', $unit->id)?->nama
+                    ?? $pegawai->jabatans->firstWhere('pivot.is_primary', true)?->nama
+                    ?? $pegawai->jabatans->first()?->nama,
                 'unit' => $unit->nama,
                 'unit_id' => $unit->id,
                 'is_guru' => $isGuru,
