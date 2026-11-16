@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\LaporanPengawasanExport;
 use App\Http\Requests\LaporanPengawasanRequest;
 use App\Models\UnitSekolah;
+use App\Services\LaporanPdfService;
 use App\Services\LaporanPengawasanService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -46,7 +47,9 @@ class LaporanPengawasanController extends Controller
 
     public function pdf(LaporanPengawasanRequest $request, LaporanPengawasanService $service)
     {
-        $data = $service->build($request->validated(), $request->user());
+        $validated = $request->validated();
+        $data = $service->build($validated, $request->user());
+        $data += app(LaporanPdfService::class)->kopData($validated['unit_sekolah_id'] ?? null);
         $filename = 'Laporan_Pengawasan_'.$this->slug($data).'_'.$data['period']['from'].'_to_'.$data['period']['to'].'.pdf';
 
         return Pdf::loadView('exports.pdf-pengawasan', $data)

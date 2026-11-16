@@ -4,14 +4,16 @@
 <meta charset="UTF-8">
 <title>Laporan Pengawasan Kehadiran &amp; Mengajar</title>
 <style>
+    @page { margin: 10mm; }
     * { box-sizing: border-box; }
     body { margin: 0; color: #0f172a; font-family: Arial, Helvetica, sans-serif; font-size: 9px; }
-    .header { border-bottom: 2px solid #0f172a; padding-bottom: 6px; margin-bottom: 10px; }
-    .header-table { width: 100%; border-collapse: collapse; }
-    .header-table td { border: 0; padding: 0; vertical-align: middle; }
-    .logo { width: 42px; height: 42px; border: 2px solid #0f3d3e; border-radius: 50%; color: #0f3d3e; text-align: center; line-height: 38px; font-weight: 800; font-size: 9px; }
-    .org { font-size: 14px; font-weight: 800; }
-    .unit { font-size: 12px; font-weight: 800; }
+    .kop { text-align: center; border-bottom: 2px solid #0f3d3e; padding-bottom: 6px; margin-bottom: 8px; }
+    .kop-logo { margin-bottom: 2px; }
+    .kop-logo img { height: 64px; width: auto; }
+    .kop-name { font-size: 15px; font-weight: 800; letter-spacing: .5px; color: #0f3d3e; text-transform: uppercase; line-height: 1.2; }
+    .kop-tagline { font-size: 8.5px; font-style: italic; color: #0f3d3e; margin-top: 1px; }
+    .kop-address { font-size: 8.5px; color: #374151; margin-top: 2px; }
+    .kop-contact { font-size: 8px; color: #64748b; margin-top: 1px; }
     .muted { color: #64748b; }
     .title { margin: 8px 0 2px; text-align: center; font-size: 14px; font-weight: 800; text-transform: uppercase; }
     .subtitle { margin-bottom: 8px; text-align: center; color: #64748b; font-size: 9px; }
@@ -32,6 +34,12 @@
     .badge-warning { color: #92400e; background: #fef3c7; }
     .badge-success { color: #065f46; background: #d1fae5; }
     .badge-info { color: #075985; background: #e0f2fe; }
+    .finding { line-height: 1.35; }
+    .finding + .finding { margin-top: 3px; }
+    .finding-label { font-size: 8.5px; font-weight: 800; }
+    .finding-count { color: #64748b; font-weight: 400; }
+    .chips { margin-top: 1px; }
+    .chip { display: inline-block; border: 1px solid #d7dee8; border-radius: 3px; padding: 0 3px; margin: 1px 2px 0 0; font-size: 7.5px; color: #334155; white-space: nowrap; }
     .footer { margin-top: 10px; color: #64748b; font-size: 7.5px; }
     .page-break { page-break-before: always; }
     tr { page-break-inside: avoid; }
@@ -40,8 +48,6 @@
 </head>
 <body>
 @php
-    $unitLabel = $unit['nama'] ?? 'Semua Unit';
-    $unitShort = $unit['singkatan'] ?? 'Semua Unit';
     $statusLabels = [
         'belum_terpantau' => 'Belum terpantau',
         'kelas_kosong' => 'Kelas kosong',
@@ -59,19 +65,28 @@
 
         return $value == floor($value) ? (string) (int) $value : number_format($value, 2, ',', '.');
     };
+    $itemText = function (array $finding, array $item) use ($fmtJp) {
+        $date = \Carbon\Carbon::parse($item['tanggal'])->format('d/m/Y');
+
+        return match ($finding['key']) {
+            'jp_kurang' => $date.' ('.$fmtJp($item['actual_jp']).'/'.$fmtJp($item['scheduled_jp']).' JP)',
+            'hadir_tanpa_jp' => $date.' (0/'.$fmtJp($item['scheduled_jp']).' JP)',
+            'izin_mengajar' => $date.' ('.$item['izin'].', '.$item['realisasi'].')',
+            default => $date,
+        };
+    };
 @endphp
 
-<div class="header">
-    <table class="header-table">
-        <tr>
-            <td style="width:54px"><div class="logo">NM</div></td>
-            <td>
-                <div class="org">YAYASAN NUURUL MUTTAQIN</div>
-                <div class="unit">{{ strtoupper($unitLabel) }}</div>
-                <div class="muted">Laporan konsolidasi kehadiran dan mengajar</div>
-            </td>
-        </tr>
-    </table>
+<div class="kop">
+    @if($logoPath)
+        <div class="kop-logo">
+            <img src="{{ $logoPath }}" alt="Logo" style="height:64px;width:{{ $logoWidth ?? 64 }}px">
+        </div>
+    @endif
+    <div class="kop-name">{{ $kop['name'] }}</div>
+    <div class="kop-tagline">{{ $kop['tagline'] }}</div>
+    <div class="kop-address">{{ $kop['address'] }}</div>
+    <div class="kop-contact">Telp: {{ $kop['phone'] }} &nbsp;|&nbsp; Email: {{ $kop['email'] }} &nbsp;|&nbsp; Web: {{ $kop['website'] }}</div>
 </div>
 
 <div class="title">Laporan Pengawasan Kehadiran &amp; Mengajar</div>
@@ -104,15 +119,15 @@
 <table>
     <thead>
         <tr>
-            <th style="width:22%">Pegawai / Unit</th>
+            <th style="width:18%">Pegawai / Unit</th>
             <th style="width:8%" class="center">Hadir (hari)</th>
             <th style="width:7%" class="center">Telat (hari)</th>
-            <th style="width:8%" class="center">Izin (hari)</th>
+            <th style="width:7%" class="center">Izin (hari)</th>
             <th style="width:7%" class="center">Sakit (hari)</th>
             <th style="width:7%" class="center">Cuti (hari)</th>
             <th style="width:7%" class="center">Alpa (hari)</th>
             <th style="width:9%" class="center">JP (aktual/terjadwal)</th>
-            <th style="width:25%">Temuan</th>
+            <th style="width:30%">Temuan (tanggal)</th>
         </tr>
     </thead>
     <tbody>
@@ -126,7 +141,22 @@
                 <td class="center">{{ $row['cuti'] }}</td>
                 <td class="center">{{ $row['alpa'] }}</td>
                 <td class="center">{{ $row['is_guru'] ? $fmtJp($row['actual_jp']).' dari '.$fmtJp($row['scheduled_jp']) : '-' }}</td>
-                <td>{{ $row['temuan'] }}</td>
+                <td>
+                    @forelse ($row['temuan_detail'] as $finding)
+                        <div class="finding">
+                            <div class="finding-label{{ $finding['key'] === 'alpa' ? ' danger' : '' }}">
+                                {{ $finding['label'] }} <span class="finding-count">{{ $finding['count'] }} hari</span>
+                            </div>
+                            <div class="chips">
+                                @foreach ($finding['items'] as $item)
+                                    <span class="chip">{{ $itemText($finding, $item) }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @empty
+                        <span class="muted">Tidak ada temuan pada filter ini.</span>
+                    @endforelse
+                </td>
             </tr>
         @empty
             <tr><td colspan="9" class="center">Tidak ada pegawai pada filter ini.</td></tr>
