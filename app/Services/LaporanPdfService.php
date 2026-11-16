@@ -99,16 +99,7 @@ class LaporanPdfService
         set_time_limit(900);
         ini_set('memory_limit', '1G');
 
-        $kopUnit = UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
-        $logoPath = $this->resolveUnitLogoPath($kopUnit) ?? $this->resolveYayasanLogoPath();
-        $kop = [
-            'name' => $kopUnit?->nama ? strtoupper($kopUnit->nama) : config('yayasan.name'),
-            'tagline' => config('yayasan.tagline'),
-            'address' => $kopUnit?->alamat ?: config('yayasan.address'),
-            'phone' => $kopUnit?->telepon ?: config('yayasan.phone'),
-            'email' => config('yayasan.email'),
-            'website' => $kopUnit?->web ?: config('yayasan.website'),
-        ];
+        $kopData = $this->kopData();
 
         $pdf = Pdf::loadView('exports.pdf-pegawai', [
             'title' => 'DATA PEGAWAI',
@@ -117,8 +108,8 @@ class LaporanPdfService
             'scopeLabel' => $scopeLabel,
             'generatedAt' => now()->format('d/m/Y H:i'),
             'totalRows' => count($rows),
-            'logoPath' => $logoPath,
-            'kop' => $kop,
+            'logoPath' => $kopData['logoPath'],
+            'kop' => $kopData['kop'],
         ])->setPaper(count($headings) > 12 ? 'A3' : 'A4', 'landscape');
 
         return [
@@ -207,8 +198,6 @@ class LaporanPdfService
 
     private function renderDocument(array $validated, ?int $unitId, array $headings, array $rows, string $title, string $filename, string $type, ?array $summary = null, ?Pegawai $subject = null): array
     {
-        // Kop surat: unit terpilih (atau auto-resolved dari scope user) -> data unit itu;
-        // semua unit (superadmin) -> unit induk "Yayasan"; fallback terakhir -> config env.
         $kopUnit = $unitId ? UnitSekolah::find($unitId) : null;
         if (! $kopUnit) {
             $kopUnit = UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
@@ -218,25 +207,14 @@ class LaporanPdfService
         $periodeStr = Carbon::parse($validated['start_date'])->format('d/m/Y')
             .' s/d '.Carbon::parse($validated['end_date'])->format('d/m/Y');
 
-        $logoPath = $this->resolveUnitLogoPath($kopUnit) ?? $this->resolveYayasanLogoPath();
-        $logoWidth = null;
-        if ($logoPath && file_exists($logoPath)) {
-            $sz = @getimagesize($logoPath);
-            if ($sz) {
-                $logoWidth = (int) round(64 * $sz[0] / $sz[1]);
-            }
-        }
+        $kopData = $this->kopData($unitId);
 
-        $kop = [
-            'name' => $kopUnit?->nama ? strtoupper($kopUnit->nama) : config('yayasan.name'),
-            'tagline' => config('yayasan.tagline'),
-            'address' => $kopUnit?->alamat ?: config('yayasan.address'),
-            'phone' => $kopUnit?->telepon ?: config('yayasan.phone'),
-            'email' => config('yayasan.email'),
-            'website' => $kopUnit?->web ?: config('yayasan.website'),
-        ];
-
-        $pdf = Pdf::loadView('exports.pdf-laporan', compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'logoPath', 'logoWidth', 'kop', 'type', 'summary'))
+        $pdf = Pdf::loadView('exports.pdf-laporan', [
+            ...compact('headings', 'rows', 'title', 'periodeStr', 'unitName', 'type', 'summary'),
+            'logoPath' => $kopData['logoPath'],
+            'logoWidth' => $kopData['logoWidth'],
+            'kop' => $kopData['kop'],
+        ])
             ->setPaper('A4', 'landscape');
 
         $periode = $validated['start_date'].'_to_'.$validated['end_date'];
@@ -247,6 +225,42 @@ class LaporanPdfService
         return [
             'filename' => $downloadName,
             'content' => $pdf->output(),
+        ];
+    }
+
+    /**
+     * Kop surat: unit terpilih (atau auto-resolved dari scope user) -> data unit itu;
+     * semua unit (superadmin) -> unit induk "Yayasan"; fallback terakhir -> config env.
+     *
+     * @return array{kop: array<string, string>, logoPath: ?string, logoWidth: ?int}
+     */
+    public function kopData(?int $unitId = null): array
+    {
+        $unit = $unitId ? UnitSekolah::find($unitId) : null;
+        if (! $unit) {
+            $unit = UnitSekolah::where('nama', 'like', 'Yayasan%')->first();
+        }
+
+        $logoPath = $this->resolveUnitLogoPath($unit) ?? $this->resolveYayasanLogoPath();
+        $logoWidth = null;
+        if ($logoPath && file_exists($logoPath)) {
+            $sz = @getimagesize($logoPath);
+            if ($sz) {
+                $logoWidth = (int) round(64 * $sz[0] / $sz[1]);
+            }
+        }
+
+        return [
+            'kop' => [
+                'name' => $unit?->nama ? strtoupper($unit->nama) : config('yayasan.name'),
+                'tagline' => config('yayasan.tagline'),
+                'address' => $unit?->alamat ?: config('yayasan.address'),
+                'phone' => $unit?->telepon ?: config('yayasan.phone'),
+                'email' => config('yayasan.email'),
+                'website' => $unit?->web ?: config('yayasan.website'),
+            ],
+            'logoPath' => $logoPath,
+            'logoWidth' => $logoWidth,
         ];
     }
 

@@ -152,6 +152,15 @@ class LaporanPengawasanTest extends TestCase
         $this->assertSame('JP kurang 1 hari: 03/11/2026 (1/3 JP)', $row['temuan']);
         $this->assertSame('jp_kurang', $row['temuan_detail'][0]['key']);
         $this->assertSame('2026-11-03', $row['temuan_detail'][0]['items'][0]['tanggal']);
+
+        $this->actingAs($this->admin, 'web_admin')
+            ->get(route('laporan.pengawasan.pdf', [
+                'unit_sekolah_id' => $this->unit->id,
+                'from' => $this->date,
+                'to' => $this->date,
+            ]))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
     }
 
     public function test_kelas_penugasan_tetap_muncul_tanpa_menghitung_kelas_belum(): void
