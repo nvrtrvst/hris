@@ -1,11 +1,7 @@
-import FormField from '@/Components/Form/FormField';
-import FormSection from '@/Components/Form/FormSection';
+import { Button, Card, FormField, Input } from '@/Components/AdminUI';
 import { useForm } from '@inertiajs/react';
 import { Check, Eye, EyeOff, KeyRound, Lock, ShieldCheck } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
-
-const basePasswordInput =
-    'block w-full rounded-input border border-border bg-white pl-10 pr-10 py-2.5 text-sm text-text-primary shadow-card placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
 
 function FieldIcon({ children }) {
     return (
@@ -38,7 +34,7 @@ function StrengthMeter({ password }) {
         if (/[^A-Za-z0-9]/.test(password)) s++;
         if (password.length >= 12) s++;
         const levels = [
-            { label: '', barColor: 'bg-gray-200', percentage: 0 },
+            { label: '', barColor: 'bg-border', percentage: 0 },
             { label: 'Lemah', barColor: 'bg-danger', percentage: 25 },
             { label: 'Cukup', barColor: 'bg-warning', percentage: 50 },
             { label: 'Bagus', barColor: 'bg-accent', percentage: 75 },
@@ -53,20 +49,20 @@ function StrengthMeter({ password }) {
 
     return (
         <div className="mt-2 space-y-1.5">
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-50/80">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface">
                 <div
                     className={`h-full ${barColor} transition-all duration-300`}
                     style={{ width: `${percentage}%` }}
                 />
             </div>
             <p className="text-xs text-text-secondary">
-            Kekuatan: <span className="font-semibold">{label}</span> ({score}/5)
+                Kekuatan: <span className="font-semibold">{label}</span> ({score}/5)
             </p>
         </div>
     );
 }
 
-export default function UpdatePasswordForm({ className = '' }) {
+export default function UpdatePasswordForm() {
     const passwordInput = useRef();
     const currentPasswordInput = useRef();
     const [show, setShow] = useState({
@@ -83,7 +79,6 @@ export default function UpdatePasswordForm({ className = '' }) {
         put,
         reset,
         processing,
-        recentlySuccessful,
     } = useForm({
         current_password: '',
         password: '',
@@ -121,38 +116,30 @@ export default function UpdatePasswordForm({ className = '' }) {
     const toggle = (k) => setShow((s) => ({ ...s, [k]: !s[k] }));
 
     return (
-        <FormSection
-            title="Keamanan &amp; Password"
-            description="Pastikan akun Anda menggunakan password yang panjang dan acak untuk tetap aman."
-            contentClassName="space-y-5"
-            className={className}
-        >
-            <form onSubmit={updatePassword} className="space-y-5">
-                <FormField
-                    label="Password Saat Ini"
-                    htmlFor="current_password"
-                    required
-                    error={errors.current_password}
-                >
+        <Card className="p-5 sm:p-7">
+            <div className="mb-4">
+                <h3 className="text-lg font-bold text-text-primary">Keamanan dan Password</h3>
+                <p className="mt-0.5 text-sm text-text-secondary">
+                    Gunakan password panjang dan acak agar akun tetap aman.
+                </p>
+            </div>
+
+            <form onSubmit={updatePassword} className="space-y-4">
+                <FormField label="Password Saat Ini" htmlFor="current_password" required error={errors.current_password}>
                     <div className="relative">
                         <FieldIcon>
                             <KeyRound className="h-4 w-4" />
                         </FieldIcon>
-                        <input
+                        <Input
                             id="current_password"
                             ref={currentPasswordInput}
                             type={show.current ? 'text' : 'password'}
                             autoComplete="current-password"
                             value={data.current_password}
-                            onChange={(e) =>
-                                setData('current_password', e.target.value)
-                            }
-                            className={basePasswordInput}
+                            onChange={(e) => setData('current_password', e.target.value)}
+                            className="pl-10 pr-10"
                         />
-                        <ToggleVisibility
-                            visible={show.current}
-                            onToggle={() => toggle('current')}
-                        />
+                        <ToggleVisibility visible={show.current} onToggle={() => toggle('current')} />
                     </div>
                 </FormField>
 
@@ -161,27 +148,22 @@ export default function UpdatePasswordForm({ className = '' }) {
                     htmlFor="password"
                     required
                     error={errors.password}
-                    hint="Minimal 8 karakter dengan huruf besar, angka, dan simbol."
+                    description="Minimal 8 karakter dengan huruf besar, angka, dan simbol."
                 >
                     <div className="relative">
                         <FieldIcon>
                             <Lock className="h-4 w-4" />
                         </FieldIcon>
-                        <input
+                        <Input
                             id="password"
                             ref={passwordInput}
                             type={show.next ? 'text' : 'password'}
                             autoComplete="new-password"
                             value={data.password}
-                            onChange={(e) =>
-                                setData('password', e.target.value)
-                            }
-                            className={basePasswordInput}
+                            onChange={(e) => setData('password', e.target.value)}
+                            className="pl-10 pr-10"
                         />
-                        <ToggleVisibility
-                            visible={show.next}
-                            onToggle={() => toggle('next')}
-                        />
+                        <ToggleVisibility visible={show.next} onToggle={() => toggle('next')} />
                     </div>
                     <StrengthMeter password={data.password} />
                 </FormField>
@@ -196,46 +178,32 @@ export default function UpdatePasswordForm({ className = '' }) {
                         <FieldIcon>
                             <ShieldCheck className="h-4 w-4" />
                         </FieldIcon>
-                        <input
+                        <Input
                             id="password_confirmation"
                             type={show.confirm ? 'text' : 'password'}
                             autoComplete="new-password"
                             value={data.password_confirmation}
-                            onChange={(e) =>
-                                setData(
-                                    'password_confirmation',
-                                    e.target.value
-                                )
-                            }
-                            className={basePasswordInput}
+                            onChange={(e) => setData('password_confirmation', e.target.value)}
+                            className="pl-10 pr-10"
                         />
-                        <ToggleVisibility
-                            visible={show.confirm}
-                            onToggle={() => toggle('confirm')}
-                        />
+                        <ToggleVisibility visible={show.confirm} onToggle={() => toggle('confirm')} />
                     </div>
                     {data.password_confirmation && !confirmMatch && (
-                        <p className="mt-1 text-xs text-danger">
-                            Password tidak cocok.
-                        </p>
+                        <p className="mt-1 text-xs font-semibold text-danger">Password tidak cocok.</p>
                     )}
                 </FormField>
 
-                <div className="flex items-center gap-3 pt-2">
-                    <button
-                        type="submit"
-                        disabled={processing || !confirmMatch}
-                        className="btn-primary"
-                    >
+                <div className="flex items-center gap-3 pt-1">
+                    <Button type="submit" disabled={processing || !confirmMatch}>
                         {processing ? 'Menyimpan...' : 'Simpan'}
-                    </button>
+                    </Button>
                     {showSaved && (
-                        <span className="badge-success animate-fade-in">
+                        <span className="inline-flex animate-fade-in items-center gap-1 rounded-full bg-success-light px-2.5 py-1 text-xs font-semibold text-success">
                             <Check className="h-3.5 w-3.5" /> Tersimpan
                         </span>
                     )}
                 </div>
             </form>
-        </FormSection>
+        </Card>
     );
 }

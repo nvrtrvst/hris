@@ -18,35 +18,27 @@ export default function Edit({ mustVerifyEmail, status }) {
             <Head title="Profile" />
 
             <div className="mx-auto w-full max-w-6xl space-y-6">
-                    <PageHeader
-                        eyebrow="Akun"
-                        title="Profil Saya"
-                        description="Kelola informasi akun, kata sandi, dan preferensi Anda."
-                    />
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                        <aside className="lg:sticky lg:top-24 lg:self-start">
-                            <ProfileHero user={user} />
-                        </aside>
+                <PageHeader
+                    eyebrow="Akun"
+                    title="Profil Saya"
+                    description="Kelola data kepegawaian, akun login, dan keamanan Anda."
+                />
 
-                        <main className="space-y-6 lg:col-span-2">
-                            <PegawaiDataCard />
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+                    <aside className="lg:sticky lg:top-24 lg:self-start">
+                        <ProfileHero user={user} />
+                    </aside>
 
-                            <div className="card p-5 sm:p-7">
-                                <UpdateProfileInformationForm
-                                    mustVerifyEmail={mustVerifyEmail}
-                                    status={status}
-                                />
-                            </div>
-
-                            <div className="card p-5 sm:p-7">
-                                <UpdatePasswordForm />
-                            </div>
-
-                            <div className="card p-5 sm:p-7 border-danger/40">
-                                <DeleteUserForm />
-                            </div>
-                        </main>
-                    </div>
+                    <main className="space-y-6">
+                        <PegawaiDataCard />
+                        <UpdateProfileInformationForm
+                            mustVerifyEmail={mustVerifyEmail}
+                            status={status}
+                        />
+                        <UpdatePasswordForm />
+                        <DeleteUserForm />
+                    </main>
+                </div>
             </div>
         </AdminShell>
     );

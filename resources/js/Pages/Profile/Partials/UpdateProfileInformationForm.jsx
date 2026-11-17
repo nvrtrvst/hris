@@ -1,8 +1,7 @@
-import FormField from '@/Components/Form/FormField';
-import FormSection from '@/Components/Form/FormSection';
+import { Button, Card, FormField, Input } from '@/Components/AdminUI';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { Check, Mail, User } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 function FieldIcon({ children }) {
     return (
@@ -12,16 +11,8 @@ function FieldIcon({ children }) {
     );
 }
 
-const inputClass =
-    'block w-full rounded-input border border-border bg-white pl-10 pr-3 py-2.5 text-sm text-text-primary shadow-card placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
-
-export default function UpdateProfileInformation({
-    mustVerifyEmail,
-    status,
-    className = '',
-}) {
+export default function UpdateProfileInformation({ mustVerifyEmail, status }) {
     const user = usePage().props.auth.user;
-    const nameRef = useRef();
     const [showSaved, setShowSaved] = useState(false);
 
     const {
@@ -45,64 +36,55 @@ export default function UpdateProfileInformation({
 
     const submit = (e) => {
         e.preventDefault();
-        patch(route('profile.update'));
+        patch(route('profile.update'), { preserveScroll: true });
     };
 
     return (
-        <FormSection
-            title="Informasi Profil"
-            description="Perbarui nama tampilan dan alamat email akun Anda."
-            contentClassName="space-y-5"
-            className={className}
-        >
-            <form onSubmit={submit} className="space-y-5">
-                <FormField
-                    label="Nama"
-                    htmlFor="name"
-                    required
-                    error={errors.name}
-                >
+        <Card className="p-5 sm:p-7">
+            <div className="mb-4">
+                <h3 className="text-lg font-bold text-text-primary">Akun Login</h3>
+                <p className="mt-0.5 text-sm text-text-secondary">
+                    Nama tampilan dan email yang dipakai untuk masuk ke aplikasi.
+                </p>
+            </div>
+
+            <form onSubmit={submit} className="space-y-4">
+                <FormField label="Nama" htmlFor="name" required error={errors.name}>
                     <div className="relative">
                         <FieldIcon>
                             <User className="h-4 w-4" />
                         </FieldIcon>
-                        <input
+                        <Input
                             id="name"
-                            ref={nameRef}
                             type="text"
                             autoComplete="name"
                             value={data.name}
                             onChange={(e) => setData('name', e.target.value)}
-                            className={inputClass}
+                            className="pl-10"
                             placeholder="Nama lengkap"
                         />
                     </div>
                 </FormField>
 
-                <FormField
-                    label="Email"
-                    htmlFor="email"
-                    required
-                    error={errors.email}
-                >
+                <FormField label="Email" htmlFor="email" required error={errors.email}>
                     <div className="relative">
                         <FieldIcon>
                             <Mail className="h-4 w-4" />
                         </FieldIcon>
-                        <input
+                        <Input
                             id="email"
                             type="email"
                             autoComplete="username"
                             value={data.email}
                             onChange={(e) => setData('email', e.target.value)}
-                            className={inputClass}
+                            className="pl-10"
                             placeholder="email@contoh.com"
                         />
                     </div>
                 </FormField>
 
                 {mustVerifyEmail && user.email_verified_at === null && (
-                    <div className="rounded-card border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+                    <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
                         <p>
                             Email belum terverifikasi.
                             <Link
@@ -115,28 +97,24 @@ export default function UpdateProfileInformation({
                             </Link>
                         </p>
                         {status === 'verification-link-sent' && (
-                            <div className="mt-2 text-sm font-medium text-success">
+                            <p className="mt-2 font-medium">
                                 Tautan verifikasi baru sudah dikirim ke email Anda.
-                            </div>
+                            </p>
                         )}
                     </div>
                 )}
 
-                <div className="flex items-center gap-3 pt-2">
-                    <button
-                        type="submit"
-                        disabled={processing}
-                        className="btn-primary"
-                    >
+                <div className="flex items-center gap-3 pt-1">
+                    <Button type="submit" disabled={processing}>
                         {processing ? 'Menyimpan...' : 'Simpan'}
-                    </button>
+                    </Button>
                     {showSaved && (
-                        <span className="badge-success animate-fade-in">
+                        <span className="inline-flex animate-fade-in items-center gap-1 rounded-full bg-success-light px-2.5 py-1 text-xs font-semibold text-success">
                             <Check className="h-3.5 w-3.5" /> Tersimpan
                         </span>
                     )}
                 </div>
             </form>
-        </FormSection>
+        </Card>
     );
 }
