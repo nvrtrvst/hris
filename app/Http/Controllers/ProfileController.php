@@ -72,6 +72,10 @@ class ProfileController extends Controller
                     $userUpdate[$mapUser[$key] ?? $key] = $value;
                 }
                 $request->user()?->update($userUpdate);
+
+                if ($request->user()?->wasChanged('email')) {
+                    $request->user()->forceFill(['email_verified_at' => null])->save();
+                }
             }
 
             $pegawai->update(array_diff_key($data, array_flip(['email'])));
