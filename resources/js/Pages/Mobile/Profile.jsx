@@ -6,47 +6,64 @@ import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { initPush, disablePush } from '@/push';
 import {
-    Pencil, ChevronDown, User, Mail, Phone, Building2, BadgeCheck,
-    CalendarDays, CalendarClock, GraduationCap, KeyRound, ShieldAlert, LogOut, Check,
-    MapPin, IdCard, BellRing,
+    Pencil, ChevronDown, ChevronRight, Building2, MapPin, KeyRound,
+    BellRing, LogOut, Check, IdCard,
 } from 'lucide-react';
 
-function Field({ icon: Icon, label, value }) {
+const inputClass = 'w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-primary ring-1 ring-black/5 placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary';
+const labelClass = 'mb-1.5 block text-xs font-bold text-text-secondary';
+
+const pushToneClass = {
+    success: 'bg-success-light text-success',
+    danger: 'bg-danger-light text-danger',
+    info: 'bg-info-light text-info',
+};
+
+function InfoRow({ label, value }) {
     if (value === null || value === undefined || value === '') return null;
     return (
-        <div className="flex items-start gap-3 px-5 py-3">
-            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-500">
-                <Icon className="h-4 w-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-                <p className="text-[11px] uppercase tracking-wider text-slate-600">{label}</p>
-                <p className="truncate text-sm font-semibold text-slate-800">{value}</p>
-            </div>
+        <div className="px-5 py-3">
+            <dt className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-secondary">{label}</dt>
+            <dd className="mt-0.5 break-words text-sm font-semibold text-text-primary">{value}</dd>
         </div>
     );
 }
 
-function Section({ title, icon: Icon, open, onToggle, children, accent = 'text-primary' }) {
+function TextField({ id, label, error, ...props }) {
+    return (
+        <div>
+            <label htmlFor={id} className={labelClass}>{label}</label>
+            <input
+                id={id}
+                className={inputClass}
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? `${id}-error` : undefined}
+                {...props}
+            />
+            {error && <p id={`${id}-error`} className="mt-1 text-xs font-semibold text-danger">{error}</p>}
+        </div>
+    );
+}
+
+function Section({ id, title, icon: Icon, open, onToggle, children }) {
+    const panelId = `${id}-panel`;
     return (
         <Card className="overflow-hidden p-0">
             <button
                 type="button"
                 onClick={onToggle}
-                className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors active:bg-slate-50"
+                aria-expanded={open}
+                aria-controls={panelId}
+                className="flex min-h-12 w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors active:bg-surface"
             >
                 <span className="flex items-center gap-2.5">
-                    <Icon className={`h-5 w-5 ${accent}`} />
-                    <span className="text-sm font-bold text-slate-800">{title}</span>
+                    <Icon className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-bold text-text-primary">{title}</span>
                 </span>
-                <ChevronDown className={`h-5 w-5 text-slate-500 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-5 w-5 text-text-secondary transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
-            <div
-                className="grid transition-all duration-300 ease-in-out"
-                style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
-            >
-                <div className="overflow-hidden">
-                    <div className="border-t border-slate-50 px-5 pb-5 pt-2">{children}</div>
-                </div>
+            <div id={panelId} hidden={!open} className="border-t border-border px-5 pb-5 pt-4">
+                {children}
             </div>
         </Card>
     );
@@ -61,6 +78,8 @@ export default function MobileProfile({ status }) {
     const displayName = pegawai?.nama_lengkap || user?.name;
     const initial = (displayName || 'P').charAt(0).toUpperCase();
     const photo = pegawai?.foto_url;
+    const statusKepegawaian = pegawai?.status_ref?.label || pegawai?.statusRef?.label || pegawai?.status_kepegawaian;
+    const isAktif = pegawai?.status_aktif === 'aktif';
 
     const [editOpen, setEditOpen] = useState(false);
     const [passOpen, setPassOpen] = useState(false);
@@ -85,25 +104,25 @@ export default function MobileProfile({ status }) {
                 const ok = await initPush();
                 if (ok) {
                     setPushEnabled(true);
-                    setPushMessage('Notifikasi aktif. Anda akan menerima pengingat presensi & status izin.');
+                    setPushMessage({ text: 'Notifikasi aktif. Anda akan menerima pengingat presensi & status izin.', tone: 'success' });
                 } else {
                     setPushEnabled(false);
-                    setPushMessage('Tidak dapat mengaktifkan notifikasi. Periksa izin browser atau gunakan HTTPS.');
+                    setPushMessage({ text: 'Tidak dapat mengaktifkan notifikasi. Periksa izin browser atau gunakan HTTPS.', tone: 'danger' });
                 }
             } else {
                 await disablePush();
                 setPushEnabled(false);
-                setPushMessage('Notifikasi dimatikan.');
+                setPushMessage({ text: 'Notifikasi dimatikan.', tone: 'info' });
             }
         } catch (err) {
-            setPushMessage('Gagal mengubah pengaturan notifikasi.');
+            setPushMessage({ text: 'Gagal mengubah pengaturan notifikasi.', tone: 'danger' });
         } finally {
             setPushBusy(false);
         }
     };
 
     const editForm = useForm({
-        name: user?.name || '',
+        nama_lengkap: pegawai?.nama_lengkap || user?.name || '',
         email: user?.email || '',
         no_hp: pegawai?.no_hp || '',
     });
@@ -115,7 +134,7 @@ export default function MobileProfile({ status }) {
 
     const submitEdit = (e) => {
         e.preventDefault();
-        editForm.patch(route('presensi.profile.update'), {
+        editForm.patch(route('presensi.profile.data.update'), {
             preserveScroll: true,
             onSuccess: () => setEditOpen(false),
         });
@@ -137,192 +156,195 @@ export default function MobileProfile({ status }) {
             <Head title="Profil" />
 
             <div className="space-y-4">
-                {/* COVER */}
-                <div className="relative overflow-hidden rounded-2xl bg-primary p-6 text-white shadow-[0_10px_28px_-18px_rgba(15,61,62,0.75)]">
-                    <div className="relative flex flex-col items-center text-center">
-                        <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-white/30 bg-white/10 shadow-xl">
-                            {photo ? (
-                                <img src={photo} alt={displayName} className="h-full w-full object-cover" />
-                            ) : (
-                                <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">
-                                    {initial}
-                                </div>
-                            )}
-                        </div>
-                        <h2 className="mt-3 text-xl font-bold text-white">{displayName}</h2>
-                        <p className="text-sm text-emerald-100">{jabatanNama}</p>
-                        <div className="mt-1 flex items-center gap-1.5 text-xs text-emerald-200">
-                            {primaryUnit ? (
-                                <>
-                                    <MapPin className="h-3.5 w-3.5" />
-                                    <span>{primaryUnit.nama || primaryUnit.nama_unit}</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Building2 className="h-3.5 w-3.5" />
-                                    <span>Belum ada unit ditugaskan</span>
-                                </>
-                            )}
-                        </div>
+                <div className="rounded-2xl bg-primary px-5 py-6 text-center text-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+                    <div className="mx-auto h-24 w-24 overflow-hidden rounded-full border-4 border-white/20 bg-white/10">
+                        {photo ? (
+                            <img src={photo} alt={displayName} className="h-full w-full object-cover" />
+                        ) : (
+                            <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">
+                                {initial}
+                            </div>
+                        )}
+                    </div>
+                    <h2 className="mt-3 text-xl font-bold text-white">{displayName}</h2>
+                    <p className="text-sm text-white/80">{jabatanNama}</p>
+                    <div className="mt-1 flex items-center justify-center gap-1.5 text-xs text-white/70">
+                        {primaryUnit ? (
+                            <>
+                                <MapPin className="h-3.5 w-3.5" />
+                                <span>{primaryUnit.nama || primaryUnit.nama_unit}</span>
+                            </>
+                        ) : (
+                            <>
+                                <Building2 className="h-3.5 w-3.5" />
+                                <span>Belum ada unit ditugaskan</span>
+                            </>
+                        )}
                     </div>
                 </div>
 
-                {/* QUICK STATS */}
-                <div className="grid grid-cols-2 gap-3">
-                    <Card className="flex flex-col items-center py-4">
-                        <p className="text-[11px] uppercase tracking-wider text-slate-600">Sisa Cuti</p>
-                        <p className="mt-0.5 text-2xl font-extrabold text-primary">{pegawai?.sisa_cuti ?? 0}</p>
-                        <p className="text-[11px] text-slate-600">hari</p>
-                    </Card>
-                    <Card className="flex flex-col items-center py-4">
-                        <p className="text-[11px] uppercase tracking-wider text-slate-600">Status</p>
-                        <p className="mt-1 text-sm font-bold text-emerald-700">
-                            {pegawai?.status_aktif ? 'Aktif' : 'Nonaktif'}
+                {pegawai ? (
+                    <>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Card className="flex flex-col items-center py-4">
+                                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-secondary">Sisa Cuti</p>
+                                <p className="mt-0.5 text-2xl font-extrabold text-primary">{pegawai.sisa_cuti ?? 0}</p>
+                                <p className="text-[11px] text-text-secondary">hari</p>
+                            </Card>
+                            <Card className="flex flex-col items-center py-4">
+                                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-secondary">Status</p>
+                                <p className={`mt-1 text-sm font-bold ${isAktif ? 'text-success' : 'text-danger'}`}>
+                                    {isAktif ? 'Aktif' : 'Nonaktif'}
+                                </p>
+                                <p className="text-[11px] text-text-secondary">{statusKepegawaian || '-'}</p>
+                            </Card>
+                        </div>
+
+                        <dl className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                            <InfoRow label="NIP" value={pegawai.nuptk} />
+                            <InfoRow label="Email" value={user?.email} />
+                            <InfoRow label="No. HP" value={pegawai.no_hp} />
+                            <InfoRow label="Pendidikan" value={pegawai.pendidikan_terakhir} />
+                            <InfoRow
+                                label="Bergabung Sejak"
+                                value={pegawai.tmt_mengajar
+                                    ? format(parseISO(pegawai.tmt_mengajar), 'd MMMM yyyy', { locale: idLocale })
+                                    : null}
+                            />
+                            {!pegawai.is_tetap && pegawai.tanggal_akhir_kontrak && (
+                                <InfoRow
+                                    label="Akhir Kontrak"
+                                    value={`${format(parseISO(pegawai.tanggal_akhir_kontrak), 'd MMMM yyyy', { locale: idLocale })}, sisa ${Math.max(0, Math.ceil((new Date(pegawai.tanggal_akhir_kontrak) - new Date()) / (1000 * 60 * 60 * 24)))} hari`}
+                                />
+                            )}
+                        </dl>
+
+                        <Link
+                            href={route('presensi.lengkapi-data')}
+                            className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-border bg-white px-5 py-3 text-sm font-bold text-primary shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-transform active:scale-[0.99]"
+                        >
+                            <span className="flex items-center gap-2">
+                                <IdCard className="h-4 w-4" />
+                                Lengkapi data lengkap
+                            </span>
+                            <ChevronRight className="h-4 w-4 text-text-secondary" />
+                        </Link>
+                    </>
+                ) : (
+                    <Card>
+                        <p className="text-sm font-bold text-text-primary">Data pegawai belum tertaut</p>
+                        <p className="mt-1 text-xs text-text-secondary">
+                            Akun Anda belum terhubung ke data pegawai. Hubungi admin unit untuk menautkannya.
                         </p>
-                        <p className="text-[11px] text-slate-600">{pegawai?.statusRef?.label || pegawai?.status_kepegawaian || '-'}</p>
                     </Card>
-                </div>
+                )}
 
                 {status && (
-                    <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">
+                    <div className="flex items-center gap-2 rounded-xl bg-success-light p-3 text-sm font-semibold text-success">
                         <Check className="h-4 w-4" />
                         {status}
                     </div>
                 )}
 
-                {/* INFO CARD */}
-                <Card className="divide-y divide-slate-50 p-0">
-                    <Field icon={IdCard} label="NIP" value={pegawai?.nuptk} />
-                    <Field icon={Building2} label="Unit Sekolah" value={primaryUnit?.nama} />
-                    <Field icon={User} label="Jabatan" value={jabatanNama} />
-                    <Field icon={Phone} label="No. HP" value={pegawai?.no_hp} />
-                    <Field icon={Mail} label="Email" value={user?.email} />
-                    <Field icon={GraduationCap} label="Pendidikan" value={pegawai?.pendidikan_terakhir} />
-                    <Field
-                        icon={CalendarDays}
-                        label="Bergabung Sejak"
-                        value={pegawai?.tmt_mengajar
-                            ? format(parseISO(pegawai.tmt_mengajar), 'd MMMM yyyy', { locale: idLocale })
-                            : null}
-                    />
-                    {!pegawai?.is_tetap && pegawai?.tanggal_akhir_kontrak && (
-                        <Field
-                            icon={CalendarClock}
-                            label="Akhir Kontrak"
-                            value={`${format(parseISO(pegawai.tanggal_akhir_kontrak), 'd MMMM yyyy', { locale: idLocale })} · sisa ${Math.max(0, Math.ceil((new Date(pegawai.tanggal_akhir_kontrak) - new Date()) / (1000 * 60 * 60 * 24)))} hari`}
+                <Section id="edit-profil" title="Edit Profil" icon={Pencil} open={editOpen} onToggle={() => setEditOpen((v) => !v)}>
+                    <form onSubmit={submitEdit} className="space-y-3">
+                        <TextField
+                            id="nama_lengkap"
+                            label="Nama Lengkap"
+                            value={editForm.data.nama_lengkap}
+                            onChange={(e) => editForm.setData('nama_lengkap', e.target.value)}
+                            error={editForm.errors.nama_lengkap}
+                            autoComplete="name"
                         />
-                    )}
-                </Card>
-
-                {/* EDIT PROFILE */}
-                <Section title="Edit Profil" icon={Pencil} open={editOpen} onToggle={() => setEditOpen((v) => !v)}>
-                    <form onSubmit={submitEdit} className="space-y-3 pt-2">
-                        <div>
-                            <label className="mb-1 block text-xs font-bold text-gray-600">Nama Lengkap</label>
-                            <input
-                                value={editForm.data.name}
-                                onChange={(e) => editForm.setData('name', e.target.value)}
-                                className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                            />
-                            {editForm.errors.name && <p className="mt-1 text-xs text-red-500">{editForm.errors.name}</p>}
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-xs font-bold text-gray-600">Email</label>
-                            <input
-                                type="email"
-                                value={editForm.data.email}
-                                onChange={(e) => editForm.setData('email', e.target.value)}
-                                className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                            />
-                            {editForm.errors.email && <p className="mt-1 text-xs text-red-500">{editForm.errors.email}</p>}
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-xs font-bold text-gray-600">No. HP</label>
-                            <input
-                                value={editForm.data.no_hp}
-                                onChange={(e) => editForm.setData('no_hp', e.target.value)}
-                                className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                            />
-                            {editForm.errors.no_hp && <p className="mt-1 text-xs text-red-500">{editForm.errors.no_hp}</p>}
-                        </div>
+                        <TextField
+                            id="email"
+                            type="email"
+                            label="Email"
+                            value={editForm.data.email}
+                            onChange={(e) => editForm.setData('email', e.target.value)}
+                            error={editForm.errors.email}
+                            autoComplete="email"
+                        />
+                        <TextField
+                            id="no_hp"
+                            type="tel"
+                            label="No. HP"
+                            value={editForm.data.no_hp}
+                            onChange={(e) => editForm.setData('no_hp', e.target.value)}
+                            error={editForm.errors.no_hp}
+                            autoComplete="tel"
+                        />
                         <button
                             type="submit"
                             disabled={editForm.processing}
-                            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-60"
+                            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
                         >
                             {editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan'}
                         </button>
                     </form>
                 </Section>
 
-                {/* NOTIFIKASI PUSH */}
-                <Section title="Notifikasi" icon={BellRing} open={notifOpen} onToggle={() => setNotifOpen((v) => !v)} accent="text-sky-500">
-                    <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <Section id="notifikasi" title="Notifikasi" icon={BellRing} open={notifOpen} onToggle={() => setNotifOpen((v) => !v)}>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3">
                             <div>
-                                <p className="text-sm font-bold text-slate-800">Pengingat presensi & status izin</p>
-                                <p className="mt-0.5 text-xs text-slate-500">Butuh izin notifikasi browser. Untuk hasil terbaik gunakan HTTPS & buka via "Add to Home Screen".</p>
+                                <p className="text-sm font-bold text-text-primary">Pengingat presensi & status izin</p>
+                                <p className="mt-0.5 text-xs text-text-secondary">Butuh izin notifikasi browser. Untuk hasil terbaik gunakan HTTPS dan buka lewat "Add to Home Screen".</p>
                             </div>
                             <Toggle checked={pushEnabled} onChange={handleTogglePush} disabled={pushBusy} tone="sky" />
                         </div>
                         {pushMessage && (
-                            <p className="rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700">{pushMessage}</p>
+                            <p className={`rounded-xl px-3 py-2 text-xs font-semibold ${pushToneClass[pushMessage.tone]}`}>
+                                {pushMessage.text}
+                            </p>
                         )}
                     </div>
                 </Section>
 
-                {/* PASSWORD */}
-                <Section title="Ubah Kata Sandi" icon={KeyRound} open={passOpen} onToggle={() => setPassOpen((v) => !v)} accent="text-amber-500">
-                    <form onSubmit={submitPass} className="space-y-3 pt-2">
-                        <div>
-                            <label className="mb-1 block text-xs font-bold text-gray-600">Kata Sandi Saat Ini</label>
-                            <input
-                                type="password"
-                                value={passForm.data.current_password}
-                                onChange={(e) => passForm.setData('current_password', e.target.value)}
-                                autoComplete="current-password"
-                                className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                            />
-                            {passForm.errors.current_password && <p className="mt-1 text-xs text-red-500">{passForm.errors.current_password}</p>}
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-xs font-bold text-gray-600">Kata Sandi Baru</label>
-                            <input
-                                type="password"
-                                value={passForm.data.password}
-                                onChange={(e) => passForm.setData('password', e.target.value)}
-                                autoComplete="new-password"
-                                className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                            />
-                            {passForm.errors.password && <p className="mt-1 text-xs text-red-500">{passForm.errors.password}</p>}
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-xs font-bold text-gray-600">Konfirmasi Kata Sandi</label>
-                            <input
-                                type="password"
-                                value={passForm.data.password_confirmation}
-                                onChange={(e) => passForm.setData('password_confirmation', e.target.value)}
-                                autoComplete="new-password"
-                                className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                            />
-                            {passForm.errors.password_confirmation && <p className="mt-1 text-xs text-red-500">{passForm.errors.password_confirmation}</p>}
-                        </div>
+                <Section id="ubah-password" title="Ubah Kata Sandi" icon={KeyRound} open={passOpen} onToggle={() => setPassOpen((v) => !v)}>
+                    <form onSubmit={submitPass} className="space-y-3">
+                        <TextField
+                            id="current_password"
+                            type="password"
+                            label="Kata Sandi Saat Ini"
+                            value={passForm.data.current_password}
+                            onChange={(e) => passForm.setData('current_password', e.target.value)}
+                            error={passForm.errors.current_password}
+                            autoComplete="current-password"
+                        />
+                        <TextField
+                            id="password"
+                            type="password"
+                            label="Kata Sandi Baru"
+                            value={passForm.data.password}
+                            onChange={(e) => passForm.setData('password', e.target.value)}
+                            error={passForm.errors.password}
+                            autoComplete="new-password"
+                        />
+                        <TextField
+                            id="password_confirmation"
+                            type="password"
+                            label="Konfirmasi Kata Sandi"
+                            value={passForm.data.password_confirmation}
+                            onChange={(e) => passForm.setData('password_confirmation', e.target.value)}
+                            error={passForm.errors.password_confirmation}
+                            autoComplete="new-password"
+                        />
                         <button
                             type="submit"
                             disabled={passForm.processing}
-                            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.99] disabled:opacity-60"
+                            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
                         >
                             {passForm.processing ? 'Memperbarui...' : 'Perbarui Kata Sandi'}
                         </button>
                     </form>
                 </Section>
 
-                {/* LOGOUT */}
                 <Link
                     href={route('presensi.logout')}
                     method="post"
                     as="button"
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 py-3.5 text-sm font-bold text-rose-700 transition active:scale-[0.98]"
+                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-danger/20 bg-danger-light px-6 py-3.5 text-sm font-bold text-danger transition-transform active:scale-[0.98]"
                 >
                     <LogOut className="h-4 w-4" />
                     Keluar

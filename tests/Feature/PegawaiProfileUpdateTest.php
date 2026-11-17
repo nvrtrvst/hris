@@ -51,6 +51,29 @@ class PegawaiProfileUpdateTest extends TestCase
         // User tersinkron (nama & email login).
         $this->assertSame('Nama Baru', $user->name);
         $this->assertSame('baru@yayasan.com', $user->email);
+        // Email berubah: verifikasi lama tidak berlaku.
+        $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_profile_data_update_without_email_change_keeps_verification(): void
+    {
+        $unit = UnitSekolah::create(['nama' => 'SD Uji', 'singkatan' => 'SD']);
+        $user = User::factory()->create(['email' => 'peg@yayasan.com', 'unit_sekolah_id' => $unit->id]);
+        $pegawai = Pegawai::create([
+            'user_id' => $user->id,
+            'nik' => '3273000000000002',
+            'nama_lengkap' => 'Nama',
+            'jenis_kelamin' => 'L',
+            'status_kepegawaian' => 'guru_tetap_yayasan',
+            'status_aktif' => 'aktif',
+            'tmt_mengajar' => '2020-01-01',
+        ]);
+
+        $this->actingAs($user, 'web_mobile')
+            ->patch(route('presensi.profile.data.update'), ['no_hp' => '081200000011'])
+            ->assertRedirect(route('presensi.profile.edit'));
+
+        $this->assertNotNull($user->fresh()->email_verified_at);
     }
 
     public function test_profile_data_update_validates_email_unique(): void

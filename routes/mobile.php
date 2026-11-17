@@ -158,7 +158,7 @@ Route::middleware('auth:web_mobile')->group(function () {
     Route::get('/profile', function (Request $request) {
         $pegawai = $request->user()->pegawai;
         if ($pegawai) {
-            $pegawai->load('units', 'jabatans');
+            $pegawai->load('units', 'jabatans', 'statusRef');
             // Profile.jsx menampilkan sisa_cuti — append eksplisit (P2).
             $pegawai->loadCutiInfo();
         }
