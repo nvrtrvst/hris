@@ -154,7 +154,7 @@ export default function MobileLayout({ user, header, children }) {
                 </div>
             )}
 
-            <main className="px-4 pb-24 pt-5">
+            <main className="px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5">
                 {children}
             </main>
 

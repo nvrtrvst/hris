@@ -48,7 +48,7 @@ function TextField({ id, label, error, ...props }) {
 function Section({ id, title, icon: Icon, open, onToggle, children }) {
     const panelId = `${id}-panel`;
     return (
-        <Card className="overflow-hidden p-0">
+        <Card className="overflow-hidden !p-0">
             <button
                 type="button"
                 onClick={onToggle}
@@ -166,13 +166,13 @@ export default function MobileProfile({ status }) {
                             </div>
                         )}
                     </div>
-                    <h2 className="mt-3 text-xl font-bold text-white">{displayName}</h2>
-                    <p className="text-sm text-white/80">{jabatanNama}</p>
-                    <div className="mt-1 flex items-center justify-center gap-1.5 text-xs text-white/70">
+                    <h2 className="mt-3 break-words text-xl font-bold text-white">{displayName}</h2>
+                    <p className="break-words text-sm text-white/80">{jabatanNama}</p>
+                    <div className="mt-1 flex min-w-0 items-center justify-center gap-1.5 text-xs text-white/70">
                         {primaryUnit ? (
                             <>
                                 <MapPin className="h-3.5 w-3.5" />
-                                <span>{primaryUnit.nama || primaryUnit.nama_unit}</span>
+                                <span className="break-words">{primaryUnit.nama || primaryUnit.nama_unit}</span>
                             </>
                         ) : (
                             <>
@@ -186,12 +186,12 @@ export default function MobileProfile({ status }) {
                 {pegawai ? (
                     <>
                         <div className="grid grid-cols-2 gap-3">
-                            <Card className="flex flex-col items-center py-4">
+                            <Card className="flex flex-col items-center px-3 py-4">
                                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-secondary">Sisa Cuti</p>
                                 <p className="mt-0.5 text-2xl font-extrabold text-primary">{pegawai.sisa_cuti ?? 0}</p>
                                 <p className="text-[11px] text-text-secondary">hari</p>
                             </Card>
-                            <Card className="flex flex-col items-center py-4">
+                            <Card className="flex flex-col items-center px-3 py-4">
                                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-secondary">Status</p>
                                 <p className={`mt-1 text-sm font-bold ${isAktif ? 'text-success' : 'text-danger'}`}>
                                     {isAktif ? 'Aktif' : 'Nonaktif'}
