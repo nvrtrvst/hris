@@ -41,6 +41,7 @@ class JabatanSeeder extends Seeder
             ['nama' => 'Bendahara', 'is_guru' => false],
             ['nama' => 'Kasir', 'is_guru' => false],
             ['nama' => 'Operator / Pranata Komputer', 'is_guru' => false],
+            ['nama' => 'Sarana dan Prasarana', 'is_guru' => false, 'is_supervisor' => false],
 
             // Yayasan (kantor pusat)
             ['nama' => 'Ketua Yayasan', 'is_guru' => false, 'is_supervisor' => true],
@@ -56,6 +57,18 @@ class JabatanSeeder extends Seeder
 
         foreach ($jabatans as $jabatan) {
             Jabatan::firstOrCreate(['nama' => $jabatan['nama']], $jabatan);
+        }
+
+        $sarpras = Jabatan::where('nama', 'Sarana dan Prasarana')->first();
+        if ($sarpras) {
+            $sarpras->update([
+                'hierarchy_level' => (int) ($sarpras->hierarchy_level ?? 99) === 99 ? 4 : $sarpras->hierarchy_level,
+                'is_supervisor' => false,
+                'approver_l1_jabatan_id' => $sarpras->approver_l1_jabatan_id
+                    ?? Jabatan::where('nama', 'Kepala Tata Usaha')->value('id'),
+                'approver_l2_jabatan_id' => $sarpras->approver_l2_jabatan_id
+                    ?? Jabatan::where('nama', 'Kepala Sekolah')->value('id'),
+            ]);
         }
     }
 }
