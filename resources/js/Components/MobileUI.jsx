@@ -94,7 +94,7 @@ export function Toggle({ checked, onChange, tone = 'indigo', disabled = false, .
             role="switch"
             aria-checked={checked}
             {...props}
-            className={`relative h-8 min-w-[52px] rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${checked ? on : 'bg-slate-300'} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
+            className={`relative h-8 min-w-[52px] rounded-full transition-colors duration-200 before:absolute before:-inset-1.5 before:content-[''] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${checked ? on : 'bg-slate-300'} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
             style={{ width: '52px' }}
         >
             <span
