@@ -7,6 +7,7 @@ use App\Models\Pegawai;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use Database\Seeders\AtasanHierarchySeeder;
+use Database\Seeders\JabatanSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -92,8 +93,42 @@ class AtasanHierarchyTest extends TestCase
 
         (new AtasanHierarchySeeder)->run();
 
-        // Tidak ditimpa — tetap atasan manual.
+        // Tidak ditimpa - tetap atasan manual.
         $this->assertSame($manual->id, $guru->fresh()->atasan_langsung_id);
+    }
+
+    public function test_sarpras_reports_to_kepala_tu(): void
+    {
+        $this->makePegawai('Kepsek SD', $this->sd, 'Kepala Sekolah');
+        $kepalaTU = $this->makePegawai('Kepala TU', $this->sd, 'Kepala Tata Usaha');
+        $sarpras = $this->makePegawai('Petugas Sarpras', $this->sd, 'Sarana dan Prasarana');
+
+        (new AtasanHierarchySeeder)->run();
+
+        $this->assertSame($kepalaTU->id, $sarpras->fresh()->atasan_langsung_id);
+    }
+
+    public function test_wakil_kepala_sarpras_reports_to_kepala_sekolah(): void
+    {
+        $kepsek = $this->makePegawai('Kepsek SD', $this->sd, 'Kepala Sekolah');
+        $this->makePegawai('Kepala TU', $this->sd, 'Kepala Tata Usaha');
+        $wakaSarpras = $this->makePegawai('Waka Sarpras', $this->sd, 'Wakil Kepala Sarpras');
+
+        (new AtasanHierarchySeeder)->run();
+
+        $this->assertSame($kepsek->id, $wakaSarpras->fresh()->atasan_langsung_id);
+    }
+
+    public function test_sarpras_position_seeded_with_expected_hierarchy(): void
+    {
+        $this->seed(JabatanSeeder::class);
+
+        $sarpras = Jabatan::where('nama', 'Sarana dan Prasarana')->firstOrFail();
+
+        $this->assertSame(4, $sarpras->hierarchy_level);
+        $this->assertFalse($sarpras->is_supervisor);
+        $this->assertSame('Kepala Tata Usaha', $sarpras->approverL1?->nama);
+        $this->assertSame('Kepala Sekolah', $sarpras->approverL2?->nama);
     }
 
     // ────────────────────────────── Form atasan ─────────────────────────────

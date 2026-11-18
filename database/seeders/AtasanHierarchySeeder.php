@@ -81,7 +81,12 @@ class AtasanHierarchySeeder extends Seeder
                     // Kepala sekolah → yayasan
                     $namaJabatan === 'Kepala Sekolah' => $ketuaYayasan,
                     // Guru & pimpinan fungsional → kepala sekolah
-                    ($jabatan && $jabatan->is_guru) || in_array($namaJabatan, ['Wakil Kepala Sekolah', 'Kepala Perpustakaan', 'Kepala Laboratorium', 'Kepala Tata Usaha'], true) => $kepsek,
+                    ($jabatan && $jabatan->is_guru) || in_array($namaJabatan, [
+                        'Wakil Kepala Sekolah', 'Wakil Kepala Kurikulum',
+                        'Wakil Kepala Kesiswaan', 'Wakil Kepala Sarpras',
+                        'Kepala Program', 'Kepala Perpustakaan',
+                        'Kepala Laboratorium', 'Kepala Tata Usaha',
+                    ], true) => $kepsek,
                     // Tendik adm & lainnya → kepala TU (fallback kepala sekolah,
                     // lalu ketua yayasan untuk pegawai kantor pusat)
                     default => $kepalaTU ?? $kepsek ?? $ketuaYayasan,

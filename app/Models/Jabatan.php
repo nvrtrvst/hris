@@ -10,11 +10,12 @@ class Jabatan extends Model
 {
     protected $table = 'jabatan';
 
-    protected $fillable = ['nama', 'is_guru', 'is_payroll_operator', 'is_supervisor', 'approver_l1_jabatan_id', 'approver_l2_jabatan_id'];
+    protected $fillable = ['nama', 'hierarchy_level', 'is_guru', 'is_payroll_operator', 'is_supervisor', 'approver_l1_jabatan_id', 'approver_l2_jabatan_id'];
 
     protected function casts(): array
     {
         return [
+            'hierarchy_level' => 'integer',
             'is_guru' => 'boolean',
             'is_payroll_operator' => 'boolean',
             'is_supervisor' => 'boolean',

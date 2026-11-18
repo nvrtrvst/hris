@@ -58,7 +58,8 @@ class KpiProfiles
         }
 
         if (str_contains(mb_strtolower($nama), 'pustakawan') || str_contains(mb_strtolower($nama), 'perpustakaan')
-            || str_contains(mb_strtolower($nama), 'laboran') || str_contains(mb_strtolower($nama), 'laboratorium')) {
+            || str_contains(mb_strtolower($nama), 'laboran') || str_contains(mb_strtolower($nama), 'laboratorium')
+            || str_contains(mb_strtolower($nama), 'sarana') || str_contains(mb_strtolower($nama), 'prasarana')) {
             if ($isSupervisor) {
                 return ['label' => 'Kepala Fasilitas Belajar', 'indicators' => [
                     ['target_unit', 'Capaian rencana unit/fasilitas', 20, 'rubric', null, null, null],

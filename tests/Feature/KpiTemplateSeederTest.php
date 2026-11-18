@@ -39,4 +39,14 @@ class KpiTemplateSeederTest extends TestCase
             $bendahara->indicators->pluck('kode')->sort()->values()->all(),
         );
     }
+
+    public function test_sarpras_uses_facilities_kpi_template(): void
+    {
+        $this->seed(JabatanSeeder::class);
+        $this->seed(KpiTemplateSeeder::class);
+
+        $template = KpiTemplate::whereHas('jabatan', fn ($q) => $q->where('nama', 'Sarana dan Prasarana'))->firstOrFail();
+
+        $this->assertStringContainsString('Fasilitas dan Layanan', $template->nama);
+    }
 }
