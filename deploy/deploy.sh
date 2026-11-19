@@ -153,6 +153,7 @@ if ! $PHP_BIN artisan route:cache 2>&1 | tail -3; then
     warn "route:cache dilewati — masih ada closure route. Config/view/event cache tetap aktif."
     $PHP_BIN artisan route:clear 2>&1 | tail -2
 fi
+sudo -u www-data rm -f bootstrap/cache/routes-*.php
 
 grep -n "batalkan" routes/mobile.php || true
 $PHP_BIN artisan route:list --path=izin 2>&1 | tail -15
