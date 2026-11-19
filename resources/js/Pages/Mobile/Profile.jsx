@@ -90,7 +90,7 @@ export default function MobileProfile({ status }) {
 
     useEffect(() => {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-        navigator.serviceWorker.getRegistration('/sw.js')
+        navigator.serviceWorker.getRegistration('/sw.js?v=21')
             .then((reg) => (reg ? reg.pushManager.getSubscription() : null))
             .then((sub) => setPushEnabled(Boolean(sub)))
             .catch(() => {});
