@@ -154,7 +154,8 @@ if ! $PHP_BIN artisan route:cache 2>&1 | tail -3; then
     $PHP_BIN artisan route:clear 2>&1 | tail -2
 fi
 
-$PHP_BIN artisan route:list --name=presensi.izin.cancel 2>&1 | tail -3
+grep -n "batalkan" routes/mobile.php || true
+$PHP_BIN artisan route:list --path=izin 2>&1 | tail -15
 
 # ── Restart PHP-FPM ────────────────────────────────────────────────────────
 step "Restart PHP-FPM (opcache)"
