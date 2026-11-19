@@ -2,7 +2,7 @@
 // Bump CACHE_NAME setiap deploy: SW baru meng-install (skipWaiting), langsung
 // mengambil alih tab yang terbuka (clients.claim), lalu activate menghapus cache
 // versi lama — sehingga device yang "nyangkut" sembuh tanpa aksi user.
-const CACHE_NAME = 'hris-mobile-v20';
+const CACHE_NAME = 'hris-mobile-v21';
 
 // HANYA aset statis yang aman di-cache (ikon + manifest).
 // HTML shell TIDAK di-precache lagi: halaman selalu diambil dari jaringan, jadi

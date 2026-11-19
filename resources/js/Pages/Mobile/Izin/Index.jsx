@@ -4,7 +4,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Badge, Empty, FAB } from '@/Components/MobileUI';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { FileText, Plus, Clock, CheckCircle, XCircle, ChevronRight, ChevronDown } from 'lucide-react';
+import { FileText, Plus, Clock, CheckCircle, XCircle, Ban, ChevronRight, ChevronDown } from 'lucide-react';
 
 const jenisLabel = { sakit: 'Sakit', izin: 'Izin', cuti: 'Cuti' };
 
@@ -15,20 +15,34 @@ const durasiHari = (mulai, selesai) => Math.round((parseISO(selesai) - parseISO(
 function statusOf(item) {
     if (item.status === 'disetujui') return { tone: 'emerald', icon: CheckCircle, label: 'Disetujui' };
     if (item.status === 'ditolak') return { tone: 'rose', icon: XCircle, label: 'Ditolak' };
+    if (item.status === 'dibatalkan') return { tone: 'slate', icon: Ban, label: 'Dibatalkan' };
     if (item.approval_stage === 'pending_l2') return { tone: 'sky', icon: Clock, label: 'Menunggu' };
     return { tone: 'amber', icon: Clock, label: 'Menunggu' };
 }
 
 export default function Index({ auth, pengajuan, filters = {}, stats = {}, pegawai }) {
-    const { flash } = usePage().props;
+    const { flash, errors } = usePage().props;
     const items = pengajuan?.data ?? [];
     const adaFilter = filters.status !== 'semua' || Boolean(filters.jenis) || Boolean(filters.bulan);
+    const [confirmingId, setConfirmingId] = React.useState(null);
+    const [cancellingId, setCancellingId] = React.useState(null);
+    const cancelBusy = cancellingId !== null;
+
+    const submitCancel = (id) => {
+        setCancellingId(id);
+        router.post(route('presensi.izin.cancel', id), {}, {
+            preserveScroll: true,
+            onSuccess: () => setConfirmingId(null),
+            onFinish: () => setCancellingId(null),
+        });
+    };
 
     const chips = [
         { value: 'semua', label: 'Semua', count: stats.total },
         { value: 'pending', label: 'Menunggu', count: stats.pending },
         { value: 'disetujui', label: 'Disetujui', count: stats.disetujui },
         { value: 'ditolak', label: 'Ditolak', count: stats.ditolak },
+        { value: 'dibatalkan', label: 'Dibatalkan', count: stats.dibatalkan },
     ];
 
     // Filter disimpan di URL — tombol back & bookmark ikut benar.
@@ -115,6 +129,9 @@ export default function Index({ auth, pengajuan, filters = {}, stats = {}, pegaw
             {flash.error && (
                 <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{flash.error}</div>
             )}
+            {errors?.error && (
+                <div role="alert" className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{errors.error}</div>
+            )}
 
             {items.length === 0 ? (
                 <Empty
@@ -129,11 +146,11 @@ export default function Index({ auth, pengajuan, filters = {}, stats = {}, pegaw
                         const menungguTingkat2 = item.status === 'pending' && item.approval_stage === 'pending_l2';
                         return (
                             <li key={item.id}>
-                                <Link
-                                    href={route('presensi.izin.show', item.id)}
-                                    className="block rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
-                                >
-                                    <Card className="py-4">
+                                <Card className="py-4">
+                                    <Link
+                                        href={route('presensi.izin.show', item.id)}
+                                        className="block rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+                                    >
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0 flex-1">
                                                 <Badge tone="slate">{jenisLabel[item.jenis_izin] || item.jenis_izin}</Badge>
@@ -161,8 +178,50 @@ export default function Index({ auth, pengajuan, filters = {}, stats = {}, pegaw
                                                 <p className="mt-0.5 text-sm text-rose-700">{item.alasan_penolakan}</p>
                                             </div>
                                         )}
-                                    </Card>
-                                </Link>
+                                    </Link>
+                                    {item.status === 'pending' && (
+                                        <div className="mt-3 border-t border-slate-100 pt-3">
+                                            {confirmingId === item.id ? (
+                                                <div className="space-y-3">
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-800">Batalkan pengajuan ini?</p>
+                                                        <p className="mt-0.5 text-xs text-slate-600">Pengajuan tidak akan diproses atasan. Riwayat tetap tersimpan.</p>
+                                                    </div>
+                                                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setConfirmingId(null)}
+                                                            disabled={cancelBusy}
+                                                            className="min-h-11 rounded-xl px-4 text-sm font-bold text-slate-600 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 disabled:opacity-50"
+                                                        >
+                                                            Kembali
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => submitCancel(item.id)}
+                                                            disabled={cancelBusy}
+                                                            className="min-h-11 rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-bold text-rose-700 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-rose-200 disabled:opacity-50"
+                                                        >
+                                                            {cancellingId === item.id ? 'Membatalkan...' : 'Ya, batalkan'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <p className="text-xs text-slate-600">Salah pilih jenis atau tanggal?</p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setConfirmingId(item.id)}
+                                                        disabled={cancelBusy}
+                                                        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 disabled:opacity-50"
+                                                    >
+                                                        <Ban className="h-4 w-4" /> Batalkan
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </Card>
                             </li>
                         );
                     })}

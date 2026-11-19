@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import React, { useRef, useState } from 'react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Card, Badge } from '@/Components/MobileUI';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { ArrowLeft, Clock, CheckCircle, XCircle, Calendar, FileText, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, XCircle, Ban, Calendar, FileText, AlertTriangle } from 'lucide-react';
 import ThreadChat from '@/Components/ThreadChat';
 
 // ponytail: inline 1x1 transparent PNG — FE tidak request placeholder asset,
@@ -20,6 +20,7 @@ const jenisLabel = { sakit: 'Sakit', izin: 'Izin', cuti: 'Cuti' };
 function getStatus(status) {
     if (status === 'disetujui') return { tone: 'emerald', icon: CheckCircle, label: 'Disetujui' };
     if (status === 'ditolak') return { tone: 'rose', icon: XCircle, label: 'Ditolak' };
+    if (status === 'dibatalkan') return { tone: 'slate', icon: Ban, label: 'Dibatalkan' };
     return { tone: 'amber', icon: Clock, label: 'Menunggu' };
 }
 
@@ -34,6 +35,14 @@ export default function Show({ auth, pengajuan }) {
     const StatusIcon = st.icon;
     const totalDays = daysBetween(pengajuan.tanggal_mulai, pengajuan.tanggal_selesai);
     const [fotoSrc, setFotoSrc] = useState(pengajuan.bukti_foto_url);
+    const [confirmingCancel, setConfirmingCancel] = useState(false);
+    const cancelButtonRef = useRef(null);
+    const { post, processing, errors } = useForm({});
+    const { flash } = usePage().props;
+
+    const submitCancel = () => {
+        post(route('presensi.izin.cancel', pengajuan.id), { preserveScroll: true });
+    };
 
     return (
         <MobileLayout user={auth.user}>
@@ -45,6 +54,13 @@ export default function Show({ auth, pengajuan }) {
             >
                 <ArrowLeft className="h-4 w-4" /> Kembali
             </Link>
+
+            {flash?.message && (
+                <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{flash.message}</div>
+            )}
+            {errors?.error && (
+                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{errors.error}</div>
+            )}
 
             {/* Header card */}
             <Card className="mb-4">
@@ -165,6 +181,25 @@ export default function Show({ auth, pengajuan }) {
                 </Card>
             )}
 
+            {pengajuan.status === 'dibatalkan' && (
+                <Card className="mb-4 border-slate-200 bg-slate-50/60">
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                            <Ban className="h-4 w-4 text-slate-600" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-sm font-bold text-slate-800">Pengajuan Dibatalkan</p>
+                            <p className="mt-0.5 text-xs text-slate-600">Pengajuan tidak diproses atasan. Riwayat tetap tersimpan.</p>
+                            {pengajuan.cancelled_at && (
+                                <p className="mt-1 text-xs text-slate-600">
+                                    Dibatalkan {format(new Date(pengajuan.cancelled_at), 'd MMM yyyy, HH:mm', { locale: id })}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </Card>
+            )}
+
             {/* Pending notice */}
             {pengajuan.status === 'pending' && (
                 <Card className="mb-4 border-amber-200 bg-amber-50/50">
@@ -180,11 +215,60 @@ export default function Show({ auth, pengajuan }) {
                 </Card>
             )}
 
+            {pengajuan.status === 'pending' && (
+                <Card className="mb-4 border-slate-200">
+                    {!confirmingCancel ? (
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-slate-800">Salah pilih jenis atau tanggal?</p>
+                                <p className="mt-0.5 text-xs text-slate-600">Batalkan pengajuan ini, lalu buat pengajuan baru.</p>
+                            </div>
+                            <button
+                                ref={cancelButtonRef}
+                                type="button"
+                                onClick={() => setConfirmingCancel(true)}
+                                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+                            >
+                                <Ban className="h-4 w-4" /> Batalkan
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            <div>
+                                <p className="text-sm font-bold text-slate-800">Batalkan pengajuan ini?</p>
+                                <p className="mt-0.5 text-xs text-slate-600">Pengajuan tidak akan diproses atasan. Riwayat tetap tersimpan.</p>
+                            </div>
+                            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setConfirmingCancel(false);
+                                        cancelButtonRef.current?.focus();
+                                    }}
+                                    className="min-h-11 rounded-xl px-4 text-sm font-bold text-slate-600 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+                                >
+                                    Kembali
+                                </button>
+                                <button
+                                    type="button"
+                                    autoFocus
+                                    onClick={submitCancel}
+                                    disabled={processing}
+                                    className="min-h-11 rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-bold text-rose-700 transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-rose-200 disabled:opacity-50"
+                                >
+                                    {processing ? 'Membatalkan...' : 'Ya, batalkan'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </Card>
+            )}
+
             {/* Thread Chat */}
             <Card className="mb-4">
                 <ThreadChat
                     pengajuanId={pengajuan.id}
-                    isLocked={pengajuan.approval_stage === 'approved' || pengajuan.approval_stage === 'rejected'}
+                    isLocked={['approved', 'rejected', 'cancelled'].includes(pengajuan.approval_stage)}
                     currentUserId={auth.user.id}
                     commentsRoute="presensi.izin.comments"
                     replyRoute="presensi.izin.reply"

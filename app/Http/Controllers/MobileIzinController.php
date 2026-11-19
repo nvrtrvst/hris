@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Constants\PresensiMessages;
+use App\Helpers\ApprovalHelper;
 use App\Helpers\NotificationHelper;
+use App\Models\AuditLog;
 use App\Models\PengajuanIzin;
 use App\Models\PengajuanIzinComment;
 use App\Models\User;
@@ -12,6 +14,7 @@ use App\Services\PengajuanIzinService;
 use App\Traits\ResolvesPegawai;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class MobileIzinController extends Controller
@@ -26,7 +29,7 @@ class MobileIzinController extends Controller
         }
 
         $request->validate([
-            'status' => 'nullable|in:semua,pending,disetujui,ditolak',
+            'status' => 'nullable|in:semua,pending,disetujui,ditolak,dibatalkan',
             'jenis' => 'nullable|in:sakit,izin,cuti',
             'bulan' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
         ]);
@@ -44,6 +47,7 @@ class MobileIzinController extends Controller
             'pending' => (clone $base)->where('status', 'pending')->count(),
             'disetujui' => (clone $base)->where('status', 'disetujui')->count(),
             'ditolak' => (clone $base)->where('status', 'ditolak')->count(),
+            'dibatalkan' => (clone $base)->where('status', 'dibatalkan')->count(),
         ];
 
         $pengajuan = (clone $base)
@@ -144,6 +148,84 @@ class MobileIzinController extends Controller
         return redirect()->route('presensi.izin.index')->with('message', $pesan);
     }
 
+    public function cancel(PengajuanIzin $pengajuan)
+    {
+        $pegawai = $this->getPegawai();
+        if (! $pegawai || $pengajuan->pegawai_id !== $pegawai->id) {
+            abort(404);
+        }
+
+        $user = $pegawai->user;
+        if (! $user) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        [$pengajuan, $comment, $stage] = DB::transaction(function () use ($pengajuan, $pegawai, $user) {
+            $pengajuan = PengajuanIzin::with('pegawai')->lockForUpdate()->findOrFail($pengajuan->id);
+
+            if ($pengajuan->pegawai_id !== $pegawai->id) {
+                abort(404);
+            }
+
+            if ($pengajuan->status !== 'pending'
+                || ! in_array($pengajuan->approval_stage, ['pending_l1', 'pending_l2', 'pending_superadmin'], true)) {
+                throw ValidationException::withMessages([
+                    'error' => 'Pengajuan sudah diproses dan tidak bisa dibatalkan.',
+                ]);
+            }
+
+            $stage = $pengajuan->approval_stage;
+            $pengajuan->forceFill([
+                'status' => 'dibatalkan',
+                'approval_stage' => 'cancelled',
+                'cancelled_at' => now(),
+            ])->save();
+
+            AuditLog::log($pengajuan, 'batalkan', [
+                'status' => 'pending',
+                'approval_stage' => $stage,
+            ], [
+                'status' => 'dibatalkan',
+                'approval_stage' => 'cancelled',
+                'cancelled_at' => $pengajuan->cancelled_at?->toISOString(),
+            ]);
+
+            $comment = PengajuanIzinComment::create([
+                'pengajuan_izin_id' => $pengajuan->id,
+                'user_id' => $user->id,
+                'message' => 'Pengajuan dibatalkan oleh pegawai.',
+            ]);
+
+            return [$pengajuan, $comment, $stage];
+        });
+
+        $superadminIds = fn () => User::whereHas('roles', fn ($q) => $q->where('name', 'superadmin'))->pluck('id');
+
+        $recipientIds = collect([$pengajuan->approver_l1_id, $pengajuan->approver_l2_id])
+            ->filter()
+            ->reject(fn ($id) => (int) $id === (int) $user->id);
+
+        if ($stage === 'pending_superadmin') {
+            $recipientIds = $recipientIds->merge($superadminIds());
+        }
+
+        if ($recipientIds->isEmpty()) {
+            $recipientIds = $superadminIds()
+                ->reject(fn ($id) => (int) $id === (int) $user->id);
+        }
+
+        $recipientIds = $recipientIds->unique()->values();
+
+        if ($recipientIds->isNotEmpty()) {
+            User::whereIn('id', $recipientIds)->get()
+                ->each(fn (User $recipient) => NotificationHelper::sendSafely($recipient, new IzinReply($pengajuan, $comment, $user)));
+        }
+
+        ApprovalHelper::sendTembusanIzin($pengajuan, 'dibatalkan', array_filter([$pengajuan->approver_l1_id, $pengajuan->approver_l2_id]));
+
+        return back()->with('message', 'Pengajuan berhasil dibatalkan.');
+    }
+
     public function comments(PengajuanIzin $pengajuan)
     {
         $pegawai = $this->getPegawai();
@@ -176,7 +258,7 @@ class MobileIzinController extends Controller
         $comment = DB::transaction(function () use ($pengajuan, $user, $request) {
             $pengajuan = PengajuanIzin::lockForUpdate()->find($pengajuan->id);
 
-            if (in_array($pengajuan->approval_stage, ['approved', 'rejected'])) {
+            if (in_array($pengajuan->approval_stage, ['approved', 'rejected', 'cancelled'])) {
                 abort(422, 'Pengajuan sudah final. Thread sudah dikunci.');
             }
 

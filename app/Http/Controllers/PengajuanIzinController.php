@@ -177,7 +177,7 @@ class PengajuanIzinController extends Controller
                 }
             }
 
-            if (in_array($pengajuan->approval_stage, ['approved', 'rejected'])) {
+            if (in_array($pengajuan->approval_stage, ['approved', 'rejected', 'cancelled'])) {
                 throw ValidationException::withMessages(['error' => 'Pengajuan sudah final.']);
             }
 
@@ -298,7 +298,7 @@ class PengajuanIzinController extends Controller
                 }
             }
 
-            if (in_array($pengajuan->approval_stage, ['approved', 'rejected'])) {
+            if (in_array($pengajuan->approval_stage, ['approved', 'rejected', 'cancelled'])) {
                 throw ValidationException::withMessages(['error' => 'Pengajuan sudah final.']);
             }
 
@@ -382,7 +382,7 @@ class PengajuanIzinController extends Controller
             }
 
             // Thread locked after final (approve/reject) — inside lock, race-safe
-            if (in_array($pengajuan->approval_stage, ['approved', 'rejected'])) {
+            if (in_array($pengajuan->approval_stage, ['approved', 'rejected', 'cancelled'])) {
                 abort(422, 'Pengajuan sudah final. Thread sudah dikunci.');
             }
 
