@@ -151,16 +151,19 @@ $PHP_BIN artisan event:cache 2>&1 | tail -2
 # Route cache masih dilewati selama ada closure route (profil mobile, manifest).
 if ! $PHP_BIN artisan route:cache 2>&1 | tail -3; then
     warn "route:cache dilewati — masih ada closure route. Config/view/event cache tetap aktif."
+    $PHP_BIN artisan route:clear 2>&1 | tail -2
 fi
 
-# ── Reload PHP-FPM ─────────────────────────────────────────────────────────
-step "Reload PHP-FPM (opcache)"
+$PHP_BIN artisan route:list --name=presensi.izin.cancel 2>&1 | tail -3
+
+# ── Restart PHP-FPM ────────────────────────────────────────────────────────
+step "Restart PHP-FPM (opcache)"
 if command -v systemctl >/dev/null 2>&1; then
     for svc in php8.3-fpm php8.2-fpm php8.1-fpm php-fpm; do
         if systemctl is-active --quiet "$svc"; then
-            sudo systemctl reload "$svc" \
-                && info "PHP-FPM reload: $svc" \
-                || warn "Gagal reload $svc — jalankan manual agar route/controller baru aktif."
+            sudo systemctl restart "$svc" \
+                && info "PHP-FPM restart: $svc" \
+                || warn "Gagal restart $svc — jalankan manual agar route/controller baru aktif."
             break
         fi
     done
