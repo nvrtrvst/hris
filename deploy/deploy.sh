@@ -152,20 +152,17 @@ $PHP_BIN artisan event:cache 2>&1 | tail -2
 if ! $PHP_BIN artisan route:cache 2>&1 | tail -3; then
     warn "route:cache dilewati — masih ada closure route. Config/view/event cache tetap aktif."
     $PHP_BIN artisan route:clear 2>&1 | tail -2
+    sudo rm -f bootstrap/cache/routes-*.php
 fi
-sudo rm -f bootstrap/cache/routes-*.php
 
-grep -n "batalkan" routes/mobile.php || true
-$PHP_BIN artisan route:list --path=izin 2>&1 | tail -15
-
-# ── Restart PHP-FPM ────────────────────────────────────────────────────────
-step "Restart PHP-FPM (opcache)"
+# ── Reload PHP-FPM ─────────────────────────────────────────────────────────
+step "Reload PHP-FPM (opcache)"
 if command -v systemctl >/dev/null 2>&1; then
     for svc in php8.3-fpm php8.2-fpm php8.1-fpm php-fpm; do
         if systemctl is-active --quiet "$svc"; then
-            sudo systemctl restart "$svc" \
-                && info "PHP-FPM restart: $svc" \
-                || warn "Gagal restart $svc — jalankan manual agar route/controller baru aktif."
+            sudo systemctl reload "$svc" \
+                && info "PHP-FPM reload: $svc" \
+                || warn "Gagal reload $svc — jalankan manual agar route/controller baru aktif."
             break
         fi
     done
