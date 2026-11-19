@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import Modal from '@/Components/Modal';
 import Pagination from '@/Components/Pagination';
-import { Search, Filter, CheckCircle, XCircle, Clock, Info, User, FileText, Calendar, AlertCircle, ChevronRight, CalendarCheck2, Inbox, Users } from 'lucide-react';
+import { Search, Filter, CheckCircle, XCircle, Ban, Clock, Info, User, FileText, Calendar, AlertCircle, ChevronRight, CalendarCheck2, Inbox, Users } from 'lucide-react';
 import ThreadChat from '@/Components/ThreadChat';
 
 // ponytail: inline SVG fallback agar tidak ada broken icon saat path 403/404 di hard-refresh.
@@ -134,6 +134,13 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                         Ditolak
                     </span>
                 );
+            case 'dibatalkan':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                        <Ban className="w-3.5 h-3.5 mr-1" />
+                        Dibatalkan
+                    </span>
+                );
             default:
                 return (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-200">
@@ -157,6 +164,13 @@ export default function Index({ auth, pengajuans, filters, stats }) {
             return (
                 <p className="mt-1 text-[11px] text-text-muted">
                     Ditolak oleh {item.rejectedByUser?.name || 'Atasan'}
+                </p>
+            );
+        }
+        if (item.status === 'dibatalkan') {
+            return (
+                <p className="mt-1 text-[11px] text-text-secondary">
+                    Dibatalkan oleh pegawai
                 </p>
             );
         }
@@ -197,6 +211,12 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                 return (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-red-100 text-red-800 border border-red-200 ml-1">
                         Ditolak
+                    </span>
+                );
+            case 'cancelled':
+                return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 ml-1">
+                        Dibatalkan
                     </span>
                 );
             default:
@@ -313,6 +333,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                 <option value="pending">Pending</option>
                                 <option value="disetujui">Disetujui</option>
                                 <option value="ditolak">Ditolak</option>
+                                <option value="dibatalkan">Dibatalkan</option>
                             </Select>
                             <Input
                                 type="date"
@@ -558,24 +579,35 @@ export default function Index({ auth, pengajuans, filters, stats }) {
                                         <div>
                                             <span className="section-title block mb-1">Tahap Persetujuan</span>
                                             <div className="flex items-center gap-1 text-sm">
-                                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedItem.approval_stage === 'pending_l1' ? 'badge-warning' : selectedItem.approval_stage === 'approved' || selectedItem.approval_stage === 'rejected' ? 'badge-neutral' : 'badge-success'}`}>
-                                                    L1
-                                                </span>
-                                                {(selectedItem.approver_l2_id || selectedItem.approval_stage === 'pending_l2') && (
+                                                {selectedItem.approval_stage === 'cancelled' ? (
+                                                    <span className="badge-neutral">Dibatalkan</span>
+                                                ) : (
                                                     <>
-                                                        <ChevronRight className="w-4 h-4 text-border" />
-                                                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedItem.approval_stage === 'pending_l2' ? 'badge-warning' : selectedItem.approval_stage === 'approved' ? 'badge-success' : 'badge-neutral'}`}>
-                                                            L2
+                                                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedItem.approval_stage === 'pending_l1' ? 'badge-warning' : selectedItem.approval_stage === 'approved' || selectedItem.approval_stage === 'rejected' ? 'badge-neutral' : 'badge-success'}`}>
+                                                            L1
                                                         </span>
-                                                    </>
-                                                )}
-                                                {selectedItem.approval_stage === 'approved' && (
-                                                    <>
-                                                        <ChevronRight className="w-4 h-4 text-border" />
-                                                        <span className="badge-success">Final</span>
+                                                        {(selectedItem.approver_l2_id || selectedItem.approval_stage === 'pending_l2') && (
+                                                            <>
+                                                                <ChevronRight className="w-4 h-4 text-border" />
+                                                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedItem.approval_stage === 'pending_l2' ? 'badge-warning' : selectedItem.approval_stage === 'approved' ? 'badge-success' : 'badge-neutral'}`}>
+                                                                    L2
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                        {selectedItem.approval_stage === 'approved' && (
+                                                            <>
+                                                                <ChevronRight className="w-4 h-4 text-border" />
+                                                                <span className="badge-success">Final</span>
+                                                            </>
+                                                        )}
                                                     </>
                                                 )}
                                             </div>
+                                            {selectedItem.cancelled_at && (
+                                                <p className="mt-2 text-xs text-text-secondary">
+                                                    Dibatalkan {format(new Date(selectedItem.cancelled_at), 'd MMM yyyy, HH:mm', { locale: idLocale })}
+                                                </p>
+                                            )}
                                             {/* Disetujui oleh */}
                                             {selectedItem.approved_at_l1 && (
                                                 <p className="mt-2 text-xs text-text-muted">
@@ -624,7 +656,7 @@ export default function Index({ auth, pengajuans, filters, stats }) {
 
                                 <ThreadChat
                                     pengajuanId={selectedItem.id}
-                                    isLocked={selectedItem.approval_stage === 'approved' || selectedItem.approval_stage === 'rejected'}
+                                    isLocked={['approved', 'rejected', 'cancelled'].includes(selectedItem.approval_stage)}
                                     currentUserId={auth.user.id}
                                     commentsRoute="pengajuan-izin.comments"
                                     replyRoute="pengajuan-izin.reply"
