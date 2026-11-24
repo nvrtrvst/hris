@@ -7,7 +7,9 @@ use App\Models\Jadwal;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
+use App\Models\UnitPresensiModeHistory;
 use App\Models\UnitSekolah;
+use App\Support\HariKerja;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -51,6 +53,10 @@ class KpiMetricsService
                 }
             });
 
+        $holidayMap = [
+            'national_dates' => array_keys($nationalHolidays),
+            'unit_dates' => array_map(fn (array $dates) => array_keys($dates), $unitHolidays),
+        ];
         $leaveDates = [];
         PengajuanIzin::whereIn('pegawai_id', $pegawaiIds)
             ->where('status', 'disetujui')
@@ -138,7 +144,8 @@ class KpiMetricsService
             $unitWorkingSet = array_flip($unitWorkingDates);
             $expected = [];
             foreach ($validDates as $date) {
-                $hanyaJadwal = $pegawai->presensiHanyaJadwalPada($date);
+                $hanyaJadwal = $pegawai->isPendidik()
+                    && $unit->modePresensiPada($date) === UnitPresensiModeHistory::MODE_HANYA_JADWAL;
                 if ($hanyaJadwal) {
                     if (isset($scheduledMengajarDates[$date])) {
                         $expected[$date] = true;
@@ -149,6 +156,37 @@ class KpiMetricsService
 
                 if (isset($scheduledDates[$date]) || ($pegawai->wajib_kantor && isset($unitWorkingSet[$date]))) {
                     $expected[$date] = true;
+                }
+            }
+
+            $validDateSet = array_flip($validDates);
+            $quotaWeeks = HariKerja::mingguKerjaGuru($pegawai, $unit, $start, $end, $holidayMap);
+            foreach ($quotaWeeks as $week) {
+                foreach ($week['segments'] as $segment) {
+                    if (($segment['mode'] ?? null) !== UnitPresensiModeHistory::MODE_HANYA_JADWAL
+                        || (int) ($segment['target'] ?? 0) <= 0) {
+                        continue;
+                    }
+
+                    $scheduledInSegment = 0;
+                    foreach ($validDates as $date) {
+                        if ($date >= $segment['from'] && $date <= $segment['to']
+                            && isset($scheduledMengajarDates[$date])) {
+                            $scheduledInSegment++;
+                        }
+                    }
+
+                    $need = max(0, (int) $segment['target'] - $scheduledInSegment);
+                    foreach ($segment['quota_dates'] as $date) {
+                        if ($need <= 0) {
+                            break;
+                        }
+                        if (! isset($validDateSet[$date]) || isset($expected[$date])) {
+                            continue;
+                        }
+                        $expected[$date] = true;
+                        $need--;
+                    }
                 }
             }
             $expectedDates = array_keys($expected);
@@ -163,7 +201,6 @@ class KpiMetricsService
             $plannedJp = 0.0;
             $completedJp = 0.0;
             $durasiJp = max(1, (int) ($unit->durasi_jp ?: 45));
-            $validDateSet = array_flip($validDates);
             foreach ($schedulesForAssignment->where('jenis_jadwal', 'mengajar') as $schedule) {
                 $jp = max(0, Carbon::parse($schedule->jam_mulai)->diffInMinutes(Carbon::parse($schedule->jam_selesai))) / $durasiJp;
                 foreach ($datesByDay->get($schedule->hari, []) as $date) {

@@ -9,8 +9,10 @@ use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\PiketTugasOverride;
 use App\Models\Presensi;
+use App\Exports\LaporanRekapKehadiranExport;
 use App\Models\UnitSekolah;
 use App\Models\User;
+use App\Support\HariKerja;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -66,6 +68,9 @@ class PresensiGuruReportService
 
         $workingDays = Pegawai::hariKerjaUnit($unit);
         $today = Carbon::today();
+        $quotaEnd = $end->gt($today) ? $today->copy() : $end;
+        $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap([(int) $unit->id], $start, $quotaEnd);
+        $quotaWeeks = HariKerja::mingguKerjaGuru($pegawai, $unit, $start, $quotaEnd, $holidayMap);
         $rows = [];
 
         for ($cursor = $start->copy(); $cursor->lte($end); $cursor->addDay()) {
@@ -77,8 +82,10 @@ class PresensiGuruReportService
             $dayName = $cursor->locale('id')->translatedFormat('l');
             $modeHanyaJadwal = $pegawai->presensiHanyaJadwalPada($cursor);
             $scheduled = $jadwals->where('hari', $dayName);
+            $dayRowsForGate = $presensis->get($date, collect());
 
-            if ($modeHanyaJadwal && $scheduled->isEmpty()) {
+            if ($modeHanyaJadwal && $scheduled->isEmpty()
+                && $dayRowsForGate->isEmpty() && ! isset($izinMap[$date])) {
                 continue;
             }
 
@@ -153,11 +160,13 @@ class PresensiGuruReportService
             ];
         }
 
-        $weeks = $this->weeks($rows);
+        $weeks = $this->weeks($rows, $quotaWeeks);
         $actualTotal = array_sum(array_column($rows, 'jumlah_jp'));
         $scheduledTotal = array_sum(array_column($rows, 'scheduled_jp'));
         $attendanceWeights = collect($rows)
             ->map(fn (array $row) => (float) ($row['attendance_weight'] ?? 0));
+        $kuotaTarget = array_sum(array_column($weeks, 'target'));
+        $kuotaTerpenuhi = array_sum(array_column($weeks, 'terpenuhi'));
 
         return [
             'unit' => [
@@ -193,24 +202,36 @@ class PresensiGuruReportService
                 'b' => $attendanceWeights->isNotEmpty()
                     ? (int) round($attendanceWeights->sum() * 100 / $attendanceWeights->count())
                     : null,
+                'kuota_target' => $kuotaTarget,
+                'kuota_terpenuhi' => $kuotaTerpenuhi,
+                'kuota_kurang' => max(0, $kuotaTarget - $kuotaTerpenuhi),
             ],
             'officials' => $this->officials($unit, $pegawai),
         ];
     }
 
-    private function weeks(array $rows): array
+    private function weeks(array $rows, array $quotaWeeks): array
     {
         $groups = collect($rows)
             ->groupBy(fn (array $row) => Carbon::parse($row['tanggal_iso'])->startOfWeek(Carbon::MONDAY)->toDateString())
             ->sortKeys();
+        $quotaByWeek = collect($quotaWeeks)->keyBy('from');
+        foreach ($quotaByWeek as $from => $week) {
+            if ((int) ($week['target'] ?? 0) > 0 && ! $groups->has($from)) {
+                $groups->put($from, collect());
+            }
+        }
+        $groups = $groups->sortKeys();
 
         $weeks = [];
         $number = 1;
 
-        foreach ($groups as $weekRows) {
+        foreach ($groups as $from => $weekRows) {
             $actual = array_sum(array_column($weekRows->all(), 'jumlah_jp'));
             $scheduled = array_sum(array_column($weekRows->all(), 'scheduled_jp'));
             $weights = $weekRows->map(fn (array $row) => (float) ($row['attendance_weight'] ?? 0));
+            $target = (int) ($quotaByWeek->get($from)['target'] ?? 0);
+            $terpenuhi = $weekRows->filter(fn (array $row) => (float) ($row['attendance_weight'] ?? 0) > 0)->count();
 
             $weeks[] = [
                 'label' => 'Minggu '.$number++,
@@ -220,6 +241,9 @@ class PresensiGuruReportService
                     : null,
                 'actual_jp' => $actual,
                 'scheduled_jp' => $scheduled,
+                'target' => $target,
+                'terpenuhi' => $terpenuhi,
+                'kurang' => max(0, $target - $terpenuhi),
             ];
         }
 

@@ -16,7 +16,7 @@ import { useGeolocation } from '@/Hooks/useGeolocation';
 import { useMotionSamples } from '@/Hooks/useMotionSamples';
 import { Camera, RefreshCw, MapPin, CheckCircle, AlertCircle, Loader2, LocateFixed, ShieldCheck, ClipboardCheck, Lock, Clock } from 'lucide-react';
 
-export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false, izinHariIni = null, jamIzinPulangCepat = null, alasanLibur = null, piketGate = null, lemburWindow = null }) {
+export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeAttendance = false, kuotaMinggu = null, izinHariIni = null, jamIzinPulangCepat = null, alasanLibur = null, piketGate = null, lemburWindow = null }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [errorAction, setErrorAction] = useState(null);
@@ -575,6 +575,13 @@ export default function Absen({ auth, pegawai, jadwals, presensiHariIni, officeA
                 <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                     <p className="text-sm font-bold text-emerald-900">Kehadiran kantor</p>
                     <p className="mt-0.5 text-xs leading-relaxed text-emerald-800">Tidak ada jadwal mengajar hari ini. Presensi memakai unit primer dan jam masuk kantor.</p>
+                    {kuotaMinggu?.aktif && (
+                        <p className={`mt-2 text-xs font-semibold ${kuotaMinggu.kurang > 0 ? 'text-emerald-800' : 'text-amber-800'}`}>
+                            {kuotaMinggu.kurang > 0
+                                ? `Kuota minggu ini ${kuotaMinggu.terpenuhi}/${kuotaMinggu.target} hari · kurang ${kuotaMinggu.kurang} hari`
+                                : `Kuota minggu ini terpenuhi (${kuotaMinggu.terpenuhi}/${kuotaMinggu.target} hari)`}
+                        </p>
+                    )}
                 </div>
             )}
 

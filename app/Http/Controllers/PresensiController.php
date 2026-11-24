@@ -920,6 +920,10 @@ class PresensiController extends Controller
                 return true;
             }
 
+            if ($unit->minHariMingguPada($segment['to']) > 0) {
+                return true;
+            }
+
             $hariMengajar = $pegawai->hariJadwalMengajar();
             for ($cursor = $segment['from']->copy(); $cursor->lte($segment['to']); $cursor->addDay()) {
                 if (in_array($cursor->locale('id')->translatedFormat('l'), $hariMengajar, true)) {

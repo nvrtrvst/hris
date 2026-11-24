@@ -55,6 +55,8 @@ class UnitSekolahController extends Controller
             'radius_meter' => 'required|integer|min:10|max:100000',
             'durasi_jp' => 'nullable|integer|min:1|max:255',
             'max_jam_minggu' => 'nullable|integer|min:1|max:168',
+            'min_hari_minggu' => 'nullable|integer|min:0|max:7',
+            'min_hari_berlaku_mulai' => 'nullable|date|after_or_equal:today',
             'toleransi_menit' => 'nullable|integer|min:0|max:60',
             'toleransi_mengajar_menit' => 'nullable|integer|min:0|max:60',
             'toleransi_slide_menit' => 'nullable|integer|min:0|max:60',
@@ -81,6 +83,7 @@ class UnitSekolahController extends Controller
         ]);
 
         $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;
+        $validated = $this->normalizeMinHariMinggu($validated);
         $validated['toleransi_slide_menit'] = $validated['toleransi_slide_menit'] ?? 15;
         $validated['max_jeda_sesi_menit'] = $validated['max_jeda_sesi_menit'] ?? 120;
         $validated['wajib_pulang_mengajar'] = (bool) ($validated['wajib_pulang_mengajar'] ?? false);
@@ -127,6 +130,17 @@ class UnitSekolahController extends Controller
             'radius_meter' => 'required|integer|min:10|max:100000',
             'durasi_jp' => 'nullable|integer|min:1|max:255',
             'max_jam_minggu' => 'nullable|integer|min:1|max:168',
+            'min_hari_minggu' => 'nullable|integer|min:0|max:7',
+            'min_hari_berlaku_mulai' => [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) use ($unit_sekolah) {
+                    $current = $unit_sekolah->min_hari_berlaku_mulai?->toDateString();
+                    if ($value && $value !== $current && $value < now()->toDateString()) {
+                        $fail('Tanggal berlaku tidak boleh di masa lalu.');
+                    }
+                },
+            ],
             'toleransi_menit' => 'nullable|integer|min:0|max:60',
             'toleransi_mengajar_menit' => 'nullable|integer|min:0|max:60',
             'toleransi_slide_menit' => 'nullable|integer|min:0|max:60',
@@ -155,6 +169,7 @@ class UnitSekolahController extends Controller
         ]);
 
         $validated['max_jam_minggu'] = $validated['max_jam_minggu'] ?? 30;
+        $validated = $this->normalizeMinHariMinggu($validated, $unit_sekolah);
         $validated['toleransi_slide_menit'] = $validated['toleransi_slide_menit'] ?? $unit_sekolah->toleransi_slide_menit ?? 15;
         $validated['max_jeda_sesi_menit'] = $validated['max_jeda_sesi_menit'] ?? $unit_sekolah->max_jeda_sesi_menit ?? 120;
         if (array_key_exists('wajib_pulang_mengajar', $validated)) {
@@ -310,6 +325,29 @@ class UnitSekolahController extends Controller
                 'berlaku_mulai' => $next->berlaku_mulai->toDateString(),
             ] : null,
         ];
+    }
+
+    private function normalizeMinHariMinggu(array $validated, ?UnitSekolah $unit = null): array
+    {
+        $hasMin = array_key_exists('min_hari_minggu', $validated);
+        $hasDate = array_key_exists('min_hari_berlaku_mulai', $validated);
+        if (! $hasMin && ! $hasDate) {
+            return $validated;
+        }
+
+        $min = $hasMin ? (int) $validated['min_hari_minggu'] : (int) ($unit?->min_hari_minggu ?? 0);
+        $date = $hasDate ? $validated['min_hari_berlaku_mulai'] : $unit?->min_hari_berlaku_mulai?->toDateString();
+
+        if ($min > 0 && ! $date) {
+            throw ValidationException::withMessages([
+                'min_hari_berlaku_mulai' => 'Tanggal berlaku wajib diisi jika minimal hari lebih dari 0.',
+            ]);
+        }
+
+        $validated['min_hari_minggu'] = $min;
+        $validated['min_hari_berlaku_mulai'] = $min > 0 ? $date : null;
+
+        return $validated;
     }
 
     public function storeLokasi(Request $request, UnitSekolah $unit_sekolah)

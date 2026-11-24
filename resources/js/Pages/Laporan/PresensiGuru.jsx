@@ -194,6 +194,9 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                     <span>JP aktual: {preview.summary.actual_jp}</span>
                                     <span>JP terjadwal: {preview.summary.scheduled_jp}</span>
                                     <span>B (bulan): {preview.summary.b !== null ? `${preview.summary.b}%` : '-'}</span>
+                                    {preview.summary.kuota_target > 0 && (
+                                        <span>Kuota: {preview.summary.kuota_terpenuhi}/{preview.summary.kuota_target} hari</span>
+                                    )}
                                 </div>
                             </Card>
 
@@ -209,6 +212,7 @@ export default function PresensiGuru({ auth, units = [], gurus = [], years = [],
                                         <h3 className="text-sm font-extrabold text-primary">{week.label}</h3>
                                         <p className="mt-0.5 text-xs text-text-muted">
                                             {week.actual_jp} / {week.scheduled_jp} JP · M: {week.m ?? '-'}%
+                                            {week.target > 0 && ` · Kuota ${week.terpenuhi}/${week.target} hari${week.kurang > 0 ? ` · kurang ${week.kurang}` : ''}`}
                                         </p>
                                     </div>
                                     <div className="overflow-x-auto">

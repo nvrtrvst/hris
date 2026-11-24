@@ -21,6 +21,8 @@ export default function Create({ auth }) {
         pulang_sebelum_menit: 20,
         max_lembur_jam: null,
         max_jam_minggu: 30,
+        min_hari_minggu: 4,
+        min_hari_berlaku_mulai: new Date().toISOString().slice(0, 10),
         jam_masuk_kantor: '07:30',
         jam_pulang_kantor: '15:00',
         jam_kerja_sabtu_mulai: null,

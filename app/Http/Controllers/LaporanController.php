@@ -32,6 +32,7 @@ use App\Services\LaporanPdfService;
 use App\Services\PiketIzinService;
 use App\Services\PiketPresensiService;
 use App\Services\PiketService;
+use App\Support\HariKerja;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -375,6 +376,32 @@ class LaporanController extends Controller
             $hariKerja
         );
 
+        $quotaWeeks = [];
+        if ($unitUtama && $pegawai->isPendidik()) {
+            $attendedDates = $rows
+                ->whereIn('status', ['hadir', 'telat', 'sakit', 'izin', 'cuti'])
+                ->map(fn ($p) => $p->tanggal->format('Y-m-d'))
+                ->unique()
+                ->all();
+            foreach (HariKerja::mingguKerjaGuru($pegawai, $unitUtama, $start, $end, $holidayMap) as $week) {
+                $target = (int) ($week['target'] ?? 0);
+                if ($target <= 0) {
+                    continue;
+                }
+                $terpenuhi = count(array_filter(
+                    $attendedDates,
+                    fn (string $date) => $date >= $week['from'] && $date <= $week['to']
+                ));
+                $quotaWeeks[] = [
+                    'from' => $week['from'],
+                    'to' => $week['to'],
+                    'target' => $target,
+                    'terpenuhi' => $terpenuhi,
+                    'kurang' => max(0, $target - $terpenuhi),
+                ];
+            }
+        }
+
         $periode = [
             'start_date' => $request->start_date,
             'end_date' => $request->end_date,
@@ -389,6 +416,7 @@ class LaporanController extends Controller
             ],
             'detail' => $detail,
             'summary' => $summary,
+            'quota_weeks' => $quotaWeeks,
             'periode' => $periode,
         ]);
     }

@@ -22,7 +22,7 @@ const StatusBadge = ({ status }) => {
     );
 };
 
-export default function RekapDetail({ auth, pegawai, detail, summary, periode }) {
+export default function RekapDetail({ auth, pegawai, detail, summary, quota_weeks = [], periode }) {
     const persen = summary.persen ?? (summary.hariKerja > 0 ? Math.min(100, Math.round(((summary.hadir + summary.telat) / summary.hariKerja) * 100)) : 0);
 
     return (
@@ -89,6 +89,37 @@ export default function RekapDetail({ auth, pegawai, detail, summary, periode })
                             </dl>
                         </div>
                     </Card>
+
+                    {quota_weeks.length > 0 && (
+                        <Card className="overflow-hidden">
+                            <div className="border-b border-border bg-surface px-6 py-4">
+                                <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary">Kuota Mingguan</h3>
+                                <p className="mt-0.5 text-xs text-text-muted">Target hari kerja hanya-jadwal per minggu.</p>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-border">
+                                    <thead className="bg-surface">
+                                        <tr>
+                                            <th scope="col" className="whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-text-muted">Minggu</th>
+                                            <th scope="col" className="whitespace-nowrap px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-text-muted">Target</th>
+                                            <th scope="col" className="whitespace-nowrap px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-text-muted">Terpenuhi</th>
+                                            <th scope="col" className="whitespace-nowrap px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-text-muted">Kurang</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {quota_weeks.map((week) => (
+                                            <tr key={week.from} className="transition-colors hover:bg-surface">
+                                                <td className="whitespace-nowrap px-4 py-3 text-sm text-text-secondary tabular-nums">{week.from} s/d {week.to}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-bold tabular-nums text-text-primary">{week.target}</td>
+                                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-bold tabular-nums text-success">{week.terpenuhi}</td>
+                                                <td className={`whitespace-nowrap px-4 py-3 text-right text-sm font-bold tabular-nums ${week.kurang > 0 ? 'text-danger' : 'text-text-muted'}`}>{week.kurang}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    )}
 
                     <Card className="overflow-hidden">
                         <div className="border-b border-border bg-surface px-6 py-4">

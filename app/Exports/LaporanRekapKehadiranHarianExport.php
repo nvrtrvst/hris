@@ -5,7 +5,9 @@ namespace App\Exports;
 use App\Constants\BobotKehadiran;
 use App\Models\Pegawai;
 use App\Models\Presensi;
+use App\Models\UnitPresensiModeHistory;
 use App\Models\UnitSekolah;
+use App\Support\HariKerja;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -41,6 +43,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
         'I' => 'FFE0F2FE',
         'C' => 'FFEDE9FE',
         'A' => 'FFFEE2E2',
+        'B' => 'FFF1F5F9',
         'L' => 'FFF2F4F7',
     ];
 
@@ -150,8 +153,11 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
             $holidayDates = array_flip($unitId !== null
                 ? ($holidayMap['unit_holiday_dates'][$unitId] ?? array_keys($holidayMap['national_dates'] ?? []))
                 : array_keys($holidayMap['national_dates'] ?? []));
+            $weeks = $pegawai && $unit
+                ? HariKerja::mingguKerjaGuru($pegawai, $unit, $start, $end, $holidayMap)
+                : [];
             $hariKerja = $pegawai && $unit
-                ? LaporanRekapKehadiranExport::hariKerjaByMode($pegawai, $unit, $start, $end, $holidayMap)
+                ? array_sum(array_column($weeks, 'hari_kerja'))
                 : LaporanRekapKehadiranExport::computeUniformWorkingDays(
                     $start,
                     $end,
@@ -159,19 +165,28 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                     $unitId ? (int) $unitId : null,
                     $workingDays,
                 );
-            $jadwalMengajarDays = $pegawai?->hariJadwalMengajar() ?? [];
-            $workDateSet = [];
             $recordDateSet = [];
-            foreach ($dates as $date) {
-                $dayName = Carbon::parse($date)->locale('id')->translatedFormat('l');
-                $modeHanyaJadwal = $pegawai?->presensiHanyaJadwalPada($date) ?? false;
-                $allowedDays = $modeHanyaJadwal ? $jadwalMengajarDays : $workingDays;
-
-                if (in_array($dayName, $allowedDays, true)) {
-                    $recordDateSet[$date] = true;
+            $scheduledDateSet = [];
+            $modeByDate = [];
+            foreach ($weeks as $week) {
+                foreach ($week['segments'] as $segment) {
+                    foreach ($segment['work_dates'] as $date) {
+                        $recordDateSet[$date] = true;
+                        $modeByDate[$date] = $segment['mode'];
+                    }
+                    foreach ($segment['scheduled_dates'] as $date) {
+                        $recordDateSet[$date] = true;
+                        $scheduledDateSet[$date] = true;
+                    }
                 }
-                if (in_array($dayName, $allowedDays, true) && ! isset($holidayDates[$date])) {
-                    $workDateSet[$date] = true;
+            }
+            if ($weeks === []) {
+                foreach ($dates as $date) {
+                    $dayName = Carbon::parse($date)->locale('id')->translatedFormat('l');
+                    if (in_array($dayName, $workingDays, true) && ! isset($holidayDates[$date])) {
+                        $recordDateSet[$date] = true;
+                        $modeByDate[$date] = UnitPresensiModeHistory::MODE_KANTOR;
+                    }
                 }
             }
             $deduped = $deduped->filter(function ($presensi) use ($recordDateSet) {
@@ -179,6 +194,12 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
 
                 return isset($recordDateSet[$date]);
             })->values();
+            $attendedDateSet = [];
+            foreach ($deduped as $row) {
+                if (in_array($row->status, ['hadir', 'telat', 'sakit', 'izin', 'cuti'], true)) {
+                    $attendedDateSet[Carbon::parse($row->tanggal)->toDateString()] = true;
+                }
+            }
             $cells = [];
             $counts = ['hadir' => 0, 'telat' => 0, 'sakit' => 0, 'izin' => 0, 'cuti' => 0, 'alpa' => 0];
             $wajibTugas = $unit?->sakitWajibTugas() ?? false;
@@ -206,14 +227,56 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
                 }
             }
 
-            // Sel kosong: hari libur/akhir pekan = 'L', hari kerja tanpa record = 'A'
-            // (alpa, sejalan dengan rumus rekap agregat & payroll).
+            // A = hari wajib tanpa presensi; B = hari bebas setelah kuota mingguan.
             foreach ($dates as $ds) {
                 if (isset($cells[$ds])) {
                     continue;
                 }
-                $dayName = Carbon::parse($ds)->locale('id')->translatedFormat('l');
-                $cells[$ds] = ! in_array($dayName, $workingDays, true) || isset($holidayDates[$ds]) ? 'L' : 'A';
+                if (! isset($recordDateSet[$ds]) || isset($holidayDates[$ds])) {
+                    $cells[$ds] = 'L';
+                } elseif (($modeByDate[$ds] ?? null) === UnitPresensiModeHistory::MODE_HANYA_JADWAL
+                    && ! isset($scheduledDateSet[$ds])) {
+                    $cells[$ds] = 'B';
+                } else {
+                    $cells[$ds] = 'A';
+                }
+            }
+
+            foreach ($weeks as $week) {
+                foreach ($week['segments'] as $segment) {
+                    if (($segment['mode'] ?? null) !== UnitPresensiModeHistory::MODE_HANYA_JADWAL) {
+                        continue;
+                    }
+                    $target = (int) ($segment['target'] ?? 0);
+                    if ($target <= 0) {
+                        continue;
+                    }
+
+                    $required = max(count($segment['scheduled_dates']), $target);
+                    $attended = 0;
+                    foreach ($attendedDateSet as $date => $_) {
+                        if ($date >= $segment['from'] && $date <= $segment['to']) {
+                            $attended++;
+                        }
+                    }
+                    $scheduledMissing = 0;
+                    foreach ($segment['scheduled_dates'] as $date) {
+                        if (($cells[$date] ?? null) === 'A') {
+                            $scheduledMissing++;
+                        }
+                    }
+                    $need = max(0, $required - $attended - $scheduledMissing);
+                    foreach ($segment['quota_dates'] as $date) {
+                        if ($need <= 0) {
+                            break;
+                        }
+                        if (isset($cells[$date]) && $cells[$date] !== 'B') {
+                            continue;
+                        }
+                        $cells[$date] = 'A';
+                        $need--;
+                    }
+                }
             }
 
             $sakitDates = collect($deduped)->where('status', 'sakit')

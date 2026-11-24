@@ -37,6 +37,8 @@ export default function Edit({
         pulang_sebelum_menit: unit.pulang_sebelum_menit ?? 20,
         max_lembur_jam: unit.max_lembur_jam ?? '',
         max_jam_minggu: unit.max_jam_minggu ?? 30,
+        min_hari_minggu: unit.min_hari_minggu ?? 0,
+        min_hari_berlaku_mulai: unit.min_hari_berlaku_mulai?.slice(0, 10) ?? '',
         jam_masuk_kantor: unit.jam_masuk_kantor?.slice(0, 5) || '07:30',
         jam_pulang_kantor: unit.jam_pulang_kantor?.slice(0, 5) || '15:00',
         jam_kerja_sabtu_mulai: unit.jam_kerja_sabtu_mulai?.slice(0, 5) || null,
