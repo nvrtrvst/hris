@@ -555,6 +555,17 @@ class KpiController extends Controller
         $metricsEnd = ! $finalize && $end->isAfter(Carbon::today('Asia/Jakarta'))
             ? Carbon::today('Asia/Jakarta')
             : $end;
+
+        $systemActuals = [];
+        if ($template->indicators->contains(fn ($indicator) => $indicator->sumber === 'system')) {
+            $batch = $metrics->forAssignments(
+                collect([(object) ['id' => 'current', 'pegawai' => $assignment->pegawai, 'unitSekolah' => $assignment->unitSekolah]]),
+                $start,
+                $metricsEnd,
+            );
+            $systemActuals = $batch['current'] ?? [];
+        }
+
         foreach ($template->indicators as $indicator) {
             $input = $validated['items'][$indicator->id] ?? [];
             $notApplicable = (bool) ($input['tidak_berlaku'] ?? false);
@@ -572,13 +583,7 @@ class KpiController extends Controller
                 }
             } else {
                 if ($indicator->sumber === 'system') {
-                    $actual = $metrics->actual(
-                        (string) $indicator->source_key,
-                        $assignment->pegawai,
-                        $assignment->unitSekolah,
-                        $start,
-                        $metricsEnd,
-                    );
+                    $actual = $systemActuals[(string) $indicator->source_key] ?? null;
                 } elseif ($indicator->jenis === 'rubric') {
                     $level = isset($input['level_rubrik']) ? (int) $input['level_rubrik'] : null;
                     if ($level !== null) {

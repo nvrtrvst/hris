@@ -250,12 +250,17 @@ class PenggajianController extends Controller
 
         DB::beginTransaction();
         try {
+            $existingByPegawai = Penggajian::whereIn('pegawai_id', $pegawais->pluck('id'))
+                ->where('periode_bulan', $periode)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('pegawai_id');
+
+            $detailRows = [];
+
             foreach ($pegawais as $pegawai) {
                 // Prevent duplicate generation for finalized payroll
-                $existing = Penggajian::where('pegawai_id', $pegawai->id)
-                    ->where('periode_bulan', $periode)
-                    ->lockForUpdate()
-                    ->first();
+                $existing = $existingByPegawai->get($pegawai->id);
 
                 if ($existing) {
                     if ($existing->status !== 'draft') {
@@ -333,11 +338,20 @@ class PenggajianController extends Controller
                     'status' => 'draft',
                 ]);
 
+                $now = Carbon::now();
                 foreach ($details as $d) {
                     $d['penggajian_id'] = $penggajian->id;
-                    PenggajianDetail::create($d);
+                    $d['is_taxable'] = (int) $d['is_taxable'];
+                    $d['created_at'] = $now;
+                    $d['updated_at'] = $now;
+                    $detailRows[] = $d;
                 }
             }
+
+            foreach (array_chunk($detailRows, 500) as $chunk) {
+                PenggajianDetail::insert($chunk);
+            }
+
             DB::commit();
 
             $worksheetParams = ['month' => $month, 'year' => $year];

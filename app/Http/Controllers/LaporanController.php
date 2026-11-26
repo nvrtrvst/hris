@@ -708,6 +708,12 @@ class LaporanController extends Controller
         $areaId = $validated['area_id'] ?? null;
         $kualitas = $validated['kualitas'] ?? 'semua';
 
+        // Prefetch pos per unit sekali (hindari count()/get() per baris laporan).
+        $posByUnit = PiketPos::whereIn('unit_sekolah_id', $units->pluck('id'))
+            ->where('aktif', true)
+            ->get()
+            ->groupBy('unit_sekolah_id');
+
         $laporan = LaporanPiket::with([
             'pegawai:id,nama_lengkap',
             'unitSekolah:id,nama,piket_mode',
@@ -725,25 +731,26 @@ class LaporanController extends Controller
             ->orderBy('tanggal', 'desc')
             ->orderBy('id', 'desc')
             ->get()
-            ->map(function (LaporanPiket $lap) {
+            ->map(function (LaporanPiket $lap) use ($posByUnit) {
                 $petugas = $lap->sesi?->petugas->firstWhere('pegawai_id', $lap->pegawai_id);
                 $required = PiketService::wajibCodes($lap->unitSekolah, $petugas);
 
                 $itemDone = count(array_filter($required, fn ($kode) => $lap->isItemDone($kode)));
                 $areaMode = $lap->unitSekolah && PiketService::isAreaMode($lap->unitSekolah);
                 $posBelum = $areaMode && $lap->sesi ? PiketService::unservedRequiredPos($lap->sesi) : [];
+                $unitPos = $posByUnit->get($lap->unit_sekolah_id, collect());
                 $posTotal = $areaMode && $lap->unitSekolah
-                    ? PiketPos::where('unit_sekolah_id', $lap->unit_sekolah_id)->where('aktif', true)->where('is_wajib', true)->count()
+                    ? $unitPos->where('is_wajib', true)->count()
                     : 0;
                 $rounds = $lap->sesi ? PiketService::rounds($lap->sesi) : [];
                 $roundSelesai = count(array_filter($rounds, fn ($r) => $r['selesai_at'] !== null));
 
                 $posList = collect();
                 if ($lap->sesi) {
-                    $posList = PiketPos::where('unit_sekolah_id', $lap->unit_sekolah_id)
-                        ->where('aktif', true)
-                        ->where(fn ($q) => $q->whereNull('area_id')->when($petugas?->area_id, fn ($qq, $a) => $qq->orWhere('area_id', $a)))
-                        ->get()
+                    $petugasAreaId = $petugas?->area_id;
+                    $posList = $unitPos
+                        ->filter(fn (PiketPos $pos) => $pos->area_id === null
+                            || ($petugasAreaId !== null && (int) $pos->area_id === (int) $petugasAreaId))
                         ->map(function (PiketPos $pos) use ($lap) {
                             $log = $lap->sesi->posLogs->firstWhere('pos_id', $pos->id);
 

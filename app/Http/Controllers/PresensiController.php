@@ -32,6 +32,7 @@ use App\Services\TugasLuarCoverageService;
 use App\Traits\CalculatesDistance;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -687,7 +688,7 @@ class PresensiController extends Controller
     {
         $user = auth()->user();
         $pegawais = Pegawai::where('status_aktif', 'aktif')
-            ->with(['units.presensiModeHistories', 'jabatans', 'mapels', 'jadwals']);
+            ->with(['units.presensiModeHistories', 'jabatans', 'mapels', 'jadwals:id,pegawai_id,hari,jenis_jadwal']);
         $request = $request ?? request();
 
         if ($this->isPimpinanReadOnly($user)) {
@@ -904,6 +905,16 @@ class PresensiController extends Controller
         return $tanggal instanceof \DateTimeInterface ? $tanggal->format('Y-m-d') : (string) $tanggal;
     }
 
+    private function scopeBelumPresensi(Builder $query, string $startDate, string $endDate): void
+    {
+        $query->whereNotExists(function ($q) use ($startDate, $endDate) {
+            $q->selectRaw('1')
+                ->from('presensi')
+                ->whereColumn('presensi.pegawai_id', 'pegawai.id')
+                ->whereBetween('presensi.tanggal', [$startDate, $endDate]);
+        });
+    }
+
     private function pegawaiWajibPresensi(Pegawai $pegawai, Carbon $start, Carbon $end): bool
     {
         if (! $pegawai->isPendidik()) {
@@ -915,6 +926,8 @@ class PresensiController extends Controller
             return true;
         }
 
+        $hariMengajar = $pegawai->hariJadwalMengajar();
+
         foreach ($unit->modeSegments($start, $end) as $segment) {
             if ($segment['mode'] !== UnitPresensiModeHistory::MODE_HANYA_JADWAL) {
                 return true;
@@ -924,8 +937,19 @@ class PresensiController extends Controller
                 return true;
             }
 
-            $hariMengajar = $pegawai->hariJadwalMengajar();
-            for ($cursor = $segment['from']->copy(); $cursor->lte($segment['to']); $cursor->addDay()) {
+            if ($hariMengajar === []) {
+                continue;
+            }
+
+            $from = $segment['from']->copy()->startOfDay();
+            $to = $segment['to']->copy()->startOfDay();
+
+            // Rentang >= 7 hari pasti memuat semua nama hari.
+            if ($from->diffInDays($to) + 1 >= 7) {
+                return true;
+            }
+
+            for ($cursor = $from->copy(); $cursor->lte($to); $cursor->addDay()) {
                 if (in_array($cursor->locale('id')->translatedFormat('l'), $hariMengajar, true)) {
                     return true;
                 }
@@ -940,12 +964,9 @@ class PresensiController extends Controller
         $startDate = $request->start_date ?? Carbon::today()->toDateString();
         $endDate = $request->end_date ?? Carbon::today()->toDateString();
 
-        $pegawaisWithPresensi = Presensi::whereBetween('tanggal', [$startDate, $endDate])
-            ->distinct()->pluck('pegawai_id');
-
         $pegawais = Pegawai::where('status_aktif', 'aktif')
-            ->with(['units.presensiModeHistories', 'jabatans', 'mapels', 'jadwals'])
-            ->whereNotIn('id', $pegawaisWithPresensi);
+            ->with(['units.presensiModeHistories', 'jabatans', 'mapels', 'jadwals:id,pegawai_id,hari,jenis_jadwal']);
+        $this->scopeBelumPresensi($pegawais, $startDate, $endDate);
 
         $selfPegawai = $isPersonal ? Pegawai::where('user_id', auth()->id())->first() : null;
 
@@ -1071,12 +1092,9 @@ class PresensiController extends Controller
         $startDate = $validated['start_date'] ?? Carbon::today()->toDateString();
         $endDate = $validated['end_date'] ?? $startDate;
 
-        $pegawaisWithPresensi = Presensi::whereBetween('tanggal', [$startDate, $endDate])
-            ->distinct()->pluck('pegawai_id');
-
         $pegawais = Pegawai::where('status_aktif', 'aktif')
-            ->with(['units.presensiModeHistories', 'jabatans', 'mapels', 'jadwals'])
-            ->whereNotIn('id', $pegawaisWithPresensi);
+            ->with(['units.presensiModeHistories', 'jabatans', 'mapels', 'jadwals:id,pegawai_id,hari,jenis_jadwal']);
+        $this->scopeBelumPresensi($pegawais, $startDate, $endDate);
 
         // Scope unit sama dengan handleBelumPresensi()
         if ($user->can('view_all_units')) {
