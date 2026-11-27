@@ -862,3 +862,13 @@ DB::table('komponen_gaji')->whereNull('kode')->update([
 - Existing data tidak rusak setelah migration
 - New records pakai kode lebih robust
 - Gradual migration tanpa breaking
+
+<!-- antislop:start -->
+## antislop
+For UI work, read the core and relevant skill before starting:
+- Core: `C:\Users\End\.agents\skills\antislop\SKILL.md`
+- UI / visual: `C:\Users\End\.agents\skills\antislop-ui\SKILL.md`
+- People / accessibility: `C:\Users\End\.agents\skills\antislop-human\SKILL.md`
+- Mobile / responsive: `C:\Users\End\.agents\skills\antislop-layoutmobile\SKILL.md`
+Before UI work, ask whether antislop applies during the work or after it is done.
+<!-- antislop:end -->

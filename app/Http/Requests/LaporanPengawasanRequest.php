@@ -43,7 +43,7 @@ class LaporanPengawasanRequest extends FormRequest
         ];
     }
 
-    protected function passedValidation(): void
+    protected function prepareForValidation(): void
     {
         $user = Auth::user();
 

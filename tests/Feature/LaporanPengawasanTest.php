@@ -2,16 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Models\HariLibur;
 use App\Models\Jabatan;
 use App\Models\Jadwal;
 use App\Models\LaporanPiket;
+use App\Models\LaporanTindakLanjut;
 use App\Models\Pegawai;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use App\Models\TugasLuar;
+use App\Models\UnitPresensiModeHistory;
 use App\Models\UnitSekolah;
 use App\Models\User;
+use App\Services\LaporanPemenuhanExportRows;
 use App\Services\LaporanPengawasanService;
+use App\Services\LaporanTindakLanjutAccess;
 use App\Services\TugasLuarCoverageService;
 use Carbon\Carbon;
 use Database\Seeders\RolePermissionSeeder;
@@ -34,7 +39,7 @@ class LaporanPengawasanTest extends TestCase
         parent::setUp();
         $this->seed(RolePermissionSeeder::class);
 
-        Carbon::setTestNow('2026-11-03 12:00:00');
+        Carbon::setTestNow('2026-11-03 18:00:00');
         $this->date = '2026-11-03';
 
         $this->unit = UnitSekolah::create([
@@ -123,7 +128,7 @@ class LaporanPengawasanTest extends TestCase
         $this->assertCount(4, $data['class_issues']);
 
         $alpaRow = collect($data['matrix'])->firstWhere('pegawai_id', $guruAlpa->id);
-        $this->assertSame('Alpa 1 hari: 03/11/2026', $alpaRow['temuan']);
+        $this->assertSame('Belum tercatat 1 hari: 03/11/2026', $alpaRow['temuan']);
         $this->assertSame('alpa', $alpaRow['temuan_detail'][0]['key']);
         $this->assertSame('2026-11-03', $alpaRow['temuan_detail'][0]['items'][0]['tanggal']);
     }
@@ -243,6 +248,136 @@ class LaporanPengawasanTest extends TestCase
             ->get(route('laporan.pengawasan.excel', $params))
             ->assertOk()
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
+
+    private function report(): array
+    {
+        return app(LaporanPengawasanService::class)->build(['from' => $this->date, 'to' => $this->date, 'unit_sekolah_id' => $this->unit->id], $this->admin);
+    }
+
+    public function test_klarifikasi_version_audit_dan_perubahan_sumber(): void
+    {
+        $pegawai = $this->pegawai('Perlu klarifikasi', false);
+        $data = $this->report();
+        $finding = collect($data['followups'])->firstWhere('jenis', 'belum_tercatat');
+        $this->assertNotNull($finding);
+        $payload = ['finding_key' => $finding['key'], 'unit_sekolah_id' => $this->unit->id,
+            'tanggal' => $this->date, 'version' => 0, 'status' => 'selesai', 'penanggung_jawab_id' => $this->admin->id,
+            'catatan' => 'Sudah diklarifikasi kepada pegawai.', 'hasil' => 'alpa_terkonfirmasi'];
+        $this->actingAs($this->admin, 'web_admin')->postJson(route('laporan.pengawasan.tindak-lanjut'), $payload)->assertOk()->assertJsonPath('record.version', 1);
+        $this->postJson(route('laporan.pengawasan.tindak-lanjut'), $payload)->assertStatus(409);
+        $this->assertDatabaseHas('audit_logs', ['auditable_type' => LaporanTindakLanjut::class, 'aksi' => 'create']);
+        $this->assertSame(1, $this->report()['decision_summary']['alpa_terkonfirmasi']);
+        $this->presensi($pegawai, null, 'hadir');
+        $updated = $this->report();
+        $this->assertSame(0, $updated['decision_summary']['alpa_terkonfirmasi']);
+        $this->assertTrue(collect($updated['followups'])->firstWhere('key', $finding['key'])['source_changed']);
+        $payload['version'] = 1;
+        $payload['status'] = 'diproses';
+        $payload['hasil'] = null;
+        $this->postJson(route('laporan.pengawasan.tindak-lanjut'), $payload)->assertOk()->assertJsonCount(2, 'record.history');
+    }
+
+    public function test_pending_tidak_dinyatakan_alpa(): void
+    {
+        $pegawai = $this->pegawai('Izin pending', false);
+        PengajuanIzin::create(['pegawai_id' => $pegawai->id, 'jenis_izin' => 'izin', 'tanggal_mulai' => $this->date, 'tanggal_selesai' => $this->date, 'alasan' => 'Menunggu keputusan kepala sekolah']);
+        $data = $this->report();
+        $this->assertSame(0, $data['decision_summary']['alpa_terkonfirmasi']);
+        $this->assertSame(0, $data['decision_summary']['belum_tercatat']);
+        $this->assertSame(1, $data['matrix'][0]['menunggu_keputusan']);
+        $this->assertSame(1, $data['decision_summary']['administrasi_pending']);
+    }
+
+    public function test_hari_berjalan_dan_jadwal_mendatang_tidak_menjadi_temuan(): void
+    {
+        Carbon::setTestNow('2026-11-03 06:00:00');
+        $guru = $this->pegawai('Belum mulai', true);
+        $this->jadwal($guru, 'Kelas pagi');
+        $this->assertSame(0, $this->report()['decision_summary']['kejadian']);
+        $future = app(LaporanPengawasanService::class)->build(['from' => '2026-11-04', 'to' => '2026-11-04', 'unit_sekolah_id' => $this->unit->id], $this->admin);
+        $this->assertSame(0, $future['decision_summary']['kejadian']);
+    }
+
+    public function test_unit_lain_dan_pimpinan_umum_tidak_boleh_menulis(): void
+    {
+        $this->pegawai('Pegawai unit', false);
+        $finding = collect($this->report()['followups'])->first();
+        $other = User::factory()->create(['unit_sekolah_id' => null]);
+        $other->assignRole('admin_unit');
+        $payload = ['finding_key' => $finding['key'], 'unit_sekolah_id' => $this->unit->id, 'tanggal' => $this->date,
+            'version' => 0, 'status' => 'belum_ditindaklanjuti'];
+        $this->actingAs($other, 'web_admin')->postJson(route('laporan.pengawasan.tindak-lanjut'), $payload)->assertForbidden();
+        $other->syncRoles(['pimpinan']);
+        $this->postJson(route('laporan.pengawasan.tindak-lanjut'), $payload)->assertForbidden();
+        $this->actingAs($this->admin, 'web_admin')->postJson(route('laporan.pengawasan.tindak-lanjut'), array_merge($payload, ['status' => 'selesai']))->assertUnprocessable();
+    }
+
+    public function test_kepala_sekolah_bisa_mengelola_tindak_lanjut(): void
+    {
+        $kepsek = $this->pegawai('Kepala', false);
+        $jabatan = Jabatan::firstOrCreate(['nama' => 'Kepala Sekolah'], ['is_guru' => false]);
+        $kepsek->units()->updateExistingPivot($this->unit->id, ['jabatan_id' => $jabatan->id]);
+        $user = $kepsek->user;
+        $user->assignRole('pimpinan');
+        $this->assertTrue(app(LaporanTindakLanjutAccess::class)->canManage($user));
+    }
+
+    public function test_kuota_minggu_berjalan_sementara_dan_identitas_stabil(): void
+    {
+        $pegawai = $this->pegawai('Guru kuota', true);
+        $this->unit->update(['min_hari_minggu' => 4, 'min_hari_berlaku_mulai' => '2026-11-02']);
+        UnitPresensiModeHistory::create(['unit_sekolah_id' => $this->unit->id, 'mode' => 'hanya_jadwal', 'berlaku_mulai' => '2026-11-02']);
+        $this->assertEmpty(collect($this->report()['followups'])->where('jenis', 'kuota_kurang'));
+        Carbon::setTestNow('2026-11-09 18:00:00');
+        $filters = ['from' => '2026-11-02', 'to' => '2026-11-08', 'unit_sekolah_id' => $this->unit->id];
+        $report = app(LaporanPengawasanService::class)->build($filters, $this->admin);
+        $finding = collect($report['followups'])->firstWhere('jenis', 'kuota_kurang');
+        $this->assertNotNull($finding);
+        $short = app(LaporanPengawasanService::class)->build(array_merge($filters, ['from' => '2026-11-08']), $this->admin);
+        $this->assertSame($finding['key'], collect($short['followups'])->firstWhere('jenis', 'kuota_kurang')['key']);
+    }
+
+    public function test_lintas_unit_tidak_menggandakan_jumlah_pegawai(): void
+    {
+        $pegawai = $this->pegawai('Lintas unit', true);
+        $unit = UnitSekolah::create(['nama' => 'Unit kedua', 'singkatan' => 'U2', 'latitude' => 0, 'longitude' => 0, 'radius_meter' => 50]);
+        $pegawai->units()->attach($unit->id, ['jabatan_id' => $pegawai->jabatans->first()->id, 'is_primary' => false]);
+        $slot = $this->jadwal($pegawai, 'Kelas unit pertama');
+        $this->presensi($pegawai, $slot->id, 'hadir');
+        $report = app(LaporanPengawasanService::class)->build(['from' => $this->date, 'to' => $this->date], $this->admin);
+        $this->assertCount(2, $report['matrix']);
+        $this->assertSame(1, $report['summary']['employees']);
+        $second = collect($report['matrix'])->firstWhere('unit_id', $unit->id);
+        $this->assertSame(0, $second['hadir']);
+        $this->assertEquals(0, $second['actual_jp']);
+    }
+
+    public function test_hari_libur_dan_periode_kosong(): void
+    {
+        $pegawai = $this->pegawai('Hari libur', true);
+        $this->jadwal($pegawai, 'Kelas libur');
+        HariLibur::create(['tanggal' => $this->date, 'nama' => 'Libur unit', 'unit_sekolah_id' => $this->unit->id]);
+        $report = $this->report();
+        $this->assertSame(0, $report['decision_summary']['kejadian']);
+        $this->assertSame(0, $report['matrix'][0]['target_hari']);
+        $this->assertNull($report['comparison']['metrics']['actual_jp']['delta_pp']);
+        $rows = app(LaporanPemenuhanExportRows::class)->build($report);
+        $this->assertContains(['Pegawai perlu klarifikasi', 0, 'Temuan terbuka', 0], $rows);
+    }
+
+    public function test_petugas_lintas_unit_dan_kunci_palsu_ditolak(): void
+    {
+        $this->pegawai('Temuan', false);
+        $finding = collect($this->report()['followups'])->first();
+        $outsider = User::factory()->create();
+        $outsider->assignRole('admin_unit');
+        $payload = ['finding_key' => $finding['key'], 'unit_sekolah_id' => $this->unit->id, 'tanggal' => $this->date,
+            'version' => 0, 'status' => 'diproses', 'penanggung_jawab_id' => $outsider->id];
+        $this->actingAs($this->admin, 'web_admin')->postJson(route('laporan.pengawasan.tindak-lanjut'), $payload)->assertUnprocessable();
+        $payload['penanggung_jawab_id'] = $this->admin->id;
+        $payload['finding_key'] = str_repeat('a', 64);
+        $this->postJson(route('laporan.pengawasan.tindak-lanjut'), $payload)->assertUnprocessable();
     }
 
     private function pegawai(string $nama, bool $isGuru): Pegawai

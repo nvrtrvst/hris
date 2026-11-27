@@ -31,6 +31,7 @@ class RolePermissionSeeder extends Seeder
             'view_jadwal',
             'manage_jadwal', // tambah/edit/generate/hapus jadwal (admin_unit & staf yang ditunjuk)
             'view_presensi',
+            'manage_tindak_lanjut_laporan',
             'koreksi_presensi',
             'view_piket',
             'view_absen_siswa',
@@ -70,6 +71,7 @@ class RolePermissionSeeder extends Seeder
             'view_jadwal',
             'manage_jadwal',
             'view_presensi',
+            'manage_tindak_lanjut_laporan',
             'view_absen_siswa',
             'view_izin',
             'create_izin_from_piket',
@@ -92,7 +94,7 @@ class RolePermissionSeeder extends Seeder
             'manage_tugas_piket',
         ]);
 
-        Role::where('name', 'tu_kepegawaian')->first()?->givePermissionTo('manage_tugas_piket');
+        Role::where('name', 'tu_kepegawaian')->first()?->givePermissionTo(['manage_tugas_piket', 'view_presensi', 'manage_tindak_lanjut_laporan']);
 
         $rolePegawai = Role::firstOrCreate(['name' => 'pegawai', 'guard_name' => 'web']);
         $rolePegawai->syncPermissions(['view_kpi_self']);
