@@ -8,6 +8,7 @@ use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\UnitPresensiModeHistory;
 use App\Models\UnitSekolah;
+use App\Support\HariKerja;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -124,12 +125,15 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
             $unit = $this->unit_id ? $pegawai?->units->firstWhere('id', $this->unit_id) : $pegawai?->unitUtama();
             $workingDays = $unit ? Pegawai::hariKerjaUnit($unit) : ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
 
-            return $deduped->filter(function ($presensi) use ($workingDays, $pegawai) {
+            return $deduped->filter(function ($presensi) use ($workingDays, $pegawai, $unit) {
                 $date = Carbon::parse($presensi->tanggal);
                 $day = $date->locale('id')->translatedFormat('l');
+                $hanyaJadwal = $unit && $pegawai?->isPendidik()
+                    && $unit->modePresensiPada($date) === UnitPresensiModeHistory::MODE_HANYA_JADWAL;
 
-                if ($pegawai?->presensiHanyaJadwalPada($date)) {
-                    return in_array($day, $pegawai->hariJadwalMengajar(), true);
+                if ($hanyaJadwal) {
+                    return in_array($day, $pegawai->hariJadwalMengajar(), true)
+                        || ($unit->minHariMingguPada($date) > 0 && in_array($day, $workingDays, true));
                 }
 
                 return in_array($day, $workingDays, true);
@@ -223,36 +227,7 @@ class LaporanRekapKehadiranExport implements FromCollection, ShouldAutoSize, Wit
      */
     public static function hariKerjaByMode(Pegawai $pegawai, UnitSekolah $unit, Carbon $start, Carbon $end, array $holidayMap): int
     {
-        if (! $pegawai->isPendidik()) {
-            return self::computeUniformWorkingDays(
-                $start,
-                $end,
-                $holidayMap,
-                (int) $unit->id,
-                Pegawai::hariKerjaUnit($unit),
-            );
-        }
-
-        $total = 0;
-        foreach ($unit->modeSegments($start, $end) as $segment) {
-            $workingDays = $segment['mode'] === UnitPresensiModeHistory::MODE_HANYA_JADWAL
-                ? $pegawai->hariJadwalMengajar()
-                : Pegawai::hariKerjaUnit($unit);
-
-            if ($workingDays === []) {
-                continue;
-            }
-
-            $total += self::computeUniformWorkingDays(
-                $segment['from'],
-                $segment['to'],
-                $holidayMap,
-                (int) $unit->id,
-                $workingDays,
-            );
-        }
-
-        return $total;
+        return HariKerja::hariKerjaGuru($pegawai, $unit, $start, $end, $holidayMap, false);
     }
 
     public static function computeUniformWorkingDays(Carbon $start, Carbon $end, array $holidayMap, ?int $unitId = null, ?array $workingDays = null): int

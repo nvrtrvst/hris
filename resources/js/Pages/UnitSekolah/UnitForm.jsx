@@ -268,6 +268,25 @@ export default function UnitForm({
                         <input type="number" min="1" max="168" value={data.max_jam_minggu}
                             onChange={(e) => setData('max_jam_minggu', e.target.value)} className={inputClass} />
                     </Field>
+                    <Field label="Minimal Hari Hadir/Minggu" error={errors.min_hari_minggu}
+                        hint="Khusus guru hanya jadwal. 0 = nonaktif. Default 4.">
+                        <input type="number" min="0" max="7" value={data.min_hari_minggu ?? 0}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setData({
+                                    ...data,
+                                    min_hari_minggu: value,
+                                    min_hari_berlaku_mulai: Number(value) > 0 ? (data.min_hari_berlaku_mulai || '') : '',
+                                });
+                            }} className={inputClass} />
+                    </Field>
+                    {Number(data.min_hari_minggu) > 0 && (
+                        <Field label="Minimal Hari Berlaku Mulai" required error={errors.min_hari_berlaku_mulai}
+                            hint="Aturan tidak berlaku untuk tanggal sebelum tanggal ini.">
+                            <input type="date" value={data.min_hari_berlaku_mulai ?? ''}
+                                onChange={(e) => setData('min_hari_berlaku_mulai', e.target.value)} className={inputClass} />
+                        </Field>
+                    )}
                 </div>
 
                 <div className="mt-5 border-t border-border pt-5">

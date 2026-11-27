@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Constants\PresensiMessages;
+use App\Constants\PresensiStatus;
 use App\Exports\LaporanRekapKehadiranExport;
 use App\Jobs\ProcessPresensiFoto;
 use App\Models\AbsenSiswaSesi;
 use App\Models\Announcement;
-use App\Models\HariLibur;
 use App\Models\Jadwal;
 use App\Models\LaporanPiket;
 use App\Models\MataPelajaran;
@@ -24,7 +24,6 @@ use App\Models\PiketSiswaTerlambat;
 use App\Models\Presensi;
 use App\Models\TugasLuar;
 use App\Models\UnitLokasi;
-use App\Models\UnitPresensiModeHistory;
 use App\Services\AbsenSiswaService;
 use App\Services\AttestationService;
 use App\Services\GeocodingService;
@@ -220,87 +219,13 @@ class MobileController extends Controller
     private function riwayatWorkingDays(Pegawai $pegawai, Carbon $start, Carbon $end, array $unitIds): int
     {
         $unit = $pegawai->unitUtama();
-        if (! $pegawai->isPendidik() || ! $unit) {
-            return $this->countWeekdaysInRange(
-                $start,
-                $end,
-                $this->holidayCount($start, $end, $unitIds),
-            );
-        }
-
-        $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap($unitIds, $start, $end);
-        $total = 0;
-        foreach ($unit->modeSegments($start, $end) as $segment) {
-            if ($segment['mode'] === UnitPresensiModeHistory::MODE_HANYA_JADWAL) {
-                $hariMengajar = $pegawai->hariJadwalMengajar();
-                if ($hariMengajar === []) {
-                    continue;
-                }
-                $total += LaporanRekapKehadiranExport::computeUniformWorkingDays(
-                    $segment['from'],
-                    $segment['to'],
-                    $holidayMap,
-                    (int) $unit->id,
-                    $hariMengajar,
-                );
-
-                continue;
-            }
-
-            $total += $this->countWeekdaysInRange(
-                $segment['from'],
-                $segment['to'],
-                $this->holidayCount($segment['from'], $segment['to'], $unitIds),
-            );
-        }
-
-        return $total;
-    }
-
-    /**
-     * Hitung hari kerja (Senin-Jumat) dalam rentang tanggal (F5).
-     * O(1): formula matematis, bukan loop harian.
-     *
-     * @param  int  $exclude  Jumlah hari libur (weekday) dalam rentang yang dikurangi.
-     */
-    private function countWeekdaysInRange(Carbon $start, Carbon $end, int $exclude = 0): int
-    {
-        if ($start->gt($end)) {
+        if (! $unit) {
             return 0;
         }
 
-        $totalDays = $start->diffInDays($end) + 1;
-        $fullWeeks = intdiv($totalDays, 7);
-        $remainderDays = $totalDays % 7;
-        $startDay = $start->dayOfWeek; // 0 = Minggu
+        $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap($unitIds, $start, $end);
 
-        $count = $fullWeeks * 5;
-        for ($i = 0; $i < $remainderDays; $i++) {
-            $day = ($startDay + $i) % 7;
-            if ($day !== Carbon::SUNDAY && $day !== Carbon::SATURDAY) {
-                $count++;
-            }
-        }
-
-        return max(0, $count - $exclude);
-    }
-
-    /**
-     * Hitung jumlah hari libur weekday dalam rentang untuk unit pegawai
-     * (libur nasional = unit_sekolah_id null, atau libur unit terkait).
-     */
-    private function holidayCount(Carbon $start, Carbon $end, array $unitIds): int
-    {
-        return HariLibur::whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
-            ->where(function ($q) use ($unitIds) {
-                $q->whereNull('unit_sekolah_id');
-                if ($unitIds) {
-                    $q->orWhereIn('unit_sekolah_id', $unitIds);
-                }
-            })
-            ->get(['tanggal'])
-            ->filter(fn ($h) => ! in_array((int) Carbon::parse($h->tanggal)->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]))
-            ->count();
+        return HariKerja::hariKerjaGuru($pegawai, $unit, $start, $end, $holidayMap, false);
     }
 
     /**
@@ -589,7 +514,13 @@ class MobileController extends Controller
         });
         $piketSaja = $adaJadwal && ! $adaNonPiket;
         $modeHanyaJadwal = $pegawai->presensiHanyaJadwalPada(Carbon::today());
-        $kantorAktif = $piketSaja || (! $modeHanyaJadwal && $pegawai->wajib_kantor && ! $adaJadwal);
+        $kuota = $modeHanyaJadwal ? $this->kuotaMingguGuru($pegawai) : ['aktif' => false, 'target' => 0, 'terpenuhi' => 0, 'kurang' => 0];
+        $kantorTerbuka = $presensiHariIni->contains(
+            fn ($row) => $row->tipe_presensi === 'kantor' && $row->jam_masuk && ! $row->jam_keluar
+        );
+        $kantorAktif = $piketSaja
+            || (! $modeHanyaJadwal && $pegawai->wajib_kantor && ! $adaJadwal)
+            || ($modeHanyaJadwal && ($kuota['kurang'] > 0 || $kantorTerbuka));
         // Alasan libur non-null = hari libur nasional/unit → kantor mati.
         if (! $hariIniBuka || $alasanLibur !== null) {
             $kantorAktif = false;
@@ -608,6 +539,7 @@ class MobileController extends Controller
                 'progress' => $tahanPiket['progress'],
             ],
             'officeAttendance' => $kantorAktif,
+            'kuotaMinggu' => $kuota,
             'alasanLibur' => $alasanLibur,
             'lemburWindow' => HariKerja::lemburWindow($pegawai),
             // Jam izin pulang cepat yang disetujui (batas bawah pulang), null bila tidak ada.
@@ -989,6 +921,9 @@ class MobileController extends Controller
     {
         return DB::transaction(function () use ($request, $pegawai, $jadwal, $unit, $distance, $isLembur, $accuracy, $speed, $capturedAt, $lokasiPerluReview, $posisiMencurigakan, $tipePresensi, $hariIni, $spoofData, $isTugasLuar, $unitSekolah) {
             $tanggal = Carbon::today()->toDateString();
+            if ($request->tipe === 'masuk' && $tipePresensi === 'kantor' && ! $isLembur && ! $isTugasLuar) {
+                $this->assertKuotaKantor($pegawai);
+            }
             $presensiKey = $this->buildPresensiKey($isLembur, $tipePresensi, $request->jadwal_id, $tanggal, $isTugasLuar);
 
             // Cari existing TANPA lock — uniknya dijamin unique index (pegawai_id, presensi_key).
@@ -3056,7 +2991,21 @@ class MobileController extends Controller
     {
         $adaJadwal = Jadwal::where('pegawai_id', $pegawai->id)->where('hari', $hariIni)->exists();
         if (! $adaJadwal) {
-            return ! $pegawai->presensiHanyaJadwalPada(Carbon::today()) && $pegawai->wajib_kantor;
+            if ($pegawai->presensiHanyaJadwalPada(Carbon::today())) {
+                $kuota = $this->kuotaMingguGuru($pegawai);
+                if ($kuota['kurang'] > 0) {
+                    return true;
+                }
+
+                return Presensi::where('pegawai_id', $pegawai->id)
+                    ->where('tanggal', Carbon::today()->toDateString())
+                    ->where('tipe_presensi', 'kantor')
+                    ->whereNotNull('jam_masuk')
+                    ->whereNull('jam_keluar')
+                    ->exists();
+            }
+
+            return $pegawai->wajib_kantor;
         }
 
         $piketSaja = ! Jadwal::where('pegawai_id', $pegawai->id)
@@ -3065,6 +3014,67 @@ class MobileController extends Controller
             ->exists();
 
         return $piketSaja;
+    }
+
+    /**
+     * @return array{aktif: bool, target: int, terpenuhi: int, kurang: int}
+     */
+    private function kuotaMingguGuru(Pegawai $pegawai, ?Carbon $tanggal = null): array
+    {
+        $tanggal ??= Carbon::today();
+        $kosong = ['aktif' => false, 'target' => 0, 'terpenuhi' => 0, 'kurang' => 0];
+        $unit = $pegawai->unitUtama();
+        if (! $unit
+            || ! $pegawai->presensiHanyaJadwalPada($tanggal)
+            || $unit->minHariMingguPada($tanggal) <= 0) {
+            return $kosong;
+        }
+
+        $start = $tanggal->copy()->startOfWeek(Carbon::MONDAY);
+        $end = $tanggal->copy()->endOfWeek(Carbon::SUNDAY);
+        $unitIds = $pegawai->units->pluck('id')->filter()->unique()->all() ?: [(int) $unit->id];
+        $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap($unitIds, $start, $end);
+        $week = collect(HariKerja::mingguKerjaGuru($pegawai, $unit, $start, $end, $holidayMap))
+            ->first(fn (array $row) => $row['from'] <= $tanggal->toDateString()
+                && $row['to'] >= $tanggal->toDateString());
+        $target = (int) ($week['target'] ?? 0);
+        if ($target <= 0) {
+            return $kosong;
+        }
+
+        $minDateStr = $unit->min_hari_berlaku_mulai?->toDateString();
+        $quotaFrom = ($minDateStr && $minDateStr > $start->toDateString()) ? $minDateStr : $start->toDateString();
+
+        $terpenuhi = Presensi::where('pegawai_id', $pegawai->id)
+            ->whereBetween('tanggal', [$quotaFrom, $end->toDateString()])
+            ->where('is_lembur', false)
+            ->whereIn('status', PresensiStatus::TERHITUNG_HARI_KERJA)
+            ->pluck('tanggal')
+            ->map(fn ($date) => Carbon::parse($date)->toDateString())
+            ->unique()
+            ->filter(fn (string $date) => $date >= $quotaFrom && $pegawai->presensiHanyaJadwalPada($date))
+            ->count();
+
+        return [
+            'aktif' => true,
+            'target' => $target,
+            'terpenuhi' => $terpenuhi,
+            'kurang' => max(0, $target - $terpenuhi),
+        ];
+    }
+
+    private function assertKuotaKantor(Pegawai $pegawai): void
+    {
+        $kuota = $this->kuotaMingguGuru($pegawai);
+        if ($kuota['aktif'] && $kuota['kurang'] <= 0) {
+            throw ValidationException::withMessages([
+                'kuota' => sprintf(
+                    'Kuota kehadiran minggu ini sudah terpenuhi (%d/%d hari). Presensi kantor tambahan tidak diperlukan.',
+                    $kuota['terpenuhi'],
+                    $kuota['target']
+                ),
+            ]);
+        }
     }
 
     private function attestationErrorResponse(array $attestation)

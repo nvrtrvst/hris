@@ -78,6 +78,7 @@ const LETTER_STYLES = {
     I: 'bg-info-light text-info',
     C: 'bg-info-light text-info',
     A: 'bg-danger-light text-danger',
+    B: 'bg-slate-100 text-text-muted',
     L: 'bg-border/50 text-text-muted',
 };
 
@@ -832,7 +833,7 @@ export default function LaporanIndex({ auth, units }) {
                                     const dt = new Date(ds + 'T00:00:00');
                                     return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
                                 };
-                                const LETTER_NAMES = { H: 'Hadir', T: 'Telat', S: 'Sakit', I: 'Izin', C: 'Cuti', A: 'Alpa / Tidak Hadir', L: 'Libur (Akhir Pekan / Hari Libur)' };
+                                const LETTER_NAMES = { H: 'Hadir', T: 'Telat', S: 'Sakit', I: 'Izin', C: 'Cuti', A: 'Alpa / Tidak Hadir', B: 'Bebas (kuota mingguan terpenuhi)', L: 'Libur (Akhir Pekan / Hari Libur)' };
                                 return (
                                     <div className="overflow-x-auto">
                                         <div className="px-4 py-2 text-xs text-text-muted bg-surface border-b border-border italic">
@@ -897,6 +898,7 @@ export default function LaporanIndex({ auth, units }) {
                                             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-info" /> I Izin</span>
                                             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-info" /> C Cuti</span>
                                             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-danger" /> A Alpa / Tidak Hadir</span>
+                                            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-slate-100" /> B Bebas (kuota terpenuhi)</span>
                                             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-border/50" /> L Libur</span>
                                         </div>
                                     </div>

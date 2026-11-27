@@ -694,33 +694,38 @@ class PegawaiController extends Controller
                 $desired[$uid.':'.$jid] = $g['is_primary'];
             }
         }
-        $have = DB::table('pegawai_unit')->where('pegawai_id', $pegawai->id)
-            ->get(['unit_sekolah_id', 'jabatan_id'])
-            ->map(fn ($r) => $r->unit_sekolah_id.':'.$r->jabatan_id)->all();
-        foreach (array_diff($have, array_keys($desired)) as $gone) {
-            [$du, $dj] = explode(':', $gone);
-            DB::table('pegawai_unit')->where('pegawai_id', $pegawai->id)
-                ->where('unit_sekolah_id', $du)->where('jabatan_id', $dj)->delete();
-        }
-        foreach ($desired as $key => $primary) {
-            [$uid, $jid] = explode(':', $key);
-            if (in_array($key, $have, true)) {
-                DB::table('pegawai_unit')
-                    ->where('pegawai_id', $pegawai->id)
-                    ->where('unit_sekolah_id', $uid)
-                    ->where('jabatan_id', $jid)
-                    ->update(['is_primary' => $primary, 'updated_at' => now()]);
-            } else {
-                DB::table('pegawai_unit')->insert([
+        DB::transaction(function () use ($pegawai, $desired) {
+            $have = DB::table('pegawai_unit')->where('pegawai_id', $pegawai->id)
+                ->get(['unit_sekolah_id', 'jabatan_id'])
+                ->map(fn ($r) => $r->unit_sekolah_id.':'.$r->jabatan_id)->all();
+            foreach (array_diff($have, array_keys($desired)) as $gone) {
+                [$du, $dj] = explode(':', $gone);
+                DB::table('pegawai_unit')->where('pegawai_id', $pegawai->id)
+                    ->where('unit_sekolah_id', $du)->where('jabatan_id', $dj)->delete();
+            }
+
+            $now = now();
+            $rows = [];
+            foreach ($desired as $key => $primary) {
+                [$uid, $jid] = explode(':', $key);
+                $rows[] = [
                     'pegawai_id' => $pegawai->id,
                     'unit_sekolah_id' => $uid,
                     'jabatan_id' => $jid,
                     'is_primary' => $primary,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
             }
-        }
+
+            if ($rows !== []) {
+                DB::table('pegawai_unit')->upsert(
+                    $rows,
+                    ['pegawai_id', 'unit_sekolah_id', 'jabatan_id'],
+                    ['is_primary', 'updated_at'],
+                );
+            }
+        });
 
         // Auto-assign atasan jika belum di-set manual
         $pegawai->load('units');

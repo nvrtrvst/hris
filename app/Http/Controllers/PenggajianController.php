@@ -16,10 +16,10 @@ use App\Models\Penggajian;
 use App\Models\PenggajianDetail;
 use App\Models\SkalaMasaBakti;
 use App\Models\StatusKepegawaian;
-use App\Models\UnitPresensiModeHistory;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Services\PresensiAggregator;
+use App\Support\HariKerja;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -250,12 +250,17 @@ class PenggajianController extends Controller
 
         DB::beginTransaction();
         try {
+            $existingByPegawai = Penggajian::whereIn('pegawai_id', $pegawais->pluck('id'))
+                ->where('periode_bulan', $periode)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('pegawai_id');
+
+            $detailRows = [];
+
             foreach ($pegawais as $pegawai) {
                 // Prevent duplicate generation for finalized payroll
-                $existing = Penggajian::where('pegawai_id', $pegawai->id)
-                    ->where('periode_bulan', $periode)
-                    ->lockForUpdate()
-                    ->first();
+                $existing = $existingByPegawai->get($pegawai->id);
 
                 if ($existing) {
                     if ($existing->status !== 'draft') {
@@ -333,11 +338,20 @@ class PenggajianController extends Controller
                     'status' => 'draft',
                 ]);
 
+                $now = Carbon::now();
                 foreach ($details as $d) {
                     $d['penggajian_id'] = $penggajian->id;
-                    PenggajianDetail::create($d);
+                    $d['is_taxable'] = (int) $d['is_taxable'];
+                    $d['created_at'] = $now;
+                    $d['updated_at'] = $now;
+                    $detailRows[] = $d;
                 }
             }
+
+            foreach (array_chunk($detailRows, 500) as $chunk) {
+                PenggajianDetail::insert($chunk);
+            }
+
             DB::commit();
 
             $worksheetParams = ['month' => $month, 'year' => $year];
@@ -692,8 +706,8 @@ class PenggajianController extends Controller
      *
      * Logic:
      * 1. Count kehadiran berdasarkan status dari Presensi (hadir/telat/sakit/izin/cuti/alpa_manual)
-     * 2. Calculate working days berdasarkan jadwal reguler ( jenis_jadwal != 'lembur')
-     * 3. Auto-fill alpa: working days - (hadir + telat + sakit + izin + cuti)
+     * 2. Calculate working days berdasarkan jadwal reguler / hari kerja unit (tanpa kuota)
+     * 3. Auto-fill alpa: working days - (hadir + telat + sakit + izin + cuti + alpa_manual)
      *
      * @param  Pegawai  $pegawai  Pegawai yang dihitung kehadiran
      * @param  Collection  $attendanceByPegawai  Data presensi grouping
@@ -703,7 +717,6 @@ class PenggajianController extends Controller
      * @param  Collection|null  $setengahCountByPegawai  Map hari ½ per pegawai
      * @param  Collection|null  $sakitSplitByPegawai  Map pegawai => [surat, tanpa_surat] (PresensiAggregator)
      * @return array<string,int|float> hadir/telat/alpa/sakit/izin/cuti/setengah (int), hadir_eq (weighted float), working_days
-     * @return array<string,int> ['hadir'=>X, 'telat'=>Y, 'alpa'=>Z, 'sakit'=>A, 'izin'=>B, 'cuti'=>C]
      */
     protected function computeAttendance(Pegawai $pegawai, $attendanceByPegawai, Carbon $periodeStart, Carbon $attendanceCutoff, array $holidayMap = [], $setengahCountByPegawai = null, $sakitSplitByPegawai = null, $alpaRowsByPegawai = null): array
     {
@@ -750,46 +763,16 @@ class PenggajianController extends Controller
     private function workingDaysByMode(Pegawai $pegawai, Carbon $start, Carbon $end, array $holidayMap): int
     {
         $unit = $pegawai->unitUtama();
-        $segments = $pegawai->isPendidik() && $unit
-            ? $unit->modeSegments($start, $end)
-            : [['from' => $start->copy(), 'to' => $end->copy(), 'mode' => UnitPresensiModeHistory::MODE_KANTOR]];
 
+        if ($pegawai->isPendidik()) {
+            return $unit
+                ? HariKerja::hariKerjaGuru($pegawai, $unit, $start, $end, $holidayMap)
+                : 0;
+        }
+
+        // Non-guru: hitung hari operasi unit (tanggal jadwal bila ada, fallback
+        // hari kerja unit), dikurangi libur — semantik HEAD.
         $total = 0;
-        foreach ($segments as $segment) {
-            $total += $this->workingDaysForSegment(
-                $pegawai,
-                $segment['from'],
-                $segment['to'],
-                $holidayMap,
-                $segment['mode'],
-            );
-        }
-
-        return $total;
-    }
-
-    private function workingDaysForSegment(Pegawai $pegawai, Carbon $start, Carbon $end, array $holidayMap, string $mode): int
-    {
-        if ($mode === UnitPresensiModeHistory::MODE_HANYA_JADWAL) {
-            $seenHari = [];
-            $total = 0;
-            foreach ($pegawai->jadwals as $jadwal) {
-                if ($jadwal->jenis_jadwal !== 'mengajar' || isset($seenHari[$jadwal->hari])) {
-                    continue;
-                }
-                $seenHari[$jadwal->hari] = true;
-                $total += max(0, $this->countWeekdayInRange(
-                    $jadwal->hari,
-                    $start,
-                    $end,
-                    $this->holidayCountFor($holidayMap, $jadwal->unit_sekolah_id, $jadwal->hari),
-                ));
-            }
-
-            return $total;
-        }
-
-        $workingDays = 0;
         $seenHariUnit = [];
         foreach ($pegawai->jadwals as $jadwal) {
             if (in_array($jadwal->jenis_jadwal, ['lembur', 'piket'], true)) {
@@ -801,7 +784,7 @@ class PenggajianController extends Controller
                 continue;
             }
             $seenHariUnit[$key] = true;
-            $workingDays += max(0, $this->countWeekdayInRange(
+            $total += max(0, $this->countWeekdayInRange(
                 $jadwal->hari,
                 $start,
                 $end,
@@ -809,21 +792,18 @@ class PenggajianController extends Controller
             ));
         }
 
-        if ($workingDays === 0) {
-            $unit = $pegawai->unitUtama();
-            if ($unit) {
-                foreach (Pegawai::hariKerjaUnit($unit) as $hari) {
-                    $workingDays += max(0, $this->countWeekdayInRange(
-                        $hari,
-                        $start,
-                        $end,
-                        $this->holidayCountFor($holidayMap, $unit->id, $hari),
-                    ));
-                }
+        if ($total === 0 && $unit) {
+            foreach (Pegawai::hariKerjaUnit($unit) as $hari) {
+                $total += max(0, $this->countWeekdayInRange(
+                    $hari,
+                    $start,
+                    $end,
+                    $this->holidayCountFor($holidayMap, $unit->id, $hari),
+                ));
             }
         }
 
-        return $workingDays;
+        return $total;
     }
 
     private function countAlpaManualByMode(Pegawai $pegawai, Collection $rows): int

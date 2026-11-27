@@ -21,7 +21,11 @@ class UnitSekolahSeeder extends Seeder
         ];
 
         foreach ($units as $unit) {
-            UnitSekolah::firstOrCreate(['nama' => $unit['nama']], $unit);
+            UnitSekolah::firstOrCreate(['nama' => $unit['nama']], [
+                ...$unit,
+                'min_hari_minggu' => 4,
+                'min_hari_berlaku_mulai' => now()->toDateString(),
+            ]);
         }
     }
 }

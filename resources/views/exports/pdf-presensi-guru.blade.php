@@ -139,7 +139,12 @@
 
                 <tr class="summary-row">
                     <td colspan="4">KEHADIRAN / MINGGU</td>
-                    <td colspan="{{ $slot_count }}">{{ $week['actual_jp'] }} / {{ $week['scheduled_jp'] }} JP</td>
+                    <td colspan="{{ $slot_count }}">
+                        {{ $week['actual_jp'] }} / {{ $week['scheduled_jp'] }} JP
+                        @if(($week['target'] ?? 0) > 0)
+                            · Kuota {{ $week['terpenuhi'] ?? 0 }}/{{ $week['target'] }} hari{{ ($week['kurang'] ?? 0) > 0 ? ' · kurang '.$week['kurang'] : '' }}
+                        @endif
+                    </td>
                     <td>{{ $week['actual_jp'] }}</td>
                     <td colspan="5"></td>
                     <td></td>

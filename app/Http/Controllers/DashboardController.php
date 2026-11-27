@@ -15,13 +15,13 @@ use App\Models\PengajuanIzin;
 use App\Models\Penggajian;
 use App\Models\Presensi;
 use App\Models\StatusKepegawaian;
-use App\Models\UnitPresensiModeHistory;
 use App\Models\UnitSekolah;
 use App\Models\User;
 use App\Services\JpCalculator;
 use App\Services\KepalaSekolahSnapshotService;
 use App\Services\PiketService;
 use App\Services\TugasVerifikasiService;
+use App\Support\HariKerja;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -176,7 +176,7 @@ class DashboardController extends Controller
                     })->get(['tanggal'])
                     ->filter(fn ($h) => ! in_array((int) Carbon::parse($h->tanggal)->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]))
                     ->count();
-                $jadwalBulanIni = $this->selfServiceWorkingDays($pegawai, $startBulan, $endKehadiran, $unitIds, $holidayCount);
+                $jadwalBulanIni = $this->selfServiceWorkingDays($pegawai, $startBulan, $endKehadiran, $unitIds);
             }
 
             return inertia('DashboardSelfService', [
@@ -730,66 +730,16 @@ class DashboardController extends Controller
         ];
     }
 
-    private function selfServiceWorkingDays(Pegawai $pegawai, Carbon $start, Carbon $end, array $unitIds, int $holidayCount): int
+    private function selfServiceWorkingDays(Pegawai $pegawai, Carbon $start, Carbon $end, array $unitIds): int
     {
         $unit = $pegawai->unitUtama();
-        if (! $pegawai->isPendidik() || ! $unit) {
-            return $this->countWeekdaysInRange($start, $end, $holidayCount);
+        if (! $unit) {
+            return 0;
         }
 
         $holidayMap = LaporanRekapKehadiranExport::buildHolidayWeekdayMap($unitIds, $start, $end);
-        $total = 0;
-        foreach ($unit->modeSegments($start, $end) as $segment) {
-            if ($segment['mode'] === UnitPresensiModeHistory::MODE_HANYA_JADWAL) {
-                $hariMengajar = $pegawai->hariJadwalMengajar();
-                if ($hariMengajar === []) {
-                    continue;
-                }
-                $total += LaporanRekapKehadiranExport::computeUniformWorkingDays(
-                    $segment['from'],
-                    $segment['to'],
-                    $holidayMap,
-                    (int) $unit->id,
-                    $hariMengajar,
-                );
 
-                continue;
-            }
-
-            $exclude = HariLibur::whereBetween('tanggal', [$segment['from']->toDateString(), $segment['to']->toDateString()])
-                ->where(function ($q) use ($unitIds) {
-                    $q->whereNull('unit_sekolah_id');
-                    if ($unitIds) {
-                        $q->orWhereIn('unit_sekolah_id', $unitIds);
-                    }
-                })->get(['tanggal'])
-                ->filter(fn ($h) => ! in_array((int) Carbon::parse($h->tanggal)->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]))
-                ->count();
-
-            $total += $this->countWeekdaysInRange($segment['from'], $segment['to'], $exclude);
-        }
-
-        return $total;
-    }
-
-    private function countWeekdaysInRange(Carbon $start, Carbon $end, int $exclude = 0): int
-    {
-        if ($start->gt($end)) {
-            return 0;
-        }
-        $totalDays = $start->diffInDays($end) + 1;
-        $fullWeeks = intdiv($totalDays, 7);
-        $remainderDays = $totalDays % 7;
-        $startDay = $start->dayOfWeek;
-        $count = $fullWeeks * 5;
-        for ($i = 0; $i < $remainderDays; $i++) {
-            $day = ($startDay + $i) % 7;
-            if ($day !== Carbon::SUNDAY && $day !== Carbon::SATURDAY) {
-                $count++;
-            }
-        }
-
-        return max(0, $count - $exclude);
+        return HariKerja::hariKerjaGuru($pegawai, $unit, $start, $end, $holidayMap, false);
     }
 
     /**
