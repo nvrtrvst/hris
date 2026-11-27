@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Constants\PresensiMessages;
+use App\Constants\PresensiStatus;
 use App\Exports\LaporanRekapKehadiranExport;
 use App\Jobs\ProcessPresensiFoto;
 use App\Models\AbsenSiswaSesi;
@@ -3047,7 +3048,7 @@ class MobileController extends Controller
         $terpenuhi = Presensi::where('pegawai_id', $pegawai->id)
             ->whereBetween('tanggal', [$quotaFrom, $end->toDateString()])
             ->where('is_lembur', false)
-            ->whereIn('status', ['hadir', 'telat', 'sakit', 'izin', 'cuti'])
+            ->whereIn('status', PresensiStatus::TERHITUNG_HARI_KERJA)
             ->pluck('tanggal')
             ->map(fn ($date) => Carbon::parse($date)->toDateString())
             ->unique()

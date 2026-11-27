@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 
 return new class extends Migration
 {
@@ -78,18 +79,53 @@ return new class extends Migration
             $rows = DB::table('pegawai_komponen_gaji')
                 ->where('pegawai_id', $d->pegawai_id)
                 ->where('komponen_gaji_id', $d->komponen_gaji_id)
+                ->orderByRaw('CASE WHEN nominal IS NULL THEN 1 ELSE 0 END')
                 ->orderByDesc('updated_at')
-                ->orderByDesc('nominal')
+                ->orderByDesc('id')
                 ->get();
 
-            $keep = (array) $rows->shift();
+            $nominals = $rows
+                ->pluck('nominal')
+                ->filter(fn ($nominal) => $nominal !== null)
+                ->map(fn ($nominal) => $this->normalizeNominal((string) $nominal))
+                ->unique()
+                ->values();
+
+            if ($nominals->count() > 1) {
+                throw new RuntimeException(sprintf(
+                    'Conflicting nominal overrides for pegawai_id=%d, komponen_gaji_id=%d. Resolve duplicate rows before migrating.',
+                    $d->pegawai_id,
+                    $d->komponen_gaji_id,
+                ));
+            }
+
+            $keep = $rows->first();
+            $keepNominal = $rows->firstWhere('nominal', '!=', null)?->nominal;
+            $createdAt = $rows->pluck('created_at')->filter()->sort()->first();
+            $updatedAt = $rows->pluck('updated_at')->filter()->sortDesc()->first();
 
             DB::table('pegawai_komponen_gaji')
                 ->where('pegawai_id', $d->pegawai_id)
                 ->where('komponen_gaji_id', $d->komponen_gaji_id)
+                ->where('id', '<>', $keep->id)
                 ->delete();
 
-            DB::table('pegawai_komponen_gaji')->insert($keep);
+            DB::table('pegawai_komponen_gaji')
+                ->where('id', $keep->id)
+                ->update([
+                    'nominal' => $keepNominal,
+                    'created_at' => $createdAt ?? $keep->created_at,
+                    'updated_at' => $updatedAt ?? $keep->updated_at,
+                ]);
         }
+    }
+
+    private function normalizeNominal(string $nominal): string
+    {
+        $normalized = str_contains($nominal, '.')
+            ? rtrim(rtrim($nominal, '0'), '.')
+            : $nominal;
+
+        return $normalized === '' || $normalized === '-0' ? '0' : $normalized;
     }
 };

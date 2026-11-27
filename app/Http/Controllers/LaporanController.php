@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Constants\BobotKehadiran;
 use App\Constants\PresensiMessages;
+use App\Constants\PresensiStatus;
 use App\Exceptions\PdfTooLargeException;
 use App\Exports\LaporanDetailHarianExport;
 use App\Exports\LaporanKetidakhadiranPiketExport;
@@ -379,7 +380,7 @@ class LaporanController extends Controller
         $quotaWeeks = [];
         if ($unitUtama && $pegawai->isPendidik()) {
             $attendedDates = $rows
-                ->whereIn('status', ['hadir', 'telat', 'sakit', 'izin', 'cuti'])
+                ->whereIn('status', PresensiStatus::TERHITUNG_HARI_KERJA)
                 ->map(fn ($p) => $p->tanggal->format('Y-m-d'))
                 ->unique()
                 ->all();

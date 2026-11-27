@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Constants\BobotKehadiran;
+use App\Constants\PresensiStatus;
 use App\Models\Pegawai;
 use App\Models\Presensi;
 use App\Models\UnitPresensiModeHistory;
@@ -196,7 +197,7 @@ class LaporanRekapKehadiranHarianExport implements FromCollection, ShouldAutoSiz
             })->values();
             $attendedDateSet = [];
             foreach ($deduped as $row) {
-                if (in_array($row->status, ['hadir', 'telat', 'sakit', 'izin', 'cuti'], true)) {
+                if (in_array($row->status, PresensiStatus::TERHITUNG_HARI_KERJA, true)) {
                     $attendedDateSet[Carbon::parse($row->tanggal)->toDateString()] = true;
                 }
             }
