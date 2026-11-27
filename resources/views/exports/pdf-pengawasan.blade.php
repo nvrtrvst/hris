@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Laporan Pengawasan Kehadiran &amp; Mengajar</title>
+<title>Laporan Kehadiran dan Pemenuhan Tugas</title>
 <style>
     @page { margin: 10mm; }
     * { box-sizing: border-box; }
@@ -89,80 +89,12 @@
     <div class="kop-contact">Telp: {{ $kop['phone'] }} &nbsp;|&nbsp; Email: {{ $kop['email'] }} &nbsp;|&nbsp; Web: {{ $kop['website'] }}</div>
 </div>
 
-<div class="title">Laporan Pengawasan Kehadiran &amp; Mengajar</div>
+<div class="title">Laporan Kehadiran dan Pemenuhan Tugas</div>
 <div class="subtitle">
     {{ $period['label'] }} &nbsp;|&nbsp; {{ $period['tahun_ajaran'] }} · Semester {{ $period['semester'] }} &nbsp;|&nbsp; Dicetak {{ \Carbon\Carbon::parse($generated_at)->format('d/m/Y H:i') }}
 </div>
 
-<table class="summary">
-    <tr>
-        <td><div class="label">Pegawai</div><div class="value">{{ number_format($summary['employees'], 0, ',', '.') }}</div></td>
-        <td><div class="label">Hari Pegawai</div><div class="value">{{ number_format($summary['employee_days'], 0, ',', '.') }}</div></td>
-        <td><div class="label">Hadir (hari)</div><div class="value success">{{ number_format($summary['hadir'], 0, ',', '.') }}</div></td>
-        <td><div class="label">Telat (hari)</div><div class="value warning">{{ number_format($summary['telat'], 0, ',', '.') }}</div></td>
-        <td><div class="label">Izin / Sakit / Cuti (hari)</div><div class="value">{{ number_format($summary['izin_sakit_cuti'], 0, ',', '.') }}</div></td>
-        <td><div class="label">Alpa (hari)</div><div class="value danger">{{ number_format($summary['alpa'], 0, ',', '.') }}</div></td>
-    </tr>
-</table>
-
-<table style="margin-top:4px">
-    <tr>
-        <td><strong>Hari hadir tanpa JP:</strong> {{ $summary['hadir_tanpa_jp'] }}</td>
-        <td><strong>Hari JP kurang:</strong> {{ $summary['jp_kurang'] }}</td>
-        <td><strong>Hari izin tetapi mengajar:</strong> {{ $summary['izin_mengajar'] }}</td>
-        <td><strong>Kelas belum terpantau:</strong> {{ $summary['kelas_belum'] }}</td>
-        <td><strong>JP (jam pelajaran):</strong> {{ $fmtJp($summary['actual_jp']) }} dari {{ $fmtJp($summary['scheduled_jp']) }} ({{ $summary['jp_percent'] ?? '-' }}%)</td>
-    </tr>
-</table>
-
-<h2>Matriks Pegawai</h2>
-<table>
-    <thead>
-        <tr>
-            <th style="width:18%">Pegawai / Unit</th>
-            <th style="width:8%" class="center">Hadir (hari)</th>
-            <th style="width:7%" class="center">Telat (hari)</th>
-            <th style="width:7%" class="center">Izin (hari)</th>
-            <th style="width:7%" class="center">Sakit (hari)</th>
-            <th style="width:7%" class="center">Cuti (hari)</th>
-            <th style="width:7%" class="center">Alpa (hari)</th>
-            <th style="width:9%" class="center">JP (aktual/terjadwal)</th>
-            <th style="width:30%">Temuan (tanggal)</th>
-        </tr>
-    </thead>
-    <tbody>
-        @forelse ($matrix as $row)
-            <tr>
-                <td><strong>{{ $row['pegawai'] }}</strong><br><span class="muted">{{ $row['unit'] }}</span></td>
-                <td class="center">{{ $row['hadir'] }}</td>
-                <td class="center">{{ $row['telat'] }}</td>
-                <td class="center">{{ $row['izin'] }}</td>
-                <td class="center">{{ $row['sakit'] }}</td>
-                <td class="center">{{ $row['cuti'] }}</td>
-                <td class="center">{{ $row['alpa'] }}</td>
-                <td class="center">{{ $row['is_guru'] ? $fmtJp($row['actual_jp']).' dari '.$fmtJp($row['scheduled_jp']) : '-' }}</td>
-                <td>
-                    @forelse ($row['temuan_detail'] as $finding)
-                        <div class="finding">
-                            <div class="finding-label{{ $finding['key'] === 'alpa' ? ' danger' : '' }}">
-                                {{ $finding['label'] }} <span class="finding-count">{{ $finding['count'] }} hari</span>
-                            </div>
-                            <div class="chips">
-                                @foreach ($finding['items'] as $item)
-                                    <span class="chip">{{ $itemText($finding, $item) }}</span>
-                                @endforeach
-                            </div>
-                        </div>
-                    @empty
-                        <span class="muted">Tidak ada temuan pada filter ini.</span>
-                    @endforelse
-                </td>
-            </tr>
-        @empty
-            <tr><td colspan="9" class="center">Tidak ada pegawai pada filter ini.</td></tr>
-        @endforelse
-    </tbody>
-</table>
+@include('exports.partials.pemenuhan')
 
 <h2>Kelas &amp; Mengajar</h2>
 <table>
@@ -196,60 +128,8 @@
 
 <div class="page-break"></div>
 
-<h2>Detail Temuan</h2>
-<table>
-    <thead>
-        <tr>
-            <th style="width:16%">Jenis</th>
-            <th style="width:20%">Pegawai</th>
-            <th style="width:14%">Unit</th>
-            <th style="width:12%">Tanggal</th>
-            <th style="width:38%">Keterangan</th>
-        </tr>
-    </thead>
-    <tbody>
-        @forelse ($details['alpa'] as $row)
-            <tr>
-                <td>Alpa</td>
-                <td>{{ $row['pegawai'] }}</td>
-                <td>{{ $row['unit'] }}</td>
-                <td>{{ \Carbon\Carbon::parse($row['tanggal'])->format('d/m/Y') }}</td>
-                <td>{{ $row['sumber'] }}</td>
-            </tr>
-        @empty
-        @endforelse
-        @foreach ($details['hadir_tanpa_jp'] as $row)
-            <tr>
-                <td>Hari hadir tanpa JP</td>
-                <td>{{ $row['pegawai'] }}</td>
-                <td>{{ $row['unit'] }}</td>
-                <td>{{ \Carbon\Carbon::parse($row['tanggal'])->format('d/m/Y') }}</td>
-                <td>JP terjadwal {{ $fmtJp($row['scheduled_jp']) }}, JP aktual {{ $fmtJp($row['actual_jp']) }}</td>
-            </tr>
-        @endforeach
-        @foreach ($details['jp_kurang'] as $row)
-            <tr>
-                <td>Hari JP kurang</td>
-                <td>{{ $row['pegawai'] }}</td>
-                <td>{{ $row['unit'] }}</td>
-                <td>{{ \Carbon\Carbon::parse($row['tanggal'])->format('d/m/Y') }}</td>
-                <td>JP terjadwal {{ $fmtJp($row['scheduled_jp']) }}, JP aktual {{ $fmtJp($row['actual_jp']) }}, kurang {{ $fmtJp($row['kurang']) }}</td>
-            </tr>
-        @endforeach
-        @foreach ($details['izin_mengajar'] as $row)
-            <tr>
-                <td>Hari izin tetapi mengajar</td>
-                <td>{{ $row['pegawai'] }}</td>
-                <td>{{ $row['unit'] }}</td>
-                <td>{{ \Carbon\Carbon::parse($row['tanggal'])->format('d/m/Y') }}</td>
-                <td>Izin {{ $row['izin'] }}, realisasi {{ $row['realisasi'] }}</td>
-            </tr>
-        @endforeach
-    </tbody>
-</table>
-
 <div class="footer">
-    Sumber: Jadwal mengajar, Presensi per JP, Pengajuan Izin disetujui, dan Laporan Piket submitted. Alpa dihitung dari hari kerja tanpa presensi dan tanpa izin. JP = jam pelajaran; durasi mengikuti durasi JP unit.
+    Sumber: Jadwal mengajar, Presensi per JP, Pengajuan Izin disetujui, dan Laporan Piket submitted. Belum tercatat dihitung dari hari kerja tanpa presensi dan tanpa izin. JP = jam pelajaran; durasi mengikuti durasi JP unit.
 </div>
 </body>
 </html>

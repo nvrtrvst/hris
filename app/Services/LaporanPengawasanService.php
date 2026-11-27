@@ -7,6 +7,7 @@ use App\Models\HariLibur;
 use App\Models\Jadwal;
 use App\Models\LaporanPiket;
 use App\Models\Pegawai;
+use App\Models\PekanUjian;
 use App\Models\PengajuanIzin;
 use App\Models\Presensi;
 use App\Models\UnitSekolah;
@@ -27,7 +28,7 @@ class LaporanPengawasanService
         'alpa' => 5,
     ];
 
-    public function build(array $filters, ?User $user = null): array
+    public function build(array $filters, ?User $user = null, bool $withComparison = true): array
     {
         $user ??= auth()->user();
         $from = Carbon::parse($filters['from'])->startOfDay();
@@ -45,11 +46,9 @@ class LaporanPengawasanService
         $unitIds = $units->pluck('id')->all();
         $employees = $this->employees($user, $unitIds, $jenisPegawai);
 
-        $employeeRows = $employees->map(function (Pegawai $pegawai) use ($units, $selectedUnitId) {
-            $unit = $this->employeeUnit($pegawai, $units, $selectedUnitId);
-
-            return $unit ? ['pegawai' => $pegawai, 'unit' => $unit] : null;
-        })->filter()->values();
+        $employeeRows = $employees->flatMap(fn (Pegawai $pegawai) => $units
+            ->filter(fn ($unit) => $pegawai->units->contains('id', $unit->id))
+            ->map(fn ($unit) => ['pegawai' => $pegawai, 'unit' => $unit]))->values();
 
         $employeeIds = $employeeRows->pluck('pegawai.id')->all();
         $holidayMap = $this->holidayMap($unitIds, $from, $to);
@@ -57,9 +56,17 @@ class LaporanPengawasanService
         $leaveMap = $this->leaveMap($employeeIds, $from, $to);
         $presensiMap = $this->presensiMap($employeeIds, $from, $to);
         $schedules = $this->schedules($employeeIds, $unitIds, $tahunAjaran, $semester);
-        $schedulesByEmployeeDay = $schedules->groupBy(fn (Jadwal $jadwal) => $jadwal->pegawai_id.'|'.$jadwal->hari);
-        $actualBySlot = $this->actualBySlot($presensiMap);
-        $coverageBySlot = $this->coverageBySlot($presensiMap);
+        $schedulesByEmployeeDay = $schedules->groupBy(fn (Jadwal $jadwal) => $jadwal->pegawai_id.'|'.$jadwal->unit_sekolah_id.'|'.$jadwal->hari);
+        foreach ($employees as $employee) {
+            $employee->setRelation('jadwals', $schedules->where('pegawai_id', $employee->id));
+        }
+        $examPeriods = PekanUjian::whereIn('unit_sekolah_id', $unitIds)->whereDate('tanggal_mulai', '<=', $to)->whereDate('tanggal_selesai', '>=', $from)->get();
+        $slotPresence = Presensi::whereIn('jadwal_id', $schedules->pluck('id'))
+            ->where('tanggal', '>=', $from->toDateString())->where('tanggal', '<', $to->copy()->addDay()->toDateString())
+            ->where('is_lembur', false)->with('pegawai:id,nama_lengkap')->get()
+            ->groupBy(fn ($row) => $row->pegawai_id.'|'.Carbon::parse($row->tanggal)->toDateString());
+        $actualBySlot = $this->actualBySlot($slotPresence);
+        $coverageBySlot = $this->coverageBySlot($slotPresence);
         $piket = $this->piketEntries($unitIds, $from, $to);
 
         $alpaRows = [];
@@ -110,6 +117,7 @@ class LaporanPengawasanService
                 'jp_kurang' => 0,
                 'izin_mengajar' => 0,
             ];
+            $countedDates = [];
             $findingDetails = [
                 'alpa' => [],
                 'hadir_tanpa_jp' => [],
@@ -119,12 +127,20 @@ class LaporanPengawasanService
 
             foreach ($workdays as $date) {
                 $dayName = Carbon::parse($date)->locale('id')->translatedFormat('l');
-                $scheduledSlots = $schedulesByEmployeeDay->get($pegawai->id.'|'.$dayName, collect());
-                if ($pegawai->presensiHanyaJadwalPada($date) && $scheduledSlots->isEmpty()) {
+                $scheduledSlots = $schedulesByEmployeeDay->get($pegawai->id.'|'.$unit->id.'|'.$dayName, collect());
+                $isExam = $examPeriods->contains(fn ($exam) => $exam->unit_sekolah_id === $unit->id && $date >= Carbon::parse($exam->tanggal_mulai)->toDateString() && $date <= Carbon::parse($exam->tanggal_selesai)->toDateString());
+                $scheduledSlots = $scheduledSlots->filter(fn ($slot) => $slot->jenis_jadwal === 'pengawas_ujian'
+                    ? ($slot->pekanUjian && $date >= Carbon::parse($slot->pekanUjian->tanggal_mulai)->toDateString() && $date <= Carbon::parse($slot->pekanUjian->tanggal_selesai)->toDateString())
+                    : ! $isExam);
+                $scheduledSlots = $scheduledSlots->filter(fn ($slot) => Carbon::parse($date.' '.$slot->jam_selesai)->lte(now()));
+                if ($date === today()->toDateString() && $scheduledSlots->isEmpty() && now()->lt(Carbon::parse($date.' '.($unit->jam_pulang_kantor ?: '23:59:59')))) {
+                    continue;
+                }
+                if (($isGuru && $unit->modePresensiPada($date) === 'hanya_jadwal') && $scheduledSlots->isEmpty()) {
                     continue;
                 }
 
-                $rows = $presensiMap[$pegawai->id.'|'.$date] ?? collect();
+                $rows = ($presensiMap[$pegawai->id.'|'.$date] ?? collect())->where('unit_sekolah_id', $unit->id);
                 $leave = $leaveMap[$pegawai->id][$date] ?? null;
                 $status = $this->dayStatus($rows, $leave);
                 $scheduledJp = round($scheduledSlots->sum(fn (Jadwal $slot) => JpCalculator::weightFromJadwal($slot)), 2);
@@ -137,6 +153,7 @@ class LaporanPengawasanService
                     ->sum(fn (Jadwal $slot) => JpCalculator::weightFromJadwal($slot)), 2);
                 $actualPresence = in_array($status, ['hadir', 'telat'], true);
 
+                $countedDates[] = $date;
                 $stats['employee_days']++;
                 $stats[$status] = ($stats[$status] ?? 0) + 1;
                 $stats['actual_jp'] += $actualJp;
@@ -232,6 +249,7 @@ class LaporanPengawasanService
                     }
 
                     $issue = [
+                        'pegawai_id' => $pegawai->id, 'unit_id' => $unit->id, 'jadwal_id' => $slot->id,
                         'tanggal' => $date,
                         'jam' => substr((string) $slot->jam_mulai, 0, 5).'-'.substr((string) $slot->jam_selesai, 0, 5),
                         'kelas' => $slot->kelas_label,
@@ -264,6 +282,7 @@ class LaporanPengawasanService
                 'unit_id' => $unit->id,
                 'is_guru' => $isGuru,
                 ...$stats,
+                'counted_dates' => $countedDates,
                 'temuan' => $findings ? $this->formatFindings($findings) : 'Tidak ada temuan',
                 'temuan_detail' => $findings,
             ];
@@ -310,7 +329,7 @@ class LaporanPengawasanService
 
         $unitSummary = array_values(array_filter($unitSummary, fn (array $unit) => $unit['employees'] > 0));
 
-        return [
+        $data = [
             'period' => [
                 'from' => $from->toDateString(),
                 'to' => $to->toDateString(),
@@ -339,6 +358,28 @@ class LaporanPengawasanService
             ],
             'generated_at' => now()->toDateTimeString(),
         ];
+        $data = app(LaporanPemenuhanService::class)->enrich($data, $employees, $units, $user);
+        if ($withComparison) {
+            $duration = (int) $from->diffInDays($to->copy()->startOfDay()) + 1;
+            $previousFilters = $filters;
+            $previousFilters['from'] = $from->copy()->subDays($duration)->toDateString();
+            $previousFilters['to'] = $from->copy()->subDay()->toDateString();
+            unset($previousFilters['tahun_ajaran'], $previousFilters['semester']);
+            $previous = $this->build($previousFilters, $user, false);
+            $data['comparison'] = ['period' => $previous['period'], 'metrics' => []];
+            foreach (['hadir', 'telat', 'actual_jp'] as $metric) {
+                $denominator = $metric === 'actual_jp' ? 'scheduled_jp' : 'employee_days';
+                $currentRate = $data['summary'][$denominator] > 0 ? 100 * $data['summary'][$metric] / $data['summary'][$denominator] : null;
+                $previousRate = $previous['summary'][$denominator] > 0 ? 100 * $previous['summary'][$metric] / $previous['summary'][$denominator] : null;
+                $data['comparison']['metrics'][$metric] = [
+                    'current' => $data['summary'][$metric], 'denominator' => $data['summary'][$denominator],
+                    'previous' => $previous['summary'][$metric], 'previous_denominator' => $previous['summary'][$denominator],
+                    'delta_pp' => $currentRate !== null && $previousRate !== null ? round($currentRate - $previousRate, 1) : null,
+                ];
+            }
+        }
+
+        return $data;
     }
 
     private function visibleUnits(?User $user, ?int $selectedUnitId): Collection
@@ -372,7 +413,7 @@ class LaporanPengawasanService
         $query = Pegawai::query()
             ->where('status_aktif', 'aktif')
             ->whereHas('units', fn ($q) => $q->whereIn('unit_sekolah.id', $unitIds))
-            ->with(['units:id,nama,singkatan', 'units.presensiModeHistories', 'jabatans:id,nama,is_guru', 'mapels'])
+            ->with(['units', 'units.presensiModeHistories', 'jabatans:id,nama,is_guru', 'mapels', 'jadwals'])
             ->orderBy('nama_lengkap')
             ->select(['id', 'nama_lengkap', 'atasan_langsung_id']);
 
@@ -394,22 +435,10 @@ class LaporanPengawasanService
         return $query->get();
     }
 
-    private function employeeUnit(Pegawai $pegawai, Collection $units, ?int $selectedUnitId): ?UnitSekolah
-    {
-        if ($selectedUnitId) {
-            return $units->firstWhere('id', $selectedUnitId);
-        }
-
-        return $pegawai->units
-            ->filter(fn (UnitSekolah $unit) => $units->contains('id', $unit->id))
-            ->sortByDesc(fn (UnitSekolah $unit) => (int) ($unit->pivot->is_primary ?? 0))
-            ->first();
-    }
-
     private function holidayMap(array $unitIds, Carbon $from, Carbon $to): array
     {
         $rows = HariLibur::query()
-            ->whereBetween('tanggal', [$from->toDateString(), $to->toDateString()])
+            ->where('tanggal', '>=', $from->toDateString())->where('tanggal', '<', $to->copy()->addDay()->toDateString())
             ->where(function ($query) use ($unitIds) {
                 $query->whereNull('unit_sekolah_id')->orWhereIn('unit_sekolah_id', $unitIds);
             })
@@ -485,10 +514,10 @@ class LaporanPengawasanService
     {
         return Presensi::query()
             ->whereIn('pegawai_id', $employeeIds)
-            ->whereBetween('tanggal', [$from->toDateString(), $to->toDateString()])
+            ->where('tanggal', '>=', $from->toDateString())->where('tanggal', '<', $to->copy()->addDay()->toDateString())
             ->where('is_lembur', false)
             ->with('pegawai:id,nama_lengkap')
-            ->get(['id', 'pegawai_id', 'jadwal_id', 'tanggal', 'status', 'is_tugas_luar', 'tugas_luar_status', 'tugas_luar_id', 'tujuan'])
+            ->get(['id', 'unit_sekolah_id', 'pegawai_id', 'jadwal_id', 'tanggal', 'status', 'is_tugas_luar', 'tugas_luar_status', 'tugas_luar_id', 'tujuan'])
             ->groupBy(fn (Presensi $presensi) => $presensi->pegawai_id.'|'.Carbon::parse($presensi->tanggal)->toDateString());
     }
 
@@ -497,11 +526,11 @@ class LaporanPengawasanService
         return Jadwal::query()
             ->whereIn('pegawai_id', $employeeIds)
             ->whereIn('unit_sekolah_id', $unitIds)
-            ->where('jenis_jadwal', 'mengajar')
+            ->whereIn('jenis_jadwal', ['mengajar', 'pengawas_ujian'])
             ->where('tahun_ajaran', $tahunAjaran)
             ->where('semester', $semester)
-            ->with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama', 'unitSekolah:id,durasi_jp'])
-            ->get(['id', 'pegawai_id', 'unit_sekolah_id', 'kelas_label', 'pegawai_mapel_id', 'hari', 'jam_mulai', 'jam_selesai']);
+            ->with(['pegawai:id,nama_lengkap', 'pegawaiMapel.mataPelajaran:id,nama', 'unitSekolah:id,durasi_jp', 'pekanUjian'])
+            ->get(['id', 'jenis_jadwal', 'pekan_ujian_id', 'pegawai_id', 'unit_sekolah_id', 'kelas_label', 'pegawai_mapel_id', 'hari', 'jam_mulai', 'jam_selesai']);
     }
 
     private function actualBySlot(Collection $presensiMap): array
@@ -546,7 +575,7 @@ class LaporanPengawasanService
 
         $reports = LaporanPiket::query()
             ->whereIn('unit_sekolah_id', $unitIds)
-            ->whereBetween('tanggal', [$from->toDateString(), $to->toDateString()])
+            ->where('tanggal', '>=', $from->toDateString())->where('tanggal', '<', $to->copy()->addDay()->toDateString())
             ->where('status', LaporanPiket::STATUS_SUBMITTED)
             ->get(['id', 'unit_sekolah_id', 'tanggal', 'items']);
 
@@ -606,7 +635,7 @@ class LaporanPengawasanService
     private function buildFindings(array $details): array
     {
         $labels = [
-            'alpa' => 'Alpa',
+            'alpa' => 'Belum tercatat',
             'hadir_tanpa_jp' => 'Hadir tanpa JP',
             'jp_kurang' => 'JP kurang',
             'izin_mengajar' => 'Izin tetapi mengajar',

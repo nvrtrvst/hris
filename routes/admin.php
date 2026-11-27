@@ -15,6 +15,7 @@ use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\LaporanKeterlambatanSiswaController;
 use App\Http\Controllers\LaporanPengawasanController;
 use App\Http\Controllers\LaporanPresensiGuruController;
+use App\Http\Controllers\LaporanTindakLanjutController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PayrollReferenceTypeController;
@@ -383,6 +384,7 @@ Route::middleware('auth:web_admin')->group(function () {
             ->middleware(['can:manage_tugas_piket', 'throttle:30,1'])
             ->name('laporan.presensi-guru.tugas');
 
+        Route::post('laporan/pengawasan/tindak-lanjut', [LaporanTindakLanjutController::class, 'store'])->middleware('throttle:30,1')->name('laporan.pengawasan.tindak-lanjut');
         Route::get('laporan/pengawasan', [LaporanPengawasanController::class, 'index'])->name('laporan.pengawasan');
         Route::get('laporan/pengawasan/preview', [LaporanPengawasanController::class, 'preview'])->name('laporan.pengawasan.preview');
         Route::get('laporan/pengawasan/pdf', [LaporanPengawasanController::class, 'pdf'])
